@@ -1,0 +1,188 @@
+# SPDX-License-Identifier: Apache-2.0
+# Commune DX-OS – lõi Tầng 1 (headless). Sơ đồ: docs/architecture.md
+#
+# Profile:
+#   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
+#          + Garage, Flowable, RabbitMQ, OpenBao      (tuần 2, đang là TODO bên dưới)
+#   docs : Gotenberg, step-ca, ClamAV, Meilisearch CE (tuần 2–5)
+#   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
+#   bi   : Apache Superset                            (tuần 4)
+#
+# Quy tắc: ghim phiên bản image cụ thể (không dùng `latest`), image lấy từ dự án gốc,
+# mọi dịch vụ có healthcheck, cấu hình qua .env (mẫu: .env.example).
+
+name: commune
+
+services:
+  # ---------------------------------------------------------------- core ----
+  postgres:
+    image: postgres:17.6-alpine
+    profiles: [core]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-commune}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
+      # Dùng trong infra/postgres/initdb/20-auth.sh
+      PGRST_DB_PASSWORD: ${PGRST_DB_PASSWORD:?Đặt PGRST_DB_PASSWORD trong .env}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Đặt KEYCLOAK_DB_PASSWORD trong .env}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./infra/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Chỉ mở trên máy local để debug bằng psql; Tầng 2 không gọi thẳng CSDL.
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.3
+    profiles: [core]
+    # start-dev: HTTP, phù hợp chạy local. Triển khai thật dùng `start` + TLS.
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Đặt KEYCLOAK_DB_PASSWORD trong .env}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Đặt KEYCLOAK_ADMIN_PASSWORD trong .env}
+      # Issuer cố định theo địa chỉ trình duyệt dùng; APISIX/PostgREST gọi nội bộ
+      # qua http://keycloak:8080 nhờ backchannel động.
+      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./infra/keycloak/realm-commune.json:/opt/keycloak/data/import/realm-commune.json:ro
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Image không có curl: dùng /dev/tcp của bash gọi cổng quản trị 9000.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # Lấy khóa công khai (JWKS) của realm cho PostgREST rồi thoát.
+  # Dùng lại image postgres (đã có wget của busybox) để không kéo thêm image.
+  jwks-init:
+    image: postgres:17.6-alpine
+    profiles: [core]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        for i in $$(seq 1 30); do
+        wget -qO /jwks/jwks.json http://keycloak:8080/realms/commune/protocol/openid-connect/certs && exit 0;
+        sleep 2; done; echo 'Không lấy được JWKS từ Keycloak' >&2; exit 1
+    volumes:
+      - jwks:/jwks
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /jwks/jwks.json"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: "no"
+
+  postgrest:
+    image: postgrest/postgrest:v13.0.4
+    profiles: [core]
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${PGRST_DB_PASSWORD:?Đặt PGRST_DB_PASSWORD trong .env}@postgres:5432/${POSTGRES_DB:-commune}
+      PGRST_DB_SCHEMAS: mot_cua
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: "@/jwks/jwks.json"
+      PGRST_JWT_AUD: commune_api
+      # Mỗi người dùng có đúng một client role của commune_api (cong_dan|can_bo|lanh_dao),
+      # trùng tên role PostgreSQL → PostgREST SET ROLE → RLS áp dụng.
+      PGRST_JWT_ROLE_CLAIM_KEY: .resource_access.commune_api.roles[0]
+      PGRST_ADMIN_SERVER_PORT: "3001"
+      PGRST_LOG_LEVEL: info
+    volumes:
+      - jwks:/jwks:ro
+    # Không mở cổng ra host: Tầng 2 chỉ đi qua APISIX.
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jwks-init:
+        condition: service_completed_successfully
+    # Không dùng healthcheck của Docker: image amd64 dựng FROM scratch (không có shell)
+    # và v13.0.4 chưa có cờ `--ready` (đã chạy thử 17/10/2026). Thay vào đó APISIX
+    # kiểm chủ động http://postgrest:3001/ready (xem upstream trong infra/apisix/apisix.yaml).
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  apisix:
+    image: apache/apisix:3.13.0-debian
+    profiles: [core]
+    # Chế độ standalone khai báo trong config.yaml (không đặt APISIX_STAND_ALONE,
+    # vì entrypoint sẽ ghi đè config.yaml đã mount).
+    volumes:
+      - ./infra/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./infra/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    ports:
+      - "${APISIX_PORT:-9080}:9080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ------------------------------------------------- core – TODO tuần 2 ----
+  # Bật từng dịch vụ khi làm việc tương ứng trong docs/PLAN.md tuần 2.
+  # Kiểm tra lại tag mới nhất trên trang dự án trước khi ghim.
+  #
+  # garage:      # Object storage S3, AGPL-3.0 → chạy như dịch vụ riêng, image gốc dxflrs/garage
+  #   image: dxflrs/garage:<tag>
+  #   profiles: [core]
+  #
+  # flowable:    # Workflow BPMN 2.0, Apache-2.0. Chỉ dùng flowable-rest (D-004), BPMN viết XML tay
+  #   image: flowable/flowable-rest:8.0.0
+  #   profiles: [core]
+  #
+  # rabbitmq:    # Hàng đợi sự kiện, MPL-2.0
+  #   image: rabbitmq:<tag>-management-alpine
+  #   profiles: [core]
+  #
+  # openbao:     # Quản lý bí mật, MPL-2.0 (không dùng HashiCorp Vault)
+  #   image: openbao/openbao:<tag>
+  #   profiles: [core]
+
+  # ------------------------------------------------- docs – TODO tuần 2–5 ----
+  # clamav:      # GPL-2.0, dịch vụ riêng, image gốc clamav/clamav
+  # gotenberg:   # MIT, gotenberg/gotenberg
+  # step-ca:     # Apache-2.0, smallstep/step-ca
+  # meilisearch: # Chỉ Community Edition (MIT), không bật tính năng Enterprise (D-004)
+
+  # --------------------------------------------------- ai / bi – TODO ----
+  # ollama:      # profile ai; model Qwen2.5 7B/14B (Apache-2.0), không dùng bản 3B (D-004)
+  # superset:    # profile bi; apache/superset
+
+volumes:
+  pg-data:
+  jwks:

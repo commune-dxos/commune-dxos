@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# Chạy `make check` trên mỗi push và PR: SPDX trong từng tệp (PoF tiêu chí 2)
+# và docker-compose.yml hợp lệ với mọi profile (PoF tiêu chí 4).
+# Thay cho ci.yml cũ (job `docker compose build` không có gì để build).
+name: check
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  make-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra giấy phép và compose
+        run: make check

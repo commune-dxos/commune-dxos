@@ -1,0 +1,30 @@
+Commune DX-OS
+Copyright 2026 <Tên đội> — OLP PMNM 2026
+
+Sản phẩm được cấp phép theo Apache License 2.0 (xem LICENSE).
+Các thành phần nguồn mở dưới đây được dùng dưới dạng thư viện qua trình quản lý gói
+hoặc image Docker gốc, không sửa đổi mã nguồn. Thành phần AGPL/GPL chạy như dịch vụ
+độc lập, không liên kết vào mã của dự án.
+Trạng thái: Đã xác minh 17/10/2026 (D-004) — đọc file LICENSE ở nhánh chính, tag image, model card.
+Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
+
+| Lớp | Thành phần | Giấy phép |
+|---|---|---|
+| SSO/MFA | Keycloak (bắt buộc MFA cán bộ) | Apache-2.0 |
+| API Gateway | Apache APISIX (rate limit cổng công dân) | Apache-2.0 |
+| Bí mật | OpenBao | MPL-2.0 |
+| CSDL | PostgreSQL + Row-Level Security + pgAudit | PostgreSQL |
+| Tự sinh API | PostgREST | MIT |
+| Object storage | Garage (S3, dịch vụ riêng, image gốc) | AGPL-3.0 |
+| Workflow | Flowable engine, image `flowable/flowable-rest` (BPMN 2.0, REST). Không dùng flowable-ui/modeler; BPMN viết XML tay | Apache-2.0 |
+| Hàng đợi | RabbitMQ | MPL-2.0 |
+| Tìm kiếm | Meilisearch Community Edition (MIT). Không dùng bản Enterprise (BUSL-1.1) | MIT |
+| Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | Apache-2.0 |
+| Ký số | step-ca (smallstep/certificates) + pyHanko | Apache-2.0 / MIT |
+| Sinh PDF | Gotenberg | MIT |
+| Quét mã độc | ClamAV (dịch vụ riêng, image gốc) | GPL-2.0 |
+| Web | React + Vite + Tailwind + shadcn/ui | MIT |
+| Dữ liệu lịch sử + lineage | Parquet + DuckDB; dbt-core 1.x (PyPI). Không dùng dbt Fusion | MIT / Apache-2.0 |
+| Dashboard | Apache Superset | Apache-2.0 |
+| AI | PaddleOCR + VietOCR; Ollama + bge-m3 + pgvector + LlamaIndex | Apache-2.0 / MIT / PostgreSQL |
+| Mô hình ngôn ngữ | Qwen2.5 bản 7B hoặc 14B. Không dùng bản 3B (giấy phép Qwen Research, không OSI) | Apache-2.0 |

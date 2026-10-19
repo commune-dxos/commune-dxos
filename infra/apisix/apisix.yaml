@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: Apache-2.0
+# Route của API Gateway (standalone). APISIX nạp lại tệp này khi thay đổi.
+# Tầng 2 chỉ gọi lõi qua đây; PostgREST không mở cổng ra ngoài.
+
+upstreams:
+  - id: postgrest
+    type: roundrobin
+    nodes:
+      "postgrest:3000": 1
+    # Kiểm chủ động admin server của PostgREST (cổng 3001, /ready = đã nối CSDL và nạp schema).
+    checks:
+      active:
+        type: http
+        http_path: /ready
+        port: 3001
+        healthy:
+          interval: 5
+          successes: 1
+        unhealthy:
+          interval: 5
+          http_failures: 2
+
+routes:
+  # Danh mục thủ tục công khai cho cổng công dân: không cần token, có giới hạn tần suất.
+  - id: thu-tuc-cong-khai
+    uri: /api/thu_tuc
+    methods: [GET]
+    priority: 10
+    plugins:
+      limit-count:
+        count: 60
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      proxy-rewrite:
+        regex_uri: ["^/api/(.*)", "/$1"]
+    upstream_id: postgrest
+
+  # Mọi API khác của lõi: bắt buộc access token Keycloak (realm commune).
+  # APISIX kiểm chữ ký bằng JWKS của Keycloak; PostgREST kiểm lại lần nữa rồi
+  # SET ROLE theo claim resource_access.commune_api.roles[0] để RLS áp dụng.
+  - id: api-loi
+    uri: /api/*
+    priority: 0
+    plugins:
+      openid-connect:
+        client_id: commune_api
+        # Schema plugin bắt buộc trường này, nhưng với bearer_only + use_jwks
+        # APISIX không gọi introspection nên giá trị không được dùng. Không phải bí mật.
+        client_secret: khong-dung-o-che-do-bearer-only
+        discovery: http://keycloak:8080/realms/commune/.well-known/openid-configuration
+        realm: commune
+        bearer_only: true
+        use_jwks: true
+      limit-count:
+        count: 600
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      proxy-rewrite:
+        regex_uri: ["^/api/(.*)", "/$1"]
+    upstream_id: postgrest
+#END

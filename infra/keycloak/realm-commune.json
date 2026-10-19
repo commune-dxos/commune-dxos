@@ -1,0 +1,150 @@
+{
+  "realm": "commune",
+  "displayName": "Commune DX-OS (realm mẫu – dữ liệu giả)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "components": {
+    "org.keycloak.keys.KeyProvider": [
+      {
+        "name": "rsa-sig-rs256",
+        "providerId": "rsa-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["100"],
+          "algorithm": ["RS256"],
+          "keySize": ["2048"],
+          "keyUse": ["SIG"]
+        }
+      },
+      {
+        "name": "hmac-hs512",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["100"],
+          "algorithm": ["HS512"]
+        }
+      },
+      {
+        "name": "aes",
+        "providerId": "aes-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["100"]
+        }
+      }
+    ]
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "cong_dan",
+        "description": "Công dân. Ánh xạ sang role PostgreSQL cong_dan.",
+        "composite": true,
+        "composites": { "client": { "commune_api": ["cong_dan"] } }
+      },
+      {
+        "name": "can_bo",
+        "description": "Cán bộ một cửa / chuyên môn. Bắt buộc MFA (OTP).",
+        "composite": true,
+        "composites": { "client": { "commune_api": ["can_bo"] } }
+      },
+      {
+        "name": "lanh_dao",
+        "description": "Lãnh đạo xã. Bắt buộc MFA (OTP).",
+        "composite": true,
+        "composites": { "client": { "commune_api": ["lanh_dao"] } }
+      }
+    ],
+    "client": {
+      "commune_api": [
+        { "name": "cong_dan", "description": "Trùng tên role PostgreSQL cong_dan" },
+        { "name": "can_bo", "description": "Trùng tên role PostgreSQL can_bo" },
+        { "name": "lanh_dao", "description": "Trùng tên role PostgreSQL lanh_dao" }
+      ]
+    }
+  },
+  "groups": [
+    { "name": "cong-dan", "path": "/cong-dan", "realmRoles": ["cong_dan"] },
+    { "name": "can-bo", "path": "/can-bo", "realmRoles": ["can_bo"] },
+    { "name": "lanh-dao", "path": "/lanh-dao", "realmRoles": ["lanh_dao"] }
+  ],
+  "clients": [
+    {
+      "clientId": "commune_api",
+      "name": "Lõi Tầng 1 (audience của PostgREST)",
+      "description": "Chỉ giữ client role ánh xạ sang role PostgreSQL. Không đăng nhập trực tiếp.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "commune_web",
+      "name": "Ứng dụng Tầng 2 (React)",
+      "description": "Public client, Authorization Code + PKCE.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "commune_cli",
+      "name": "Kiểm thử bằng curl (chỉ môi trường dev)",
+      "description": "Bật password grant để thử route APISIX bằng curl. Tắt client này khi triển khai thật. Người dùng đã cấu hình OTP phải gửi thêm tham số totp.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "congdan01",
+      "enabled": true,
+      "email": "congdan01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Văn Mẫu",
+      "lastName": "Nguyễn",
+      "groups": ["/cong-dan"]
+    },
+    {
+      "username": "canbo01",
+      "enabled": true,
+      "email": "canbo01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Thị Một Cửa",
+      "lastName": "Trần",
+      "groups": ["/can-bo"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "lanhdao01",
+      "enabled": true,
+      "email": "lanhdao01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Văn Chủ Tịch",
+      "lastName": "Lê",
+      "groups": ["/lanh-dao"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    }
+  ]
+}

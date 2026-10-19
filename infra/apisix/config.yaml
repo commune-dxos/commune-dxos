@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# APISIX chế độ standalone: không cần etcd, route đọc từ conf/apisix.yaml.
+# Tài liệu: https://apisix.apache.org/docs/apisix/deployment-modes/#standalone
+apisix:
+  node_listen: 9080
+  enable_ipv6: false
+
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+nginx_config:
+  error_log_level: warn
