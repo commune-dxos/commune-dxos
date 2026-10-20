@@ -2,16 +2,49 @@
   "roles": {
     "client": {
       "dxos_api": [
-        { "name": "cong_dan", "description": "mot-cua: công dân. Trùng tên role PostgreSQL cong_dan" },
-        { "name": "can_bo", "description": "mot-cua: cán bộ một cửa / chuyên môn. Bắt buộc MFA (OTP). Trùng role PostgreSQL can_bo" },
-        { "name": "lanh_dao", "description": "mot-cua: lãnh đạo xã. Bắt buộc MFA (OTP). Trùng role PostgreSQL lanh_dao" }
+        {
+          "name": "cong_dan",
+          "description": "mot-cua: công dân. Trùng tên role PostgreSQL cong_dan"
+        },
+        {
+          "name": "can_bo",
+          "description": "mot-cua: cán bộ một cửa / chuyên môn. Bắt buộc MFA (OTP). Trùng role PostgreSQL can_bo"
+        },
+        {
+          "name": "lanh_dao",
+          "description": "mot-cua: lãnh đạo xã. Bắt buộc MFA (OTP). Trùng role PostgreSQL lanh_dao"
+        }
       ]
     }
   },
   "groups": [
-    { "name": "cong-dan", "path": "/cong-dan", "clientRoles": { "dxos_api": ["cong_dan"] } },
-    { "name": "can-bo", "path": "/can-bo", "clientRoles": { "dxos_api": ["can_bo"] } },
-    { "name": "lanh-dao", "path": "/lanh-dao", "clientRoles": { "dxos_api": ["lanh_dao"] } }
+    {
+      "name": "cong-dan",
+      "path": "/cong-dan",
+      "clientRoles": {
+        "dxos_api": [
+          "cong_dan"
+        ]
+      }
+    },
+    {
+      "name": "can-bo",
+      "path": "/can-bo",
+      "clientRoles": {
+        "dxos_api": [
+          "can_bo"
+        ]
+      }
+    },
+    {
+      "name": "lanh-dao",
+      "path": "/lanh-dao",
+      "clientRoles": {
+        "dxos_api": [
+          "lanh_dao"
+        ]
+      }
+    }
   ],
   "clients": [
     {
@@ -23,41 +56,102 @@
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5173/*"],
-      "webOrigins": ["http://localhost:5173"],
-      "attributes": { "pkce.code.challenge.method": "S256" },
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
       "protocol": "openid-connect"
     }
   ],
   "users": [
     {
+      "id": "00000000-0000-0000-0000-00000000c001",
       "username": "congdan01",
       "enabled": true,
       "email": "congdan01@xa-mau.example",
       "emailVerified": true,
       "firstName": "Văn Mẫu",
       "lastName": "Nguyễn",
-      "groups": ["/cong-dan"]
+      "groups": [
+        "/cong-dan"
+      ]
     },
     {
+      "id": "00000000-0000-0000-0000-00000000c002",
+      "username": "congdan02",
+      "enabled": true,
+      "email": "congdan02@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Thị Thử",
+      "lastName": "Lê",
+      "groups": [
+        "/cong-dan"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000b001",
       "username": "canbo01",
       "enabled": true,
       "email": "canbo01@xa-mau.example",
       "emailVerified": true,
       "firstName": "Thị Một Cửa",
       "lastName": "Trần",
-      "groups": ["/can-bo"],
-      "requiredActions": ["CONFIGURE_TOTP"]
+      "groups": [
+        "/can-bo"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
     },
     {
+      "id": "00000000-0000-0000-0000-00000000b002",
+      "username": "canbo02",
+      "enabled": true,
+      "email": "canbo02@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Văn Chứng",
+      "lastName": "Phạm",
+      "groups": [
+        "/can-bo"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000b003",
+      "username": "canbo03",
+      "enabled": true,
+      "email": "canbo03@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Thị Địa Chính",
+      "lastName": "Hoàng",
+      "groups": [
+        "/can-bo"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000d001",
       "username": "lanhdao01",
       "enabled": true,
       "email": "lanhdao01@xa-mau.example",
       "emailVerified": true,
       "firstName": "Văn Chủ Tịch",
       "lastName": "Lê",
-      "groups": ["/lanh-dao"],
-      "requiredActions": ["CONFIGURE_TOTP"]
+      "groups": [
+        "/lanh-dao"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
     }
   ]
 }

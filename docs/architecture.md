@@ -98,8 +98,10 @@ core/                         Tầng 1 – không có tên bảng, vai trò hay 
   scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng
 apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   app.env                       PGRST_DB_SCHEMAS=mot_cua
-  db/migrations/001_*.sql       role cong_dan/can_bo/lanh_dao, schema mot_cua, bảng, trigger, quyền, RLS
-  db/seed/001_*.sql             thủ tục và hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
+  db/migrations/001_*.sql       role cong_dan/can_bo/lanh_dao, schema mot_cua (bản giữ chỗ tuần 1)
+  db/migrations/002_*.sql       schema đầy đủ: lĩnh vực, thủ tục, thành phần, cán bộ, hồ sơ, RLS (#5)
+  db/seed/002_*.sql             danh mục thủ tục, cán bộ, hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
+  db/tests/rls.sql              test quyền/RLS từng vai trò (make smoke chạy)
   keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, người dùng mẫu
   tests/smoke.sh                kiểm tra riêng của ứng dụng (make smoke gọi)
 ```
@@ -108,7 +110,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
 |---|---|---|
 | Role PostgreSQL | `authenticator` (PostgREST đăng nhập), `anon` | `cong_dan`, `can_bo`, `lanh_dao` + `GRANT … TO authenticator` |
 | Schema | `dxos` (hàm đọc claim, sổ migration; không phơi ra API) | `mot_cua` (phơi ra API qua `app.env`) |
-| RLS | hàm `dxos.jwt_sub()`, `dxos.jwt_claim()` dùng trong policy | policy cụ thể trên `mot_cua.ho_so` |
+| RLS | hàm `dxos.jwt_sub()`, `dxos.jwt_claim()` dùng trong policy | policy trên mọi bảng `mot_cua`, theo vai trò và lĩnh vực cán bộ phụ trách (§2.7) |
 | Keycloak | realm `dxos`, khóa, OTP, client `dxos_api`, `dxos_cli` | client role của `dxos_api`, nhóm, client web, người dùng mẫu, required action OTP |
 | APISIX | `/public/*`, `/api/*` (không nêu tên tài nguyên) | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon` |
 
@@ -162,6 +164,18 @@ Không sửa tệp nào trong `core/`, `docker-compose.yml` hay APISIX. Giới h
 
 Volume `pg-data` tạo trước khi tách vẫn có schema `mot_cua` cũ nhưng thiếu schema `dxos`; `app-migrate` sẽ dừng và hướng dẫn. Dữ liệu tuần 1 là dữ liệu giả, nên xóa volume rồi chạy lại: `docker compose --profile core down -v && make up`. Realm cũ `commune` cũng không còn được dùng (realm mới là `dxos`).
 
+Từ v0.0.1 lên schema đầy đủ (#5): `make up` (hoặc `make migrate`) áp dụng `002_schema_day_du.sql`, migration này **thay** hai bảng giữ chỗ `thu_tuc`, `ho_so` của 001 (khóa `text`/`bigint`, chỉ có dữ liệu giả) bằng schema mới; seed 001 bị bỏ, seed 002 nạp lại dữ liệu mẫu. Đã chạy thử trên volume tạo từ bản #3: smoke đạt hết. Người dùng mẫu tạo trước đó giữ `sub` ngẫu nhiên (Partial Import bỏ qua người dùng đã có), nên hồ sơ và cán bộ mẫu chỉ khớp người dùng Keycloak khi chạy từ volume trống; muốn khớp thì `docker compose --profile core down -v && make up`.
+
+### 2.7 Tầng dữ liệu của ứng dụng `mot-cua` (#5)
+
+Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`apps/mot-cua/README.md`](../apps/mot-cua/README.md). Tóm tắt:
+
+- Schema `mot_cua` (phơi ra API): `linh_vuc`, `thu_tuc`, `thanh_phan_yeu_cau`, `ngay_nghi`, `can_bo`, `can_bo_linh_vuc`, `ho_so`, `thanh_phan_ho_so`; khóa chính UUID, `created_at`/`updated_at`. Hàm RPC công khai `json_schema_thu_tuc(ma)` sinh JSON Schema thành phần hồ sơ (nguồn cho Poka-yoke tuần 3).
+- Schema `mot_cua_noi_bo` (không phơi ra API): hàm tính hạn theo ngày làm việc, hàm kiểm "cán bộ đang gọi có phụ trách lĩnh vực này", trigger.
+- RLS bật và ép (`FORCE`) trên mọi bảng. Công dân: hồ sơ của mình (`nguoi_nop_sub = dxos.jwt_sub()`). Cán bộ: hồ sơ thuộc lĩnh vực mình phụ trách, tra theo `sub` trong `can_bo` + `can_bo_linh_vuc` (không cần claim riêng trong JWT; đổi phân công có hiệu lực ngay, không phải chờ token mới). Lãnh đạo: đọc tất cả. `anon`: chỉ danh mục công khai.
+- Dữ liệu cá nhân tối thiểu: `sub`, họ tên, số điện thoại (không bắt buộc); không lưu CCCD, ngày sinh, địa chỉ. Giấy tờ chỉ lưu metadata, tệp ở Garage (#7).
+- Kiểm tra: `apps/mot-cua/db/tests/rls.sql` (63 kiểm tra, một transaction rồi ROLLBACK, không phụ thuộc seed) + smoke qua APISIX bằng token thật từng vai trò (§8.3).
+
 ## 3. Ánh xạ 4 dịch vụ bắt buộc của đề
 
 | Yêu cầu của đề (Tầng 1) | Thành phần | Bằng chứng trong repo |
@@ -202,15 +216,17 @@ Chi tiết cách claim vai trò thành role PostgreSQL:
 2. Vì token có client role của `dxos_api`, Keycloak thêm `dxos_api` vào `aud`. PostgREST đặt `PGRST_JWT_AUD=dxos_api` nên token cấp cho mục đích khác bị từ chối.
 3. PostgREST đọc role từ `PGRST_JWT_ROLE_CLAIM_KEY=.resource_access.dxos_api.roles[0]` rồi `SET ROLE` sang role PostgreSQL trùng tên (role này do migration của ứng dụng tạo). Không có token (route `/public/*`) → role `anon` của lõi.
 4. Ràng buộc: mỗi người dùng chỉ có **đúng một** client role của `dxos_api`. Nếu sau này một người kiêm nhiệm, chuyển sang cách dùng `db-pre-request` để chọn role.
-5. Trong PostgreSQL, policy RLS của ứng dụng dùng hàm lõi `dxos.jwt_sub()` (claim `sub`) để công dân chỉ thấy và chỉ nộp hồ sơ của chính mình. Quyền theo cột chặn công dân tự đặt trạng thái, người nộp hay hạn xử lý.
+5. Trong PostgreSQL, policy RLS của ứng dụng dùng hàm lõi `dxos.jwt_sub()` (claim `sub`): công dân chỉ thấy và chỉ nộp hồ sơ của chính mình; cán bộ được tra `sub` trong bảng `can_bo` để biết lĩnh vực phụ trách. Quyền theo cột chặn công dân tự đặt trạng thái, người nộp, hạn xử lý hay cán bộ xử lý.
 
-| Role PostgreSQL | Đăng nhập | `thu_tuc` | `ho_so` |
+| Role PostgreSQL | Đăng nhập | Danh mục (`thu_tuc`…) | `ho_so`, `thanh_phan_ho_so` |
 |---|---|---|---|
 | `authenticator` (lõi) | có (PostgREST) | — | — (chỉ chuyển role) |
-| `anon` (lõi) | không | đọc (`/public/thu_tuc`) | không có quyền |
-| `cong_dan` | không | đọc | đọc và nộp hồ sơ **của mình** |
-| `can_bo` | không | đọc | đọc tất cả; đổi `trang_thai` khi hồ sơ chưa đóng |
-| `lanh_dao` | không | đọc | chỉ đọc tất cả |
+| `anon` (lõi) | không | đọc thủ tục công khai (`/public/thu_tuc`) | không có quyền |
+| `cong_dan` | không | đọc thủ tục công khai | đọc và nộp hồ sơ **của mình**; sửa khi hồ sơ đang chờ bổ sung |
+| `can_bo` | không | đọc tất cả | đọc và xử lý hồ sơ thuộc **lĩnh vực phụ trách**, khi hồ sơ chưa đóng |
+| `lanh_dao` | không | đọc tất cả | chỉ đọc tất cả |
+
+Bảng đầy đủ theo từng bảng và cột: `apps/mot-cua/README.md`.
 
 Vì sao kiểm JWT hai lần: APISIX chặn sớm request không hợp lệ và giới hạn tần suất; PostgREST vẫn tự kiểm để CSDL không tin bất kỳ thứ gì đứng trước nó (Zero-Trust, nguyên lý B4).
 
@@ -221,6 +237,7 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; ứng dụng quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
 - Tuần 2: thay bằng luồng xác thực riêng có "Condition – user role": mọi người có role `can_bo`/`lanh_dao` đều bị hỏi OTP, kể cả tài khoản tạo mới chưa có required action. Cần cấu hình tương tự cho luồng direct grant.
 - Client lõi `dxos_cli` bật password grant chỉ để thử bằng curl và `make smoke` trong môi trường dev; tắt khi triển khai thật.
+- `make smoke` kiểm luồng có OTP thật (#5): tạo người dùng tạm role `can_bo`/`lanh_dao` có sẵn credential OTP (Partial Import qua stdin), chỉ mật khẩu → không có token, mật khẩu + mã TOTP sinh trong script → có token, gọi API qua APISIX, rồi xóa người dùng tạm.
 
 ## 6. Chia profile docker-compose
 
@@ -247,7 +264,7 @@ D-004: image `flowable-ui` (có modeler) dừng ở 6.8.0 (2022), bpmn-js bị c
 
 ## 8. Chạy thử
 
-Cách nhanh nhất: `make up` rồi `make smoke` (`scripts/smoke.sh` + `apps/<DXOS_APP>/tests/smoke.sh`). Smoke đặt mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu), không in mật khẩu hay token, không xóa dữ liệu; mỗi lần chạy thêm một hồ sơ thử của `congdan01`. Kết quả gần nhất ở mục 8.2. Thử tay từng bước:
+Cách nhanh nhất: `make up` rồi `make smoke` (`scripts/smoke.sh` + `apps/<DXOS_APP>/tests/smoke.sh`). Smoke đặt mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu), không in mật khẩu hay token, không xóa dữ liệu có sẵn (chỉ xóa người dùng và cán bộ tạm do chính smoke tạo); mỗi lần chạy thêm một hồ sơ thử của `congdan01`. Kết quả gần nhất ở mục 8.3. Thử tay từng bước:
 
 ```bash
 cp .env.example .env            # đổi mật khẩu; DXOS_APP=mot-cua
@@ -273,10 +290,15 @@ TOKEN=$(curl -s http://localhost:8080/realms/dxos/protocol/openid-connect/token 
   -d username=congdan01 -d password='mat-khau-thu-nghiem' | jq -r .access_token)
 curl -i -H "Authorization: Bearer $TOKEN" http://localhost:9080/api/ho_so
 
-# 5. Nộp hồ sơ → 201; gọi lại bước 4 → thấy đúng hồ sơ của mình
+# 5. Nộp hồ sơ → 201 (mã hồ sơ, hạn xử lý do CSDL tính); gọi lại bước 4 → thấy đúng hồ sơ của mình
+TT=$(curl -s 'http://localhost:9080/public/thu_tuc?ma=eq.KS01&select=id' | jq -r '.[0].id')
 curl -i -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -H 'Prefer: return=representation' \
-  -d '{"ma_thu_tuc":"KS01","ho_ten_nguoi_nop":"Nguyễn Văn Mẫu"}' http://localhost:9080/api/ho_so
+  -d "{\"thu_tuc_id\":\"$TT\",\"ho_ten_nguoi_nop\":\"Nguyễn Văn Mẫu\"}" http://localhost:9080/api/ho_so
+
+# 5b. Danh mục kèm thành phần hồ sơ, JSON Schema cho Poka-yoke (không cần token)
+curl -s 'http://localhost:9080/public/thu_tuc?select=ma,ten,so_ngay_xu_ly,thanh_phan_yeu_cau(ma,ten,bat_buoc)'
+curl -s 'http://localhost:9080/public/rpc/json_schema_thu_tuc?ma=KS01'
 
 # 6. Token sai chữ ký → 401
 curl -i -H "Authorization: Bearer ${TOKEN%?????}AAAAA" http://localhost:9080/api/ho_so
@@ -333,13 +355,34 @@ Docker Desktop, macOS arm64, project tạm `COMPOSE_PROJECT_NAME=commune-r9` (vo
 | RLS `can_bo` (trong CSDL) | thấy tất cả; đóng hồ sơ đang mở → 1 dòng, sửa tiếp hồ sơ đã đóng → 0 dòng (transaction rồi ROLLBACK); INSERT → `permission denied` |
 | RLS `lanh_dao` (trong CSDL) | thấy tất cả; UPDATE → `permission denied` |
 
-`can_bo`, `lanh_dao` bắt buộc OTP nên smoke không lấy được token của hai vai trò này; RLS của chúng được kiểm trong CSDL bằng `SET ROLE` + `request.jwt.claims`, đúng cách PostgREST làm cho mỗi request. Luồng có OTP qua trình duyệt đã kiểm tay ngày 17/10 (mục 8.1).
+`can_bo`, `lanh_dao` bắt buộc OTP nên smoke không lấy được token của hai vai trò này; RLS của chúng được kiểm trong CSDL bằng `SET ROLE` + `request.jwt.claims`, đúng cách PostgREST làm cho mỗi request. Luồng có OTP qua trình duyệt đã kiểm tay ngày 17/10 (mục 8.1). Từ #5 smoke kiểm cả hai vai trò này qua APISIX bằng TOTP (mục 8.3).
+
+### 8.3 Kết quả chạy thử 20/10/2026 (schema đầy đủ của `mot-cua`, #5)
+
+Docker Desktop, macOS arm64, `DXOS_APP=mot-cua`, `DXOS_SEED=true`. Ba lần chạy, mỗi lần `make smoke` **126 đạt, 0 trượt** (63 kiểm tra SQL/RLS + kiểm tra lõi + kiểm tra qua API):
+
+| Lần chạy | `app-migrate` | `app-realm` |
+|---|---|---|
+| Volume trống (project tạm `commune-i5`) | áp dụng migration 001, 002, seed 002 | `added=13` (3 role, 3 nhóm, 1 client, 6 người dùng có `id` cố định) |
+| Chạy lại trên volume cũ (`make down` rồi `make up`) | bỏ qua cả 3 tệp | `added=0 skipped=13` |
+| Nâng cấp volume v0.0.1 (project `commune-r9`, tạo từ bản #3) | bỏ qua 001, áp dụng 002 + seed 002 | `added=3 skipped=10` (thêm `congdan02`, `canbo02`, `canbo03`) |
+
+Kiểm tra qua APISIX → PostgREST bằng token thật:
+
+| Vai trò | Kết quả |
+|---|---|
+| `anon` | `/public/thu_tuc` 200, đúng 6 thủ tục công khai; embed `thanh_phan_yeu_cau` 200; `/public/rpc/json_schema_thu_tuc` trả schema đúng thủ tục; `/public/ho_so`, `/public/can_bo` 401; POST 404 |
+| `cong_dan` (mật khẩu) | POST hồ sơ → có id, `nguoi_nop_sub` = `sub`, trạng thái `moi`, mã `HS…`, có hạn; GET chỉ hồ sơ của mình, đúng số dòng; tự đặt `trang_thai` → 403; PATCH hồ sơ đã nộp → 0 dòng; PATCH cột cấm → 403; đính kèm giấy tờ → 201; `/api/can_bo` → 403 |
+| `can_bo` (mật khẩu + TOTP, người dùng tạm) | chỉ mật khẩu → không có token; có OTP → token role `can_bo`; GET chỉ hồ sơ thuộc lĩnh vực phụ trách, đúng số dòng; nhận xử lý → `dang_xu_ly`, tự giao cho mình; PATCH hồ sơ lĩnh vực khác → 0 dòng; chuyển trạng thái sai → 400; POST → 403 |
+| `lanh_dao` (mật khẩu + TOTP, người dùng tạm) | GET thấy tất cả hồ sơ; PATCH → 403; POST → 403 |
+
+Dung lượng ổ hệ thống: 11 GB trống trước khi chạy, 8,6 GB sau khi `make down` + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả ngay dung lượng của tệp đĩa ảo).
 
 ## 9. Việc tiếp theo (tuần 2)
 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
-- RLS theo lĩnh vực: claim `linh_vuc` cho cán bộ (cần khai báo user profile của Keycloak 26).
-- MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5); khi đó smoke có thể kiểm `can_bo` qua APISIX bằng TOTP sinh trong script.
+- MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
+- Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
 - Route `/workflow`, `/files`; Garage, Flowable, RabbitMQ, OpenBao; chuyển mật khẩu từ `.env` sang OpenBao.
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).
