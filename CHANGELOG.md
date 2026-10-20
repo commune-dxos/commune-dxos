@@ -3,6 +3,8 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
 ## [Unreleased]
+
+## [0.0.1] - 2026-10-20
 ### Added
 - Khung dự án: LICENSE (Apache-2.0), NOTICE, CONTRIBUTING, CODE_OF_CONDUCT, CI kiểm tra giấy phép, mẫu issue.
 - `docker-compose.yml` profile `core`: PostgreSQL 17, Keycloak 26, PostgREST v13, APISIX 3.13 (standalone); image ghim phiên bản, có healthcheck; `.env.example`.
@@ -38,3 +40,6 @@
 
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
+
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/commune-dxos/commune-dxos/releases/tag/v0.0.1
