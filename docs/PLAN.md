@@ -16,12 +16,12 @@ Cách dùng tệp này:
 - [x] V1 · `docs/architecture.md`: sơ đồ 3 tầng (Mermaid) + luồng JWT → RLS
 - [x] V1 · `docker-compose.yml` profile `core` bước 1: PostgreSQL, Keycloak (realm + MFA cán bộ), APISIX standalone, PostgREST; `.env.example`; đã chạy thử 17/10/2026 (`docs/architecture.md` §7.1)
 - [x] V1 · Repo GitHub công khai, bật Issues, bảo vệ nhánh `main`/`develop`, nhãn tuần/vai, CI `make-check`
-- [ ] V1 · Dọn tài liệu tuần 1: mẫu PR, `CONTRIBUTING.md`, bản quyền DTU_DZ_2, kế hoạch tuần 2–7 (#1)
+- [x] V1 · Dọn tài liệu tuần 1: mẫu PR, `CONTRIBUTING.md`, bản quyền DTU_DZ_2, kế hoạch tuần 2–7 (#1, PR #2)
 - [ ] V1 · Tạo issue cho các việc tuần 2, gán người theo vai
 - [ ] V1 · Release v0.0.1 (tag trên `main` + `.tar.gz`)
 
 ## Tuần 2 · 22–28/10 · Lõi headless → v0.1.0
-- [ ] V1 · **Việc kế tiếp, làm đầu tuần:** tách `core/` (Tầng 1, không chứa nghiệp vụ) và `apps/mot-cua/` (Tầng 2). Chuyển bảng hồ sơ ra khỏi `infra/postgres/initdb/10-schema.sql`; lõi chỉ giữ role, cơ chế JWT → RLS và schema dùng chung. Cập nhật `docs/architecture.md`, chạy thử lại JWT/MFA/RLS
+- [x] V1 · Tách `core/` (Tầng 1, không chứa nghiệp vụ) và `apps/mot-cua/` (Tầng 2), chọn ứng dụng bằng `DXOS_APP`; bảng hồ sơ chuyển khỏi init SQL của lõi; dịch vụ một lần `app-migrate`, `app-realm`; `make smoke` (JWT/MFA/RLS, migration chạy lại) (#3)
 - [ ] V2 · Schema ứng dụng trong `apps/mot-cua/`: thủ tục, hồ sơ, thành phần hồ sơ, cán bộ, lĩnh vực + RLS theo lĩnh vực; migration và seed dữ liệu giả
 - [ ] V1 · PostgREST phục vụ schema ứng dụng, JWT Keycloak → role PostgreSQL; APISIX route `/api`, `/files`, `/workflow`, rate limit cổng công dân
 - [ ] V1 · Garage (S3, dịch vụ riêng) + API tải tệp hồ sơ; ClamAV quét tệp trước khi lưu

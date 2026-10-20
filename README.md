@@ -16,17 +16,24 @@ Cần Docker Compose v2 và khoảng 3 GB trống cho image của profile `core`
 Requires Docker Compose v2 and about 3 GB free disk for the `core` images.
 
 ```bash
-cp .env.example .env      # đổi mọi mật khẩu / change every password
-make up                   # PostgreSQL, Keycloak, PostgREST, APISIX
+cp .env.example .env      # đổi mọi mật khẩu / change every password; DXOS_APP=mot-cua
+make up                   # lõi core/ + ứng dụng apps/$DXOS_APP / core + the selected app
+make smoke                # JWT, MFA, RLS, migration chạy lại / end-to-end checks
 make check                # SPDX + docker-compose hợp lệ / SPDX + compose validation
 ```
 
+**VI:** Mã chia hai tầng: `core/` là lõi Tầng 1 không chứa nghiệp vụ (PostgreSQL + RLS, Keycloak realm `dxos`, APISIX, PostgREST); `apps/<tên>/` là ứng dụng Tầng 2 cắm vào lõi, chọn bằng biến `DXOS_APP` (ứng dụng chính: [`apps/mot-cua/`](apps/mot-cua/)). Cách viết một ứng dụng mới: [`docs/architecture.md` §2](docs/architecture.md#2-lõi-độc-lập-nghiệp-vụ-core-và-appstên).
+
+**EN:** The code has two layers: `core/` is the business-agnostic Tier-1 core; `apps/<name>/` are Tier-2 applications plugged into it, selected with `DXOS_APP` (main app: [`apps/mot-cua/`](apps/mot-cua/), one-stop administrative services). How to plug in another app: [`docs/architecture.md` §2](docs/architecture.md#2-lõi-độc-lập-nghiệp-vụ-core-và-appstên).
+
+
 | Dịch vụ / Service | Địa chỉ / URL |
 |---|---|
-| API Gateway (APISIX) | http://localhost:9080/api/ |
-| Keycloak (realm `commune`) | http://localhost:8080/admin/ |
+| API Gateway (APISIX) – có JWT / with JWT | http://localhost:9080/api/ |
+| API Gateway (APISIX) – công khai / public (`anon`) | http://localhost:9080/public/ |
+| Keycloak (realm `dxos`) | http://localhost:8080/admin/ |
 
-Lệnh thử route có/không token: [`docs/architecture.md`](docs/architecture.md#7-chạy-thử).
+Lệnh thử route có/không token: [`docs/architecture.md`](docs/architecture.md#8-chạy-thử).
 
 ## Giấy phép / License
 **VI:** Mã nguồn của dự án phát hành theo [Apache License 2.0](LICENSE); mỗi tệp mã và tệp cấu hình đều có dòng `SPDX-License-Identifier: Apache-2.0`, được kiểm tra bằng `make check` trên mỗi PR. Đội chọn Apache-2.0 vì:

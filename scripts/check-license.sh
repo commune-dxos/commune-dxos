@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Kiểm tra mọi tệp mã và cấu hình đều có dòng SPDX-License-Identifier (PoF tiêu chí 2).
-# Quét: Dockerfile, Makefile, .env.example, .sh, .py, .yml/.yaml, .toml, .conf, .ini,
+# Quét: Dockerfile, Makefile, .env.example, *.env, .sh, .py, .yml/.yaml, .toml, .conf, .ini,
 # .properties, .sql, .ts/.tsx/.js, .css, .xml/.bpmn. Bỏ qua .json và thư mục bên thứ ba.
 # Dùng trong CI. Thoát mã 1 nếu thiếu.
 set -euo pipefail

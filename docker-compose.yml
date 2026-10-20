@@ -1,5 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-# Commune DX-OS – lõi Tầng 1 (headless). Sơ đồ: docs/architecture.md
+# Commune DX-OS – lõi Tầng 1 (headless) + ứng dụng Tầng 2 cắm vào. Sơ đồ: docs/architecture.md
+#
+# Lõi (cấu hình trong core/) không chứa nghiệp vụ. Ứng dụng được chọn bằng DXOS_APP
+# trong .env; lõi chỉ biết quy ước thư mục apps/<DXOS_APP>/:
+#   app.env              cấu hình PostgREST của ứng dụng (schema phơi ra API)
+#   db/migrations/*.sql  schema, role, RLS  → dịch vụ một lần app-migrate
+#   db/seed/*.sql        dữ liệu giả        → app-migrate khi DXOS_SEED=true
+#   keycloak/realm.json  vai trò, nhóm, client, người dùng mẫu → dịch vụ một lần app-realm
 #
 # Profile:
 #   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
@@ -22,12 +29,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-commune}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
-      # Dùng trong infra/postgres/initdb/20-auth.sh
+      # Dùng trong core/postgres/initdb/20-auth.sh
       PGRST_DB_PASSWORD: ${PGRST_DB_PASSWORD:?Đặt PGRST_DB_PASSWORD trong .env}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Đặt KEYCLOAK_DB_PASSWORD trong .env}
     volumes:
       - pg-data:/var/lib/postgresql/data
-      - ./infra/postgres/initdb:/docker-entrypoint-initdb.d:ro
+      - ./core/postgres/initdb:/docker-entrypoint-initdb.d:ro
     ports:
       # Chỉ mở trên máy local để debug bằng psql; Tầng 2 không gọi thẳng CSDL.
       - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
@@ -57,7 +64,7 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
     volumes:
-      - ./infra/keycloak/realm-commune.json:/opt/keycloak/data/import/realm-commune.json:ro
+      - ./core/keycloak/realm-dxos.json:/opt/keycloak/data/import/realm-dxos.json:ro
     ports:
       - "${KEYCLOAK_PORT:-8080}:8080"
     depends_on:
@@ -86,7 +93,7 @@ services:
     command:
       - >-
         for i in $$(seq 1 30); do
-        wget -qO /jwks/jwks.json http://keycloak:8080/realms/commune/protocol/openid-connect/certs && exit 0;
+        wget -qO /jwks/jwks.json http://keycloak:8080/realms/dxos/protocol/openid-connect/certs && exit 0;
         sleep 2; done; echo 'Không lấy được JWKS từ Keycloak' >&2; exit 1
     volumes:
       - jwks:/jwks
@@ -100,20 +107,64 @@ services:
       retries: 5
     restart: "no"
 
+  # Áp dụng migration + seed SQL của ứng dụng (core/scripts/app-migrate.sh) rồi thoát.
+  # Chạy lại an toàn: tệp đã áp dụng được bỏ qua. Chạy tay: make migrate.
+  app-migrate:
+    image: postgres:17.6-alpine
+    profiles: [core]
+    entrypoint: ["/bin/sh", "/core/scripts/app-migrate.sh"]
+    environment:
+      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env (tên thư mục trong apps/)}
+      DXOS_SEED: ${DXOS_SEED:-false}
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
+      PGDATABASE: ${POSTGRES_DB:-commune}
+    volumes:
+      - ./core/scripts:/core/scripts:ro
+      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Nạp vai trò, nhóm, client, người dùng mẫu của ứng dụng vào realm lõi `dxos`
+  # (Keycloak Partial Import, bỏ qua đối tượng đã có) rồi thoát. Dùng lại image Keycloak.
+  app-realm:
+    image: quay.io/keycloak/keycloak:26.3.3
+    profiles: [core]
+    entrypoint: ["/bin/bash", "/core/scripts/app-realm.sh"]
+    environment:
+      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Đặt KEYCLOAK_ADMIN_PASSWORD trong .env}
+    volumes:
+      - ./core/scripts:/core/scripts:ro
+      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: "no"
+
   postgrest:
     image: postgrest/postgrest:v13.0.4
     profiles: [core]
     environment:
       PGRST_DB_URI: postgres://authenticator:${PGRST_DB_PASSWORD:?Đặt PGRST_DB_PASSWORD trong .env}@postgres:5432/${POSTGRES_DB:-commune}
-      PGRST_DB_SCHEMAS: mot_cua
+      # PGRST_DB_SCHEMAS lấy từ apps/<DXOS_APP>/app.env (env_file bên dưới).
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: "@/jwks/jwks.json"
-      PGRST_JWT_AUD: commune_api
-      # Mỗi người dùng có đúng một client role của commune_api (cong_dan|can_bo|lanh_dao),
+      PGRST_JWT_AUD: dxos_api
+      # Mỗi người dùng có đúng một client role của dxos_api (ứng dụng khai báo),
       # trùng tên role PostgreSQL → PostgREST SET ROLE → RLS áp dụng.
-      PGRST_JWT_ROLE_CLAIM_KEY: .resource_access.commune_api.roles[0]
+      PGRST_JWT_ROLE_CLAIM_KEY: .resource_access.dxos_api.roles[0]
       PGRST_ADMIN_SERVER_PORT: "3001"
       PGRST_LOG_LEVEL: info
+    env_file:
+      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/app.env
     volumes:
       - jwks:/jwks:ro
     # Không mở cổng ra host: Tầng 2 chỉ đi qua APISIX.
@@ -124,9 +175,11 @@ services:
         condition: service_healthy
       jwks-init:
         condition: service_completed_successfully
+      app-migrate:
+        condition: service_completed_successfully
     # Không dùng healthcheck của Docker: image amd64 dựng FROM scratch (không có shell)
     # và v13.0.4 chưa có cờ `--ready` (đã chạy thử 17/10/2026). Thay vào đó APISIX
-    # kiểm chủ động http://postgrest:3001/ready (xem upstream trong infra/apisix/apisix.yaml).
+    # kiểm chủ động http://postgrest:3001/ready (xem upstream trong core/apisix/apisix.yaml).
     healthcheck:
       disable: true
     restart: unless-stopped
@@ -137,8 +190,8 @@ services:
     # Chế độ standalone khai báo trong config.yaml (không đặt APISIX_STAND_ALONE,
     # vì entrypoint sẽ ghi đè config.yaml đã mount).
     volumes:
-      - ./infra/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
-      - ./infra/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ./core/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./core/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
     ports:
       - "${APISIX_PORT:-9080}:9080"
     depends_on:
@@ -146,6 +199,8 @@ services:
         condition: service_healthy
       postgrest:
         condition: service_started
+      app-realm:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
       interval: 10s
@@ -162,6 +217,7 @@ services:
   #   profiles: [core]
   #
   # flowable:    # Workflow BPMN 2.0, Apache-2.0. Chỉ dùng flowable-rest (D-004), BPMN viết XML tay
+  #              # trong apps/<DXOS_APP>/processes/, triển khai bằng dịch vụ một lần như app-migrate
   #   image: flowable/flowable-rest:8.0.0
   #   profiles: [core]
   #

@@ -24,7 +24,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
    Tên nhánh: số issue + vài từ không dấu, nối bằng gạch ngang. Một nhánh chỉ làm một issue.
 3. **Commit** nhỏ, mỗi commit một ý (xem mục 3). Trước khi đẩy chạy `make check`.
 4. **PR về `develop`.** Điền mẫu PR (mô tả, `Closes #<số>`, checklist). Gắn nhãn như issue.
-5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử khi PR đụng tới `docker-compose.yml`, `infra/` hay quy trình BPMN.
+5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử (`make up` + `make smoke`) khi PR đụng tới `docker-compose.yml`, `core/`, `apps/` hay quy trình BPMN.
 6. **Merge bằng squash.** Tiêu đề squash giữ đúng định dạng Conventional Commits và số issue, ví dụ `feat(storage): Garage S3 + quét ClamAV (#12)`. Xóa nhánh sau khi merge.
 7. **Phát hành.** Từ `develop` mở PR về `main`, đánh tag `vX.Y.Z` trên `main`, ghi chú phát hành lấy từ `CHANGELOG.md`, đính kèm `.tar.gz` tạo bằng `git archive`.
 
@@ -58,7 +58,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 ## 6. Trước khi mở PR
 
 - [ ] `make check` đạt
-- [ ] `make up` vẫn chạy được từ máy sạch nếu PR đổi `docker-compose.yml` hoặc `infra/`
+- [ ] `make up` + `make smoke` vẫn đạt từ máy sạch nếu PR đổi `docker-compose.yml`, `core/` hoặc `apps/`
 - [ ] `CHANGELOG.md` mục `[Unreleased]` có dòng cho thay đổi, kèm `(#số-issue)`
 - [ ] Tài liệu liên quan đã cập nhật
 

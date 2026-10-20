@@ -1,0 +1,71 @@
+{
+  "realm": "dxos",
+  "displayName": "DX-OS (lõi Tầng 1)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "components": {
+    "org.keycloak.keys.KeyProvider": [
+      {
+        "name": "rsa-sig-rs256",
+        "providerId": "rsa-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["100"],
+          "algorithm": ["RS256"],
+          "keySize": ["2048"],
+          "keyUse": ["SIG"]
+        }
+      },
+      {
+        "name": "hmac-hs512",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["100"],
+          "algorithm": ["HS512"]
+        }
+      },
+      {
+        "name": "aes",
+        "providerId": "aes-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["100"]
+        }
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dxos_api",
+      "name": "API lõi Tầng 1 (audience của PostgREST)",
+      "description": "Chỉ giữ client role, mỗi role trùng tên một role PostgreSQL. Lõi không khai báo role nào: ứng dụng trong apps/<DXOS_APP>/keycloak/realm.json tự thêm. Không đăng nhập trực tiếp.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "dxos_cli",
+      "name": "Kiểm thử bằng curl (chỉ môi trường dev)",
+      "description": "Bật password grant để thử route APISIX bằng curl và make smoke. Tắt client này khi triển khai thật. Người dùng đã cấu hình OTP phải gửi thêm tham số totp.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect"
+    }
+  ]
+}
