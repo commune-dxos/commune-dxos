@@ -1,46 +1,74 @@
 # Kế hoạch Team 2 – Commune DX-OS
 
-Lịch làm việc: Thứ 5 – Thứ 7. Đánh dấu [x] khi xong (dùng `/update-mapping`). Việc gắn (SV) nên giao sinh viên tự làm và commit.
+Đội DTU_DZ_2 · Lịch làm việc: Thứ 5 – Thứ 7 · Hạn nộp: **17:00 Chủ nhật 06/12/2026** · Chung kết: 10/12/2026.
+
+Cách dùng tệp này:
+- Mỗi dòng `[ ]` là **một issue** trên GitHub, gắn nhãn tuần (`tuan-N`) và nhãn vai, giao cho người phụ trách vai đó. Quy trình issue → nhánh → PR: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+- Đánh dấu `[x]` khi PR của dòng đó đã merge vào `develop`, ghi số issue/PR ở cuối dòng.
+- Vai phụ trách:
+  - **V1** – lõi Tầng 1, DevOps, bảo mật (nhãn `vai-1-core`)
+  - **V2** – một cửa điện tử, BPMN Flowable, dashboard (nhãn `vai-2`)
+  - **V3** – OCR giấy tờ, trợ lý RAG, tìm kiếm (nhãn `vai-3`)
+- Ai phụ trách thì người đó commit bằng tài khoản của mình.
 
 ## Tuần 1 · 15–21/10 · Nền móng → v0.0.1
-- [x] Xác minh LICENSE trên GitHub chính thức: Garage, Meilisearch, pyHanko, step-ca, Gotenberg, PostgREST, Flowable → ghi NOTICE + DECISIONS (D-004)
-- [x] `docs/architecture.md`: sơ đồ 3 tầng (Mermaid) + luồng JWT → RLS (luồng hồ sơ một cửa chi tiết: tuần 3 cùng BPMN)
-- [x] `docker-compose.yml` profile `core` bước 1: PostgreSQL, Keycloak (realm + MFA), APISIX standalone (không cần etcd), PostgREST; `.env.example` — đã `make up` thử 17/10/2026 (`docs/architecture.md` §7.1)
-- [ ] Tạo repo GitHub công khai, bật Issues, đẩy khung; tạo issue cho các việc tuần 2
-- [ ] Release v0.0.1
+- [x] V1 · Xác minh giấy phép trên repo gốc: Garage, Meilisearch, pyHanko, step-ca, Gotenberg, PostgREST, Flowable → `NOTICE`, `DEPENDENCIES.md`
+- [x] V1 · `docs/architecture.md`: sơ đồ 3 tầng (Mermaid) + luồng JWT → RLS
+- [x] V1 · `docker-compose.yml` profile `core` bước 1: PostgreSQL, Keycloak (realm + MFA cán bộ), APISIX standalone, PostgREST; `.env.example`; đã chạy thử 17/10/2026 (`docs/architecture.md` §7.1)
+- [x] V1 · Repo GitHub công khai, bật Issues, bảo vệ nhánh `main`/`develop`, nhãn tuần/vai, CI `make-check`
+- [ ] V1 · Dọn tài liệu tuần 1: mẫu PR, `CONTRIBUTING.md`, bản quyền DTU_DZ_2, kế hoạch tuần 2–7 (#1)
+- [ ] V1 · Tạo issue cho các việc tuần 2, gán người theo vai
+- [ ] V1 · Release v0.0.1 (tag trên `main` + `.tar.gz`)
 
 ## Tuần 2 · 22–28/10 · Lõi headless → v0.1.0
-- [ ] Schema: procedures, applications, documents, staff, fields + RLS theo lĩnh vực
-- [ ] PostgREST trên schema, JWT Keycloak → role PostgreSQL
-- [ ] APISIX: route `/api`, `/files`, `/workflow`, rate limit cổng công dân
-- [ ] Garage S3 + API tải hồ sơ, quét ClamAV trước khi lưu
-- [ ] Flowable + quy trình BPMN đầu tiên (đăng ký khai sinh) trong `processes/`
-- [ ] RabbitMQ nhận sự kiện từ Flowable
-- [ ] OpenBao giữ bí mật · README chạy từ máy sạch · Release v0.1.0
+- [ ] V1 · **Việc kế tiếp, làm đầu tuần:** tách `core/` (Tầng 1, không chứa nghiệp vụ) và `apps/mot-cua/` (Tầng 2). Chuyển bảng hồ sơ ra khỏi `infra/postgres/initdb/10-schema.sql`; lõi chỉ giữ role, cơ chế JWT → RLS và schema dùng chung. Cập nhật `docs/architecture.md`, chạy thử lại JWT/MFA/RLS
+- [ ] V2 · Schema ứng dụng trong `apps/mot-cua/`: thủ tục, hồ sơ, thành phần hồ sơ, cán bộ, lĩnh vực + RLS theo lĩnh vực; migration và seed dữ liệu giả
+- [ ] V1 · PostgREST phục vụ schema ứng dụng, JWT Keycloak → role PostgreSQL; APISIX route `/api`, `/files`, `/workflow`, rate limit cổng công dân
+- [ ] V1 · Garage (S3, dịch vụ riêng) + API tải tệp hồ sơ; ClamAV quét tệp trước khi lưu
+- [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `apps/mot-cua/processes/`
+- [ ] V2 · RabbitMQ nhận sự kiện từ Flowable (hồ sơ mới, chuyển bước, sắp trễ hạn)
+- [ ] V1 · OpenBao giữ bí mật dịch vụ (mật khẩu CSDL, client secret), bỏ bí mật khỏi `.env` khi chạy thật
+- [ ] V3 · CI: thêm lint/test cho từng thành phần đã có (shellcheck, yamllint, kiểm tra cú pháp BPMN, test SQL/RLS)
+- [ ] V3 · README song ngữ chạy được từ máy sạch (`cp .env.example .env` → `make up`)
+- [ ] V1 · Release v0.1.0
 
 ## Tuần 3 · 29/10–04/11 · Luồng nghiệp vụ chính
-- [ ] JSON Schema cho từng thủ tục + Poka-yoke kiểm tra đủ thành phần hồ sơ
-- [ ] Cổng công dân (React): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái (SV)
-- [ ] Cổng cán bộ: danh sách task Flowable, xử lý, chuyển bước (SV)
-- [ ] Cảnh báo trễ hạn qua RabbitMQ
+- [ ] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable
+- [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái
+- [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác
+- [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `apps/mot-cua/`)
+- [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả)
 
-## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật → v0.2.0
-- [ ] Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn
-- [ ] step-ca + pyHanko: ký số biên nhận/kết quả PDF; Gotenberg sinh PDF
-- [ ] Hồ sơ hoàn tất → Parquet; dbt-core cho báo cáo + lineage
-- [ ] Superset dashboard thời gian giải quyết, tỷ lệ trễ hạn (SV) · Release v0.2.0
+## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0
+- [ ] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit
+- [ ] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF; văn bản đi/đến có ký số
+- [ ] V2 · Hồ sơ hoàn tất → Parquet + DuckDB; `dbt-core` dựng báo cáo + lineage
+- [ ] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn
+- [ ] V1 · **Thuê VPS + tên miền**, HTTPS, CI tự triển khai khi merge `main`
+- [ ] V3 · Cuối tuần mời 3–5 người dùng thật (cán bộ xã, sinh viên) dùng thử, ghi phản hồi thành issue nhãn `user-feedback`
+- [ ] V1 · Release v0.2.0
 
 ## Tuần 5 · 12–18/11 · Tầng [I] + demo công khai
-- [ ] OCR (PaddleOCR/VietOCR) giấy tờ mẫu giả → tự điền hồ sơ → cán bộ xác nhận (HITL)
-- [ ] Nạp thủ tục hành chính công khai → Meilisearch + pgvector; trợ lý RAG (Qwen2.5 + LlamaIndex) (SV)
-- [ ] Triển khai demo công khai, mời cán bộ/sinh viên dùng thử
+- [ ] V3 · OCR (PaddleOCR + VietOCR) giấy tờ mẫu giả → tự điền hồ sơ → cán bộ xác nhận (HITL)
+- [ ] V3 · Nạp thủ tục hành chính công khai → Meilisearch CE + pgvector; trợ lý RAG (Qwen2.5 7B/14B + bge-m3 + LlamaIndex); chọn nhà cung cấp mô hình qua `LLM_PROVIDER`
+- [ ] V1 · Demo công khai trên tên miền, theo dõi lỗi và tài nguyên VPS
+- [ ] V2 · Wiki văn bản cho cán bộ (tra cứu văn bản nội bộ)
 
-## Tuần 6 · 19–25/11 · Hoàn thiện → v0.3.0
-- [ ] Sửa lỗi theo phản hồi, ghi issue từ người dùng ngoài
-- [ ] README song ngữ, hướng dẫn thêm thủ tục mới (BPMN + JSON Schema) như module cắm–rút
-- [ ] Release v0.3.0
+## Tuần 6 · 19–25/11 · Tuần UX + cộng đồng → v0.3.0
+- [ ] V2 · **Tuần UX:** sửa giao diện và luồng theo phản hồi người dùng (mỗi phản hồi một issue `user-feedback`)
+- [ ] V3 · Tài liệu song ngữ; hướng dẫn cho **lập trình viên** viết một module `apps/<tên>/` (realm, schema, BPMN, seed, route) cắm vào lõi mà không sửa `core/`
+- [ ] V1 · **Module mẫu thứ hai**, nhỏ, khác đề tài chính (gợi ý: `apps/dat-phong-hop/` – một bảng + một quy trình duyệt) để chứng minh lõi dùng lại được
+- [ ] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ)
+- [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp)
+- [ ] V1 · Release v0.3.0
 
-## Tuần 7 · 26/11–06/12 · Nộp bài → v1.0.0
-- [ ] `/pof-check` đạt toàn bộ · đóng băng tính năng · `/release 1.0.0`
-- [ ] Gửi email nộp bài (xem `docs/contest/`)
-- [ ] Slide 15 phút + video demo dự phòng
+## Tuần 7 · 26/11–06/12 · Đóng băng PoF, nộp bài → v1.0.0
+- [ ] V1 · Rà đủ 6 tiêu chí PoF: LICENSE + SPDX mọi tệp, release có tag + `.tar.gz`, README song ngữ, CHANGELOG, hướng dẫn build từ máy sạch, bug tracker
+- [ ] V1 · Đóng băng tính năng, release v1.0.0 (tag trên `main` + `.tar.gz` tạo bằng `git archive`)
+- [ ] V1 · **Đóng băng PoF trước 17:00 Chủ nhật 06/12/2026**: PoF chấm theo hiện trạng kho mã lúc gửi bài. Sau mốc này chỉ commit để hoàn thiện demo, không làm hỏng build hay giấy phép
+- [ ] V1 · Gửi email nộp bài tới `olpvietnam@vaip.vn` và `thuky@vfossa.vn`, tiêu đề `BÀI THI PMNM 2026 - DTU_DZ_2 - <Tên trường>`, trước 17:00 Chủ nhật 06/12/2026
+- [ ] V1 · V2 · V3 · **Tập trình bày lần 2**; slide 15 phút
+- [ ] V3 · Quay video demo dự phòng
+
+## Sau hạn nộp · 07–10/12 · Chung kết
+- [ ] V1 · V2 · V3 · Tập trình bày 15 phút lần cuối, kiểm tra demo trên VPS, chuẩn bị bản chạy local + video dự phòng
