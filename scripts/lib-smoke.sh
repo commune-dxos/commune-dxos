@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Hàm dùng chung cho scripts/smoke.sh và apps/<DXOS_APP>/tests/smoke.sh.
+# Không in mật khẩu hay token ra màn hình.
+
+GW="http://localhost:${APISIX_PORT:-9080}"
+KC="http://localhost:${KEYCLOAK_PORT:-8080}"
+SMOKE_DAT=0
+SMOKE_TRUOT=0
+
+# kiem <mô tả> <mong đợi> <thực tế>
+kiem() {
+  if [ "$2" = "$3" ]; then
+    SMOKE_DAT=$((SMOKE_DAT + 1)); printf '  ĐẠT   %s\n' "$1"
+  else
+    SMOKE_TRUOT=$((SMOKE_TRUOT + 1)); printf '  TRƯỢT %s (mong đợi: %s, thực tế: %s)\n' "$1" "$2" "$3"
+  fi
+}
+
+tong_ket() {
+  echo "== Kết quả: $SMOKE_DAT đạt, $SMOKE_TRUOT trượt"
+  [ "$SMOKE_TRUOT" -eq 0 ]
+}
+
+# ma_http [tham số curl…] <url> → mã HTTP
+ma_http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+
+# sql <câu lệnh> → kết quả dạng text (chạy bằng superuser trong container postgres)
+sql() {
+  docker compose exec -T postgres psql -XqtA -v ON_ERROR_STOP=1 \
+    -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-commune}" -c "$1"
+}
+
+# sql_loi <câu lệnh> → "ok" nếu chạy được, ngược lại thông báo lỗi PostgreSQL (dòng ERROR)
+sql_loi() {
+  local out
+  if out="$(sql "$1" 2>&1)"; then echo ok; else grep -m1 -oE 'ERROR: +[^:]+' <<<"$out" | sed 's/ERROR: *//' ; fi
+}
+
+# Đoạn bash chạy trong container keycloak: đăng nhập kcadm bằng tài khoản quản trị khởi
+# tạo (biến môi trường của chính container, không đi qua máy host), lưu cấu hình tạm.
+_KC_LOGIN='cfg=/tmp/smoke-kcadm.config
+[ -s "$cfg" ] || /opt/keycloak/bin/kcadm.sh config credentials --config "$cfg" \
+  --server http://localhost:8080 --realm master \
+  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" >/dev/null 2>&1'
+
+# kc <lệnh kcadm…> : chạy kcadm.sh trong container keycloak
+kc() {
+  docker compose exec -T keycloak bash -c "$_KC_LOGIN"'
+/opt/keycloak/bin/kcadm.sh "$@" --config "$cfg" 2> >(sed "/^$/d" >&2)' kc "$@"
+}
+
+# dat_mat_khau <username> <mật khẩu> : mật khẩu đi qua stdin, không nằm trong tham số lệnh
+dat_mat_khau() {
+  printf '%s\n' "$2" | docker compose exec -T keycloak bash -c "$_KC_LOGIN"'
+IFS= read -r pw
+/opt/keycloak/bin/kcadm.sh set-password --config "$cfg" -r dxos --username "$1" --new-password "$pw" >/dev/null' kc "$1"
+}
+
+# lay_token <username> <mật khẩu> → JSON trả về từ token endpoint (client dev dxos_cli)
+lay_token() {
+  curl -s "$KC/realms/dxos/protocol/openid-connect/token" \
+    -d grant_type=password -d client_id=dxos_cli \
+    --data-urlencode "username=$1" --data-urlencode "password=$2"
+}
+
+# jwt_payload <token> → JSON phần payload
+jwt_payload() {
+  local p="${1#*.}"; p="${p%%.*}"
+  p="$(tr '_-' '/+' <<<"$p")"
+  while [ $(( ${#p} % 4 )) -ne 0 ]; do p="$p="; done
+  base64 -d <<<"$p" 2>/dev/null
+}

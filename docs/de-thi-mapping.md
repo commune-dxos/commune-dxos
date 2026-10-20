@@ -5,10 +5,10 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 ## A. Yêu cầu bắt buộc của đề
 | # | Yêu cầu | Thành phần | Trạng thái | Bằng chứng |
 |---|---|---|---|---|
-| A1 | Lõi headless Tầng 1, không có UI | Keycloak, APISIX, PostgREST, PostgreSQL (profile `core`) | ◐ | `docker-compose.yml`, `docs/architecture.md` §7.1 — đã chạy thử 17/10/2026 |
-| A2 | Identity / SSO (+MFA) | Keycloak 26, realm `commune`, OTP bắt buộc cho cán bộ/lãnh đạo | ◐ | `infra/keycloak/realm-commune.json`, `docs/architecture.md` §4, §7.1 — đã chạy: cán bộ bị bắt cài OTP, công dân không. Còn: luồng OTP theo vai trò (tuần 2) |
-| A3 | API Gateway | APISIX 3.13 standalone, openid-connect (JWKS) + limit-count | ◐ | `infra/apisix/apisix.yaml`, `infra/apisix/config.yaml`, §7.1 — đã chạy: 401/401/200, 429 khi vượt hạn mức. Còn: route `/workflow`, `/files` (tuần 2) |
-| A4 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + RLS, PostgREST (JWT → role PostgreSQL) | ◐ | `infra/postgres/initdb/10-schema.sql`, `docs/architecture.md` §3, §7.1 — đã chạy qua APISIX với 4 vai trò. Còn: pgAudit, schema đầy đủ (tuần 2) |
+| A1 | Lõi headless Tầng 1, không có UI | Keycloak, APISIX, PostgREST, PostgreSQL (profile `core`); lõi `core/` **độc lập nghiệp vụ**, ứng dụng cắm vào qua `apps/<DXOS_APP>/` (#3) | ◐ | `core/`, `docker-compose.yml`, `docs/architecture.md` §2, §8.2 — chạy từ volume trống 20/10/2026, `make smoke` 45/45 đạt. Còn: Garage, Flowable, RabbitMQ, OpenBao (tuần 2) |
+| A2 | Identity / SSO (+MFA) | Keycloak 26, realm `commune`, OTP bắt buộc cho cán bộ/lãnh đạo | ◐ | `core/keycloak/realm-dxos.json`, `apps/mot-cua/keycloak/realm.json`, `docs/architecture.md` §5, §8.2 — đã chạy: cán bộ bị bắt cài OTP, công dân không. Còn: luồng OTP theo vai trò (tuần 2) |
+| A3 | API Gateway | APISIX 3.13 standalone, openid-connect (JWKS) + limit-count | ◐ | `core/apisix/apisix.yaml`, `core/apisix/config.yaml`, §8.1, §8.2 — đã chạy: 401/401/200, 429 khi vượt hạn mức (17/10); `/public/*` chạy với role `anon`. Còn: route `/workflow`, `/files` (tuần 2) |
+| A4 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + RLS, PostgREST (JWT → role PostgreSQL); lõi giữ role `authenticator`/`anon`, hàm claim `dxos.jwt_sub()`, sổ migration; schema nghiệp vụ là migration của ứng dụng (#3) | ◐ | `core/postgres/initdb/10-core.sql`, `core/scripts/app-migrate.sh`, `apps/mot-cua/db/`, `docs/architecture.md` §2, §4, §8.2 — RLS 4 vai trò đạt, migration chạy lại không lỗi. Còn: pgAudit, schema đầy đủ (tuần 2) |
 | A5 | Quản trị dữ liệu phi cấu trúc | Garage (S3) + ClamAV, Meilisearch CE | ☐ | tuần 2 |
 | A6 | Workflow engine | Flowable REST 8.0.0, BPMN viết XML tay | ☐ | cách viết: `docs/architecture.md` §6 |
 | A7 | ≥1 ứng dụng Tầng 2 có giao diện (H-P-D-I) | | ☐ | |
@@ -43,6 +43,6 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 | Việc | Trạng thái |
 |---|---|
 | README song ngữ, CONTRIBUTING, CODE_OF_CONDUCT | ◐ |
-| Hướng dẫn viết module cắm–rút + module mẫu | ☐ |
+| Hướng dẫn viết module cắm–rút + module mẫu | ◐ (quy ước `apps/<tên>/` + ví dụ: `docs/architecture.md` §2.4–2.5; module mẫu thứ hai: tuần 6) |
 | Demo công khai trên Internet, người dùng thật thử | ☐ |
 | Kênh trao đổi (Discussions/Telegram), bài giới thiệu | ☐ |

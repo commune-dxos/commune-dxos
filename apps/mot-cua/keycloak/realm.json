@@ -1,0 +1,63 @@
+{
+  "roles": {
+    "client": {
+      "dxos_api": [
+        { "name": "cong_dan", "description": "mot-cua: công dân. Trùng tên role PostgreSQL cong_dan" },
+        { "name": "can_bo", "description": "mot-cua: cán bộ một cửa / chuyên môn. Bắt buộc MFA (OTP). Trùng role PostgreSQL can_bo" },
+        { "name": "lanh_dao", "description": "mot-cua: lãnh đạo xã. Bắt buộc MFA (OTP). Trùng role PostgreSQL lanh_dao" }
+      ]
+    }
+  },
+  "groups": [
+    { "name": "cong-dan", "path": "/cong-dan", "clientRoles": { "dxos_api": ["cong_dan"] } },
+    { "name": "can-bo", "path": "/can-bo", "clientRoles": { "dxos_api": ["can_bo"] } },
+    { "name": "lanh-dao", "path": "/lanh-dao", "clientRoles": { "dxos_api": ["lanh_dao"] } }
+  ],
+  "clients": [
+    {
+      "clientId": "mot_cua_web",
+      "name": "mot-cua: cổng công dân và cổng cán bộ (React)",
+      "description": "Public client, Authorization Code + PKCE.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "congdan01",
+      "enabled": true,
+      "email": "congdan01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Văn Mẫu",
+      "lastName": "Nguyễn",
+      "groups": ["/cong-dan"]
+    },
+    {
+      "username": "canbo01",
+      "enabled": true,
+      "email": "canbo01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Thị Một Cửa",
+      "lastName": "Trần",
+      "groups": ["/can-bo"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "lanhdao01",
+      "enabled": true,
+      "email": "lanhdao01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Văn Chủ Tịch",
+      "lastName": "Lê",
+      "groups": ["/lanh-dao"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    }
+  ]
+}

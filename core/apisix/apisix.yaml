@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Route của API Gateway (standalone). APISIX nạp lại tệp này khi thay đổi.
 # Tầng 2 chỉ gọi lõi qua đây; PostgREST không mở cổng ra ngoài.
+# Route của lõi không nêu tên bảng hay tài nguyên nghiệp vụ nào: tài nguyên nào công
+# khai, ai được đọc/ghi gì do quyền và RLS trong migration của ứng dụng quyết định.
 
 upstreams:
   - id: postgrest
@@ -21,10 +23,12 @@ upstreams:
           http_failures: 2
 
 routes:
-  # Danh mục thủ tục công khai cho cổng công dân: không cần token, có giới hạn tần suất.
-  - id: thu-tuc-cong-khai
-    uri: /api/thu_tuc
-    methods: [GET]
+  # Đọc công khai, không cần token: luôn chạy với role PostgreSQL `anon` (header
+  # Authorization bị bỏ), chỉ GET/HEAD, giới hạn tần suất chặt cho cổng công dân.
+  # Ví dụ: /public/thu_tuc → bảng mà ứng dụng đã GRANT SELECT cho anon.
+  - id: public-anon
+    uri: /public/*
+    methods: [GET, HEAD]
     priority: 10
     plugins:
       limit-count:
@@ -35,23 +39,25 @@ routes:
         rejected_code: 429
         policy: local
       proxy-rewrite:
-        regex_uri: ["^/api/(.*)", "/$1"]
+        regex_uri: ["^/public/(.*)", "/$1"]
+        headers:
+          remove: [Authorization]
     upstream_id: postgrest
 
-  # Mọi API khác của lõi: bắt buộc access token Keycloak (realm commune).
+  # Mọi API khác của lõi: bắt buộc access token Keycloak (realm dxos).
   # APISIX kiểm chữ ký bằng JWKS của Keycloak; PostgREST kiểm lại lần nữa rồi
-  # SET ROLE theo claim resource_access.commune_api.roles[0] để RLS áp dụng.
-  - id: api-loi
+  # SET ROLE theo claim resource_access.dxos_api.roles[0] để RLS áp dụng.
+  - id: api-jwt
     uri: /api/*
     priority: 0
     plugins:
       openid-connect:
-        client_id: commune_api
+        client_id: dxos_api
         # Schema plugin bắt buộc trường này, nhưng với bearer_only + use_jwks
         # APISIX không gọi introspection nên giá trị không được dùng. Không phải bí mật.
         client_secret: khong-dung-o-che-do-bearer-only
-        discovery: http://keycloak:8080/realms/commune/.well-known/openid-configuration
-        realm: commune
+        discovery: http://keycloak:8080/realms/dxos/.well-known/openid-configuration
+        realm: dxos
         bearer_only: true
         use_jwks: true
       limit-count:
