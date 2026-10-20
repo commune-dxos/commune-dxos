@@ -5,6 +5,7 @@
 
 GW="http://localhost:${APISIX_PORT:-9080}"
 KC="http://localhost:${KEYCLOAK_PORT:-8080}"
+WF="http://localhost:${FLOWABLE_PORT:-8090}/flowable-rest/service"
 SMOKE_DAT=0
 SMOKE_TRUOT=0
 
@@ -62,6 +63,13 @@ lay_token() {
   curl -s "$KC/realms/dxos/protocol/openid-connect/token" \
     -d grant_type=password -d client_id=dxos_cli \
     --data-urlencode "username=$1" --data-urlencode "password=$2"
+}
+
+# wf <đường dẫn> [tham số curl…] → JSON từ Flowable REST (Basic auth rest-admin, cổng debug
+# 127.0.0.1). Có tham số -d thì là POST.
+wf() {
+  local duong="$1"; shift
+  curl -s -u "rest-admin:${FLOWABLE_ADMIN_PASSWORD:?}" -H 'Content-Type: application/json' "$@" "$WF/$duong"
 }
 
 # jwt_payload <token> → JSON phần payload

@@ -96,6 +96,7 @@ core/                         Tầng 1 – không có tên bảng, vai trò hay 
                                 /api/* → bắt buộc JWT realm dxos
   scripts/app-migrate.sh        dịch vụ một lần: áp dụng SQL của ứng dụng
   scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng
+  scripts/flowable-db-init.sh   dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine
 apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   app.env                       PGRST_DB_SCHEMAS=mot_cua
   db/migrations/001_*.sql       role cong_dan/can_bo/lanh_dao, schema mot_cua (bản giữ chỗ tuần 1)
@@ -103,6 +104,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   db/seed/002_*.sql             danh mục thủ tục, cán bộ, hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
   db/tests/rls.sql              test quyền/RLS từng vai trò (make smoke chạy)
   keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, người dùng mẫu
+  processes/*.bpmn20.xml        quy trình BPMN viết tay, Flowable tự triển khai (#8)
   tests/smoke.sh                kiểm tra riêng của ứng dụng (make smoke gọi)
 ```
 
@@ -141,7 +143,8 @@ Lõi chỉ biết các quy ước sau trong `apps/<DXOS_APP>/` (thiếu thư m�
 3. `db/seed/NNN_<mo-ta>.sql`: dữ liệu giả, viết để chạy lại không trùng (`ON CONFLICT DO NOTHING`).
 4. `keycloak/realm.json`: định dạng `PartialImportRepresentation` (`roles.client.dxos_api`, `groups`, `clients`, `users`). Mỗi người dùng có **đúng một** client role của `dxos_api`, trùng tên role PostgreSQL (PostgREST đọc `resource_access.dxos_api.roles[0]`).
 5. `tests/smoke.sh`: đoạn bash được `scripts/smoke.sh` `source`, dùng các hàm `kiem`, `ma_http`, `sql`, `kc`, `lay_token` trong `scripts/lib-smoke.sh`.
-6. Sau này (tuần 2–3): `processes/*.bpmn20.xml` cho Flowable, `web/` cho giao diện, backend riêng của ứng dụng (D-008 mục 4) – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
+6. `processes/*.bpmn20.xml` (#8): Flowable đọc thư mục này (mount chỉ đọc vào `/dxos/processes`, thuộc tính `flowable.process-definition-location-prefix`) và tự triển khai khi khởi động; tệp không đổi thì không tạo phiên bản mới. Cú pháp được `scripts/check-bpmn.py` kiểm trong `make check`/CI.
+7. Sau này (tuần 3): `web/` cho giao diện, backend riêng của ứng dụng (D-008 mục 4) – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
 
 ### 2.5 Cắm một ứng dụng khác (cho lập trình viên)
 
@@ -184,7 +187,7 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`apps/mo
 | API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); kiểm JWT, giới hạn tần suất | `core/apisix/config.yaml`, `core/apisix/apisix.yaml` |
 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của ứng dụng; migration theo ứng dụng; pgAudit (tuần 2) | `core/postgres/initdb/10-core.sql`, `core/scripts/app-migrate.sh`, `apps/mot-cua/db/` |
 | Quản trị dữ liệu phi cấu trúc | Garage (S3), ClamAV quét trước khi lưu; Meilisearch CE để tìm toàn văn | tuần 2 (TODO trong `docker-compose.yml`) |
-| Workflow engine | Flowable REST 8.0.0, BPMN 2.0 trong `apps/<tên>/processes/*.bpmn20.xml` | tuần 2 (TODO trong `docker-compose.yml`) |
+| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động | `docker-compose.yml` (`flowable`, `flowable-db-init`), `apps/mot-cua/processes/`, §7, §8.4 |
 
 ## 4. Luồng xác thực: JWT Keycloak → APISIX → PostgREST → RLS
 
@@ -244,7 +247,8 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 | Profile | Dịch vụ | Trạng thái | Ghi chú tài nguyên |
 |---|---|---|---|
 | `core` | PostgreSQL, Keycloak, PostgREST, APISIX (+ dịch vụ một lần `jwks-init`, `app-migrate`, `app-realm`) | chạy thử 17/10 và 20/10/2026 | mục tiêu laptop 16 GB |
-| `core` | Garage, Flowable REST, RabbitMQ, OpenBao | TODO tuần 2 | |
+| `core` | Flowable REST (+ dịch vụ một lần `flowable-db-init`) | chạy thử 20/10/2026 (#8) | JVM `-Xmx512M` |
+| `core` | Garage, RabbitMQ, OpenBao | TODO tuần 2 | |
 | `docs` | Gotenberg, step-ca, ClamAV, Meilisearch CE | TODO tuần 2–5 | ClamAV cần ~1,5 GB RAM cho cơ sở dữ liệu mẫu virus |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | Apache Superset | TODO tuần 4 | |
@@ -259,8 +263,9 @@ D-004: image `flowable-ui` (có modeler) dừng ở 6.8.0 (2022), bpmn-js bị c
 1. Viết tay tệp `apps/<tên>/processes/<ma-thu-tuc>.bpmn20.xml` theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2 là `<!-- SPDX-License-Identifier: Apache-2.0 -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
 2. Chỉ dùng tập phần tử nhỏ: `startEvent`, `userTask` (có `flowable:candidateGroups` trùng nhóm Keycloak), `serviceTask`, `exclusiveGateway`, `boundaryEvent` + `timerEventDefinition` cho cảnh báo trễ hạn, `endEvent`.
 3. Không cần phần `bpmndi` (tọa độ vẽ): Flowable chạy được khi thiếu phần này. Sơ đồ cho tài liệu và slide vẽ bằng Mermaid `flowchart` đặt cạnh tệp XML.
-4. Kiểm tra: triển khai qua REST `POST /flowable-rest/service/repository/deployments`; Flowable từ chối tệp sai cú pháp. Thêm bước kiểm XML (`xmllint --noout`) vào `make check` khi có tệp đầu tiên.
-5. Khi số quy trình tăng: sinh XML từ mô tả YAML/JSON bằng script Python của đội (mỗi thủ tục một tệp cấu hình), giữ đúng tinh thần module cắm–rút.
+4. Kiểm tra hai lớp: `make check` (và CI) chạy `scripts/check-bpmn.py` – XML hợp lệ, id không trùng, mũi tên trỏ đúng phần tử, nút nào cũng có đường vào/ra, gateway có `default` và điều kiện, userTask có người nhận; khi khởi động, Flowable tự triển khai và từ chối tệp sai ngữ nghĩa (`make smoke` kiểm quy trình đã lên và chạy được).
+5. Triển khai: đặt tệp vào `apps/<DXOS_APP>/processes/` rồi `docker compose --profile core up -d --force-recreate flowable`. Không gọi REST `repository/deployments` tay để tránh hai nguồn sự thật.
+6. Khi số quy trình tăng: sinh XML từ mô tả YAML/JSON bằng script Python của đội (mỗi thủ tục một tệp cấu hình), giữ đúng tinh thần module cắm–rút.
 
 ## 8. Chạy thử
 
@@ -378,11 +383,25 @@ Kiểm tra qua APISIX → PostgREST bằng token thật:
 
 Dung lượng ổ hệ thống: 11 GB trống trước khi chạy, 8,6 GB sau khi `make down` + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả ngay dung lượng của tệp đĩa ảo).
 
+### 8.4 Kết quả chạy thử 20/10/2026 (Flowable + quy trình khai sinh, #8)
+
+Docker Desktop, macOS arm64, image `flowable/flowable-rest:8.0.0` (arm64, 172 MB). Ba lần chạy, mỗi lần `make smoke` **147 đạt, 0 trượt**:
+
+| Lần chạy | Kết quả |
+|---|---|
+| Volume trống (project tạm `commune-i8`) | `flowable-db-init` tạo role + CSDL `flowable`; Flowable healthy sau khoảng 40 giây, triển khai `dang_ky_khai_sinh` phiên bản 1, không có quy trình demo |
+| Chạy lại (`make down` → `make up`) | vẫn 1 deployment, phiên bản 1 (tệp không đổi) |
+| Volume có sẵn tạo trước khi có Flowable (`commune-i5`) | `flowable-db-init` tạo CSDL còn thiếu, không cần xóa volume |
+
+Quy trình qua REST (cổng debug `127.0.0.1:8090`): hồ sơ KS01 do công dân nộp qua APISIX → khởi tạo với `businessKey` = mã hồ sơ → `tiep_nhan` (nhóm `ho_tich`) → thiếu thành phần → `bo_sung` (giao đúng `sub` người nộp) → `tiep_nhan` → `tham_dinh` → `phe_duyet` (nhóm `lanh_dao`) → kết thúc `ket_thuc_hoan_tat`, `ketQua=hoan_tat`. Nhánh thẩm định không đạt → `ket_thuc_tu_choi`. Hạn đã qua → hẹn giờ không ngắt quy trình đặt `quaHan=true` trong khoảng 2 giây, task vẫn mở. REST không đăng nhập → 401; CSDL ứng dụng không có bảng `act_*`.
+
 ## 9. Việc tiếp theo (tuần 2)
 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
-- Route `/workflow`, `/files`; Garage, Flowable, RabbitMQ, OpenBao; chuyển mật khẩu từ `.env` sang OpenBao.
+- Route `/workflow` (#6): Tầng 2 gọi Flowable qua APISIX, kiểm JWT; hiện Flowable chỉ có Basic auth `rest-admin` và cổng debug trên 127.0.0.1.
+- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình và phát sự kiện (hồ sơ mới, chuyển bước, `quaHan`) sang RabbitMQ (#9); khởi tạo quy trình sau Poka-yoke (tuần 3).
+- Route `/files`; Garage, RabbitMQ, OpenBao; chuyển mật khẩu từ `.env` sang OpenBao.
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

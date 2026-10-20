@@ -30,6 +30,7 @@ smoke:         ## Kiểm tra lõi đang chạy: JWT qua APISIX, JWKS, migration 
 license:       ## Thêm header SPDX cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX + compose hợp lệ (mọi profile)
+check:         ## Kiểm tra trước khi commit/nộp: SPDX + cú pháp BPMN + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
+	python3 scripts/check-bpmn.py
 	docker compose $(COMPOSE_ENV) --profile '*' config --quiet && echo "OK: docker-compose.yml hợp lệ (mọi profile)"
