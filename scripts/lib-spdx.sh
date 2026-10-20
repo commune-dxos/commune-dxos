@@ -18,7 +18,7 @@ spdx_comment_style() {
   base="$(basename "$f")"
   case "$base" in
     Dockerfile|Dockerfile.*|*.Dockerfile|Containerfile) echo hash; return ;;
-    Makefile|*.mk|.env.example|*.env.example) echo hash; return ;;
+    Makefile|*.mk|.env.example|*.env.example|*.env) echo hash; return ;;
   esac
   case "$f" in
     *.sh|*.bash|*.py|*.yml|*.yaml|*.toml|*.conf|*.cfg|*.ini|*.properties) echo hash ;;
