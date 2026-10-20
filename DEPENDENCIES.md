@@ -6,7 +6,7 @@ Tệp này bổ sung cho [`NOTICE`](NOTICE): NOTICE ghi thành phần theo lớp
 còn tệp này ghi **từng** image, gói npm, gói pip kèm phiên bản cụ thể.
 
 Quy tắc:
-- Chỉ thêm thành phần có giấy phép OSI-approved. Danh sách cấm: `../CLAUDE.md` và `CLAUDE.md`.
+- Chỉ thêm thành phần có giấy phép OSI-approved. Không dùng các thành phần ở mục 5.
 - Thêm/nâng phiên bản một phụ thuộc → sửa dòng tương ứng trong cùng commit.
 - Cột "Nguồn" là nơi tải về (registry) và nơi đọc giấy phép (repo gốc).
 
@@ -49,3 +49,23 @@ Sinh bảng tự động khi có mã: `pip-licenses --format=markdown --with-url
 |---|---|---|---|
 | Qwen2.5 | 7B hoặc 14B (không dùng 3B) | Apache-2.0 | huggingface.co/Qwen |
 | bge-m3 | — | MIT | huggingface.co/BAAI/bge-m3 |
+
+## 5. Thành phần không dùng
+
+Đội chủ động không dùng các thành phần dưới đây, kể cả khi chỉ chạy như dịch vụ riêng: giấy phép không được OSI phê duyệt
+(hoặc có phần không OSI) thì không đưa vào kho, đã có thay thế nguồn mở. Kiểm tra giấy phép ngày 17/10/2026.
+
+| Thành phần | Lý do không dùng | Dùng thay |
+|---|---|---|
+| n8n | Giấy phép Sustainable Use License (fair-code), không OSI | Flowable (BPMN) + RabbitMQ |
+| HashiCorp Vault | Chuyển sang BSL 1.1 từ 2023, không OSI | OpenBao (MPL-2.0) |
+| Redpanda | Bản cộng đồng dùng BSL 1.1, không OSI | RabbitMQ (MPL-2.0) |
+| MongoDB | SSPL, không OSI | PostgreSQL |
+| Directus | BSL 1.1, không OSI | PostgREST (MIT) |
+| Orion-LD | Bắt buộc chạy kèm MongoDB (SSPL) | Không cần cho đề tài này |
+| bpmn-js | Giấy phép bpmn.io có điều khoản giữ logo/watermark, không OSI | BPMN 2.0 viết XML tay trong `processes/` |
+| immudb | Các bản từ cuối 2023 (kể cả v1.11.x) chuyển sang BSL 1.1, không OSI | Bảng append-only + chuỗi băm SHA-256 (mã của đội) + pgAudit |
+| Meilisearch Enterprise Edition | Các tệp `meilisearch-enterprise-*` dùng BUSL-1.1 | Meilisearch Community Edition (MIT), không bật tính năng EE |
+| dbt Fusion | Bản phân phối "dbt" viết bằng Rust dùng giấy phép riêng, không OSI | `dbt-core` 1.x cài từ PyPI (Apache-2.0) |
+| Mô hình Llama, Gemma | Giấy phép riêng của Meta/Google có điều khoản hạn chế sử dụng, không OSI | Qwen2.5 7B/14B (Apache-2.0) |
+| Qwen2.5-3B | Dùng giấy phép Qwen Research, không phải Apache-2.0 như bản 7B/14B | Qwen2.5 7B hoặc 14B, không hạ xuống 3B cho máy yếu |
