@@ -30,7 +30,7 @@ Cách dùng tệp này:
 - [x] V1 · OpenBao 2.7.1 giữ mọi bí mật dịch vụ (mật khẩu CSDL, quản trị Keycloak/Flowable, client secret, khóa S3, bí mật Garage); `.env` không còn mật khẩu; mỗi dịch vụ một AppRole + policy chỉ đọc đúng phần mình; `make up` tự init/unseal (dev); chuyển được từ `.env` cũ (#10, PR chờ duyệt)
 - [x] V3 · CI: thêm lint/test cho từng thành phần đã có – job `shellcheck`, `yamllint`, `bpmn`, `test-backend`, `test-sql` (PostgreSQL service container, migration lõi + app, `rls.sql` trước/sau seed); `make lint`, `make test` chạy cùng lệnh trên máy (#11, PR chờ duyệt)
 - [x] V3 · README song ngữ chạy được từ máy sạch (`cp .env.example .env` → `make up` → `make smoke` → `make demo-users`), yêu cầu máy, xử lý lỗi; kiểm chứng trên bản clone mới ngoài thư mục mã: `make up` 128 giây, smoke 405/405 (#12, PR chờ duyệt)
-- [ ] V1 · Release v0.1.0
+- [x] V1 · Release v0.1.0 (#13)
 
 ## Tuần 3 · 29/10–04/11 · Luồng nghiệp vụ chính
 - [ ] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable

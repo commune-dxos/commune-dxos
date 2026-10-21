@@ -3,6 +3,8 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-10-21
 ### Added
 - `apps/mot-cua/db/migrations/002_schema_day_du.sql`: schema `mot_cua` đầy đủ – `linh_vuc`, `thu_tuc` (thời hạn theo ngày làm việc, phí, công khai), `thanh_phan_yeu_cau`, `ngay_nghi`, `can_bo` (liên kết `sub` Keycloak) + `can_bo_linh_vuc`, `ho_so` (mã hồ sơ, hạn xử lý tính theo ngày làm việc, trạng thái `moi → dang_xu_ly → cho_bo_sung → hoan_tat | tu_choi` có trigger chặn bước sai), `thanh_phan_ho_so` (metadata, tệp ở Garage); khóa UUID, `created_at`/`updated_at` (#5).
 - RLS bật và `FORCE` trên mọi bảng `mot_cua`: công dân chỉ thấy/nộp hồ sơ của mình và chỉ sửa khi chờ bổ sung; cán bộ chỉ thấy/xử lý hồ sơ thuộc lĩnh vực phụ trách; lãnh đạo chỉ đọc; `anon` chỉ đọc danh mục thủ tục công khai. Quyền GRANT theo cột, hàm nội bộ ở schema `mot_cua_noi_bo` không phơi ra API (#5).
@@ -102,5 +104,6 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/commune-dxos/commune-dxos/releases/tag/v0.0.1
