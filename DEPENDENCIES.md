@@ -43,6 +43,8 @@ Sinh bảng tự động khi có mã: `pip-licenses --format=markdown --with-url
 | Gói | Phiên bản | Giấy phép | Nguồn | Dùng ở |
 |---|---|---|---|---|
 | _(chưa có — tuần 4: dbt-core 1.x, duckdb, pyhanko…)_ | | | pypi.org | |
+| `yamllint` | 1.38.0 | GPL-3.0 – chỉ là công cụ lint, chạy riêng, không đi vào sản phẩm | pypi.org · https://github.com/adrienverge/yamllint | `make lint`, CI (`scripts/requirements-lint.txt`) |
+| `shellcheck-py` (ShellCheck 0.11.0) | 0.11.0.1 | MIT (gói bọc), ShellCheck GPL-3.0 – công cụ lint, không đi vào sản phẩm | pypi.org · https://github.com/koalaman/shellcheck | `make lint`, CI (`scripts/requirements-lint.txt`) |
 
 ## 4. Mô hình AI (tuần 5)
 

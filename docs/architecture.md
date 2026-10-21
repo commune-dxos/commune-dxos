@@ -125,7 +125,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   rabbitmq/definitions.json     exchange mot_cua.su_kien, queue mot_cua.nhat_ky (+ queue lỗi) (#9)
   backend/main.py               API quy trình mỏng /workflow (#6, §4.2) và API tệp /files (#7, §4.3),
                                 dịch vụ app-backend
-  backend/tep.py, tests/        phần thuần của API tệp + test đơn vị (make test, trong make check)
+  backend/tep.py, tests/        phần thuần của API tệp + test đơn vị (make test-backend, trong make check)
   backend/bimat.py              đọc bí mật của ứng dụng từ OpenBao (AppRole app) (#10)
   backend/worker.py             dịch vụ app-worker: phát outbox lên RabbitMQ, quét sắp trễ hạn, consumer mẫu (#9)
   backend/su_kien.py, hop_thu.py, stomp.py   định dạng sự kiện, outbox qua PostgREST, client STOMP (#9)

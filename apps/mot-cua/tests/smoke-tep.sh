@@ -71,6 +71,7 @@ else
        "$GW/api/thanh_phan_ho_so")"
 
   # 1. PDF hợp lệ → 201, object trong Garage, dòng metadata đủ dấu vết.
+  # shellcheck disable=SC2153  # TOKEN (cong_dan) do apps/mot-cua/tests/smoke.sh đặt trước khi source
   ma="$(tai "$TOKEN" "$HT" "Tờ khai khai sinh.pdf" application/pdf "$TD/to-khai.pdf")"
   TEP_ID="$(jq -r '.id // empty' "$TD/tra.json")"
   kiem "cong_dan tải PDF hợp lệ (tên tiếng Việt) → 201" "201" "$ma"

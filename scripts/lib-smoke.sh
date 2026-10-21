@@ -3,6 +3,8 @@
 # Hàm dùng chung cho scripts/smoke.sh và apps/<DXOS_APP>/tests/smoke.sh.
 # Không in mật khẩu hay token ra màn hình.
 
+# Dùng trong các tệp `source` thư viện này (smoke của lõi và ứng dụng).
+# shellcheck disable=SC2034
 GW="http://localhost:${APISIX_PORT:-9080}"
 KC="http://localhost:${KEYCLOAK_PORT:-8080}"
 WF="http://localhost:${FLOWABLE_PORT:-8090}/flowable-rest/service"
@@ -46,7 +48,8 @@ sql_loi() {
 
 # Đoạn bash chạy trong container keycloak: đăng nhập kcadm bằng tài khoản quản trị khởi
 # tạo (mật khẩu đọc từ tệp OpenBao trong chính container, không đi qua máy host), lưu cấu
-# hình tạm.
+# hình tạm. Nháy đơn có chủ ý: biến được mở rộng trong container, không phải trên host.
+# shellcheck disable=SC2016
 _KC_LOGIN='cfg=/tmp/smoke-kcadm.config
 [ -s "$cfg" ] || /opt/keycloak/bin/kcadm.sh config credentials --config "$cfg" \
   --server http://localhost:8080 --realm master \

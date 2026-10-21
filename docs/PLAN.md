@@ -28,7 +28,7 @@ Cách dùng tệp này:
 - [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `apps/mot-cua/processes/` (#8, PR chờ duyệt)
 - [x] V2 · RabbitMQ 4.3.6 nhận sự kiện hồ sơ (mới, chuyển bước, hoàn tất/từ chối, sắp trễ hạn): outbox PostgreSQL → `app-worker` phát qua STOMP, vhost + user riêng của ứng dụng, consumer mẫu ghi nhật ký sự kiện (#9, PR chờ duyệt)
 - [x] V1 · OpenBao 2.7.1 giữ mọi bí mật dịch vụ (mật khẩu CSDL, quản trị Keycloak/Flowable, client secret, khóa S3, bí mật Garage); `.env` không còn mật khẩu; mỗi dịch vụ một AppRole + policy chỉ đọc đúng phần mình; `make up` tự init/unseal (dev); chuyển được từ `.env` cũ (#10, PR chờ duyệt)
-- [ ] V3 · CI: thêm lint/test cho từng thành phần đã có (shellcheck, yamllint, kiểm tra cú pháp BPMN, test SQL/RLS)
+- [x] V3 · CI: thêm lint/test cho từng thành phần đã có – job `shellcheck`, `yamllint`, `bpmn`, `test-backend`, `test-sql` (PostgreSQL service container, migration lõi + app, `rls.sql` trước/sau seed); `make lint`, `make test` chạy cùng lệnh trên máy (#11, PR chờ duyệt)
 - [ ] V3 · README song ngữ chạy được từ máy sạch (`cp .env.example .env` → `make up`)
 - [ ] V1 · Release v0.1.0
 
