@@ -8,13 +8,20 @@
 #   db/seed/*.sql        dữ liệu giả        → app-migrate khi DXOS_SEED=true
 #   keycloak/realm.json  vai trò, nhóm, client, người dùng mẫu → dịch vụ một lần app-realm
 #   processes/*.bpmn20.xml  quy trình BPMN 2.0 → Flowable tự triển khai khi khởi động
-#   backend/main.py      backend riêng của ứng dụng (D-008) → dịch vụ app-backend, APISIX /workflow/*
+#   backend/main.py      backend riêng của ứng dụng (D-008) → dịch vụ app-backend, APISIX /workflow/*, /files/*
+#   s3/buckets.conf      bucket S3 ứng dụng cần → dịch vụ một lần garage-init tạo bucket + khóa riêng
 #
 # Profile:
 #   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
 #          + Flowable REST (workflow, #8), app-backend (/workflow, #6)
-#          + Garage, RabbitMQ, OpenBao                (tuần 2, đang là TODO bên dưới)
-#   docs : Gotenberg, step-ca, ClamAV, Meilisearch CE (tuần 2–5)
+#          + Garage (S3) và ClamAV (quét tệp trước khi lưu) (#7)
+#          + RabbitMQ, OpenBao                        (tuần 2, đang là TODO bên dưới)
+#   docs : Gotenberg, step-ca, Meilisearch CE         (tuần 2–5)
+#
+# Bí mật sinh lúc khởi tạo (không nằm trong repo hay .env), TODO(#10) chuyển sang OpenBao:
+#   volume garage-secrets : rpc_secret, admin_token của Garage (garage-secrets sinh)
+#   volume app-secrets    : s3.json – khóa S3 riêng của ứng dụng (garage-init ghi);
+#                           keycloak-<client>.secret – secret client dịch vụ (app-realm ghi)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : Apache Superset                            (tuần 4)
 #
@@ -133,18 +140,23 @@ services:
 
   # Nạp vai trò, nhóm, client, người dùng mẫu của ứng dụng vào realm lõi `dxos`
   # (Keycloak Partial Import, bỏ qua đối tượng đã có) rồi thoát. Dùng lại image Keycloak.
+  # Client dịch vụ (service account) của ứng dụng: ghi client secret vào volume app-secrets.
+  # Chạy bằng root để ghi được vào volume (image Keycloak mặc định là uid 1000).
   app-realm:
     image: quay.io/keycloak/keycloak:26.3.3
     profiles: [core]
+    user: "0"
     entrypoint: ["/bin/bash", "/core/scripts/app-realm.sh"]
     environment:
       DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Đặt KEYCLOAK_ADMIN_PASSWORD trong .env}
+      APP_SECRETS_DIR: /run/dxos-secrets
     volumes:
       - ./core/scripts:/core/scripts:ro
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - app-secrets:/run/dxos-secrets
     depends_on:
       keycloak:
         condition: service_healthy
@@ -216,6 +228,8 @@ services:
       app-realm:
         condition: service_completed_successfully
       app-backend:
+        condition: service_healthy
+      garage:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
@@ -293,6 +307,8 @@ services:
   # khoản kỹ thuật thay người dùng, sau khi tự kiểm quyền (người dùng không cầm mật khẩu
   # Flowable); đọc/ghi hồ sơ qua PostgREST bằng token của người dùng nên RLS áp dụng.
   # Ứng dụng không có backend/main.py thì dịch vụ chỉ chạy chỗ giữ và /workflow trả 502.
+  # API tệp (/files, #7): quét ClamAV trước khi lưu Garage bằng khóa S3 riêng của ứng dụng
+  # (volume app-secrets, chỉ đọc); metadata ghi bằng tài khoản dịch vụ Keycloak của ứng dụng.
   app-backend:
     image: python:3.13.16-alpine3.24
     profiles: [core]
@@ -312,9 +328,18 @@ services:
       # Issuer trong token = KC_HOSTNAME của Keycloak + /realms/dxos
       DXOS_JWT_ISSUER: http://localhost:${KEYCLOAK_PORT:-8080}/realms/dxos
       DXOS_JWT_AUD: dxos_api
+      DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
+      DXOS_SECRETS_DIR: /run/dxos-secrets
+      DXOS_CLAMAV_HOST: clamav
+      DXOS_CLAMAV_PORT: "3310"
+      # Địa chỉ gateway mà client dùng; link tải ký ngắn hạn trỏ về ${DXOS_GATEWAY_URL}/files/s3/…
+      DXOS_GATEWAY_URL: ${DXOS_GATEWAY_URL:-http://localhost:9080}
+      DXOS_FILE_MAX_BYTES: ${DXOS_FILE_MAX_BYTES:-10485760}
+      DXOS_FILE_LINK_TTL: ${DXOS_FILE_LINK_TTL:-300}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - app-secrets:/run/dxos-secrets:ro
     # Không mở cổng ra host: chỉ APISIX gọi.
     expose:
       - "8000"
@@ -323,6 +348,14 @@ services:
         condition: service_started
       flowable:
         condition: service_healthy
+      app-realm:
+        condition: service_completed_successfully
+      garage-init:
+        condition: service_completed_successfully
+      # ClamAV nạp CSDL virus mất khoảng 1 phút: không chờ. Chưa sẵn sàng thì API tải tệp
+      # trả 503 (không bao giờ lưu tệp chưa quét).
+      clamav:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL
@@ -334,13 +367,85 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # --------------------------------------- dữ liệu phi cấu trúc (#7) ----
+  # Sinh rpc_secret + admin_token của Garage vào volume garage-secrets nếu chưa có, rồi thoát.
+  garage-secrets:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    entrypoint: ["/bin/sh", "/core/scripts/garage-secrets.sh"]
+    volumes:
+      - ./core/scripts:/core/scripts:ro
+      - garage-secrets:/run/garage-secrets
+    restart: "no"
+
+  # Object storage S3 (AGPL-3.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE).
+  # Một nút; cấu hình core/garage/garage.toml. Không mở cổng ra host: S3 (3900) chỉ
+  # app-backend gọi bằng khóa riêng, và APISIX /files/s3/* cho link GET đã ký ngắn hạn;
+  # API quản trị (3903) chỉ garage-init gọi.
+  garage:
+    image: dxflrs/garage:v2.4.1
+    profiles: [core]
+    volumes:
+      - ./core/garage/garage.toml:/etc/garage.toml:ro
+      - garage-secrets:/run/garage-secrets:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    expose:
+      - "3900"
+      - "3903"
+    depends_on:
+      garage-secrets:
+        condition: service_completed_successfully
+    healthcheck:
+      # Image không có shell: dùng CLI của chính Garage (kết nối RPC tới nút cục bộ).
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Cấu hình Garage qua Admin API v2 (layout một nút, bucket trong apps/<DXOS_APP>/s3/
+  # buckets.conf, khóa S3 riêng của ứng dụng → volume app-secrets) rồi thoát. Idempotent.
+  garage-init:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    entrypoint: ["python", "-u", "/core/scripts/garage-init.py"]
+    environment:
+      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      GARAGE_CAPACITY_BYTES: ${GARAGE_CAPACITY_BYTES:-10737418240}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./core/scripts:/core/scripts:ro
+      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - garage-secrets:/run/garage-secrets:ro
+      - app-secrets:/run/dxos-secrets
+    depends_on:
+      garage:
+        condition: service_healthy
+    restart: "no"
+
+  # Quét mã độc (GPL-2.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE). clamd
+  # nghe TCP 3310 trong mạng nội bộ; freshclam trong cùng container cập nhật CSDL virus.
+  # Image -debian có sẵn CSDL (đa kiến trúc, chạy được trên Mac ARM); volume clamav-db giữ
+  # CSDL đã cập nhật nên không tải lại mỗi lần `up`. Cần khoảng 1–1,5 GB RAM.
+  clamav:
+    image: clamav/clamav:1.5.4-debian
+    profiles: [core]
+    volumes:
+      - clamav-db:/var/lib/clamav
+    expose:
+      - "3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+    restart: unless-stopped
+
   # ------------------------------------------------- core – TODO tuần 2 ----
   # Bật từng dịch vụ khi làm việc tương ứng trong docs/PLAN.md tuần 2.
   # Kiểm tra lại tag mới nhất trên trang dự án trước khi ghim.
-  #
-  # garage:      # Object storage S3, AGPL-3.0 → chạy như dịch vụ riêng, image gốc dxflrs/garage
-  #   image: dxflrs/garage:<tag>
-  #   profiles: [core]
   #
   # rabbitmq:    # Hàng đợi sự kiện, MPL-2.0
   #   image: rabbitmq:<tag>-management-alpine
@@ -351,7 +456,6 @@ services:
   #   profiles: [core]
 
   # ------------------------------------------------- docs – TODO tuần 2–5 ----
-  # clamav:      # GPL-2.0, dịch vụ riêng, image gốc clamav/clamav
   # gotenberg:   # MIT, gotenberg/gotenberg
   # step-ca:     # Apache-2.0, smallstep/step-ca
   # meilisearch: # Chỉ Community Edition (MIT), không bật tính năng Enterprise (D-004)
@@ -363,3 +467,8 @@ services:
 volumes:
   pg-data:
   jwks:
+  garage-secrets:
+  garage-meta:
+  garage-data:
+  app-secrets:
+  clamav-db:

@@ -13,6 +13,10 @@
         {
           "name": "lanh_dao",
           "description": "mot-cua: lãnh đạo xã. Bắt buộc MFA (OTP). Trùng role PostgreSQL lanh_dao"
+        },
+        {
+          "name": "dich_vu_tep",
+          "description": "mot-cua: tài khoản dịch vụ của API tệp (backend), chỉ ghi metadata tệp đã quét và nhật ký tệp. Không gán cho người. Trùng role PostgreSQL dich_vu_tep"
         }
       ]
     }
@@ -65,6 +69,19 @@
       "attributes": {
         "pkce.code.challenge.method": "S256"
       },
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "mot_cua_tep",
+      "name": "mot-cua: API tệp (backend, tài khoản dịch vụ)",
+      "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; app-realm ghi secret vào volume bí mật app-secrets cho app-backend (TODO #10: OpenBao).",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
       "protocol": "openid-connect"
     }
   ],
@@ -152,6 +169,16 @@
       "requiredActions": [
         "CONFIGURE_TOTP"
       ]
+    },
+    {
+      "username": "service-account-mot_cua_tep",
+      "enabled": true,
+      "serviceAccountClientId": "mot_cua_tep",
+      "clientRoles": {
+        "dxos_api": [
+          "dich_vu_tep"
+        ]
+      }
     }
   ]
 }

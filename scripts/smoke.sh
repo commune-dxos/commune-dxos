@@ -17,7 +17,7 @@ export COMPOSE_PROFILES=core
 echo "== Lõi Tầng 1 (DXOS_APP=$DXOS_APP)"
 
 # 1. Dịch vụ một lần đã thoát với mã 0, dịch vụ chạy nền healthy ------------------
-for svc in jwks-init app-migrate app-realm flowable-db-init; do
+for svc in jwks-init app-migrate app-realm flowable-db-init garage-secrets garage-init; do
   for _ in $(seq 1 60); do  # chờ tối đa 2 phút nếu còn đang chạy
     tt="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' "$svc" 2>/dev/null)"
     case "$tt" in exited*) break ;; esac
@@ -25,8 +25,8 @@ for svc in jwks-init app-migrate app-realm flowable-db-init; do
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in postgres keycloak apisix flowable app-backend; do
-  for _ in $(seq 1 30); do  # vừa `make up` xong thì có thể còn "starting"
+for svc in postgres keycloak apisix flowable app-backend garage clamav; do
+  for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break
     sleep 2
@@ -58,7 +58,8 @@ kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "12
   "$(docker compose port flowable 8080 | cut -d: -f1)"
 # cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
 cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
-kiem "app-backend, PostgREST không mở cổng ra host" "|" "$(cong_host app-backend)|$(cong_host postgrest)"
+kiem "app-backend, PostgREST, Garage, ClamAV không mở cổng ra host" "|||" \
+  "$(cong_host app-backend)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)"
 
 # 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
 ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
@@ -79,6 +80,14 @@ kiem "schema dxos chỉ có bảng app_migration" "app_migration" \
 kiem "sổ migration có tệp của $DXOS_APP" "có" \
   "$(sql "SELECT CASE WHEN count(*) > 0 THEN 'có' ELSE 'không' END FROM dxos.app_migration WHERE ung_dung = '$DXOS_APP'")"
 
+# 4b. Garage: một nút đã có layout, API quản trị đòi token ------------------------------
+kiem "Garage: nút có vai trò trong layout (zone dxos)" "dxos" \
+  "$(docker compose exec -T garage /garage status 2>/dev/null | awk '/HEALTHY NODES/ {f=1; next} f && $1 ~ /^[0-9a-f]+$/ {print $4; exit}' | tr -d '[]')"
+kiem "Garage Admin API không token → 403" "403" \
+  "$(docker compose exec -T app-backend python -c 'import urllib.request, urllib.error
+try: print(urllib.request.urlopen("http://garage:3903/v2/ListKeys", timeout=5).status)
+except urllib.error.HTTPError as e: print(e.code)')"
+
 # 5. Chạy lại migration và vai trò Keycloak: không lỗi, bỏ qua phần đã áp dụng ------
 if out="$(docker compose run --rm --no-deps app-migrate 2>&1)"; then ma=0; else ma=$?; fi
 kiem "app-migrate lần 2: mã thoát" "0" "$ma"
@@ -86,6 +95,9 @@ kiem "app-migrate lần 2: không áp dụng lại tệp nào" "0" "$(grep -c '�
 if out="$(docker compose run --rm --no-deps app-realm 2>&1)"; then ma=0; else ma=$?; fi
 kiem "app-realm lần 2: mã thoát" "0" "$ma"
 kiem "app-realm lần 2: không thêm gì (added=0)" "added=0" "$(grep -oE 'added=[0-9]+' <<<"$out" || echo "$out" | tail -1)"
+if out="$(docker compose run --rm --no-deps garage-init 2>&1)"; then ma=0; else ma=$?; fi
+kiem "garage-init lần 2: mã thoát" "0" "$ma"
+kiem "garage-init lần 2: không tạo thêm khóa, bucket, layout" "0" "$(grep -cE 'đã (tạo|áp dụng)' <<<"$out" || true)"
 
 # 5b. Workflow engine: REST cần đăng nhập, CSDL riêng ------------------------------
 kiem "Flowable REST không đăng nhập → 401" "401" "$(ma_http "$WF/repository/process-definitions")"

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""API quy trình của ứng dụng mot-cua (backend riêng của Tầng 2, D-008).
+"""API quy trình và API tệp của ứng dụng mot-cua (backend riêng của Tầng 2, D-008).
 
-APISIX chuyển /workflow/* tới đây (bỏ tiền tố /workflow) sau khi đã kiểm JWT Keycloak.
-Dịch vụ này đứng giữa người dùng và Flowable REST:
+APISIX chuyển /workflow/* tới đây (bỏ tiền tố /workflow) và /files/* (giữ tiền tố) sau khi
+đã kiểm JWT Keycloak. Với quy trình, dịch vụ này đứng giữa người dùng và Flowable REST:
 
 - Kiểm lại JWT (RS256 theo JWKS của Keycloak, hạn, issuer, audience), không tin gateway.
 - Đọc/ghi dữ liệu nghiệp vụ qua PostgREST BẰNG TOKEN CỦA NGƯỜI DÙNG, nên RLS của
@@ -21,10 +21,23 @@ Endpoint (đường dẫn sau khi bỏ /workflow):
   POST /tasks/{id}/complete     nhận và hoàn thành task; chỉ nhận biến khai báo cho bước đó
   GET  /healthz                 kiểm sống (không cần token)
 
+API tệp (#7, phần thuần ở tep.py), đường dẫn giữ tiền tố /files:
+  POST /files/ho-so/{id}/tep?ten=…[&thanh_phan_yeu_cau_id=…]
+                                công dân tải một tệp (body = nội dung tệp, Content-Type đúng
+                                loại): kiểm tên/loại/kích thước → quét ClamAV → kiểm magic bytes
+                                → lưu Garage → ghi metadata. Tệp nhiễm: 422, không lưu, ghi nhật ký
+  GET  /files/ho-so/{id}/tep    danh sách tệp của hồ sơ (theo RLS của người gọi)
+  GET  /files/tep/{id}[?ttl=…]  metadata + link GET đã ký ngắn hạn (presigned, qua APISIX
+                                /files/s3/*); client không bao giờ cầm khóa S3
+Kiểm quyền bằng token của người dùng (RLS); metadata và nhật ký tệp ghi bằng tài khoản dịch
+vụ Keycloak `mot_cua_tep` (role dich_vu_tep), nên công dân không tự khai được object_key hay
+kết quả quét qua /api. Khóa S3 riêng của ứng dụng đọc từ volume bí mật (garage-init ghi).
+
 Chỉ dùng thư viện chuẩn Python: chạy trên image python gốc, không cài gói, không build.
 """
 
 import base64
+import datetime
 import hashlib
 import hmac
 import json
@@ -36,7 +49,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import tep
 
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
 FLOWABLE_URL = os.environ.get("DXOS_FLOWABLE_URL", "http://flowable:8080/flowable-rest/service")
@@ -47,6 +63,13 @@ JWT_ISSUER = os.environ["DXOS_JWT_ISSUER"]
 JWT_AUD = os.environ.get("DXOS_JWT_AUD", "dxos_api")
 JWT_ROLE_CLIENT = os.environ.get("DXOS_JWT_ROLE_CLIENT", "dxos_api")
 PORT = int(os.environ.get("PORT", "8000"))
+TOKEN_URL = os.environ.get("DXOS_TOKEN_URL", "http://keycloak:8080/realms/dxos/protocol/openid-connect/token")
+SECRETS_DIR = os.environ.get("DXOS_SECRETS_DIR", "/run/dxos-secrets")
+CLAMAV_HOST = os.environ.get("DXOS_CLAMAV_HOST", "clamav")
+CLAMAV_PORT = int(os.environ.get("DXOS_CLAMAV_PORT", "3310"))
+GATEWAY_URL = os.environ.get("DXOS_GATEWAY_URL", "http://localhost:9080").rstrip("/")
+FILE_MAX_BYTES = int(os.environ.get("DXOS_FILE_MAX_BYTES", str(10 * 1024 * 1024)))
+FILE_LINK_TTL = int(os.environ.get("DXOS_FILE_LINK_TTL", "300"))
 
 # --- Cấu hình nghiệp vụ của mot-cua (phải khớp processes/*.bpmn20.xml) ---------------
 # Mã thủ tục → khóa quy trình BPMN. Thủ tục chưa có quy trình thì không khởi tạo được.
@@ -61,6 +84,9 @@ BIEN_THEO_BUOC = {
 }
 # Giờ hết hạn trong ngày hạn xử lý (giờ Việt Nam), dùng cho hẹn giờ cảnh báo quá hạn.
 GIO_HET_HAN = "T17:00:00+07:00"
+# Tệp hồ sơ: bucket khai báo trong s3/buckets.conf, client dịch vụ trong keycloak/realm.json.
+BUCKET_HO_SO = "mot-cua-ho-so"
+CLIENT_DICH_VU_TEP = "mot_cua_tep"
 
 UUID = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 TOI_DA_BODY = 64 * 1024
@@ -351,13 +377,199 @@ def hoan_thanh(token, claims, task_id, body):
                  "buocDangMo": _buoc_dang_mo(t["processInstanceId"])}
 
 
+# --- Tệp hồ sơ (#7) -------------------------------------------------------------------
+class TokenDichVu:
+    """Access token Client Credentials của client dịch vụ (secret do app-realm ghi vào volume
+    bí mật). Lưu đệm tới gần hết hạn. TODO(#10): đọc secret từ OpenBao."""
+
+    def __init__(self, client_id):
+        self.client_id, self.token, self.het_han, self.lock = client_id, None, 0.0, threading.Lock()
+
+    def lay(self):
+        with self.lock:
+            if self.token and time.time() < self.het_han - 30:
+                return self.token
+            try:
+                with open(os.path.join(SECRETS_DIR, f"keycloak-{self.client_id}.secret"), encoding="utf-8") as f:
+                    bi_mat = f.read().strip()
+            except OSError as e:
+                log.error("thiếu secret của client %s: %s", self.client_id, e)
+                raise Loi(503, "API tệp chưa được cấu hình") from None
+            form = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": self.client_id,
+                                           "client_secret": bi_mat}).encode()
+            req = urllib.request.Request(TOKEN_URL, data=form, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    data = json.loads(r.read())
+            except (urllib.error.URLError, TimeoutError, ValueError) as e:
+                log.error("không lấy được token dịch vụ %s: %s", self.client_id, e)
+                raise Loi(502, "Không lấy được token dịch vụ") from None
+            self.token, self.het_han = data["access_token"], time.time() + int(data.get("expires_in", 60))
+            return self.token
+
+
+DICH_VU_TEP = TokenDichVu(CLIENT_DICH_VU_TEP)
+_S3 = {}
+
+
+def s3():
+    """Thông tin kết nối + khóa S3 riêng của ứng dụng (garage-init ghi). TODO(#10): OpenBao."""
+    if not _S3:
+        try:
+            with open(os.path.join(SECRETS_DIR, "s3.json"), encoding="utf-8") as f:
+                _S3.update(json.load(f))
+        except (OSError, ValueError) as e:
+            log.error("thiếu cấu hình S3: %s", e)
+            raise Loi(503, "Kho tệp chưa được cấu hình") from None
+    return _S3
+
+
+def _url_object(key):
+    return f"{s3()['endpoint']}/{BUCKET_HO_SO}/{urllib.parse.quote(key)}"
+
+
+def s3_goi(method, key, du_lieu=b"", tieu_de=None):
+    c = s3()
+    url = _url_object(key)
+    sha = hashlib.sha256(du_lieu).hexdigest()
+    h = tep.ky_header(method, url, c["region"], c["accessKeyId"], c["secretAccessKey"], sha, tieu_de)
+    req = urllib.request.Request(url, data=du_lieu if method == "PUT" else None, method=method,
+                                 headers={**(tieu_de or {}), **h})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        log.error("Garage %s %s → %s", method, key, e.code)
+        raise Loi(502, "Kho tệp trả lỗi") from None
+    except (urllib.error.URLError, TimeoutError) as e:
+        log.error("không gọi được Garage: %s", e)
+        raise Loi(502, "Kho tệp không phản hồi") from None
+
+
+def nhat_ky_tep(hanh_dong, claims, **cot):
+    """Ghi một dòng nhật ký tệp (bảng chỉ thêm). Lỗi ghi không che kết quả cho người dùng."""
+    dong = {"hanh_dong": hanh_dong, "nguoi_sub": claims["sub"], "vai_tro": vai_tro(claims) or "", **cot}
+    try:
+        pgrst(DICH_VU_TEP.lay(), "POST", "/nhat_ky_tep", dong, prefer="return=minimal")
+    except Loi as e:
+        log.error("không ghi được nhật ký tệp (%s): %s", hanh_dong, e.thong_diep)
+
+
+_COT_TEP = ("id,ho_so_id,thanh_phan_yeu_cau_id,ten_tep,loai_mime,kich_thuoc,sha256,object_key,"
+            "nguoi_tai_sub,ket_qua_quet,quet_luc,trang_thai_kiem_tra,created_at")
+
+
+def _so(gia_tri, ten):
+    try:
+        return int(gia_tri)
+    except (TypeError, ValueError):
+        raise Loi(400, f"{ten} phải là số nguyên") from None
+
+
+def tai_len(token, claims, req, ho_so_id):
+    sub, vai = claims["sub"], vai_tro(claims)
+    ten, duoi = tep.kiem_ten_tep(req.query.get("ten"))
+    mime = tep.kiem_loai_khai_bao(duoi, req.headers.get("Content-Type"))
+    yc_id = req.query.get("thanh_phan_yeu_cau_id")
+    if yc_id is not None and not re.fullmatch(UUID, yc_id):
+        raise Loi(400, "thanh_phan_yeu_cau_id phải là UUID")
+    if req.headers.get("Content-Length") is None:
+        raise Loi(411, "Thiếu Content-Length")
+    n = _so(req.headers["Content-Length"], "Content-Length")
+    if n > FILE_MAX_BYTES:
+        raise Loi(413, f"Tệp vượt {FILE_MAX_BYTES // (1024 * 1024)} MB")
+    if n <= 0:
+        raise Loi(400, "Tệp rỗng")
+    rows = pgrst(token, "GET", f"/ho_so?id=eq.{ho_so_id}&select=id,trang_thai,nguoi_nop_sub")
+    tep.kiem_quyen_tai_len(vai, sub, rows[0] if rows else None)
+
+    du_lieu = req.rfile.read(n)
+    if len(du_lieu) != n:
+        raise Loi(400, "Nhận thiếu dữ liệu tệp")
+    sha = hashlib.sha256(du_lieu).hexdigest()
+    vet = {"ho_so_id": ho_so_id, "ten_tep": ten, "kich_thuoc": n, "sha256": sha}
+    # Quét MỌI tệp nhận được trước khi làm gì khác với nội dung: tệp nhiễm luôn bị ghi nhật
+    # ký, kể cả khi sai loại. clamd không trả lời → 503, không lưu.
+    sach, ma_doc = tep.quet_clamav(CLAMAV_HOST, CLAMAV_PORT, du_lieu)
+    if not sach:
+        log.warning("chặn tệp nhiễm %s (sha256 %s) của %s vào hồ sơ %s", ma_doc, sha, sub, ho_so_id)
+        nhat_ky_tep("tu_choi_ma_doc", claims, **vet, chi_tiet=ma_doc)
+        raise Loi(422, "Tệp chứa mã độc, đã từ chối và không lưu", {"maDoc": ma_doc})
+    try:
+        tep.kiem_magic(duoi, du_lieu)
+    except tep.LoiTep as e:
+        nhat_ky_tep("tu_choi_loai_tep", claims, **vet, chi_tiet=f"đuôi .{duoi}, nhận diện {tep.nhan_dien(du_lieu)}")
+        raise e
+
+    key = f"ho-so/{ho_so_id}/{uuid.uuid4()}.{'jpg' if duoi == 'jpeg' else duoi}"
+    s3_goi("PUT", key, du_lieu, {"Content-Type": mime})
+    dong = {**vet, "thanh_phan_yeu_cau_id": yc_id, "loai_mime": mime, "object_key": key,
+            "nguoi_tai_sub": sub, "ket_qua_quet": "sach", "may_quet": _phien_ban_clamav(),
+            "quet_luc": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    try:
+        moi = pgrst(DICH_VU_TEP.lay(), "POST", f"/thanh_phan_ho_so?select={_COT_TEP}", dong,
+                    prefer="return=representation")[0]
+    except Loi:
+        try:
+            s3_goi("DELETE", key)  # không để lại object không có metadata
+        except Loi:
+            log.error("không xóa được object mồ côi %s", key)
+        raise
+    nhat_ky_tep("tai_len", claims, **vet, thanh_phan_ho_so_id=moi["id"])
+    log.info("lưu tệp %s (%d byte) vào hồ sơ %s", moi["id"], n, ho_so_id)
+    return 201, moi
+
+
+def _phien_ban_clamav():
+    try:
+        return tep.phien_ban_clamav(CLAMAV_HOST, CLAMAV_PORT)[:200]
+    except tep.LoiTep:
+        return None
+
+
+def _ton_tai(bang, tep_id):
+    return bool(pgrst(DICH_VU_TEP.lay(), "GET", f"/{bang}?id=eq.{tep_id}&select=id"))
+
+
+def ds_tep(token, claims, ho_so_id):
+    thay = bool(pgrst(token, "GET", f"/ho_so?id=eq.{ho_so_id}&select=id"))
+    tep.kiem_quyen_xem(vai_tro(claims), thay, thay or _ton_tai("ho_so", ho_so_id))
+    return 200, pgrst(token, "GET", f"/thanh_phan_ho_so?ho_so_id=eq.{ho_so_id}&select={_COT_TEP}&order=created_at")
+
+
+def xem_tep(token, claims, req, tep_id):
+    rows = pgrst(token, "GET", f"/thanh_phan_ho_so?id=eq.{tep_id}&select={_COT_TEP}")
+    tep.kiem_quyen_xem(vai_tro(claims), bool(rows), bool(rows) or _ton_tai("thanh_phan_ho_so", tep_id))
+    r = rows[0]
+    if not r.get("object_key"):
+        raise Loi(404, "Giấy tờ này chưa có tệp lưu trữ")
+    ttl = _so(req.query.get("ttl", FILE_LINK_TTL), "ttl")
+    if not 1 <= ttl <= FILE_LINK_TTL:
+        raise Loi(400, f"ttl phải trong 1–{FILE_LINK_TTL} giây")
+    c = s3()
+    url = tep.presign("GET", _url_object(r["object_key"]), c["region"], c["accessKeyId"], c["secretAccessKey"],
+                      ttl, query_them={"response-content-type": r["loai_mime"],
+                                       "response-content-disposition": tep.content_disposition(r["ten_tep"])})
+    nhat_ky_tep("cap_link", claims, ho_so_id=r["ho_so_id"], thanh_phan_ho_so_id=r["id"], ten_tep=r["ten_tep"],
+                kich_thuoc=r["kich_thuoc"], sha256=r["sha256"], chi_tiet=f"ttl {ttl}s")
+    het_han = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
+    # Garage (S3) không mở ra ngoài: link đi qua APISIX /files/s3/*, chữ ký do Garage kiểm.
+    return 200, {**r, "link": GATEWAY_URL + "/files/s3" + url[len(c["endpoint"]):],
+                 "hetHanLuc": het_han.isoformat(timespec="seconds")}
+
+
 # --- HTTP --------------------------------------------------------------------------
+# (phương thức, đường dẫn, body JSON?, hàm(token, claims, body JSON hoặc request, match))
 ROUTES = [
-    ("POST", re.compile(r"/ho-so"), lambda tk, c, b, m: nop_ho_so(tk, c, b)),
-    ("POST", re.compile(rf"/ho-so/({UUID})/khoi-tao"), lambda tk, c, b, m: khoi_tao(tk, c, m[1])),
-    ("GET", re.compile(rf"/ho-so/({UUID})/tien-do"), lambda tk, c, b, m: tien_do(tk, m[1])),
-    ("GET", re.compile(r"/tasks"), lambda tk, c, b, m: ds_task(tk, c)),
-    ("POST", re.compile(rf"/tasks/({UUID})/complete"), lambda tk, c, b, m: hoan_thanh(tk, c, m[1], b)),
+    ("POST", re.compile(r"/ho-so"), True, lambda tk, c, b, m: nop_ho_so(tk, c, b)),
+    ("POST", re.compile(rf"/ho-so/({UUID})/khoi-tao"), True, lambda tk, c, b, m: khoi_tao(tk, c, m[1])),
+    ("GET", re.compile(rf"/ho-so/({UUID})/tien-do"), True, lambda tk, c, b, m: tien_do(tk, m[1])),
+    ("GET", re.compile(r"/tasks"), True, lambda tk, c, b, m: ds_task(tk, c)),
+    ("POST", re.compile(rf"/tasks/({UUID})/complete"), True, lambda tk, c, b, m: hoan_thanh(tk, c, m[1], b)),
+    # Tệp: body là nội dung tệp, hàm tự đọc từ request.
+    ("POST", re.compile(rf"/files/ho-so/({UUID})/tep"), False, lambda tk, c, r, m: tai_len(tk, c, r, m[1])),
+    ("GET", re.compile(rf"/files/ho-so/({UUID})/tep"), False, lambda tk, c, r, m: ds_tep(tk, c, m[1])),
+    ("GET", re.compile(rf"/files/tep/({UUID})"), False, lambda tk, c, r, m: xem_tep(tk, c, r, m[1])),
 ]
 
 
@@ -374,23 +586,24 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def _xu_ly(self, method):
-        path = urllib.parse.urlsplit(self.path).path.rstrip("/") or "/"
+        u = urllib.parse.urlsplit(self.path)
+        path = u.path.rstrip("/") or "/"
+        self.query = dict(urllib.parse.parse_qsl(u.query, keep_blank_values=True))
         try:
             if method == "GET" and path == "/healthz":
                 return self._tra(200, {"ok": True})
-            ham = None
-            for m_route, mau, fn in ROUTES:
+            ham, khop_duong = None, False
+            for m_route, mau, json_body, fn in ROUTES:
                 m = mau.fullmatch(path)
+                khop_duong = khop_duong or bool(m)
                 if m and m_route == method:
-                    ham = (fn, m)
+                    ham = (fn, m, json_body)
                     break
-                if m:
-                    raise Loi(405, "Phương thức không hỗ trợ")
             if not ham:
-                raise Loi(404, "Không có endpoint này")
+                raise Loi(405, "Phương thức không hỗ trợ") if khop_duong else Loi(404, "Không có endpoint này")
             token, claims = kiem_token(self.headers.get("Authorization"))
-            body = {}
-            if method == "POST":
+            body = {} if ham[2] else self
+            if method == "POST" and ham[2]:
                 n = int(self.headers.get("Content-Length") or 0)
                 if n > TOI_DA_BODY:
                     raise Loi(413, "Body quá lớn")
@@ -402,7 +615,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise Loi(400, "Body phải là object JSON")
             status, data = ham[0](token, claims, body, ham[1])
             self._tra(status, data)
-        except Loi as e:
+        except (Loi, tep.LoiTep) as e:
             self._tra(e.status, {"loi": e.thong_diep, **({"chiTiet": e.chi_tiet} if e.chi_tiet else {})})
         except Exception:  # noqa: BLE001 – không để lộ chi tiết lỗi nội bộ ra client
             log.exception("lỗi không lường trước")
@@ -414,7 +627,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._xu_ly("POST")
 
-    def log_message(self, fmt, *args):  # không ghi query string (có thể chứa dữ liệu cá nhân)
+    def log_message(self, fmt, *args):  # không ghi query string (tên tệp, chữ ký…)
         log.info("%s %s %s", self.command, urllib.parse.urlsplit(self.path).path, args[1] if len(args) > 1 else "")
 
 

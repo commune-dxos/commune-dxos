@@ -31,6 +31,7 @@ flowchart TB
       PG[("PostgreSQL<br/>RLS + pgAudit")]
       AUD[("Log kiểm toán<br/>append-only + chuỗi băm SHA-256")]
       S3[("Garage<br/>S3, dịch vụ riêng")]
+      AV["ClamAV<br/>quét mã độc, dịch vụ riêng"]
       MS["Meilisearch CE"]
     end
 
@@ -39,7 +40,6 @@ flowchart TB
     BAO["OpenBao<br/>bí mật"]
 
     subgraph DOCS["Văn bản"]
-      AV["ClamAV<br/>quét mã độc, dịch vụ riêng"]
       GOT["Gotenberg<br/>sinh PDF"]
       CA["step-ca + pyHanko<br/>ký số"]
     end
@@ -59,21 +59,22 @@ flowchart TB
   GW -.->|JWKS| KC
   GW -- "/api (JWT), /public (anon)" --> PGR
   GW -- "/workflow" --> FL
-  GW -- "/files" --> S3
+  GW -- "/files (JWT) → backend ứng dụng" --> AV
+  GW -- "/files/s3 (link ký sẵn)" --> S3
   GW -- "/search" --> MS
 
   PGR --> PG
   PG --> AUD
   FL --> PG
   FL -- "sự kiện hồ sơ, trễ hạn" --> MQ
-  S3 -.->|quét trước khi lưu| AV
+  AV -.->|sạch mới lưu| S3
   FL --> GOT --> CA
 
   BAO -.->|cấp bí mật| PGR
   BAO -.->|cấp bí mật| FL
 ```
 
-Đường nét đứt là luồng nội bộ giữa các dịch vụ lõi. Hiện có `/public/*` (đọc công khai bằng role `anon`), `/api/*` (JWT → PostgREST), `/workflow/*` (JWT → backend của ứng dụng → Flowable) và `/files/*` (giữ chỗ 503 tới khi có Garage, #7); `/search` ở tuần 5. Bảng route: §4.1.
+Đường nét đứt là luồng nội bộ giữa các dịch vụ lõi. Hiện có `/public/*` (đọc công khai bằng role `anon`), `/api/*` (JWT → PostgREST), `/workflow/*` (JWT → backend của ứng dụng → Flowable), `/files/*` (JWT → backend của ứng dụng: quét ClamAV rồi lưu Garage, #7) và `/files/s3/*` (link GET đã ký ngắn hạn tới Garage); `/search` ở tuần 5. Bảng route: §4.1, luồng tệp: §4.3.
 
 ## 2. Lõi độc lập nghiệp vụ: `core/` và `apps/<tên>/`
 
@@ -93,21 +94,31 @@ core/                         Tầng 1 – không có tên bảng, vai trò hay 
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
-                                /workflow/* → app-backend, /files/* (giữ chỗ): bắt buộc JWT realm dxos;
+                                /workflow/*, /files/* → app-backend: bắt buộc JWT realm dxos;
+                                /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD);
                                 chặn API quản trị Flowable; CORS theo DXOS_CORS_ORIGINS (§4.1)
+  garage/garage.toml            Garage một nút (S3 :3900, Admin API :3903), bí mật đọc từ tệp (§4.3)
   scripts/app-migrate.sh        dịch vụ một lần: áp dụng SQL của ứng dụng
-  scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng
+  scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng; ghi secret
+                                của client dịch vụ vào volume app-secrets
   scripts/flowable-db-init.sh   dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine
+  scripts/garage-secrets.sh     dịch vụ một lần: sinh rpc_secret, admin_token của Garage
+  scripts/garage-init.py        dịch vụ một lần: layout, bucket của ứng dụng, khóa S3 riêng của ứng dụng
 apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   app.env                       PGRST_DB_SCHEMAS=mot_cua
   db/migrations/001_*.sql       role cong_dan/can_bo/lanh_dao, schema mot_cua (bản giữ chỗ tuần 1)
   db/migrations/002_*.sql       schema đầy đủ: lĩnh vực, thủ tục, thành phần, cán bộ, hồ sơ, RLS (#5)
+  db/migrations/003_*.sql       tệp hồ sơ: role dich_vu_tep, cột kết quả quét, nhật ký tệp chỉ thêm (#7)
   db/seed/002_*.sql             danh mục thủ tục, cán bộ, hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
   db/tests/rls.sql              test quyền/RLS từng vai trò (make smoke chạy)
-  keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, người dùng mẫu
+  keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, client dịch vụ
+                                mot_cua_tep (service account, role dich_vu_tep), người dùng mẫu
   processes/*.bpmn20.xml        quy trình BPMN viết tay, Flowable tự triển khai (#8)
-  backend/main.py               API quy trình mỏng /workflow (dịch vụ app-backend, #6, §4.2)
-  tests/smoke.sh                kiểm tra riêng của ứng dụng (make smoke gọi)
+  s3/buckets.conf               bucket S3 ứng dụng cần (mot-cua-ho-so) (#7)
+  backend/main.py               API quy trình mỏng /workflow (#6, §4.2) và API tệp /files (#7, §4.3),
+                                dịch vụ app-backend
+  backend/tep.py, tests/        phần thuần của API tệp + test đơn vị (make test, trong make check)
+  tests/smoke.sh, smoke-tep.sh  kiểm tra riêng của ứng dụng (make smoke gọi)
 ```
 
 | Thứ | Lõi `core/` | Ứng dụng `apps/mot-cua/` |
@@ -116,7 +127,8 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
 | Schema | `dxos` (hàm đọc claim, sổ migration; không phơi ra API) | `mot_cua` (phơi ra API qua `app.env`) |
 | RLS | hàm `dxos.jwt_sub()`, `dxos.jwt_claim()` dùng trong policy | policy trên mọi bảng `mot_cua`, theo vai trò và lĩnh vực cán bộ phụ trách (§2.7) |
 | Keycloak | realm `dxos`, khóa, OTP, client `dxos_api`, `dxos_cli` | client role của `dxos_api`, nhóm, client web, người dùng mẫu, required action OTP |
-| APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*` (không nêu tên tài nguyên); upstream `app-backend` là tên dịch vụ chung | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow` do `backend/main.py` của ứng dụng quyết định |
+| APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*`, `/files/s3/*` (không nêu tên tài nguyên); upstream `app-backend`, `garage-s3` là tên dịch vụ chung | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow`, `/files` do `backend/main.py` của ứng dụng quyết định |
+| Object storage | Garage một nút, ClamAV; tạo bucket và **một khóa S3 riêng cho mỗi ứng dụng** chỉ có quyền trên bucket ứng dụng khai báo; không biết tên bucket nghiệp vụ nào | `s3/buckets.conf`; cấu trúc khóa object, loại tệp nhận, quyền xem do backend + RLS của ứng dụng quyết định |
 
 ### 2.3 Khởi động
 
@@ -132,12 +144,19 @@ flowchart LR
   REALM -->|exit 0| GW
   FL["flowable<br/>apps/mot-cua/processes"] -->|healthy| BE["app-backend<br/>apps/mot-cua/backend/main.py"]
   PGR --> BE
+  GS["garage-secrets (một lần)"] -->|exit 0| S3["garage"]
+  S3 -->|healthy| GI["garage-init (một lần)<br/>apps/mot-cua/s3/buckets.conf"]
+  GI -->|exit 0, khóa S3 → app-secrets| BE
+  REALM -->|exit 0, secret client dịch vụ → app-secrets| BE
+  AV["clamav"] -.->|started| BE
   BE -->|healthy| GW
+  S3 -->|healthy| GW
 ```
 
 - `app-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
 - `app-realm` (image `keycloak`, đã có sẵn, dùng `kcadm.sh`): gọi **Partial Import** của Keycloak vào realm `dxos` với `ifResourceExists=SKIP`: đối tượng đã có thì giữ nguyên, nên chạy lại không lỗi và không ghi đè người dùng đã cài OTP (ghi đè sẽ đổi `sub`, làm hồ sơ cũ mất chủ).
-- Không kéo thêm image nào so với tuần 1. Chạy lại tay: `make migrate`; nạp dữ liệu mẫu khi đã tắt seed: `make seed`.
+- `garage-secrets`, `garage-init` (image `python` đã dùng cho `app-backend`): §4.3. `garage-init` chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
+- Chạy lại tay: `make migrate`; nạp dữ liệu mẫu khi đã tắt seed: `make seed`.
 
 ### 2.4 Hợp đồng giữa lõi và ứng dụng
 
@@ -150,7 +169,9 @@ Lõi chỉ biết các quy ước sau trong `apps/<DXOS_APP>/` (thiếu thư m�
 5. `tests/smoke.sh`: đoạn bash được `scripts/smoke.sh` `source`, dùng các hàm `kiem`, `ma_http`, `sql`, `kc`, `lay_token` trong `scripts/lib-smoke.sh`.
 6. `processes/*.bpmn20.xml` (#8): Flowable đọc thư mục này (mount chỉ đọc vào `/dxos/processes`, thuộc tính `flowable.process-definition-location-prefix`) và tự triển khai khi khởi động; tệp không đổi thì không tạo phiên bản mới. Cú pháp được `scripts/check-bpmn.py` kiểm trong `make check`/CI.
 7. `backend/main.py` (#6, D-008 mục 4): backend riêng của ứng dụng, dịch vụ `app-backend` chạy bằng image `python` gốc (chỉ thư viện chuẩn), nhận `/workflow/*` từ APISIX (đã bỏ tiền tố). Lõi truyền vào địa chỉ PostgREST, Flowable, JWKS, issuer, audience và mật khẩu tài khoản kỹ thuật Flowable qua biến môi trường. Thiếu tệp này thì dịch vụ chỉ chạy chỗ giữ, `/workflow` trả 502.
-8. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
+8. `s3/buckets.conf` (#7): mỗi dòng một tên bucket. `garage-init` tạo bucket và khóa `dxos-app-<DXOS_APP>` chỉ đọc/ghi trên các bucket này (không tạo được bucket, không phải owner; bucket bỏ khỏi danh sách thì bị thu hồi quyền), ghi thông tin kết nối vào `/run/dxos-secrets/s3.json` (volume `app-secrets`, quyền 600) mà `app-backend` mount chỉ đọc.
+9. Client có service account trong `keycloak/realm.json` (confidential, `serviceAccountsEnabled`): Keycloak tự sinh client secret khi nạp, `app-realm` ghi vào `/run/dxos-secrets/keycloak-<clientId>.secret` cho backend lấy token Client Credentials. Service account mang client role của `dxos_api` trùng role PostgreSQL như người dùng.
+10. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
 
 ### 2.5 Cắm một ứng dụng khác (cho lập trình viên)
 
@@ -192,7 +213,7 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`apps/mo
 | Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do ứng dụng nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `core/keycloak/realm-dxos.json`, `apps/mot-cua/keycloak/realm.json` |
 | API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `core/apisix/config.yaml`, `core/apisix/apisix.yaml`, §4.1, §8.5 |
 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của ứng dụng; migration theo ứng dụng; pgAudit (tuần 2) | `core/postgres/initdb/10-core.sql`, `core/scripts/app-migrate.sh`, `apps/mot-cua/db/` |
-| Quản trị dữ liệu phi cấu trúc | Garage (S3), ClamAV quét trước khi lưu; Meilisearch CE để tìm toàn văn | tuần 2 (TODO trong `docker-compose.yml`) |
+| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `core/garage/`, `core/scripts/garage-*.{sh,py}`, `apps/mot-cua/backend/`, §4.3, §8.6 |
 | Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động; Tầng 2 dùng qua `/workflow` (API quy trình của ứng dụng) | `docker-compose.yml` (`flowable`, `flowable-db-init`, `app-backend`), `apps/mot-cua/processes/`, `apps/mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
 ## 4. Luồng xác thực: JWT Keycloak → APISIX → PostgREST → RLS
@@ -251,11 +272,12 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 | `/api/*` | mọi | JWT Keycloak (APISIX + PostgREST kiểm) | PostgREST, `SET ROLE` theo `resource_access.dxos_api.roles[0]` → RLS | 600 req/phút/IP |
 | `/workflow/*` | mọi (backend chỉ nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `app-backend:8000` (backend của ứng dụng), bỏ tiền tố `/workflow` | 300 req/phút/IP; endpoint: `apps/<DXOS_APP>/README.md` |
 | `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
-| `/files/*` | mọi | JWT Keycloak | – | giữ chỗ, 503 tới khi có Garage + API tải tệp (#7) |
+| `/files/*` | mọi (backend nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `app-backend:8000`, giữ nguyên đường dẫn | 120 req/phút/IP; body ≤ 10 MiB (`client-control`, vượt → 413); endpoint: `apps/<DXOS_APP>/README.md` |
+| `/files/s3/*` | GET, HEAD | chữ ký SigV4 trong URL (Garage kiểm chữ ký và hạn) | Garage S3 `garage:3900`, bỏ tiền tố, Host viết lại `garage:3900` | 120 req/phút/IP; bỏ header `Authorization`, `Cookie`; thêm `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store` |
 
 - Toàn cục: plugin `cors` với `allow_origins` lấy từ biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
 - Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
-- Không mở cổng ra host: PostgREST, `app-backend`. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+- Không mở cổng ra host: PostgREST, `app-backend`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
 ### 4.2 Luồng `/workflow`: API quy trình mỏng của ứng dụng
 
@@ -294,6 +316,75 @@ sequenceDiagram
 - **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
 - Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình và phát sự kiện sang RabbitMQ (#9); Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
 
+### 4.3 Dữ liệu phi cấu trúc: tải tệp, quét ClamAV, link ký ngắn hạn (#7)
+
+Garage (AGPL-3.0) và ClamAV (GPL-2.0) chạy như **dịch vụ riêng bằng image gốc, không sửa mã**, chỉ nói chuyện qua mạng (S3 HTTP, giao thức TCP của `clamd`) – D-004, `NOTICE`. Backend của ứng dụng tự ký SigV4 và nói giao thức `clamd` bằng thư viện chuẩn Python (`apps/mot-cua/backend/tep.py`), không nhúng thư viện nào của hai dự án.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant App as Web Tầng 2
+  participant GW as APISIX
+  participant BE as app-backend (mot-cua)
+  participant API as PostgREST
+  participant AV as ClamAV (clamd)
+  participant S3 as Garage (S3)
+
+  App->>GW: POST /files/ho-so/{id}/tep?ten=to-khai.pdf<br/>Bearer TOKEN công dân, Content-Type: application/pdf, body = tệp
+  GW->>GW: JWT (JWKS) sai → 401; body > 10 MiB → 413
+  GW->>BE: chuyển nguyên request
+  BE->>BE: kiểm lại JWT; tên, đuôi pdf/jpg/png, Content-Type khớp đuôi → sai: 415
+  BE->>API: GET /ho_so?id=… (token người dùng, RLS)
+  Note over BE: chỉ công dân, hồ sơ của mình (không thấy → 404),<br/>trạng thái moi/cho_bo_sung (khác → 409)
+  BE->>AV: INSTREAM (toàn bộ nội dung)
+  alt nhiễm (vd. EICAR)
+    BE->>API: POST /nhat_ky_tep tu_choi_ma_doc (token dịch vụ)
+    BE-->>App: 422 + tên mẫu virus. KHÔNG lưu gì
+  else sạch
+    BE->>BE: magic bytes khớp đuôi? Không → nhật ký tu_choi_loai_tep, 415
+    BE->>S3: PUT mot-cua-ho-so/ho-so/{id}/{uuid}.pdf (khóa S3 của ứng dụng, SigV4)
+    BE->>API: POST /thanh_phan_ho_so (token dịch vụ dich_vu_tep): object_key, sha256,<br/>kích thước, người tải, ket_qua_quet=sach, phiên bản ClamAV
+    Note over BE,S3: ghi metadata lỗi → xóa object vừa lưu
+    BE->>API: POST /nhat_ky_tep tai_len
+    BE-->>App: 201 metadata
+  end
+  App->>GW: GET /files/tep/{id}?ttl=60 (Bearer)
+  GW->>BE: chuyển tiếp (đã kiểm JWT)
+  BE->>API: đọc metadata bằng token người dùng (RLS); không thấy mà tệp có thật → 403, không có → 404
+  BE->>API: nhật ký cap_link
+  BE-->>App: link = /files/s3/mot-cua-ho-so/…?X-Amz-…&X-Amz-Expires=60
+  App->>GW: GET link (không cần token)
+  GW->>S3: GET (Host garage:3900)
+  S3-->>App: tệp (sửa URL → 403; quá hạn → 400 "Date is too old")
+```
+
+**Thứ tự kiểm.** Kiểm rẻ trước khi đọc body (token, tên, đuôi, Content-Type, kích thước, quyền trên hồ sơ); sau khi nhận body thì **quét mọi tệp trước**, rồi mới kiểm magic bytes: tệp nhiễm luôn được ghi nhật ký kể cả khi sai loại. `clamd` không trả lời → 503, không lưu (fail-closed). Không có đường nào ghi object mà chưa qua quét: chỉ `app-backend` cầm khóa S3, route `/files/s3/*` chỉ cho GET/HEAD.
+
+**Ai ghi metadata.** Từ migration 003, công dân không còn quyền `INSERT` vào `thanh_phan_ho_so`: nếu backend ghi bằng token người dùng thì người dùng cũng tự ghi được qua `/api` với `object_key`, `sha256`, kết quả quét giả. Backend kiểm quyền bằng token người dùng, còn dòng metadata và nhật ký ghi bằng token **Client Credentials của client dịch vụ `mot_cua_tep`** (role `dich_vu_tep`). RLS vẫn là lớp thứ hai cho cả dịch vụ: chỉ gắn được tệp có `object_key` dưới tiền tố `ho-so/<ho_so_id>/`, do chính người nộp tải, đã quét sạch, vào hồ sơ đang `moi`/`cho_bo_sung`; dịch vụ không sửa, không xóa được metadata hay hồ sơ.
+
+| Vai trò | Tải lên | Xem/link tệp |
+|---|---|---|
+| `cong_dan` | hồ sơ của mình, khi `moi` hoặc `cho_bo_sung` | hồ sơ của mình |
+| `can_bo` | không (403) | hồ sơ thuộc lĩnh vực đang phụ trách; lĩnh vực khác → 403 |
+| `lanh_dao` | không (403) | mọi hồ sơ (chỉ xem) |
+| `dich_vu_tep` (service account) | ghi metadata/nhật ký sau khi backend đã kiểm | đọc để kiểm tồn tại; không cấp link |
+
+**Nhật ký tệp** `mot_cua.nhat_ky_tep`: `tai_len`, `tu_choi_ma_doc` (kèm tên mẫu virus, sha256), `tu_choi_loai_tep`, `cap_link`; chỉ thêm – trigger chặn `UPDATE`/`DELETE`/`TRUNCATE` kể cả superuser; lãnh đạo đọc được qua `/api/nhat_ky_tep`. Log kiểm toán chuỗi băm SHA-256 của toàn hệ thống là việc tuần 4.
+
+**Bí mật, không có trong repo hay `.env`:**
+
+| Bí mật | Sinh bởi | Nằm ở | Ai đọc |
+|---|---|---|---|
+| `rpc_secret`, `admin_token` của Garage | `garage-secrets` (32 byte ngẫu nhiên) | volume `garage-secrets`, quyền 600 | `garage`, `garage-init` |
+| Khóa S3 `dxos-app-<app>` (access key + secret) | Garage (`CreateKey`), `garage-init` ghi lại mỗi lần chạy | volume `app-secrets`, `s3.json`, quyền 600 | `app-backend` (mount chỉ đọc) |
+| Client secret `mot_cua_tep` | Keycloak khi nạp realm, `app-realm` ghi ra | volume `app-secrets`, `keycloak-mot_cua_tep.secret`, quyền 600 | `app-backend` |
+
+Không bí mật nào được in ra log; client chỉ nhận link đã ký (chứa access key ID, không chứa secret). **TODO(#10):** chuyển cả ba sang OpenBao (KV + chính sách theo dịch vụ), `garage-init`/`app-realm` ghi vào OpenBao thay cho volume, `app-backend` đọc bằng token OpenBao. Xoay khóa S3 hiện tại: xóa khóa `dxos-app-<app>` bằng CLI `garage key delete` (`docker compose exec garage /garage …`) rồi `docker compose --profile core up -d --force-recreate garage-init app-backend` (khóa mới được tạo và ghi lại; `app-backend` đọc tệp lúc khởi động lần gọi đầu).
+
+**Garage một nút.** `replication_factor = 1`, `db_engine = sqlite`, dung lượng khai báo `GARAGE_CAPACITY_BYTES` (mặc định 10 GiB). Đủ cho máy local và chung kết; triển khai thật cần ≥ 3 nút ở các zone khác nhau và `replication_factor = 3`. Link quá hạn Garage trả **400 `InvalidRequest: Date is too old`** (AWS S3 trả 403); sửa đường dẫn hay chữ ký → 403.
+
+**ClamAV.** Image `clamav/clamav:1.5.4-debian` (đa kiến trúc; bản Alpine chỉ có amd64), có sẵn CSDL virus nên volume trống không phải tải ~300 MB; `freshclam` trong container cập nhật vào volume `clamav-db`. Nạp CSDL mất khoảng 30–60 giây và cần ~1–1,5 GB RAM; trong lúc đó API tải tệp trả 503. ClamAV nằm trong profile `core` (không phải `docs`) vì quét là điều kiện bắt buộc để lưu tệp.
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; ứng dụng quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -308,8 +399,9 @@ sequenceDiagram
 | `core` | PostgreSQL, Keycloak, PostgREST, APISIX (+ dịch vụ một lần `jwks-init`, `app-migrate`, `app-realm`) | chạy thử 17/10 và 20/10/2026 | mục tiêu laptop 16 GB |
 | `core` | Flowable REST (+ dịch vụ một lần `flowable-db-init`) | chạy thử 20/10/2026 (#8) | JVM `-Xmx512M` |
 | `core` | `app-backend` (backend của ứng dụng, image `python` gốc) | chạy thử 21/10/2026 (#6) | ~20 MB RAM |
-| `core` | Garage, RabbitMQ, OpenBao | TODO tuần 2 | |
-| `docs` | Gotenberg, step-ca, ClamAV, Meilisearch CE | TODO tuần 2–5 | ClamAV cần ~1,5 GB RAM cho cơ sở dữ liệu mẫu virus |
+| `core` | Garage (+ dịch vụ một lần `garage-secrets`, `garage-init`), ClamAV | chạy thử 21/10/2026 (#7) | Garage ~30 MB RAM; ClamAV ~1–1,5 GB RAM cho CSDL virus |
+| `core` | RabbitMQ, OpenBao | TODO tuần 2 | |
+| `docs` | Gotenberg, step-ca, Meilisearch CE | TODO tuần 2–5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | Apache Superset | TODO tuần 4 | |
 
@@ -483,6 +575,27 @@ Docker Desktop, macOS arm64. Ba lần chạy, mỗi lần `make smoke` **199 đ�
 
 Dung lượng ổ hệ thống: 11 GB trống trước khi kéo image, 4,6 GB sau khi `make down` + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop chưa trả dung lượng tệp đĩa ảo).
 
+### 8.6 Kết quả chạy thử 21/10/2026 (Garage + ClamAV + API tệp, #7)
+
+Docker Desktop, macOS arm64. Ba lần chạy, mỗi lần `make smoke` **277 đạt, 0 trượt**: volume trống (project tạm `commune-i7`), chạy lại trên cùng volume, volume có sẵn tạo trước khi có Garage (`commune-i6`: migration 003 tự áp dụng, `app-realm` thêm client dịch vụ, không cần xóa volume). `make test`: 17 test đơn vị (tên/đuôi/Content-Type, magic bytes, quy tắc quyền, SigV4 theo ví dụ chính thức của AWS, giao thức `clamd`). `db/tests/rls.sql` thêm kiểm tra cho `dich_vu_tep` và nhật ký tệp.
+
+| Kiểm (qua APISIX) | Kết quả |
+|---|---|
+| Công dân tải PDF hợp lệ (tên tiếng Việt) | 201; Garage có object `ho-so/<id>/<uuid>.pdf`; dòng `thanh_phan_ho_so` có sha256, kích thước, người tải = `sub`, `ket_qua_quet=sach`, phiên bản ClamAV |
+| Tệp mẫu EICAR (đặt tên `.pdf`) | 422 kèm tên mẫu virus; không có object, không có dòng metadata; nhật ký `tu_choi_ma_doc` có `sub`, sha256, tên mẫu |
+| Tệp giả mạo (đuôi `.pdf`, nội dung HTML); PDF khai `image/png`; PDF đặt tên `.png`; đuôi `.exe` | 415; tệp giả mạo có nhật ký `tu_choi_loai_tep`, không có object |
+| Tệp 11 MiB | 413 ở gateway |
+| Thành phần yêu cầu không thuộc thủ tục | 400, object vừa lưu bị xóa (không để object mồ côi) |
+| Cán bộ, lãnh đạo tải lên; công dân khác tải vào hồ sơ không phải của mình; hồ sơ đang xử lý | 403; 403; 404; 409 |
+| Công dân ghi thẳng metadata qua `/api/thanh_phan_ho_so` | 403 |
+| Xem tệp: công dân chủ hồ sơ, cán bộ đúng lĩnh vực, lãnh đạo | 200, link tải đúng nội dung (sha256), `Content-Type: application/pdf`, `nosniff` |
+| Xem tệp: công dân khác; cán bộ sau khi bỏ phân công lĩnh vực; tệp không tồn tại; không token | 403; 403; 404; 401 |
+| Link: sửa chữ ký; đổi sang object khác; không chữ ký; `PUT /files/s3/…`; `ttl` vượt giới hạn | 403; 403; 403; 401; 400 |
+| Link `ttl=1`, gọi sau 3 giây | 400 `Date is too old` (không tải được) |
+| Hạ tầng | Garage, ClamAV healthy, không mở cổng ra host; Admin API không token → 403; khóa ứng dụng chỉ RW trên `mot-cua-ho-so`, không tạo được bucket; `s3.json` quyền 600, khóa không nằm trong biến môi trường; `garage-init` lần 2 không tạo thêm gì |
+
+Dung lượng ổ hệ thống: 11 GB trống trước khi kéo image, 1,3 GB sau khi `make down` + xóa volume project tạm + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả dung lượng tệp đĩa ảo cho macOS; cần dọn trước khi chạy lại).
+
 ## 9. Việc tiếp theo (tuần 2)
 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
@@ -490,5 +603,6 @@ Dung lượng ổ hệ thống: 11 GB trống trước khi kéo image, 4,6 GB sa
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
 - Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình và phát sự kiện (hồ sơ mới, chuyển bước, `quaHan`) sang RabbitMQ (#9); khởi tạo quy trình sau Poka-yoke (tuần 3).
-- Route `/files` thật (thay giữ chỗ 503) với Garage + ClamAV (#7); RabbitMQ, OpenBao; chuyển mật khẩu từ `.env` (kể cả mật khẩu `rest-admin` mà `app-backend` dùng) sang OpenBao.
+- RabbitMQ (#9), OpenBao (#10): chuyển mật khẩu từ `.env` (kể cả mật khẩu `rest-admin` mà `app-backend` dùng) và bí mật sinh lúc khởi tạo trong volume `garage-secrets`, `app-secrets` (§4.3) sang OpenBao.
+- Tệp: giao diện tải/xem (tuần 3); Poka-yoke kiểm đủ thành phần theo JSON Schema dựa trên `thanh_phan_ho_so` đã quét (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

@@ -11,7 +11,9 @@
 # | /public/*     | không (anon)    | PostgREST, chỉ GET/HEAD      | 60 req/phút/IP      |
 # | /api/*        | JWT Keycloak    | PostgREST (RLS theo role)    | 600 req/phút/IP     |
 # | /workflow/*   | JWT Keycloak    | app-backend → Flowable REST  | 300 req/phút/IP     |
-# | /files/*      | JWT Keycloak    | giữ chỗ, trả 503 (Garage #7) | –                   |
+# | /files/*      | JWT Keycloak    | app-backend (API tệp, #7)    | 120 req/phút/IP,    |
+# |               |                 |                              | body ≤ 10 MiB       |
+# | /files/s3/*   | chữ ký trong URL| Garage S3, chỉ GET/HEAD      | 120 req/phút/IP     |
 # Đường dẫn API quản trị Flowable (repository, management, identity…) bị chặn 403 ở
 # gateway, kể cả khi sau này ứng dụng chọn chuyển tiếp thẳng tới Flowable.
 
@@ -38,6 +40,12 @@ upstreams:
     type: roundrobin
     nodes:
       "app-backend:8000": 1
+
+  # API S3 của Garage (object storage của lõi). Chỉ dùng cho link GET đã ký sẵn.
+  - id: garage-s3
+    type: roundrobin
+    nodes:
+      "garage:3900": 1
 
 # Kiểm access token Keycloak (realm dxos), dùng chung cho mọi route cần đăng nhập.
 # APISIX kiểm chữ ký bằng JWKS, hạn, issuer; phía sau (PostgREST, app-backend) kiểm lại.
@@ -147,18 +155,50 @@ routes:
         regex_uri: ["^/workflow/(.*)", "/$1"]
     upstream_id: app-backend
 
-  # Dữ liệu phi cấu trúc: giữ chỗ, kiểm token rồi trả 503 cho tới khi có Garage + API tải
-  # tệp (#7). fault-injection mặc định chạy trước openid-connect; hạ ưu tiên để kiểm token trước.
-  - id: files-giu-cho
+  # Dữ liệu phi cấu trúc – link tải đã ký sẵn (presigned GET, SigV4) do backend của ứng dụng
+  # cấp sau khi kiểm quyền: không cần JWT, Garage tự kiểm chữ ký và hạn của link (hết hạn
+  # hoặc sửa URL → 403). Chỉ GET/HEAD; bỏ header Authorization/Cookie để chỉ link ký sẵn
+  # dùng được. Host viết lại thành garage:3900 vì chữ ký được tính với host đó.
+  - id: files-s3-ky-san
+    uri: /files/s3/*
+    methods: [GET, HEAD]
+    priority: 10
+    plugins:
+      limit-count:
+        count: 120
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      proxy-rewrite:
+        regex_uri: ["^/files/s3/(.*)", "/$1"]
+        host: "garage:3900"
+        headers:
+          remove: [Authorization, Cookie]
+      response-rewrite:
+        headers:
+          set:
+            X-Content-Type-Options: nosniff
+            Cache-Control: "private, no-store"
+    upstream_id: garage-s3
+
+  # Dữ liệu phi cấu trúc – API tệp của ứng dụng (tải lên, danh sách, cấp link): bắt buộc
+  # access token, body tối đa 10 MiB (413 ngay ở gateway; khớp DXOS_FILE_MAX_BYTES mặc định
+  # của backend). Giữ nguyên đường dẫn /files/… khi chuyển tới app-backend.
+  - id: files-jwt
     uri: /files/*
     priority: 0
     plugin_config_id: jwt-dxos
     plugins:
-      fault-injection:
-        _meta:
-          priority: 1
-        abort:
-          http_status: 503
-          body: '{"loi":"Lưu trữ tệp chưa sẵn sàng (Garage, issue #7)"}'
+      client-control:
+        max_body_size: 10485760
+      limit-count:
+        count: 120
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
     upstream_id: app-backend
 #END

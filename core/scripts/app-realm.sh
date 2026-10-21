@@ -32,3 +32,28 @@ for k in added skipped overwritten; do
   fi
 done
 echo "app-realm: $DXOS_APP → realm $REALM: ${tom_tat:-không có thay đổi}"
+
+# Client có service account (confidential) mà ứng dụng khai báo trong realm.json: ghi
+# client secret (Keycloak tự sinh khi nạp) vào volume bí mật của ứng dụng, tệp
+# keycloak-<clientId>.secret quyền 600, để backend của ứng dụng lấy token Client
+# Credentials. Secret không nằm trong repo, không in ra log. TODO(#10): ghi vào OpenBao.
+if [ -n "${APP_SECRETS_DIR:-}" ]; then
+  umask 077
+  mkdir -p "$APP_SECRETS_DIR"
+  con="$(< "$TEP")"
+  while [[ "$con" =~ \"clientId\"[[:space:]]*:[[:space:]]*\"([A-Za-z0-9_.-]+)\" ]]; do
+    client_id="${BASH_REMATCH[1]}"
+    con="${con#*"${BASH_REMATCH[0]}"}"
+    info="$("$KCADM" get clients --config "$CFG" -r "$REALM" -q "clientId=$client_id" \
+      --fields id,serviceAccountsEnabled,publicClient)"
+    [[ "$info" =~ \"serviceAccountsEnabled\"[[:space:]]*:[[:space:]]*true ]] || continue
+    [[ "$info" =~ \"publicClient\"[[:space:]]*:[[:space:]]*true ]] && continue
+    [[ "$info" =~ \"id\"[[:space:]]*:[[:space:]]*\"([^\"]+)\" ]] || continue
+    bi_mat="$("$KCADM" get "clients/${BASH_REMATCH[1]}/client-secret" --config "$CFG" -r "$REALM")"
+    [[ "$bi_mat" =~ \"value\"[[:space:]]*:[[:space:]]*\"([^\"]+)\" ]] || {
+      echo "app-realm: không đọc được secret của client $client_id" >&2; exit 1; }
+    printf '%s' "${BASH_REMATCH[1]}" > "$APP_SECRETS_DIR/keycloak-$client_id.secret.tmp"
+    mv "$APP_SECRETS_DIR/keycloak-$client_id.secret.tmp" "$APP_SECRETS_DIR/keycloak-$client_id.secret"
+    echo "app-realm: secret của client $client_id → $APP_SECRETS_DIR/keycloak-$client_id.secret"
+  done
+fi
