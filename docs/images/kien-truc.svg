@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Sơ đồ kiến trúc Commune DX-OS v0.1.0, vẽ tay theo docker-compose.yml (profile core), core/, apps/mot-cua/. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 960" width="1200" height="960" role="img" aria-labelledby="tieu-de mo-ta">
+  <title id="tieu-de">Kiến trúc Commune DX-OS v0.1.0</title>
+  <desc id="mo-ta">Tầng 2 (apps/mot-cua) gồm cổng công dân, cổng cán bộ (tuần 3), app-backend và app-worker. Tầng 1 (core) gồm Keycloak, APISIX, PostgREST, PostgreSQL, Flowable, Garage, ClamAV, RabbitMQ, OpenBao. Người dùng đăng nhập Keycloak, gọi APISIX bằng JWT; APISIX chuyển /public và /api tới PostgREST, /workflow và /files tới app-backend, /files/s3 tới Garage. app-backend quét tệp bằng ClamAV trước khi lưu vào Garage, ghi sự kiện vào hộp thư đi trong PostgreSQL; app-worker phát sự kiện lên RabbitMQ. OpenBao cấp bí mật cho mọi dịch vụ.</desc>
+  <defs>
+    <style>
+      text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0f172a; }
+      .tieude { font-size: 22px; font-weight: 700; fill: #1e3a8a; }
+      .phude { font-size: 13px; fill: #475569; }
+      .nhan-tang { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+      .ten { font-size: 15px; font-weight: 700; }
+      .dong { font-size: 12px; fill: #334155; }
+      .nho { font-size: 10.5px; fill: #475569; }
+      .ma { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; fill: #9f1239; }
+      .tuyen { font-size: 12px; font-weight: 700; fill: #1e3a8a; }
+      .nhan-mui { font-size: 11px; font-weight: 600; fill: #1e3a8a; }
+      .so { font-size: 12px; font-weight: 700; fill: #ffffff; }
+      .loi { fill: #ffffff; stroke: #60a5fa; stroke-width: 1.5; }
+      .app { fill: #fff1f2; stroke: #fb7185; stroke-width: 1.5; }
+      .sap-co { fill: #ffffff; stroke: #fb7185; stroke-width: 1.5; stroke-dasharray: 6 4; }
+      .chip { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1; }
+      .mui { stroke: #1e40af; stroke-width: 1.8; fill: none; marker-end: url(#dau); }
+      .mui-tep { stroke: #047857; stroke-width: 1.8; fill: none; marker-end: url(#dau-xanh); }
+      .mui-net-dut { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; marker-end: url(#dau-xam); }
+      .nen-nhan { fill: #ffffff; stroke: #bfdbfe; stroke-width: 1; }
+    </style>
+    <marker id="dau" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e40af"/>
+    </marker>
+    <marker id="dau-xanh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#047857"/>
+    </marker>
+    <marker id="dau-xam" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="960" fill="#f8fafc"/>
+
+  <!-- Tiêu đề -->
+  <text class="tieude" x="36" y="42">Commune DX-OS · Kiến trúc hệ thống v0.1.0</text>
+  <text class="phude" x="1164" y="42" text-anchor="end">vẽ theo docker-compose.yml (profile core), core/, apps/mot-cua/</text>
+
+  <!-- Người dùng -->
+  <text class="nhan-tang" x="36" y="85" fill="#475569">NGƯỜI DÙNG</text>
+  <rect x="380" y="62" width="120" height="34" rx="17" fill="#ffffff" stroke="#94a3b8"/>
+  <text class="dong" x="440" y="84" text-anchor="middle">Công dân</text>
+  <rect x="540" y="62" width="200" height="34" rx="17" fill="#ffffff" stroke="#94a3b8"/>
+  <text class="dong" x="640" y="84" text-anchor="middle">Cán bộ một cửa · chuyên môn</text>
+  <rect x="760" y="62" width="110" height="34" rx="17" fill="#ffffff" stroke="#94a3b8"/>
+  <text class="dong" x="815" y="84" text-anchor="middle">Lãnh đạo xã</text>
+  <path class="mui" d="M440,96 V144"/>
+  <path class="mui" d="M640,96 V144"/>
+  <path class="mui" d="M815,96 V144"/>
+
+  <!-- TẦNG 2 -->
+  <rect x="20" y="112" width="1160" height="152" rx="14" fill="#fff1f2" stroke="#fda4af" stroke-width="1.5"/>
+  <text class="nhan-tang" x="36" y="134" fill="#be123c">TẦNG 2 · apps/mot-cua/</text>
+  <text class="nho" x="232" y="134">ứng dụng Một cửa, cắm vào lõi bằng DXOS_APP; chỉ gọi lõi qua APISIX</text>
+
+  <rect class="app" x="40" y="146" width="250" height="90" rx="10"/>
+  <text class="ten" x="56" y="170" fill="#be123c">Hiện tại (v0.1.0)</text>
+  <text class="dong" x="56" y="191">chưa có giao diện web:</text>
+  <text class="dong" x="56" y="208">gọi cùng API bằng curl, Postman</text>
+  <text class="dong" x="56" y="225">(make smoke, make demo-users)</text>
+
+  <rect class="sap-co" x="330" y="146" width="230" height="90" rx="10"/>
+  <text class="ten" x="346" y="170">Cổng công dân</text>
+  <text class="nho" x="544" y="168" text-anchor="end" fill="#be123c">tuần 3</text>
+  <text class="dong" x="346" y="191">React + Vite · nộp hồ sơ online</text>
+  <text class="dong" x="346" y="208">Poka-yoke bằng JSON Schema</text>
+  <text class="dong" x="346" y="225">tra cứu tiến độ hồ sơ</text>
+
+  <rect class="sap-co" x="600" y="146" width="260" height="90" rx="10"/>
+  <text class="ten" x="616" y="170">Cổng cán bộ</text>
+  <text class="nho" x="844" y="168" text-anchor="end" fill="#be123c">tuần 3</text>
+  <text class="dong" x="616" y="191">React · SSO + MFA (OTP)</text>
+  <text class="dong" x="616" y="208">nhận, xử lý task theo lĩnh vực</text>
+  <text class="dong" x="616" y="225">cảnh báo sắp trễ hạn, phê duyệt</text>
+
+  <rect class="app" x="890" y="146" width="274" height="90" rx="10"/>
+  <text class="ten" x="906" y="168" fill="#be123c">Khai báo cho lõi</text>
+  <text class="nho" x="1150" y="168" text-anchor="end">không sửa core/</text>
+  <text class="ma" x="906" y="186">app.env · db/migrations/*.sql</text>
+  <text class="ma" x="906" y="201">keycloak/realm.json</text>
+  <text class="ma" x="906" y="216">processes/*.bpmn20.xml</text>
+  <text class="ma" x="906" y="231">s3/buckets.conf · rabbitmq/…json</text>
+
+  <!-- Nền TẦNG 1 (vẽ trước mũi tên đi xuống) -->
+  <rect x="20" y="284" width="1160" height="496" rx="14" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+
+  <!-- Nối hai cổng xuống lõi -->
+  <path d="M345,236 V248 H845 V236" fill="none" stroke="#fb7185" stroke-width="1.5"/>
+  <path d="M445,236 V248 M730,236 V248" fill="none" stroke="#fb7185" stroke-width="1.5"/>
+  <path class="mui" d="M345,248 L232,328"/>
+  <text class="nhan-mui" x="282" y="282" text-anchor="end">đăng nhập OIDC + PKCE</text>
+  <text class="nho" x="270" y="297" text-anchor="end">cán bộ, lãnh đạo: thêm mã OTP</text>
+  <path class="mui" d="M600,248 V328"/>
+  <text class="nhan-mui" x="610" y="294">HTTPS + Bearer JWT</text>
+
+  <!-- TẦNG 1 -->
+  <text class="nhan-tang" x="1164" y="306" text-anchor="end" fill="#1d4ed8">TẦNG 1 · core/ · LÕI HEADLESS</text>
+  <text class="nho" x="1164" y="321" text-anchor="end">chỉ API, không giao diện người dùng cuối, không chứa nghiệp vụ</text>
+
+  <!-- Keycloak -->
+  <rect class="loi" x="40" y="330" width="240" height="100" rx="10"/>
+  <text class="ten" x="56" y="355">Keycloak 26.3</text>
+  <text class="dong" x="56" y="376">SSO OIDC · realm dxos</text>
+  <text class="dong" x="56" y="393">khóa ký RS256, chống dò mật khẩu</text>
+  <text class="dong" x="56" y="410">MFA (OTP) bắt buộc cán bộ</text>
+  <circle cx="262" cy="348" r="11" fill="#d97706"/><text class="so" x="262" y="352" text-anchor="middle">1</text>
+
+  <!-- APISIX -->
+  <rect class="loi" x="320" y="330" width="850" height="100" rx="10"/>
+  <text class="ten" x="336" y="355">Apache APISIX 3.13 · API Gateway</text>
+  <text class="dong" x="336" y="375">kiểm JWT bằng JWKS · giới hạn tần suất · CORS · chặn API quản trị Flowable (403)</text>
+  <circle cx="1152" cy="348" r="11" fill="#d97706"/><text class="so" x="1152" y="352" text-anchor="middle">2</text>
+  <text class="nho" x="336" y="400">route</text>
+  <text class="nho" x="336" y="414">(core/apisix/apisix.yaml)</text>
+
+  <rect class="chip" x="547" y="386" width="82" height="36" rx="6"/>
+  <text class="tuyen" x="588" y="401" text-anchor="middle">/public</text>
+  <text class="nho" x="588" y="415" text-anchor="middle">anon · 60/phút</text>
+  <rect class="chip" x="637" y="386" width="82" height="36" rx="6"/>
+  <text class="tuyen" x="678" y="401" text-anchor="middle">/api</text>
+  <text class="nho" x="678" y="415" text-anchor="middle">JWT · 600/phút</text>
+  <rect class="chip" x="772" y="386" width="82" height="36" rx="6"/>
+  <text class="tuyen" x="813" y="401" text-anchor="middle">/workflow</text>
+  <text class="nho" x="813" y="415" text-anchor="middle">JWT · 300/phút</text>
+  <rect class="chip" x="862" y="386" width="82" height="36" rx="6"/>
+  <text class="tuyen" x="903" y="401" text-anchor="middle">/files</text>
+  <text class="nho" x="903" y="415" text-anchor="middle">JWT · ≤ 10 MiB</text>
+  <rect class="chip" x="997" y="386" width="155" height="36" rx="6"/>
+  <text class="tuyen" x="1074" y="401" text-anchor="middle">/files/s3</text>
+  <text class="nho" x="1074" y="415" text-anchor="middle">link ký sẵn SigV4 · GET</text>
+
+  <!-- JWKS -->
+  <path class="mui-net-dut" d="M320,412 H283"/>
+  <text class="nho" x="301" y="404" text-anchor="middle">JWKS</text>
+
+  <!-- Mũi tên route xuống đích -->
+  <path class="mui" d="M588,422 V488"/>
+  <path class="mui" d="M678,422 V488"/>
+  <path class="mui" d="M813,422 V488"/>
+  <path class="mui" d="M903,422 V488"/>
+  <path class="mui" d="M1074,422 V488"/>
+
+  <!-- OpenBao -->
+  <rect class="loi" x="40" y="490" width="240" height="260" rx="10"/>
+  <text class="ten" x="56" y="515">OpenBao 2.7</text>
+  <text class="dong" x="56" y="536">két bí mật của mọi dịch vụ</text>
+  <text class="dong" x="56" y="556">mỗi dịch vụ một AppRole</text>
+  <text class="dong" x="56" y="573">+ policy chỉ đọc phần của mình</text>
+  <text class="dong" x="56" y="593">agent *-secrets render tệp</text>
+  <text class="dong" x="56" y="610">bí mật vào volume (quyền 0400)</text>
+  <text class="dong" x="56" y="630">.env không chứa mật khẩu</text>
+  <text class="dong" x="56" y="650">bao-init tự init + unseal</text>
+  <text class="dong" x="56" y="667">ở mỗi make up (máy dev)</text>
+  <text class="nho" x="56" y="700">MPL-2.0 · thay HashiCorp Vault</text>
+  <text class="nho" x="56" y="715">(BSL, không phải OSI)</text>
+  <path d="M306,490 V750" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <path class="mui-net-dut" d="M280,620 H303"/>
+  <text class="nho" x="160" y="740" text-anchor="middle" fill="#64748b">- - → cấp bí mật cho mọi dịch vụ</text>
+
+  <!-- Hàng 2 -->
+  <rect class="app" x="320" y="490" width="175" height="100" rx="10"/>
+  <text class="ten" x="334" y="514">app-worker</text>
+  <text class="ma" x="334" y="531">backend/worker.py</text>
+  <text class="dong" x="334" y="551">phát hộp thư đi (outbox)</text>
+  <text class="dong" x="334" y="568">quét hồ sơ sắp trễ hạn</text>
+  <text class="dong" x="334" y="585">consumer mẫu</text>
+
+  <rect class="loi" x="545" y="490" width="175" height="100" rx="10"/>
+  <text class="ten" x="559" y="514">PostgREST 13</text>
+  <text class="dong" x="559" y="534">REST tự sinh từ schema</text>
+  <text class="dong" x="559" y="551">kiểm lại JWT (Zero-Trust)</text>
+  <text class="dong" x="559" y="568">OpenAPI theo quyền</text>
+  <circle cx="702" cy="508" r="11" fill="#d97706"/><text class="so" x="702" y="512" text-anchor="middle">3</text>
+
+  <rect class="app" x="770" y="490" width="175" height="100" rx="10"/>
+  <text class="ten" x="784" y="514">app-backend</text>
+  <text class="ma" x="784" y="531">backend/main.py</text>
+  <text class="dong" x="784" y="551">API mỏng /workflow, /files</text>
+  <text class="dong" x="784" y="568">kiểm JWT, quyền theo vai</text>
+  <text class="dong" x="784" y="585">trò và lĩnh vực</text>
+
+  <rect class="loi" x="995" y="490" width="175" height="100" rx="10"/>
+  <text class="ten" x="1009" y="514">Garage 2.4 (S3)</text>
+  <text class="dong" x="1009" y="534">bucket mot-cua-ho-so</text>
+  <text class="dong" x="1009" y="551">chỉ nhận tệp đã quét sạch</text>
+  <text class="nho" x="1009" y="575">AGPL · dịch vụ riêng</text>
+  <circle cx="1152" cy="508" r="11" fill="#d97706"/><text class="so" x="1152" y="512" text-anchor="middle">3</text>
+
+  <!-- Hàng 3 -->
+  <rect class="loi" x="320" y="650" width="175" height="100" rx="10"/>
+  <text class="ten" x="334" y="674">RabbitMQ 4.3</text>
+  <text class="dong" x="334" y="694">STOMP · vhost mot-cua</text>
+  <text class="dong" x="334" y="711">exchange mot_cua.su_kien</text>
+  <text class="dong" x="334" y="728">queue lỗi (dead-letter)</text>
+
+  <rect class="loi" x="545" y="650" width="175" height="100" rx="10"/>
+  <text class="ten" x="559" y="674">PostgreSQL 17.6</text>
+  <text class="dong" x="559" y="694">RLS (FORCE) theo vai trò</text>
+  <text class="dong" x="559" y="711">schema mot_cua, outbox</text>
+  <text class="dong" x="559" y="728">CSDL keycloak, flowable</text>
+  <circle cx="702" cy="668" r="11" fill="#d97706"/><text class="so" x="702" y="672" text-anchor="middle">3</text>
+
+  <rect class="loi" x="770" y="650" width="175" height="100" rx="10"/>
+  <text class="ten" x="784" y="674">Flowable 8.0</text>
+  <text class="dong" x="784" y="694">REST · BPMN 2.0 viết tay</text>
+  <text class="dong" x="784" y="711">tự triển khai processes/</text>
+  <text class="dong" x="784" y="728">hẹn giờ quá hạn</text>
+  <circle cx="927" cy="668" r="11" fill="#d97706"/><text class="so" x="927" y="672" text-anchor="middle">4</text>
+
+  <rect class="loi" x="995" y="650" width="175" height="100" rx="10"/>
+  <text class="ten" x="1009" y="674">ClamAV 1.5</text>
+  <text class="dong" x="1009" y="694">quét mọi tệp trước khi lưu</text>
+  <text class="dong" x="1009" y="711">nhiễm → 422, không lưu</text>
+  <text class="nho" x="1009" y="735">GPL · dịch vụ riêng</text>
+  <circle cx="1152" cy="668" r="11" fill="#d97706"/><text class="so" x="1152" y="672" text-anchor="middle">3</text>
+
+  <!-- Luồng nội bộ -->
+  <!-- app-worker đọc outbox qua PostgREST, phát lên RabbitMQ -->
+  <path class="mui" d="M495,540 H543"/>
+  <rect class="nen-nhan" x="499" y="522" width="42" height="14" rx="3"/>
+  <text class="nho" x="520" y="533" text-anchor="middle">outbox</text>
+  <path class="mui" d="M407,590 V648"/>
+  <text class="nhan-mui" x="415" y="616">STOMP</text>
+  <text class="nho" x="415" y="630">phát + nhận</text>
+
+  <!-- app-backend ↔ PostgREST: hồ sơ (token người dùng, RLS) và sự kiện vào outbox -->
+  <path class="mui" d="M770,520 H722"/>
+  <rect class="nen-nhan" x="725" y="503" width="42" height="14" rx="3"/>
+  <text class="nho" x="746" y="514" text-anchor="middle">hồ sơ</text>
+  <path class="mui" d="M770,565 H722"/>
+  <rect class="nen-nhan" x="725" y="548" width="42" height="14" rx="3"/>
+  <text class="nho" x="746" y="559" text-anchor="middle">outbox</text>
+
+  <!-- PostgREST → PostgreSQL -->
+  <path class="mui" d="M632,590 V648"/>
+  <text class="nhan-mui" x="640" y="616">SET ROLE</text>
+  <text class="nho" x="640" y="630">theo JWT → RLS</text>
+
+  <!-- app-backend → Flowable -->
+  <path class="mui" d="M857,590 V648"/>
+  <text class="nhan-mui" x="865" y="616">REST</text>
+  <text class="nho" x="865" y="630">tài khoản kỹ thuật</text>
+
+  <!-- Flowable → PostgreSQL -->
+  <path class="mui" d="M770,700 H722"/>
+  <rect class="nen-nhan" x="728" y="683" width="36" height="14" rx="3"/>
+  <text class="nho" x="746" y="694" text-anchor="middle">CSDL</text>
+
+  <!-- Tệp: quét trước, sạch mới lưu -->
+  <path class="mui-tep" d="M935,590 L1003,648"/>
+  <text class="nhan-mui" x="975" y="612" fill="#047857">① quét</text>
+  <path class="mui-tep" d="M945,540 H993"/>
+  <rect class="nen-nhan" x="948" y="522" width="42" height="14" rx="3"/>
+  <text class="nho" x="969" y="533" text-anchor="middle" fill="#047857">② lưu</text>
+
+  <!-- Chú giải -->
+  <rect x="20" y="796" width="1160" height="148" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text class="nhan-tang" x="36" y="820" fill="#475569">CHÚ GIẢI</text>
+
+  <rect class="loi" x="36" y="834" width="28" height="18" rx="4"/>
+  <text class="dong" x="72" y="848">core/ · thành phần nguồn mở, image gốc, không sửa</text>
+  <rect class="app" x="400" y="834" width="28" height="18" rx="4"/>
+  <text class="dong" x="436" y="848">apps/mot-cua/ · mã và cấu hình của ứng dụng</text>
+  <rect class="sap-co" x="740" y="834" width="28" height="18" rx="4"/>
+  <text class="dong" x="776" y="848">sắp có (tuần 3)</text>
+  <path class="mui-net-dut" d="M900,843 H940"/>
+  <text class="dong" x="948" y="848">cấp bí mật, khóa</text>
+
+  <circle cx="50" cy="878" r="11" fill="#d97706"/><text class="so" x="50" y="882" text-anchor="middle">1</text>
+  <text class="dong" x="68" y="883">Identity / SSO</text>
+  <circle cx="190" cy="878" r="11" fill="#d97706"/><text class="so" x="190" y="882" text-anchor="middle">2</text>
+  <text class="dong" x="208" y="883">API Gateway</text>
+  <circle cx="320" cy="878" r="11" fill="#d97706"/><text class="so" x="320" y="882" text-anchor="middle">3</text>
+  <text class="dong" x="338" y="883">Dữ liệu có cấu trúc (PostgREST + PostgreSQL) và phi cấu trúc (Garage + ClamAV)</text>
+  <circle cx="860" cy="878" r="11" fill="#d97706"/><text class="so" x="860" y="882" text-anchor="middle">4</text>
+  <text class="dong" x="878" y="883">Workflow engine</text>
+  <text class="nho" x="1164" y="883" text-anchor="end">= 4 dịch vụ bắt buộc của đề</text>
+
+  <text class="nho" x="36" y="910">Không mở cổng ra máy host: PostgREST, app-backend, app-worker, Garage, ClamAV, RabbitMQ, OpenBao. Cổng debug chỉ trên 127.0.0.1: PostgreSQL, Flowable.</text>
+  <text class="nho" x="36" y="928">Chưa có trong compose (kế hoạch tuần 4–5): Gotenberg, step-ca + pyHanko, Superset, Meilisearch CE, OCR + Ollama. Chi tiết: docs/architecture.md.</text>
+</svg>

@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Luồng hồ sơ đăng ký khai sinh, vẽ tay theo apps/mot-cua/processes/dang_ky_khai_sinh.bpmn20.xml và apps/mot-cua/backend/. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-labelledby="tieu-de mo-ta">
+  <title id="tieu-de">Luồng hồ sơ đăng ký khai sinh</title>
+  <desc id="mo-ta">Công dân nộp hồ sơ, cán bộ hộ tịch tiếp nhận; thiếu thành phần thì công dân bổ sung rồi quay lại tiếp nhận; đủ thì thẩm định; không đạt thì từ chối; đạt thì lãnh đạo phê duyệt; duyệt thì hoàn tất, trả lại thì về bước thẩm định. Hẹn giờ quá hạn không ngắt quy trình. Mỗi bước phát sự kiện qua hộp thư đi lên RabbitMQ.</desc>
+  <defs>
+    <style>
+      text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0f172a; }
+      .tieude { font-size: 22px; font-weight: 700; fill: #1e3a8a; }
+      .phude { font-size: 13px; fill: #475569; }
+      .lan { font-size: 14px; font-weight: 700; }
+      .ten { font-size: 13px; font-weight: 700; }
+      .dong { font-size: 12px; fill: #334155; }
+      .nho { font-size: 10.5px; fill: #475569; }
+      .ma { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; fill: #9f1239; }
+      .nhan-mui { font-size: 11.5px; font-weight: 600; fill: #92400e; }
+      .buoc { fill: #ffffff; stroke: #3b82f6; stroke-width: 1.6; }
+      .cong { fill: #fef3c7; stroke: #d97706; stroke-width: 1.6; }
+      .mui { stroke: #1e40af; stroke-width: 1.8; fill: none; marker-end: url(#dau); }
+      .ghi-chu { fill: #ffffff; stroke: #fb7185; stroke-width: 1.4; stroke-dasharray: 6 4; }
+      .khung { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    </style>
+    <marker id="dau" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e40af"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="740" fill="#f8fafc"/>
+  <text class="tieude" x="36" y="42">Luồng hồ sơ đăng ký khai sinh</text>
+  <text class="phude" x="1164" y="42" text-anchor="end">quy trình dang_ky_khai_sinh · apps/mot-cua/processes/ · Flowable 8.0</text>
+
+  <!-- Làn -->
+  <rect x="20" y="66" width="1160" height="150" fill="#fff1f2" stroke="#fda4af"/>
+  <rect x="20" y="216" width="1160" height="150" fill="#eff6ff" stroke="#93c5fd"/>
+  <rect x="20" y="366" width="1160" height="150" fill="#eff6ff" stroke="#93c5fd"/>
+  <rect x="20" y="66" width="120" height="450" fill="none" stroke="#94a3b8"/>
+  <line x1="20" y1="216" x2="140" y2="216" stroke="#94a3b8"/>
+  <line x1="20" y1="366" x2="140" y2="366" stroke="#94a3b8"/>
+  <text class="lan" x="80" y="140" text-anchor="middle" fill="#be123c">Công dân</text>
+  <text class="nho" x="80" y="157" text-anchor="middle">người nộp (sub)</text>
+  <text class="lan" x="80" y="286" text-anchor="middle" fill="#1d4ed8">Cán bộ</text>
+  <text class="lan" x="80" y="303" text-anchor="middle" fill="#1d4ed8">hộ tịch</text>
+  <text class="nho" x="80" y="320" text-anchor="middle">nhóm ho_tich</text>
+  <text class="lan" x="80" y="436" text-anchor="middle" fill="#1d4ed8">Lãnh đạo xã</text>
+  <text class="nho" x="80" y="453" text-anchor="middle">nhóm lanh_dao</text>
+
+  <!-- Bắt đầu -->
+  <circle cx="210" cy="145" r="16" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text class="ten" x="210" y="100" text-anchor="middle">Nộp hồ sơ</text>
+  <text class="ma" x="210" y="116" text-anchor="middle">POST /workflow/ho-so</text>
+  <path class="mui" d="M210,161 V295 H248"/>
+
+  <!-- Bổ sung -->
+  <rect class="buoc" x="440" y="115" width="160" height="60" rx="10"/>
+  <text class="ten" x="520" y="140" text-anchor="middle">Bổ sung hồ sơ</text>
+  <text class="nho" x="520" y="158" text-anchor="middle">giao đích danh người nộp</text>
+  <path class="mui" d="M440,145 H330 V263"/>
+
+  <!-- Tải giấy tờ (ngoài BPMN) -->
+  <rect class="ghi-chu" x="680" y="88" width="480" height="112" rx="10"/>
+  <text class="ten" x="696" y="110" fill="#be123c">Tải giấy tờ (ngoài BPMN, qua API tệp)</text>
+  <text class="ma" x="696" y="130">POST /files/ho-so/{id}/tep</text>
+  <text class="dong" x="696" y="150">chỉ hồ sơ của mình, khi hồ sơ mới hoặc chờ bổ sung; PDF/JPG/PNG ≤ 10 MiB</text>
+  <text class="dong" x="696" y="168">ClamAV quét trước: sạch mới lưu Garage, nhiễm → 422 và ghi nhật ký</text>
+  <text class="dong" x="696" y="186">cán bộ xem tệp bằng link ký sẵn ngắn hạn (GET /files/tep/{id})</text>
+
+  <!-- Tiếp nhận -->
+  <rect class="buoc" x="250" y="265" width="160" height="60" rx="10"/>
+  <text class="ten" x="330" y="290" text-anchor="middle">Tiếp nhận, kiểm tra</text>
+  <text class="nho" x="330" y="308" text-anchor="middle">thành phần hồ sơ</text>
+  <path class="mui" d="M410,295 H474"/>
+
+  <!-- Cổng: đủ thành phần? -->
+  <path class="cong" d="M500,271 L524,295 L500,319 L476,295 z"/>
+  <text class="ten" x="500" y="300" text-anchor="middle" fill="#92400e">×</text>
+  <text class="nho" x="500" y="338" text-anchor="middle">Đủ thành phần?</text>
+  <text class="nho" x="500" y="351" text-anchor="middle">biến hopLe</text>
+  <path class="mui" d="M500,271 V177"/>
+  <text class="nhan-mui" x="508" y="230">thiếu</text>
+  <path class="mui" d="M524,295 H578"/>
+  <text class="nhan-mui" x="551" y="287" text-anchor="middle">đủ</text>
+
+  <!-- Thẩm định -->
+  <rect class="buoc" x="580" y="265" width="160" height="60" rx="10"/>
+  <text class="ten" x="660" y="290" text-anchor="middle">Thẩm định hồ sơ</text>
+  <text class="nho" x="660" y="308" text-anchor="middle">cán bộ phụ trách lĩnh vực</text>
+  <path class="mui" d="M740,295 H794"/>
+
+  <!-- Cổng: đạt yêu cầu? -->
+  <path class="cong" d="M820,271 L844,295 L820,319 L796,295 z"/>
+  <text class="ten" x="820" y="300" text-anchor="middle" fill="#92400e">×</text>
+  <text class="nho" x="820" y="258" text-anchor="middle">Đạt yêu cầu? (datYeuCau)</text>
+  <path class="mui" d="M844,295 H992"/>
+  <text class="nhan-mui" x="918" y="287" text-anchor="middle">không đạt</text>
+  <path class="mui" d="M820,319 V413"/>
+  <text class="nhan-mui" x="828" y="372">đạt</text>
+
+  <!-- Kết thúc: từ chối -->
+  <circle cx="1010" cy="295" r="16" fill="#fef2f2" stroke="#dc2626" stroke-width="4"/>
+  <text class="ten" x="1010" y="331" text-anchor="middle" fill="#b91c1c">Từ chối</text>
+  <text class="nho" x="1010" y="346" text-anchor="middle">ketQua = tu_choi</text>
+
+  <!-- Phê duyệt -->
+  <rect class="buoc" x="740" y="415" width="160" height="60" rx="10"/>
+  <text class="ten" x="820" y="440" text-anchor="middle">Phê duyệt,</text>
+  <text class="ten" x="820" y="457" text-anchor="middle">ký giấy khai sinh</text>
+  <path class="mui" d="M900,445 H954"/>
+
+  <!-- Cổng: phê duyệt? -->
+  <path class="cong" d="M980,421 L1004,445 L980,469 L956,445 z"/>
+  <text class="ten" x="980" y="450" text-anchor="middle" fill="#92400e">×</text>
+  <text class="nho" x="980" y="410" text-anchor="middle">pheDuyet?</text>
+  <path class="mui" d="M1004,445 H1082"/>
+  <text class="nhan-mui" x="1043" y="437" text-anchor="middle">duyệt</text>
+  <path class="mui" d="M980,469 V500 H660 V327"/>
+  <text class="nhan-mui" x="820" y="494" text-anchor="middle">trả lại</text>
+
+  <!-- Kết thúc: hoàn tất -->
+  <circle cx="1100" cy="445" r="16" fill="#ecfdf5" stroke="#059669" stroke-width="4"/>
+  <text class="ten" x="1100" y="481" text-anchor="middle" fill="#047857">Hoàn tất</text>
+  <text class="nho" x="1100" y="496" text-anchor="middle">trả kết quả</text>
+
+  <!-- Khung dưới: quá hạn -->
+  <rect class="khung" x="20" y="536" width="370" height="160" rx="12"/>
+  <text class="ten" x="36" y="560">Quá hạn: quy trình con sự kiện, không ngắt</text>
+  <circle cx="70" cy="610" r="16" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
+  <circle cx="70" cy="610" r="12" fill="#ffffff" stroke="#334155" stroke-width="1" stroke-dasharray="3 2"/>
+  <path d="M70,602 V610 H77" fill="none" stroke="#334155" stroke-width="1.5"/>
+  <path class="mui" d="M86,610 H138"/>
+  <rect class="buoc" x="140" y="586" width="140" height="48" rx="10"/>
+  <text class="ten" x="210" y="606" text-anchor="middle">Đánh dấu quá hạn</text>
+  <text class="nho" x="210" y="622" text-anchor="middle">quaHan = true</text>
+  <path class="mui" d="M280,610 H330"/>
+  <circle cx="346" cy="610" r="14" fill="#ffffff" stroke="#334155" stroke-width="3.5"/>
+  <text class="nho" x="36" y="656">hẹn giờ đến ${hanXuLyLuc}: hạn tính theo ngày làm việc</text>
+  <text class="nho" x="36" y="671">trong CSDL (bỏ thứ Bảy, Chủ nhật, ngày nghỉ); quy trình chính</text>
+  <text class="nho" x="36" y="686">vẫn chạy tiếp</text>
+
+  <!-- Khung dưới: API -->
+  <rect class="khung" x="410" y="536" width="380" height="160" rx="12"/>
+  <text class="ten" x="426" y="560">Mỗi bước đi qua APISIX → app-backend</text>
+  <text class="ma" x="426" y="582">GET /workflow/tasks</text>
+  <text class="dong" x="426" y="598">task của nhóm, lĩnh vực mình đang phụ trách</text>
+  <text class="ma" x="426" y="620">POST /workflow/tasks/{id}/complete</text>
+  <text class="dong" x="426" y="636">chỉ nhận biến khai báo cho bước: hopLe, datYeuCau,</text>
+  <text class="dong" x="426" y="652">pheDuyet, ghiChu; backend nhận task cho sub rồi</text>
+  <text class="dong" x="426" y="668">hoàn thành, Flowable ghi đúng người xử lý</text>
+  <text class="nho" x="426" y="686">người dùng không cầm mật khẩu Flowable</text>
+
+  <!-- Khung dưới: sự kiện -->
+  <rect class="khung" x="810" y="536" width="370" height="160" rx="12"/>
+  <text class="ten" x="826" y="560">Sự kiện RabbitMQ (outbox → app-worker)</text>
+  <text class="ma" x="826" y="582">ho_so.moi</text>
+  <text class="dong" x="966" y="582">khởi tạo quy trình</text>
+  <text class="ma" x="826" y="602">ho_so.chuyen_buoc</text>
+  <text class="dong" x="966" y="602">hoàn thành một bước</text>
+  <text class="ma" x="826" y="622">ho_so.hoan_tat</text>
+  <text class="dong" x="966" y="622">kết thúc ở Hoàn tất</text>
+  <text class="ma" x="826" y="642">ho_so.tu_choi</text>
+  <text class="dong" x="966" y="642">kết thúc ở Từ chối</text>
+  <text class="ma" x="826" y="662">ho_so.sap_tre_han</text>
+  <text class="dong" x="966" y="662">còn ≤ 1 ngày làm việc</text>
+  <text class="nho" x="826" y="684">không chứa dữ liệu cá nhân; mỗi (hồ sơ, hạn) một lần</text>
+
+  <text class="nho" x="36" y="722">Chưa làm (tuần 3): Poka-yoke kiểm đủ thành phần bằng JSON Schema trước khi khởi tạo quy trình; đồng bộ ho_so.trang_thai theo bước quy trình.</text>
+</svg>
