@@ -9,7 +9,10 @@ Cấu hình các dịch vụ lõi dùng chung cho mọi ứng dụng Tầng 2. �
 | `apisix/` | `/public/*` → role `anon`, chỉ GET, 60 req/phút/IP; `/api/*` → PostgREST, `/workflow/*` → backend của ứng dụng (dịch vụ `app-backend`), `/files/*` giữ chỗ 503: bắt buộc JWT realm `dxos`; chặn 403 API quản trị Flowable; CORS theo `DXOS_CORS_ORIGINS` (`docs/architecture.md` §4.1) |
 | `scripts/app-migrate.sh` | dịch vụ một lần: áp dụng `apps/<DXOS_APP>/db/` (migration + seed) |
 | `scripts/app-realm.sh` | dịch vụ một lần: nạp `apps/<DXOS_APP>/keycloak/realm.json` vào realm `dxos` |
-| `scripts/flowable-db-init.sh` | dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine (chạy lại không lỗi, dùng được với volume cũ) |
+| `scripts/db-init.sh` | dịch vụ một lần: role + CSDL riêng của `authenticator`, `keycloak`, `flowable`, mật khẩu theo OpenBao (chạy lại không lỗi, dùng được với volume cũ) |
+| `scripts/kc-start.sh` | entrypoint Keycloak: đọc mật khẩu CSDL và quản trị từ tệp bí mật (OpenBao) |
+| `scripts/garage-init.py` | dịch vụ một lần: layout Garage, bucket ứng dụng khai báo, khóa S3 riêng của ứng dụng → OpenBao |
+| `openbao/` | két sắt bí mật (#10): `config.hcl` (server raft, không UI, audit), `bao-init.py` (init/unseal/KV/policy/AppRole, `make bao-init`), `policies/` (policy từng danh tính), `agent/` (agent một lần render tệp bí mật), `kiem-quyen.py` (kiểm policy trong `make smoke`); `docs/architecture.md` §4.4 |
 
 Workflow engine Flowable REST (`docker-compose.yml`, dịch vụ `flowable`) không có cấu hình riêng trong `core/`: nó tự triển khai `apps/<DXOS_APP>/processes/*.bpmn20.xml` khi khởi động.
 

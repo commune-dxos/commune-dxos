@@ -243,4 +243,6 @@ make smoke                      # toàn bộ: lõi + ứng dụng + quy trình F
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql   # chỉ RLS
 ```
 
-Sắp tới: sự kiện RabbitMQ (#9), khóa S3 và secret client dịch vụ sang OpenBao (#10), cổng công dân và cổng cán bộ (React, tuần 3).
+Bí mật của ứng dụng (khóa S3, secret client `mot_cua_tep`, mật khẩu `rest-admin` của Flowable) đọc từ OpenBao của lõi bằng AppRole `app` (`backend/bimat.py`, chỉ giữ trong bộ nhớ), xem `docs/architecture.md` §4.4.
+
+Sắp tới: sự kiện RabbitMQ (#9), cổng công dân và cổng cán bộ (React, tuần 3).

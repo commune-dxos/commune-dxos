@@ -1,12 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed smoke test license check
+.PHONY: up down logs ps migrate seed smoke test license check bao-init bao-status bao-import-env
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
 
-up:            ## Chạy lõi Tầng 1 + ứng dụng DXOS_APP (profile core). Cần: cp .env.example .env
-	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env rồi đổi mật khẩu"; exit 1; }
+up:            ## Chạy lõi Tầng 1 + ứng dụng DXOS_APP (profile core); tự init/unseal OpenBao. Cần: cp .env.example .env
+	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env (không có mật khẩu nào cần điền)"; exit 1; }
 	docker compose --profile core up -d
+
+bao-init:      ## OpenBao: init (lần đầu) → unseal → KV, policy, AppRole, bí mật lõi. Idempotent; `make up` tự gọi
+	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
+	docker compose --profile core up -d openbao
+	docker compose --profile core run --rm bao-init
+
+bao-status:    ## Trạng thái OpenBao (initialized, sealed); không in bí mật
+	docker compose exec openbao bao status
+
+bao-import-env: ## Chuyển mật khẩu từ .env cũ (trước #10) sang OpenBao, GHI ĐÈ giá trị đang có
+	BAO_IMPORT_ENV=force $(MAKE) --no-print-directory bao-init
 
 down:          ## Dừng mọi dịch vụ, GIỮ volume dữ liệu
 	docker compose --profile '*' down

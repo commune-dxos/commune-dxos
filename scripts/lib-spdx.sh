@@ -21,7 +21,7 @@ spdx_comment_style() {
     Makefile|*.mk|.env.example|*.env.example|*.env) echo hash; return ;;
   esac
   case "$f" in
-    *.sh|*.bash|*.py|*.yml|*.yaml|*.toml|*.conf|*.cfg|*.ini|*.properties) echo hash ;;
+    *.sh|*.bash|*.py|*.yml|*.yaml|*.toml|*.hcl|*.conf|*.cfg|*.ini|*.properties) echo hash ;;
     *.sql) echo dash ;;
     *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs) echo slash ;;
     *.css|*.scss) echo block ;;

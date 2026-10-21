@@ -17,7 +17,8 @@ export COMPOSE_PROFILES=core
 echo "== Lõi Tầng 1 (DXOS_APP=$DXOS_APP)"
 
 # 1. Dịch vụ một lần đã thoát với mã 0, dịch vụ chạy nền healthy ------------------
-for svc in jwks-init app-migrate app-realm flowable-db-init garage-secrets garage-init; do
+for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secrets garage-secrets \
+           jwks-init db-init app-migrate app-realm garage-init; do
   for _ in $(seq 1 60); do  # chờ tối đa 2 phút nếu còn đang chạy
     tt="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' "$svc" 2>/dev/null)"
     case "$tt" in exited*) break ;; esac
@@ -25,7 +26,7 @@ for svc in jwks-init app-migrate app-realm flowable-db-init garage-secrets garag
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in postgres keycloak apisix flowable app-backend garage clamav; do
+for svc in openbao postgres keycloak apisix flowable app-backend garage clamav; do
   for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break
@@ -33,6 +34,10 @@ for svc in postgres keycloak apisix flowable app-backend garage clamav; do
   done
   kiem "$svc healthy" "healthy" "$st"
 done
+
+# Mật khẩu rest-admin cho các kiểm tra Flowable: đọc từ tệp OpenBao render trong container
+# flowable (không còn trong .env, #10). Không in ra.
+FLOWABLE_ADMIN_PASSWORD="$(docker compose exec -T flowable cat /run/dxos-secrets/flowable/flowable.rest.app.admin.password)"
 
 # Chờ APISIX thấy PostgREST sẵn sàng (upstream /ready).
 for _ in $(seq 1 20); do
@@ -58,8 +63,8 @@ kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "12
   "$(docker compose port flowable 8080 | cut -d: -f1)"
 # cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
 cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
-kiem "app-backend, PostgREST, Garage, ClamAV không mở cổng ra host" "|||" \
-  "$(cong_host app-backend)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)"
+kiem "app-backend, PostgREST, Garage, ClamAV, OpenBao không mở cổng ra host" "||||" \
+  "$(cong_host app-backend)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)"
 
 # 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
 ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
@@ -87,6 +92,9 @@ kiem "Garage Admin API không token → 403" "403" \
   "$(docker compose exec -T app-backend python -c 'import urllib.request, urllib.error
 try: print(urllib.request.urlopen("http://garage:3903/v2/ListKeys", timeout=5).status)
 except urllib.error.HTTPError as e: print(e.code)')"
+
+# 4c. OpenBao (#10): két đã unseal, policy theo danh tính, không bí mật trong cấu hình -----
+. scripts/smoke-openbao.sh
 
 # 5. Chạy lại migration và vai trò Keycloak: không lỗi, bỏ qua phần đã áp dụng ------
 if out="$(docker compose run --rm --no-deps app-migrate 2>&1)"; then ma=0; else ma=$?; fi

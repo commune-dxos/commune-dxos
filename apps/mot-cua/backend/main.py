@@ -31,7 +31,10 @@ API tệp (#7, phần thuần ở tep.py), đường dẫn giữ tiền tố /fi
                                 /files/s3/*); client không bao giờ cầm khóa S3
 Kiểm quyền bằng token của người dùng (RLS); metadata và nhật ký tệp ghi bằng tài khoản dịch
 vụ Keycloak `mot_cua_tep` (role dich_vu_tep), nên công dân không tự khai được object_key hay
-kết quả quét qua /api. Khóa S3 riêng của ứng dụng đọc từ volume bí mật (garage-init ghi).
+kết quả quét qua /api.
+
+Bí mật (#10): mật khẩu rest-admin của Flowable, client secret `mot_cua_tep`, khóa S3 riêng
+của ứng dụng đều đọc từ OpenBao lúc cần (bimat.py, AppRole `app`), chỉ giữ trong bộ nhớ.
 
 Chỉ dùng thư viện chuẩn Python: chạy trên image python gốc, không cài gói, không build.
 """
@@ -52,19 +55,19 @@ import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import bimat
 import tep
 
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
 FLOWABLE_URL = os.environ.get("DXOS_FLOWABLE_URL", "http://flowable:8080/flowable-rest/service")
 FLOWABLE_USER = os.environ.get("DXOS_FLOWABLE_USER", "rest-admin")
-FLOWABLE_PASSWORD = os.environ["DXOS_FLOWABLE_PASSWORD"]
 JWKS_URL = os.environ.get("DXOS_JWKS_URL", "http://keycloak:8080/realms/dxos/protocol/openid-connect/certs")
 JWT_ISSUER = os.environ["DXOS_JWT_ISSUER"]
 JWT_AUD = os.environ.get("DXOS_JWT_AUD", "dxos_api")
 JWT_ROLE_CLIENT = os.environ.get("DXOS_JWT_ROLE_CLIENT", "dxos_api")
 PORT = int(os.environ.get("PORT", "8000"))
 TOKEN_URL = os.environ.get("DXOS_TOKEN_URL", "http://keycloak:8080/realms/dxos/protocol/openid-connect/token")
-SECRETS_DIR = os.environ.get("DXOS_SECRETS_DIR", "/run/dxos-secrets")
+APP = os.environ.get("DXOS_APP", "mot-cua")
 CLAMAV_HOST = os.environ.get("DXOS_CLAMAV_HOST", "clamav")
 CLAMAV_PORT = int(os.environ.get("DXOS_CLAMAV_PORT", "3310"))
 GATEWAY_URL = os.environ.get("DXOS_GATEWAY_URL", "http://localhost:9080").rstrip("/")
@@ -133,11 +136,26 @@ def pgrst(token, method, path, body=None, prefer=None):
     return data
 
 
-_FLOWABLE_AUTH = "Basic " + base64.b64encode(f"{FLOWABLE_USER}:{FLOWABLE_PASSWORD}".encode()).decode()
+_FLOWABLE_AUTH = {}
+
+
+def _flowable_auth():
+    """Header Basic của rest-admin; mật khẩu đọc từ OpenBao (dxos/core/flowable/rest-admin)."""
+    if "h" not in _FLOWABLE_AUTH:
+        try:
+            mat_khau = bimat.doc("core/flowable/rest-admin")["password"]
+        except (bimat.LoiBiMat, KeyError) as e:
+            log.error("thiếu mật khẩu Flowable: %s", e)
+            raise Loi(503, "Workflow engine chưa được cấu hình") from None
+        _FLOWABLE_AUTH["h"] = "Basic " + base64.b64encode(f"{FLOWABLE_USER}:{mat_khau}".encode()).decode()
+    return _FLOWABLE_AUTH["h"]
 
 
 def flowable(method, path, body=None, cho_phep=()):
-    status, data = goi(method, FLOWABLE_URL + path, body, {"Authorization": _FLOWABLE_AUTH})
+    status, data = goi(method, FLOWABLE_URL + path, body, {"Authorization": _flowable_auth()})
+    if status == 401:
+        # Mật khẩu vừa được xoay vòng trong OpenBao: lần gọi sau đọc lại.
+        _FLOWABLE_AUTH.clear()
     if status >= 400 and status not in cho_phep:
         log.error("Flowable %s %s → %s", method, path.split("?")[0], status)
         raise Loi(502, "Workflow engine trả lỗi", {"flowable": status})
@@ -379,8 +397,8 @@ def hoan_thanh(token, claims, task_id, body):
 
 # --- Tệp hồ sơ (#7) -------------------------------------------------------------------
 class TokenDichVu:
-    """Access token Client Credentials của client dịch vụ (secret do app-realm ghi vào volume
-    bí mật). Lưu đệm tới gần hết hạn. TODO(#10): đọc secret từ OpenBao."""
+    """Access token Client Credentials của client dịch vụ. Client secret do app-realm ghi vào
+    OpenBao (dxos/apps/<DXOS_APP>/keycloak/<client>). Lưu đệm token tới gần hết hạn."""
 
     def __init__(self, client_id):
         self.client_id, self.token, self.het_han, self.lock = client_id, None, 0.0, threading.Lock()
@@ -390,9 +408,8 @@ class TokenDichVu:
             if self.token and time.time() < self.het_han - 30:
                 return self.token
             try:
-                with open(os.path.join(SECRETS_DIR, f"keycloak-{self.client_id}.secret"), encoding="utf-8") as f:
-                    bi_mat = f.read().strip()
-            except OSError as e:
+                bi_mat = bimat.doc(f"apps/{APP}/keycloak/{self.client_id}")["secret"]
+            except (bimat.LoiBiMat, KeyError) as e:
                 log.error("thiếu secret của client %s: %s", self.client_id, e)
                 raise Loi(503, "API tệp chưa được cấu hình") from None
             form = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": self.client_id,
@@ -413,12 +430,12 @@ _S3 = {}
 
 
 def s3():
-    """Thông tin kết nối + khóa S3 riêng của ứng dụng (garage-init ghi). TODO(#10): OpenBao."""
+    """Thông tin kết nối + khóa S3 riêng của ứng dụng (garage-init ghi vào OpenBao,
+    dxos/apps/<DXOS_APP>/s3)."""
     if not _S3:
         try:
-            with open(os.path.join(SECRETS_DIR, "s3.json"), encoding="utf-8") as f:
-                _S3.update(json.load(f))
-        except (OSError, ValueError) as e:
+            _S3.update(bimat.doc(f"apps/{APP}/s3"))
+        except bimat.LoiBiMat as e:
             log.error("thiếu cấu hình S3: %s", e)
             raise Loi(503, "Kho tệp chưa được cấu hình") from None
     return _S3

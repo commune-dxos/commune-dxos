@@ -45,11 +45,12 @@ sql_loi() {
 }
 
 # Đoạn bash chạy trong container keycloak: đăng nhập kcadm bằng tài khoản quản trị khởi
-# tạo (biến môi trường của chính container, không đi qua máy host), lưu cấu hình tạm.
+# tạo (mật khẩu đọc từ tệp OpenBao trong chính container, không đi qua máy host), lưu cấu
+# hình tạm.
 _KC_LOGIN='cfg=/tmp/smoke-kcadm.config
 [ -s "$cfg" ] || /opt/keycloak/bin/kcadm.sh config credentials --config "$cfg" \
   --server http://localhost:8080 --realm master \
-  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" >/dev/null 2>&1'
+  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$(< /run/dxos-secrets/admin_password)" >/dev/null 2>&1'
 
 # kc <lệnh kcadm…> : chạy kcadm.sh trong container keycloak
 kc() {
@@ -72,7 +73,8 @@ lay_token() {
 }
 
 # wf <đường dẫn> [tham số curl…] → JSON từ Flowable REST (Basic auth rest-admin, cổng debug
-# 127.0.0.1). Có tham số -d thì là POST.
+# 127.0.0.1). Có tham số -d thì là POST. FLOWABLE_ADMIN_PASSWORD do scripts/smoke.sh đọc từ
+# tệp bí mật trong container flowable (nguồn là OpenBao), chỉ giữ trong biến của tiến trình.
 wf() {
   local duong="$1"; shift
   curl -s -u "rest-admin:${FLOWABLE_ADMIN_PASSWORD:?}" -H 'Content-Type: application/json' "$@" "$WF/$duong"
