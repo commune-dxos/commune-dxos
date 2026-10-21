@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed smoke test license check bao-init bao-status bao-import-env
+.PHONY: up down logs ps migrate seed smoke lint test test-backend test-sql license check bao-init bao-status bao-import-env
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -38,9 +38,17 @@ seed:          ## Nạp dữ liệu mẫu giả apps/$$DXOS_APP/db/seed/ (kể c
 smoke:         ## Kiểm tra lõi đang chạy: JWT qua APISIX, JWKS, migration chạy lại + smoke của ứng dụng
 	bash scripts/smoke.sh
 
-test:          ## Test đơn vị (không cần Docker): apps/*/backend/tests/test_*.py, thư viện chuẩn unittest
+lint:          ## Lint như CI (job shellcheck, yamllint, bpmn). Cài công cụ: pip install -r scripts/requirements-lint.txt
+	bash scripts/lint.sh
+
+test: test-backend test-sql ## Test như CI (job test-backend, test-sql)
+
+test-backend:  ## Test đơn vị (không cần Docker): apps/*/backend/tests/test_*.py, thư viện chuẩn unittest
 	@for d in apps/*/backend/tests; do [ -d "$$d" ] || continue; \
 	  echo "== $$d"; PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$$d" -p 'test_*.py' || exit 1; done
+
+test-sql:      ## Migration lõi + ứng dụng và apps/*/db/tests/*.sql (RLS) trên PostgreSQL tạm (Docker, hoặc PGHOST)
+	sh scripts/test-sql.sh
 
 license:       ## Thêm header SPDX cho tệp mới
 	bash scripts/add-license-header.sh
@@ -48,5 +56,5 @@ license:       ## Thêm header SPDX cho tệp mới
 check:         ## Kiểm tra trước khi commit/nộp: SPDX + cú pháp BPMN + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
 	python3 scripts/check-bpmn.py
-	$(MAKE) --no-print-directory test
+	$(MAKE) --no-print-directory test-backend
 	docker compose $(COMPOSE_ENV) --profile '*' config --quiet && echo "OK: docker-compose.yml hợp lệ (mọi profile)"

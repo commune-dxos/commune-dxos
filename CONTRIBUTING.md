@@ -11,7 +11,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 | `develop` | Nhánh tích hợp hằng ngày, luôn phải `make check` đạt | Không ai đẩy thẳng; chỉ qua PR |
 | `feature/<số-issue>-<tên-ngắn>` | Một việc, tách từ `develop` | Người phụ trách issue |
 
-`main` và `develop` được bảo vệ: bắt buộc PR, 1 người duyệt, CI `make-check` xanh, nhánh phải cập nhật theo đích, cấm force-push.
+`main` và `develop` được bảo vệ: bắt buộc PR, 1 người duyệt, CI xanh (xem mục 6), nhánh phải cập nhật theo đích, cấm force-push.
 
 ## 2. Quy trình một việc: issue → nhánh → PR
 
@@ -22,7 +22,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
    git switch -c feature/12-garage-s3
    ```
    Tên nhánh: số issue + vài từ không dấu, nối bằng gạch ngang. Một nhánh chỉ làm một issue.
-3. **Commit** nhỏ, mỗi commit một ý (xem mục 3). Trước khi đẩy chạy `make check`.
+3. **Commit** nhỏ, mỗi commit một ý (xem mục 3). Trước khi đẩy chạy `make check`, `make lint`, `make test` (mục 6).
 4. **PR về `develop`.** Điền mẫu PR (mô tả, `Closes #<số>`, checklist). Gắn nhãn như issue.
 5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử (`make up` + `make smoke`) khi PR đụng tới `docker-compose.yml`, `core/`, `apps/` hay quy trình BPMN.
 6. **Merge bằng squash.** Tiêu đề squash giữ đúng định dạng Conventional Commits và số issue, ví dụ `feat(storage): Garage S3 + quét ClamAV (#12)`. Xóa nhánh sau khi merge.
@@ -57,7 +57,23 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 
 ## 6. Trước khi mở PR
 
-- [ ] `make check` đạt
+Chạy trên máy đúng những lệnh CI chạy, mỗi lệnh ứng với một job (check) trên PR:
+
+| Lệnh | Job CI | Kiểm gì | Cần |
+|---|---|---|---|
+| `make check` | `make-check` | SPDX từng tệp, cấu trúc BPMN, test đơn vị, compose hợp lệ mọi profile | Docker Compose, Python 3 |
+| `make lint` | `shellcheck`, `yamllint`, `bpmn` | mọi `*.sh`; YAML theo `.yamllint.yml`; BPMN + test của bộ kiểm | `pip install -r scripts/requirements-lint.txt` (nên dùng `.venv`) |
+| `make test` | `test-backend`, `test-sql` | unittest `apps/*/backend/tests`; migration lõi + ứng dụng trên PostgreSQL trống rồi `apps/*/db/tests/*.sql` (RLS) | Python 3; Docker (tự dựng container tạm) hoặc `PGHOST` tới một PostgreSQL trống |
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-lint.txt   # một lần
+PATH="$PWD/.venv/bin:$PATH" make lint
+make test
+```
+
+Viết test SQL mới: thêm `apps/<ứng dụng>/db/tests/<tên>.sql`, in mỗi kiểm tra một dòng `ĐẠT|…` hoặc `TRƯỢT|…`, chạy trong một transaction rồi `ROLLBACK` (xem `apps/mot-cua/db/tests/rls.sql`).
+
+- [ ] `make check`, `make lint`, `make test` đạt
 - [ ] `make up` + `make smoke` vẫn đạt từ máy sạch nếu PR đổi `docker-compose.yml`, `core/` hoặc `apps/`
 - [ ] `CHANGELOG.md` mục `[Unreleased]` có dòng cho thay đổi, kèm `(#số-issue)`
 - [ ] Tài liệu liên quan đã cập nhật

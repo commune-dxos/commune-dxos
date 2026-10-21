@@ -20,6 +20,8 @@ cp .env.example .env      # không có mật khẩu nào cần điền / no pass
 make up                   # lõi core/ + ứng dụng apps/$DXOS_APP; tự init + unseal OpenBao / core + app, auto init + unseal OpenBao
 make smoke                # JWT, MFA, RLS, policy OpenBao, sự kiện RabbitMQ, migration chạy lại / end-to-end checks
 make check                # SPDX + docker-compose hợp lệ / SPDX + compose validation
+make lint                 # shellcheck, yamllint, BPMN (như CI / same as CI)
+make test                 # test đơn vị + SQL/RLS trên PostgreSQL tạm / unit + SQL/RLS tests
 ```
 
 ### Bí mật: OpenBao / Secrets: OpenBao

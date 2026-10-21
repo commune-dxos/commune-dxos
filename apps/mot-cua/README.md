@@ -295,7 +295,8 @@ Realm không chứa mật khẩu: đặt bằng `kcadm.sh set-password` (xem `do
 ## Chạy test
 
 ```bash
-make test                       # test đơn vị API tệp, sự kiện (không cần Docker; make check cũng chạy)
+make test-backend               # test đơn vị API tệp, sự kiện (không cần Docker; make check cũng chạy)
+make test-sql                   # migration + rls.sql trên PostgreSQL trống, trước và sau seed (container tạm; CI job test-sql)
 make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable + /workflow + /files + sự kiện
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql   # chỉ RLS
 ```

@@ -25,7 +25,7 @@ spdx_comment_style() {
     *.sql) echo dash ;;
     *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs) echo slash ;;
     *.css|*.scss) echo block ;;
-    *.xml|*.bpmn|*.bpmn20.xml|*.html|*.svg) echo xml ;;
+    *.xml|*.bpmn|*.html|*.svg) echo xml ;;
     *) ;;
   esac
 }

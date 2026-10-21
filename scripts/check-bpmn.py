@@ -12,6 +12,7 @@ triển khai. Script này bắt sớm trong `make check`/CI, chỉ dùng thư vi
   - exclusiveGateway: `default` là một đường ra của nó, các đường ra khác có điều kiện;
   - userTask có người nhận (assignee, candidateGroups hoặc candidateUsers).
 Kiểm tra đầy đủ ngữ nghĩa vẫn do Flowable làm khi khởi động (make smoke).
+Test của chính bộ kiểm: scripts/tests/test_check_bpmn.py (make lint, job CI `bpmn`).
 Thoát mã 1 nếu có lỗi.
 """
 import glob
@@ -73,9 +74,8 @@ def kiem_pham_vi(scope, tep, loi):
             kiem_pham_vi(n, tep, loi)
 
 
-def main():
-    goc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-    tep_list = sorted(glob.glob(os.path.join(goc, "apps", "*", "processes", "*.bpmn20.xml")))
+def kiem(tep_list, goc):
+    """Kiểm các tệp BPMN; trả về (danh sách lỗi, {process id: tệp})."""
     loi = []
     process_ids = {}
     for duong_dan in tep_list:
@@ -102,6 +102,13 @@ def main():
             if p.get("isExecutable") != "true":
                 loi.append(f"{tep}: process '{pid}' thiếu isExecutable=\"true\"")
             kiem_pham_vi(p, tep, loi)
+    return loi, process_ids
+
+
+def main():
+    goc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    tep_list = sorted(glob.glob(os.path.join(goc, "apps", "*", "processes", "*.bpmn20.xml")))
+    loi, process_ids = kiem(tep_list, goc)
     if loi:
         print("Lỗi BPMN:")
         for d in loi:

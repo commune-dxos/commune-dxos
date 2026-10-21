@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# Cấu hình yamllint cho docker-compose.yml, core/apisix/*.yaml, .github/workflows/*.yml.
+# Chạy: make lint (CI: job `yamllint`). Dựa trên bộ `default`, nới những quy tắc
+# không hợp với các tệp này:
+#   - document-start: compose/APISIX/workflow không dùng `---`;
+#   - truthy: khóa `on:` của GitHub Actions không phải giá trị boolean;
+#   - line-length: chú thích tiếng Việt và URL dài, chỉ cảnh báo trên 160 ký tự;
+#   - comments-indentation: dịch vụ TODO để dạng chú thích trong compose;
+#   - comments: APISIX standalone bắt buộc dòng cuối `#END` (không có dấu cách).
+extends: default
+
+ignore: |
+  node_modules/
+  .data/
+
+rules:
+  document-start: disable
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+  line-length:
+    max: 160
+    level: warning
+  comments:
+    min-spaces-from-content: 1
+    ignore: |
+      core/apisix/apisix.yaml
+  comments-indentation: disable  # các dịch vụ TODO được để dạng chú thích trong compose
+  indentation:
+    spaces: consistent
+    indent-sequences: whatever
