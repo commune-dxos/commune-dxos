@@ -74,7 +74,7 @@
     {
       "clientId": "mot_cua_tep",
       "name": "mot-cua: API tệp (backend, tài khoản dịch vụ)",
-      "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; app-realm ghi secret vào volume bí mật app-secrets cho app-backend (TODO #10: OpenBao).",
+      "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; app-realm ghi secret vào OpenBao (dxos/apps/mot-cua/keycloak/mot_cua_tep) cho app-backend.",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",

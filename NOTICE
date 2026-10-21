@@ -12,7 +12,7 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 |---|---|---|
 | SSO/MFA | Keycloak (bắt buộc MFA cán bộ) | Apache-2.0 |
 | API Gateway | Apache APISIX (rate limit cổng công dân) | Apache-2.0 |
-| Bí mật | OpenBao | MPL-2.0 |
+| Bí mật | OpenBao 2.7.1 (dịch vụ riêng, image gốc `openbao/openbao`, không sửa mã; chỉ gọi qua HTTP API và `bao agent` của chính image). Không dùng HashiCorp Vault (BSL-1.1) | MPL-2.0 |
 | CSDL | PostgreSQL + Row-Level Security + pgAudit | PostgreSQL |
 | Tự sinh API | PostgREST | MIT |
 | Object storage | Garage v2.4.1 (S3, dịch vụ riêng, image gốc `dxflrs/garage`, không sửa mã; chỉ gọi qua mạng: S3 và Admin API) | AGPL-3.0 |

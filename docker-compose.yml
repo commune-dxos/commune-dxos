@@ -15,20 +15,41 @@
 #   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
 #          + Flowable REST (workflow, #8), app-backend (/workflow, #6)
 #          + Garage (S3) và ClamAV (quét tệp trước khi lưu) (#7)
-#          + RabbitMQ, OpenBao                        (tuần 2, đang là TODO bên dưới)
+#          + OpenBao giữ mọi bí mật dịch vụ (#10)
+#          + RabbitMQ                                 (tuần 2, đang là TODO bên dưới)
 #   docs : Gotenberg, step-ca, Meilisearch CE         (tuần 2–5)
-#
-# Bí mật sinh lúc khởi tạo (không nằm trong repo hay .env), TODO(#10) chuyển sang OpenBao:
-#   volume garage-secrets : rpc_secret, admin_token của Garage (garage-secrets sinh)
-#   volume app-secrets    : s3.json – khóa S3 riêng của ứng dụng (garage-init ghi);
-#                           keycloak-<client>.secret – secret client dịch vụ (app-realm ghi)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : Apache Superset                            (tuần 4)
+#
+# Bí mật (#10, docs/architecture.md §4.4): KHÔNG có mật khẩu, khóa hay token nào trong repo
+# hay .env. OpenBao (KV v2 `dxos/`) là nguồn duy nhất; bao-init khởi tạo/unseal và nạp bí
+# mật lõi, mỗi dịch vụ một AppRole với policy chỉ đọc đúng phần của mình
+# (core/openbao/policies/). Dịch vụ lấy bí mật theo hai cách:
+#   - image không tự gọi HTTP được (PostgreSQL, PostgREST, Keycloak, Flowable, Garage):
+#     agent một lần `<danh tính>-secrets` render tệp quyền 0400 vào volume riêng
+#     `<danh tính>-secrets`, dịch vụ mount chỉ đọc;
+#   - app-realm, garage-init, app-backend: tự đăng nhập AppRole và đọc/ghi qua HTTP API,
+#     volume riêng chỉ chứa role_id/secret_id.
 #
 # Quy tắc: ghim phiên bản image cụ thể (không dùng `latest`), image lấy từ dự án gốc,
 # mọi dịch vụ có healthcheck, cấu hình qua .env (mẫu: .env.example).
 
 name: commune
+
+# Mẫu chung của agent OpenBao một lần (#10): đăng nhập AppRole của danh tính, render bí mật
+# theo core/openbao/agent/<danh tính>.hcl vào volume của danh tính rồi thoát (mã 1 nếu policy
+# chặn hay OpenBao seal). Chạy lại ở mỗi `up`, nên đổi bí mật trong OpenBao rồi `make up` là
+# dịch vụ nhận giá trị mới khi khởi động lại.
+x-bao-agent: &bao-agent
+  image: openbao/openbao:2.7.1
+  profiles: [core]
+  entrypoint: ["bao", "agent"]
+  depends_on:
+    bao-init:
+      condition: service_completed_successfully
+  healthcheck:
+    disable: true
+  restart: "no"
 
 services:
   # ---------------------------------------------------------------- core ----
@@ -38,16 +59,18 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-commune}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
-      # Dùng trong core/postgres/initdb/20-auth.sh
-      PGRST_DB_PASSWORD: ${PGRST_DB_PASSWORD:?Đặt PGRST_DB_PASSWORD trong .env}
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Đặt KEYCLOAK_DB_PASSWORD trong .env}
+      # Mật khẩu superuser (chỉ dùng khi initdb volume trống) từ OpenBao, agent db-secrets.
+      POSTGRES_PASSWORD_FILE: /run/dxos-secrets/postgres_password
     volumes:
       - pg-data:/var/lib/postgresql/data
       - ./core/postgres/initdb:/docker-entrypoint-initdb.d:ro
+      - db-secrets:/run/dxos-secrets:ro
     ports:
       # Chỉ mở trên máy local để debug bằng psql; Tầng 2 không gọi thẳng CSDL.
       - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    depends_on:
+      db-secrets:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
@@ -59,14 +82,14 @@ services:
     image: quay.io/keycloak/keycloak:26.3.3
     profiles: [core]
     # start-dev: HTTP, phù hợp chạy local. Triển khai thật dùng `start` + TLS.
+    # kc-start.sh đọc mật khẩu CSDL và quản trị khởi tạo từ volume keycloak-secrets (OpenBao).
+    entrypoint: ["/bin/bash", "/core/scripts/kc-start.sh"]
     command: ["start-dev", "--import-realm"]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Đặt KEYCLOAK_DB_PASSWORD trong .env}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Đặt KEYCLOAK_ADMIN_PASSWORD trong .env}
       # Issuer cố định theo địa chỉ trình duyệt dùng; APISIX/PostgREST gọi nội bộ
       # qua http://keycloak:8080 nhờ backchannel động.
       KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8080}
@@ -75,11 +98,15 @@ services:
       KC_HEALTH_ENABLED: "true"
     volumes:
       - ./core/keycloak/realm-dxos.json:/opt/keycloak/data/import/realm-dxos.json:ro
+      - ./core/scripts/kc-start.sh:/core/scripts/kc-start.sh:ro
+      - keycloak-secrets:/run/dxos-secrets:ro
     ports:
       - "${KEYCLOAK_PORT:-8080}:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      keycloak-secrets:
+        condition: service_completed_successfully
     healthcheck:
       # Image không có curl: dùng /dev/tcp của bash gọi cổng quản trị 9000.
       test:
@@ -128,11 +155,12 @@ services:
       DXOS_SEED: ${DXOS_SEED:-false}
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-postgres}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
       PGDATABASE: ${POSTGRES_DB:-commune}
+      PGPASSFILE: /run/dxos-secrets/pgpass
     volumes:
       - ./core/scripts:/core/scripts:ro
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - db-secrets:/run/dxos-secrets:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -140,8 +168,9 @@ services:
 
   # Nạp vai trò, nhóm, client, người dùng mẫu của ứng dụng vào realm lõi `dxos`
   # (Keycloak Partial Import, bỏ qua đối tượng đã có) rồi thoát. Dùng lại image Keycloak.
-  # Client dịch vụ (service account) của ứng dụng: ghi client secret vào volume app-secrets.
-  # Chạy bằng root để ghi được vào volume (image Keycloak mặc định là uid 1000).
+  # Mật khẩu quản trị Keycloak đọc từ OpenBao; client secret của client dịch vụ (service
+  # account) ghi vào OpenBao (AppRole app-realm, volume app-realm-secrets chỉ có role_id/
+  # secret_id). Chạy bằng root để đọc được tệp AppRole (chủ root, quyền 0400).
   app-realm:
     image: quay.io/keycloak/keycloak:26.3.3
     profiles: [core]
@@ -151,15 +180,16 @@ services:
       DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Đặt KEYCLOAK_ADMIN_PASSWORD trong .env}
-      APP_SECRETS_DIR: /run/dxos-secrets
+      BAO_ADDR: http://openbao:8200
     volumes:
       - ./core/scripts:/core/scripts:ro
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
-      - app-secrets:/run/dxos-secrets
+      - app-realm-secrets:/run/dxos-secrets:ro
     depends_on:
       keycloak:
         condition: service_healthy
+      bao-init:
+        condition: service_completed_successfully
     healthcheck:
       disable: true
     restart: "no"
@@ -168,7 +198,8 @@ services:
     image: postgrest/postgrest:v13.0.4
     profiles: [core]
     environment:
-      PGRST_DB_URI: postgres://authenticator:${PGRST_DB_PASSWORD:?Đặt PGRST_DB_PASSWORD trong .env}@postgres:5432/${POSTGRES_DB:-commune}
+      # URI kết nối (chứa mật khẩu authenticator) đọc từ tệp do agent postgrest-secrets render.
+      PGRST_DB_URI: "@/run/dxos-secrets/db-uri"
       # PGRST_DB_SCHEMAS lấy từ apps/<DXOS_APP>/app.env (env_file bên dưới).
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: "@/jwks/jwks.json"
@@ -189,12 +220,15 @@ services:
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/app.env
     volumes:
       - jwks:/jwks:ro
+      - postgrest-secrets:/run/dxos-secrets:ro
     # Không mở cổng ra host: Tầng 2 chỉ đi qua APISIX.
     expose:
       - "3000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      postgrest-secrets:
+        condition: service_completed_successfully
       jwks-init:
         condition: service_completed_successfully
       app-migrate:
@@ -238,21 +272,22 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Tạo role + CSDL riêng `flowable` trong PostgreSQL rồi thoát. Chạy mỗi lần `up`, không
-  # lỗi nếu đã có, nên dùng được cả với volume tạo trước khi có Flowable (initdb chỉ chạy
-  # một lần trên volume trống). Dùng lại image postgres.
-  flowable-db-init:
+  # Role đăng nhập + CSDL riêng của dịch vụ lõi (authenticator, keycloak, flowable), mật
+  # khẩu theo OpenBao (core/scripts/db-init.sh), rồi thoát. Chạy mỗi lần `up`, không lỗi
+  # nếu đã có, nên dùng được với volume cũ và đổi mật khẩu trong OpenBao là PostgreSQL theo.
+  # Thay flowable-db-init và initdb/20-auth.sh (#10). Dùng lại image postgres.
+  db-init:
     image: postgres:17.6-alpine
     profiles: [core]
-    entrypoint: ["/bin/sh", "/core/scripts/flowable-db-init.sh"]
+    entrypoint: ["/bin/sh", "/core/scripts/db-init.sh"]
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-postgres}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
       PGDATABASE: ${POSTGRES_DB:-commune}
-      FLOWABLE_DB_PASSWORD: ${FLOWABLE_DB_PASSWORD:?Đặt FLOWABLE_DB_PASSWORD trong .env}
+      PGPASSFILE: /run/dxos-secrets/pgpass
     volumes:
       - ./core/scripts:/core/scripts:ro
+      - db-secrets:/run/dxos-secrets:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -271,29 +306,34 @@ services:
       SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowable
       SPRING_DATASOURCE_USERNAME: flowable
-      SPRING_DATASOURCE_PASSWORD: ${FLOWABLE_DB_PASSWORD:?Đặt FLOWABLE_DB_PASSWORD trong .env}
       SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: "2"
       SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: "10"
       FLOWABLE_REST_APP_ADMIN_USER-ID: rest-admin
-      FLOWABLE_REST_APP_ADMIN_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD:?Đặt FLOWABLE_ADMIN_PASSWORD trong .env}
+      # spring.datasource.password và flowable.rest.app.admin.password: mỗi thuộc tính một tệp
+      # (tên tệp = tên thuộc tính) do agent flowable-secrets render từ OpenBao (Spring Boot
+      # config tree). Không có mật khẩu trong biến môi trường.
+      SPRING_CONFIG_IMPORT: configtree:/run/dxos-secrets/flowable/
       FLOWABLE_REST_APP_CREATE-DEMO-DEFINITIONS: "false"
       FLOWABLE_PROCESS-DEFINITION-LOCATION-PREFIX: file:/dxos/processes/
       JAVA_OPTS: -Xmx512M
       TZ: Asia/Ho_Chi_Minh
     volumes:
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/processes:/dxos/processes:ro
+      - flowable-secrets:/run/dxos-secrets:ro
     ports:
       - "127.0.0.1:${FLOWABLE_PORT:-8090}:8080"
     depends_on:
-      flowable-db-init:
+      db-init:
+        condition: service_completed_successfully
+      flowable-secrets:
         condition: service_completed_successfully
     healthcheck:
       # Image có wget, base64 (busybox). /actuator/health của flowable-rest bắt Basic auth;
-      # mật khẩu lấy từ biến môi trường của chính container.
+      # mật khẩu đọc từ tệp bí mật của chính container.
       test:
         - CMD-SHELL
         - >-
-          wget -qO- --header "Authorization: Basic $$(printf 'rest-admin:%s' "$$FLOWABLE_REST_APP_ADMIN_PASSWORD" | base64)"
+          wget -qO- --header "Authorization: Basic $$(printf 'rest-admin:%s' "$$(cat /run/dxos-secrets/flowable/flowable.rest.app.admin.password)" | base64)"
           http://127.0.0.1:8080/flowable-rest/actuator/health | grep -q '"status":"UP"'
       interval: 10s
       timeout: 5s
@@ -307,8 +347,10 @@ services:
   # khoản kỹ thuật thay người dùng, sau khi tự kiểm quyền (người dùng không cầm mật khẩu
   # Flowable); đọc/ghi hồ sơ qua PostgREST bằng token của người dùng nên RLS áp dụng.
   # Ứng dụng không có backend/main.py thì dịch vụ chỉ chạy chỗ giữ và /workflow trả 502.
-  # API tệp (/files, #7): quét ClamAV trước khi lưu Garage bằng khóa S3 riêng của ứng dụng
-  # (volume app-secrets, chỉ đọc); metadata ghi bằng tài khoản dịch vụ Keycloak của ứng dụng.
+  # API tệp (/files, #7): quét ClamAV trước khi lưu Garage bằng khóa S3 riêng của ứng dụng;
+  # metadata ghi bằng tài khoản dịch vụ Keycloak của ứng dụng.
+  # Bí mật (#10): mật khẩu rest-admin, client secret, khóa S3 đọc từ OpenBao lúc cần bằng
+  # AppRole `app` (volume app-secrets chỉ chứa role_id/secret_id), chỉ giữ trong bộ nhớ.
   app-backend:
     image: python:3.13.16-alpine3.24
     profiles: [core]
@@ -323,13 +365,13 @@ services:
       DXOS_POSTGREST_URL: http://postgrest:3000
       DXOS_FLOWABLE_URL: http://flowable:8080/flowable-rest/service
       DXOS_FLOWABLE_USER: rest-admin
-      DXOS_FLOWABLE_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD:?Đặt FLOWABLE_ADMIN_PASSWORD trong .env}
       DXOS_JWKS_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/certs
       # Issuer trong token = KC_HOSTNAME của Keycloak + /realms/dxos
       DXOS_JWT_ISSUER: http://localhost:${KEYCLOAK_PORT:-8080}/realms/dxos
       DXOS_JWT_AUD: dxos_api
       DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
-      DXOS_SECRETS_DIR: /run/dxos-secrets
+      DXOS_BAO_ADDR: http://openbao:8200
+      DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
       DXOS_CLAMAV_HOST: clamav
       DXOS_CLAMAV_PORT: "3310"
       # Địa chỉ gateway mà client dùng; link tải ký ngắn hạn trỏ về ${DXOS_GATEWAY_URL}/files/s3/…
@@ -368,15 +410,15 @@ services:
     restart: unless-stopped
 
   # --------------------------------------- dữ liệu phi cấu trúc (#7) ----
-  # Sinh rpc_secret + admin_token của Garage vào volume garage-secrets nếu chưa có, rồi thoát.
+  # rpc_secret + admin_token của Garage: bao-init sinh trong OpenBao (dxos/core/garage), agent
+  # này render ra volume garage-secrets (quyền 0400, chủ root) rồi thoát (#10).
   garage-secrets:
-    image: python:3.13.16-alpine3.24
-    profiles: [core]
-    entrypoint: ["/bin/sh", "/core/scripts/garage-secrets.sh"]
+    <<: *bao-agent
+    user: "0"
+    command: ["-config=/core/openbao/agent/garage.hcl"]
     volumes:
-      - ./core/scripts:/core/scripts:ro
-      - garage-secrets:/run/garage-secrets
-    restart: "no"
+      - ./core/openbao/agent:/core/openbao/agent:ro
+      - garage-secrets:/run/dxos-secrets
 
   # Object storage S3 (AGPL-3.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE).
   # Một nút; cấu hình core/garage/garage.toml. Không mở cổng ra host: S3 (3900) chỉ
@@ -405,7 +447,8 @@ services:
     restart: unless-stopped
 
   # Cấu hình Garage qua Admin API v2 (layout một nút, bucket trong apps/<DXOS_APP>/s3/
-  # buckets.conf, khóa S3 riêng của ứng dụng → volume app-secrets) rồi thoát. Idempotent.
+  # buckets.conf, khóa S3 riêng của ứng dụng → OpenBao dxos/apps/<DXOS_APP>/s3) rồi thoát.
+  # Idempotent. AppRole garage-init (volume garage-init-secrets chỉ có role_id/secret_id).
   garage-init:
     image: python:3.13.16-alpine3.24
     profiles: [core]
@@ -413,15 +456,17 @@ services:
     environment:
       DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
       GARAGE_CAPACITY_BYTES: ${GARAGE_CAPACITY_BYTES:-10737418240}
+      BAO_ADDR: http://openbao:8200
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./core/scripts:/core/scripts:ro
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
-      - garage-secrets:/run/garage-secrets:ro
-      - app-secrets:/run/dxos-secrets
+      - garage-init-secrets:/run/dxos-secrets:ro
     depends_on:
       garage:
         condition: service_healthy
+      bao-init:
+        condition: service_completed_successfully
     restart: "no"
 
   # Quét mã độc (GPL-2.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE). clamd
@@ -443,16 +488,117 @@ services:
       start_period: 120s
     restart: unless-stopped
 
+  # ------------------------------------------------- bí mật (#10) ----
+  # Két sắt bí mật (MPL-2.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE; không
+  # dùng HashiCorp Vault – BSL). Chế độ server thường (không -dev), storage raft một nút
+  # trong volume bao-data, cấu hình core/openbao/config.hcl. Không mở cổng ra host, không
+  # đi qua APISIX: chỉ dịch vụ trong mạng nội bộ gọi. Quản trị: docker compose exec openbao bao …
+  # Khởi động lại thì OpenBao ở trạng thái seal: `make up` (bao-init) unseal lại.
+  openbao:
+    image: openbao/openbao:2.7.1
+    profiles: [core]
+    # Entrypoint của image chạy `bao` bằng user openbao (su-exec).
+    command: ["bao", "server", "-config=/openbao/config/config.hcl"]
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+    volumes:
+      - ./core/openbao/config.hcl:/openbao/config/config.hcl:ro
+      - bao-data:/openbao/file
+    expose:
+      - "8200"
+    healthcheck:
+      # `bao status` thoát 0 chỉ khi đã khởi tạo và đã unseal.
+      test: ["CMD", "bao", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Khởi tạo idempotent (core/openbao/bao-init.py, cũng là `make bao-init`): init lần đầu →
+  # unseal key + root token ra BAO_INIT_DIR trên máy (ngoài git, quyền 600), unseal, KV v2,
+  # policy, AppRole; bí mật lõi chưa có thì lấy từ .env cũ (chuyển sang OpenBao) hoặc sinh
+  # ngẫu nhiên; đặt role_id/secret_id vào volume riêng của từng danh tính. Rồi thoát.
+  bao-init:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    entrypoint: ["python", "-u", "/core/openbao/bao-init.py"]
+    environment:
+      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      BAO_ADDR: http://openbao:8200
+      # Một tệp cho mỗi compose project (project tạm không ghi đè khóa của project chính).
+      BAO_INIT_FILE: /bao-init/${COMPOSE_PROJECT_NAME:-commune}.json
+      BAO_UNSEAL: ${BAO_UNSEAL:-file}
+      BAO_KEY_SHARES: ${BAO_KEY_SHARES:-1}
+      BAO_KEY_THRESHOLD: ${BAO_KEY_THRESHOLD:-1}
+      BAO_IMPORT_ENV: ${BAO_IMPORT_ENV:-auto}
+      # Chuyển từ .env cũ (trước #10): chỉ đọc khi bí mật tương ứng CHƯA có trong OpenBao
+      # (hoặc BAO_IMPORT_ENV=force). Xóa các dòng này khỏi .env sau khi chuyển.
+      LEGACY_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      LEGACY_PGRST_DB_PASSWORD: ${PGRST_DB_PASSWORD:-}
+      LEGACY_KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+      LEGACY_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      LEGACY_FLOWABLE_DB_PASSWORD: ${FLOWABLE_DB_PASSWORD:-}
+      LEGACY_FLOWABLE_ADMIN_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD:-}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./core/openbao:/core/openbao:ro
+      - ${BAO_INIT_DIR:-./.data/openbao}:/bao-init
+      - db-secrets:/vol/db
+      - postgrest-secrets:/vol/postgrest
+      - keycloak-secrets:/vol/keycloak
+      - app-realm-secrets:/vol/app-realm
+      - flowable-secrets:/vol/flowable
+      - garage-secrets:/vol/garage
+      - garage-init-secrets:/vol/garage-init
+      - app-secrets:/vol/app
+    depends_on:
+      openbao:
+        condition: service_started
+    restart: "no"
+
+  # Agent một lần (mẫu x-bao-agent ở đầu tệp). uid = uid của dịch vụ đọc tệp.
+  db-secrets:
+    <<: *bao-agent
+    user: "70"
+    command: ["-config=/core/openbao/agent/db.hcl"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    volumes:
+      - ./core/openbao/agent:/core/openbao/agent:ro
+      - db-secrets:/run/dxos-secrets
+
+  postgrest-secrets:
+    <<: *bao-agent
+    user: "1000"
+    command: ["-config=/core/openbao/agent/postgrest.hcl"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-commune}
+    volumes:
+      - ./core/openbao/agent:/core/openbao/agent:ro
+      - postgrest-secrets:/run/dxos-secrets
+
+  keycloak-secrets:
+    <<: *bao-agent
+    user: "1000"
+    command: ["-config=/core/openbao/agent/keycloak.hcl"]
+    volumes:
+      - ./core/openbao/agent:/core/openbao/agent:ro
+      - keycloak-secrets:/run/dxos-secrets
+
+  flowable-secrets:
+    <<: *bao-agent
+    user: "100"
+    command: ["-config=/core/openbao/agent/flowable.hcl"]
+    volumes:
+      - ./core/openbao/agent:/core/openbao/agent:ro
+      - flowable-secrets:/run/dxos-secrets
+
   # ------------------------------------------------- core – TODO tuần 2 ----
   # Bật từng dịch vụ khi làm việc tương ứng trong docs/PLAN.md tuần 2.
   # Kiểm tra lại tag mới nhất trên trang dự án trước khi ghim.
   #
   # rabbitmq:    # Hàng đợi sự kiện, MPL-2.0
   #   image: rabbitmq:<tag>-management-alpine
-  #   profiles: [core]
-  #
-  # openbao:     # Quản lý bí mật, MPL-2.0 (không dùng HashiCorp Vault)
-  #   image: openbao/openbao:<tag>
   #   profiles: [core]
 
   # ------------------------------------------------- docs – TODO tuần 2–5 ----
@@ -467,8 +613,17 @@ services:
 volumes:
   pg-data:
   jwks:
-  garage-secrets:
   garage-meta:
   garage-data:
-  app-secrets:
   clamav-db:
+  # OpenBao (#10): dữ liệu raft (đã mã hóa) và volume riêng của từng danh tính
+  # (role_id/secret_id + tệp bí mật agent render). Mất bao-data = mất mọi bí mật.
+  bao-data:
+  db-secrets:
+  postgrest-secrets:
+  keycloak-secrets:
+  app-realm-secrets:
+  flowable-secrets:
+  garage-secrets:
+  garage-init-secrets:
+  app-secrets:

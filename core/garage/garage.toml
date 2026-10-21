@@ -4,9 +4,9 @@
 # Một nút, replication_factor = 1: đủ cho máy local và demo. Triển khai thật: ≥ 3 nút,
 # replication_factor = 3 (https://garagehq.deuxfleurs.fr/documentation/cookbook/real-world/).
 #
-# Bí mật KHÔNG nằm ở đây: rpc_secret và admin_token do dịch vụ một lần garage-secrets sinh
-# ngẫu nhiên vào volume garage-secrets (chỉ root đọc được), Garage đọc qua *_file.
-# TODO(#10): chuyển các bí mật này sang OpenBao.
+# Bí mật KHÔNG nằm ở đây: rpc_secret và admin_token nằm trong OpenBao (dxos/core/garage, #10);
+# agent một lần garage-secrets render ra volume garage-secrets (chủ root, quyền 0400), Garage
+# đọc qua *_file.
 
 metadata_dir = "/var/lib/garage/meta"
 data_dir = "/var/lib/garage/data"

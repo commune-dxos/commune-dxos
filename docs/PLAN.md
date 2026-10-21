@@ -27,7 +27,7 @@ Cách dùng tệp này:
 - [x] V1 · Garage v2.4.1 (S3 một nút, dịch vụ riêng, khóa riêng mỗi ứng dụng) + API tải tệp hồ sơ `/files` (kiểm loại + magic bytes, link GET ký ngắn hạn, quyền theo RLS); ClamAV 1.5.4 quét tệp trước khi lưu, tệp nhiễm bị chặn và ghi nhật ký (#7, PR chờ duyệt)
 - [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `apps/mot-cua/processes/` (#8, PR chờ duyệt)
 - [ ] V2 · RabbitMQ nhận sự kiện từ Flowable (hồ sơ mới, chuyển bước, sắp trễ hạn)
-- [ ] V1 · OpenBao giữ bí mật dịch vụ (mật khẩu CSDL, client secret), bỏ bí mật khỏi `.env` khi chạy thật
+- [x] V1 · OpenBao 2.7.1 giữ mọi bí mật dịch vụ (mật khẩu CSDL, quản trị Keycloak/Flowable, client secret, khóa S3, bí mật Garage); `.env` không còn mật khẩu; mỗi dịch vụ một AppRole + policy chỉ đọc đúng phần mình; `make up` tự init/unseal (dev); chuyển được từ `.env` cũ (#10, PR chờ duyệt)
 - [ ] V3 · CI: thêm lint/test cho từng thành phần đã có (shellcheck, yamllint, kiểm tra cú pháp BPMN, test SQL/RLS)
 - [ ] V3 · README song ngữ chạy được từ máy sạch (`cp .env.example .env` → `make up`)
 - [ ] V1 · Release v0.1.0

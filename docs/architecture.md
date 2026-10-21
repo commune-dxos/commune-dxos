@@ -90,7 +90,6 @@ flowchart TB
 core/                         Tầng 1 – không có tên bảng, vai trò hay thủ tục nghiệp vụ
   postgres/initdb/10-core.sql   role authenticator + anon; schema dxos: dxos.jwt_claims(),
                                 dxos.jwt_claim(ten), dxos.jwt_sub(); sổ dxos.app_migration
-  postgres/initdb/20-auth.sh    mật khẩu authenticator, CSDL riêng của Keycloak
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
@@ -98,11 +97,16 @@ core/                         Tầng 1 – không có tên bảng, vai trò hay 
                                 /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD);
                                 chặn API quản trị Flowable; CORS theo DXOS_CORS_ORIGINS (§4.1)
   garage/garage.toml            Garage một nút (S3 :3900, Admin API :3903), bí mật đọc từ tệp (§4.3)
+  openbao/config.hcl            OpenBao server (raft, không UI, audit ra stdout) (§4.4)
+  openbao/bao-init.py           dịch vụ một lần: init, unseal, KV, policy, AppRole, bí mật lõi
+  openbao/policies/*.hcl        policy từng danh tính; openbao/agent/*.hcl: agent render tệp bí mật
+  openbao/kiem-quyen.py         kiểm policy bằng AppRole thật của từng dịch vụ (make smoke)
   scripts/app-migrate.sh        dịch vụ một lần: áp dụng SQL của ứng dụng
   scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng; ghi secret
-                                của client dịch vụ vào volume app-secrets
-  scripts/flowable-db-init.sh   dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine
-  scripts/garage-secrets.sh     dịch vụ một lần: sinh rpc_secret, admin_token của Garage
+                                của client dịch vụ vào OpenBao
+  scripts/db-init.sh            dịch vụ một lần: role + CSDL riêng của authenticator, keycloak, flowable,
+                                mật khẩu theo OpenBao
+  scripts/kc-start.sh           entrypoint Keycloak: đọc mật khẩu từ tệp bí mật
   scripts/garage-init.py        dịch vụ một lần: layout, bucket của ứng dụng, khóa S3 riêng của ứng dụng
 apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   app.env                       PGRST_DB_SCHEMAS=mot_cua
@@ -118,6 +122,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   backend/main.py               API quy trình mỏng /workflow (#6, §4.2) và API tệp /files (#7, §4.3),
                                 dịch vụ app-backend
   backend/tep.py, tests/        phần thuần của API tệp + test đơn vị (make test, trong make check)
+  backend/bimat.py              đọc bí mật của ứng dụng từ OpenBao (AppRole app) (#10)
   tests/smoke.sh, smoke-tep.sh  kiểm tra riêng của ứng dụng (make smoke gọi)
 ```
 
@@ -129,13 +134,19 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
 | Keycloak | realm `dxos`, khóa, OTP, client `dxos_api`, `dxos_cli` | client role của `dxos_api`, nhóm, client web, người dùng mẫu, required action OTP |
 | APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*`, `/files/s3/*` (không nêu tên tài nguyên); upstream `app-backend`, `garage-s3` là tên dịch vụ chung | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow`, `/files` do `backend/main.py` của ứng dụng quyết định |
 | Object storage | Garage một nút, ClamAV; tạo bucket và **một khóa S3 riêng cho mỗi ứng dụng** chỉ có quyền trên bucket ứng dụng khai báo; không biết tên bucket nghiệp vụ nào | `s3/buckets.conf`; cấu trúc khóa object, loại tệp nhận, quyền xem do backend + RLS của ứng dụng quyết định |
+| Bí mật | OpenBao, policy theo danh tính; nhánh `dxos/apps/<DXOS_APP>/` cho ứng dụng (khóa S3, client secret) | đọc bí mật của mình qua AppRole `app` (`backend/bimat.py`) |
 
 ### 2.3 Khởi động
 
 ```mermaid
 flowchart LR
   ENV[".env<br/>DXOS_APP=mot-cua"] -.-> MIG & REALM & PGR
+  BAO[("openbao")] --> BI["bao-init (một lần)<br/>unseal, policy, AppRole"]
+  BI -->|exit 0| AG["agent *-secrets (một lần)<br/>render tệp bí mật"]
+  AG -->|exit 0| PG & KC & PGR & FL & S3
   PG[("postgres<br/>initdb: core/postgres")] -->|healthy| MIG["app-migrate (một lần)<br/>apps/mot-cua/db/*.sql"]
+  PG -->|healthy| DBI["db-init (một lần)<br/>role + CSDL dịch vụ"]
+  DBI -->|exit 0| KC & PGR & FL
   KC["keycloak<br/>import core/keycloak/realm-dxos.json"] -->|healthy| REALM["app-realm (một lần)<br/>apps/mot-cua/keycloak/realm.json"]
   KC -->|healthy| JWKS["jwks-init (một lần)"]
   MIG -->|exit 0| PGR["postgrest<br/>env_file apps/mot-cua/app.env"]
@@ -144,10 +155,9 @@ flowchart LR
   REALM -->|exit 0| GW
   FL["flowable<br/>apps/mot-cua/processes"] -->|healthy| BE["app-backend<br/>apps/mot-cua/backend/main.py"]
   PGR --> BE
-  GS["garage-secrets (một lần)"] -->|exit 0| S3["garage"]
-  S3 -->|healthy| GI["garage-init (một lần)<br/>apps/mot-cua/s3/buckets.conf"]
-  GI -->|exit 0, khóa S3 → app-secrets| BE
-  REALM -->|exit 0, secret client dịch vụ → app-secrets| BE
+  S3["garage"] -->|healthy| GI["garage-init (một lần)<br/>apps/mot-cua/s3/buckets.conf"]
+  GI -->|exit 0, khóa S3 → OpenBao| BE
+  REALM -->|exit 0, secret client dịch vụ → OpenBao| BE
   AV["clamav"] -.->|started| BE
   BE -->|healthy| GW
   S3 -->|healthy| GW
@@ -155,7 +165,8 @@ flowchart LR
 
 - `app-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
 - `app-realm` (image `keycloak`, đã có sẵn, dùng `kcadm.sh`): gọi **Partial Import** của Keycloak vào realm `dxos` với `ifResourceExists=SKIP`: đối tượng đã có thì giữ nguyên, nên chạy lại không lỗi và không ghi đè người dùng đã cài OTP (ghi đè sẽ đổi `sub`, làm hồ sơ cũ mất chủ).
-- `garage-secrets`, `garage-init` (image `python` đã dùng cho `app-backend`): §4.3. `garage-init` chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
+- `garage-init` (image `python` đã dùng cho `app-backend`): §4.3. Chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
+- `bao-init`, agent `db-secrets`, `postgrest-secrets`, `keycloak-secrets`, `flowable-secrets`, `garage-secrets` (image `openbao`), `db-init` (image `postgres`): §4.4. Đều chạy lại ở mỗi `up`.
 - Chạy lại tay: `make migrate`; nạp dữ liệu mẫu khi đã tắt seed: `make seed`.
 
 ### 2.4 Hợp đồng giữa lõi và ứng dụng
@@ -168,8 +179,8 @@ Lõi chỉ biết các quy ước sau trong `apps/<DXOS_APP>/` (thiếu thư m�
 4. `keycloak/realm.json`: định dạng `PartialImportRepresentation` (`roles.client.dxos_api`, `groups`, `clients`, `users`). Mỗi người dùng có **đúng một** client role của `dxos_api`, trùng tên role PostgreSQL (PostgREST đọc `resource_access.dxos_api.roles[0]`).
 5. `tests/smoke.sh`: đoạn bash được `scripts/smoke.sh` `source`, dùng các hàm `kiem`, `ma_http`, `sql`, `kc`, `lay_token` trong `scripts/lib-smoke.sh`.
 6. `processes/*.bpmn20.xml` (#8): Flowable đọc thư mục này (mount chỉ đọc vào `/dxos/processes`, thuộc tính `flowable.process-definition-location-prefix`) và tự triển khai khi khởi động; tệp không đổi thì không tạo phiên bản mới. Cú pháp được `scripts/check-bpmn.py` kiểm trong `make check`/CI.
-7. `backend/main.py` (#6, D-008 mục 4): backend riêng của ứng dụng, dịch vụ `app-backend` chạy bằng image `python` gốc (chỉ thư viện chuẩn), nhận `/workflow/*` từ APISIX (đã bỏ tiền tố). Lõi truyền vào địa chỉ PostgREST, Flowable, JWKS, issuer, audience và mật khẩu tài khoản kỹ thuật Flowable qua biến môi trường. Thiếu tệp này thì dịch vụ chỉ chạy chỗ giữ, `/workflow` trả 502.
-8. `s3/buckets.conf` (#7): mỗi dòng một tên bucket. `garage-init` tạo bucket và khóa `dxos-app-<DXOS_APP>` chỉ đọc/ghi trên các bucket này (không tạo được bucket, không phải owner; bucket bỏ khỏi danh sách thì bị thu hồi quyền), ghi thông tin kết nối vào `/run/dxos-secrets/s3.json` (volume `app-secrets`, quyền 600) mà `app-backend` mount chỉ đọc.
+7. `backend/main.py` (#6, D-008 mục 4): backend riêng của ứng dụng, dịch vụ `app-backend` chạy bằng image `python` gốc (chỉ thư viện chuẩn), nhận `/workflow/*` từ APISIX (đã bỏ tiền tố). Lõi truyền vào địa chỉ PostgREST, Flowable, JWKS, issuer, audience, OpenBao qua biến môi trường, và role_id/secret_id của AppRole `app` trong `/run/dxos-secrets/approle/` (volume `app-secrets`, chỉ đọc); mật khẩu tài khoản kỹ thuật Flowable và bí mật của ứng dụng đọc từ OpenBao (§4.4). Thiếu tệp này thì dịch vụ chỉ chạy chỗ giữ, `/workflow` trả 502.
+8. `s3/buckets.conf` (#7): mỗi dòng một tên bucket. `garage-init` tạo bucket và khóa `dxos-app-<DXOS_APP>` chỉ đọc/ghi trên các bucket này (không tạo được bucket, không phải owner; bucket bỏ khỏi danh sách thì bị thu hồi quyền), ghi thông tin kết nối vào OpenBao `dxos/apps/<DXOS_APP>/s3`, `app-backend` đọc bằng AppRole `app` (§4.4).
 9. Client có service account trong `keycloak/realm.json` (confidential, `serviceAccountsEnabled`): Keycloak tự sinh client secret khi nạp, `app-realm` ghi vào `/run/dxos-secrets/keycloak-<clientId>.secret` cho backend lấy token Client Credentials. Service account mang client role của `dxos_api` trùng role PostgreSQL như người dùng.
 10. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
 
@@ -194,6 +205,8 @@ Không sửa tệp nào trong `core/`, `docker-compose.yml` hay APISIX. Giới h
 
 Volume `pg-data` tạo trước khi tách vẫn có schema `mot_cua` cũ nhưng thiếu schema `dxos`; `app-migrate` sẽ dừng và hướng dẫn. Dữ liệu tuần 1 là dữ liệu giả, nên xóa volume rồi chạy lại: `docker compose --profile core down -v && make up`. Realm cũ `commune` cũng không còn được dùng (realm mới là `dxos`).
 
+Lên bản có OpenBao (#10): giữ `.env` cũ, `make up` chuyển mật khẩu sang OpenBao, rồi xóa các dòng mật khẩu khỏi `.env` (§4.4.5). Không cần xóa volume.
+
 Từ v0.0.1 lên schema đầy đủ (#5): `make up` (hoặc `make migrate`) áp dụng `002_schema_day_du.sql`, migration này **thay** hai bảng giữ chỗ `thu_tuc`, `ho_so` của 001 (khóa `text`/`bigint`, chỉ có dữ liệu giả) bằng schema mới; seed 001 bị bỏ, seed 002 nạp lại dữ liệu mẫu. Đã chạy thử trên volume tạo từ bản #3: smoke đạt hết. Người dùng mẫu tạo trước đó giữ `sub` ngẫu nhiên (Partial Import bỏ qua người dùng đã có), nên hồ sơ và cán bộ mẫu chỉ khớp người dùng Keycloak khi chạy từ volume trống; muốn khớp thì `docker compose --profile core down -v && make up`.
 
 ### 2.7 Tầng dữ liệu của ứng dụng `mot-cua` (#5)
@@ -213,8 +226,8 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`apps/mo
 | Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do ứng dụng nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `core/keycloak/realm-dxos.json`, `apps/mot-cua/keycloak/realm.json` |
 | API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `core/apisix/config.yaml`, `core/apisix/apisix.yaml`, §4.1, §8.5 |
 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của ứng dụng; migration theo ứng dụng; pgAudit (tuần 2) | `core/postgres/initdb/10-core.sql`, `core/scripts/app-migrate.sh`, `apps/mot-cua/db/` |
-| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `core/garage/`, `core/scripts/garage-*.{sh,py}`, `apps/mot-cua/backend/`, §4.3, §8.6 |
-| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động; Tầng 2 dùng qua `/workflow` (API quy trình của ứng dụng) | `docker-compose.yml` (`flowable`, `flowable-db-init`, `app-backend`), `apps/mot-cua/processes/`, `apps/mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
+| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `core/garage/`, `core/scripts/garage-init.py`, `apps/mot-cua/backend/`, §4.3, §8.6 |
+| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động; Tầng 2 dùng qua `/workflow` (API quy trình của ứng dụng) | `docker-compose.yml` (`flowable`, `db-init`, `app-backend`), `apps/mot-cua/processes/`, `apps/mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
 ## 4. Luồng xác thực: JWT Keycloak → APISIX → PostgREST → RLS
 
@@ -371,19 +384,115 @@ sequenceDiagram
 
 **Nhật ký tệp** `mot_cua.nhat_ky_tep`: `tai_len`, `tu_choi_ma_doc` (kèm tên mẫu virus, sha256), `tu_choi_loai_tep`, `cap_link`; chỉ thêm – trigger chặn `UPDATE`/`DELETE`/`TRUNCATE` kể cả superuser; lãnh đạo đọc được qua `/api/nhat_ky_tep`. Log kiểm toán chuỗi băm SHA-256 của toàn hệ thống là việc tuần 4.
 
-**Bí mật, không có trong repo hay `.env`:**
+**Bí mật, không có trong repo hay `.env`** (nằm trong OpenBao, §4.4):
 
-| Bí mật | Sinh bởi | Nằm ở | Ai đọc |
+| Bí mật | Sinh bởi | Nằm ở (KV `dxos/`) | Ai đọc |
 |---|---|---|---|
-| `rpc_secret`, `admin_token` của Garage | `garage-secrets` (32 byte ngẫu nhiên) | volume `garage-secrets`, quyền 600 | `garage`, `garage-init` |
-| Khóa S3 `dxos-app-<app>` (access key + secret) | Garage (`CreateKey`), `garage-init` ghi lại mỗi lần chạy | volume `app-secrets`, `s3.json`, quyền 600 | `app-backend` (mount chỉ đọc) |
-| Client secret `mot_cua_tep` | Keycloak khi nạp realm, `app-realm` ghi ra | volume `app-secrets`, `keycloak-mot_cua_tep.secret`, quyền 600 | `app-backend` |
+| `rpc_secret`, `admin_token` của Garage | `bao-init` (32 byte ngẫu nhiên) | `core/garage` | `garage` (tệp do agent render), `garage-init` |
+| Khóa S3 `dxos-app-<app>` (access key + secret) | Garage (`CreateKey`), `garage-init` ghi lại khi đổi | `apps/<app>/s3` | `app-backend` (đọc lúc cần, chỉ trong RAM) |
+| Client secret `mot_cua_tep` | Keycloak khi nạp realm, `app-realm` ghi | `apps/<app>/keycloak/mot_cua_tep` | `app-backend` |
 
-Không bí mật nào được in ra log; client chỉ nhận link đã ký (chứa access key ID, không chứa secret). **TODO(#10):** chuyển cả ba sang OpenBao (KV + chính sách theo dịch vụ), `garage-init`/`app-realm` ghi vào OpenBao thay cho volume, `app-backend` đọc bằng token OpenBao. Xoay khóa S3 hiện tại: xóa khóa `dxos-app-<app>` bằng CLI `garage key delete` (`docker compose exec garage /garage …`) rồi `docker compose --profile core up -d --force-recreate garage-init app-backend` (khóa mới được tạo và ghi lại; `app-backend` đọc tệp lúc khởi động lần gọi đầu).
+Không bí mật nào được in ra log; client chỉ nhận link đã ký (chứa access key ID, không chứa secret). Xoay khóa S3: xóa khóa `dxos-app-<app>` bằng CLI `garage key delete` (`docker compose exec garage /garage …`) rồi `make up` và `docker compose --profile core up -d --no-deps --force-recreate app-backend` (khóa mới được tạo và ghi vào OpenBao; `app-backend` đọc lại ở lần gọi đầu).
 
 **Garage một nút.** `replication_factor = 1`, `db_engine = sqlite`, dung lượng khai báo `GARAGE_CAPACITY_BYTES` (mặc định 10 GiB). Đủ cho máy local và chung kết; triển khai thật cần ≥ 3 nút ở các zone khác nhau và `replication_factor = 3`. Link quá hạn Garage trả **400 `InvalidRequest: Date is too old`** (AWS S3 trả 403); sửa đường dẫn hay chữ ký → 403.
 
 **ClamAV.** Image `clamav/clamav:1.5.4-debian` (đa kiến trúc; bản Alpine chỉ có amd64), có sẵn CSDL virus nên volume trống không phải tải ~300 MB; `freshclam` trong container cập nhật vào volume `clamav-db`. Nạp CSDL mất khoảng 30–60 giây và cần ~1–1,5 GB RAM; trong lúc đó API tải tệp trả 503. ClamAV nằm trong profile `core` (không phải `docs`) vì quét là điều kiện bắt buộc để lưu tệp.
+
+### 4.4 Quản lý bí mật: OpenBao (#10)
+
+Không có mật khẩu, khóa hay token nào trong repo hay `.env`. **OpenBao 2.7.1** (MPL-2.0, nhánh mã nguồn mở của Vault do Linux Foundation quản lý; HashiCorp Vault bị loại vì giấy phép BSL) là nguồn duy nhất của mọi bí mật dịch vụ. Chạy như dịch vụ riêng bằng image gốc `openbao/openbao`, không sửa mã. Cấu hình và mã khởi tạo: `core/openbao/`.
+
+#### 4.4.1 Thiết kế và lý do
+
+| Quyết định | Chọn | Vì sao / thay thế khi triển khai thật |
+|---|---|---|
+| Chế độ chạy | Server thường (`bao server`, **không** `-dev`), web UI tắt (lõi headless) | `-dev` giữ dữ liệu trong RAM, tự unseal, root token cố định: không chứng minh được vòng đời bí mật thật |
+| Storage | `raft` (integrated storage) một nút, volume `bao-data` | Không cần dịch vụ ngoài; thêm nút bằng `retry_join` mà không đổi storage; có `bao operator raft snapshot` để sao lưu. `file` đơn giản hơn nhưng không mở rộng được |
+| Mạng | Chỉ nghe trong mạng nội bộ Docker, không publish cổng, không qua APISIX; TLS tắt | Triển khai thật: TLS bằng chứng thư từ step-ca của lõi |
+| Khởi tạo | `bao-init` (Python thư viện chuẩn, HTTP API) chạy ở **mỗi** `make up`, idempotent | Volume trống và volume cũ cùng một lệnh; không có bước tay nào để quên |
+| Unseal | Shamir 1 phần, ngưỡng 1 (`BAO_KEY_SHARES`, `BAO_KEY_THRESHOLD`); `BAO_UNSEAL=file`: `bao-init` tự unseal bằng tệp khóa trên máy — **chỉ cho máy dev** | Thật: 5 phần / ngưỡng 3 chia cho nhiều người (`BAO_UNSEAL=manual`), hoặc auto-unseal bằng KMS/HSM hay một OpenBao khác (transit); thu hồi root token sau khi cấu hình |
+| Danh tính | Mỗi dịch vụ (nhóm dịch vụ cùng vai trò) một **AppRole** + policy `dxos-<tên>` chỉ đọc/ghi đúng đường dẫn của mình; token 15 phút (backend: 1 giờ, đăng nhập lại khi hết hạn) | role_id/secret_id nằm trong volume riêng của danh tính đó, chủ là uid của dịch vụ, quyền 0400. Thật: secret_id có hạn + response wrapping, `secret_id_bound_cidrs` |
+| Cách dịch vụ nhận bí mật | (a) Image không tự gọi HTTP được (PostgreSQL, PostgREST, Keycloak, Flowable, Garage): **`bao agent` một lần** đăng nhập AppRole, render tệp 0400 vào volume riêng `<danh tính>-secrets` rồi thoát; dịch vụ đọc bằng cơ chế sẵn có (`POSTGRES_PASSWORD_FILE`, `PGPASSFILE`, `PGRST_DB_URI=@tệp`, Spring Boot `configtree`, `*_file` của Garage; Keycloak qua `core/scripts/kc-start.sh`). (b) `app-realm` (bash), `garage-init`, `app-backend` (Python): **tự gọi HTTP API**, bí mật chỉ nằm trong bộ nhớ | Agent một lần không tốn RAM khi chạy (laptop 16 GB). Đánh đổi: tệp render nằm trong volume Docker (trong VM của Docker Desktop), mỗi volume chỉ dịch vụ đó mount. Thật: agent chạy lâu dài làm sidecar, tệp trên tmpfs, tự render lại khi bí mật đổi |
+| Bí mật lõi | `bao-init` sinh ngẫu nhiên (32 ký tự `[A-Za-z0-9_-]`, an toàn trong URI; khóa Garage 32 byte hex) khi chưa có; không bao giờ ghi đè | Bí mật do dịch vụ khác sinh (khóa S3 do Garage, client secret do Keycloak) được `garage-init`/`app-realm` ghi vào OpenBao bằng quyền chỉ-ghi của chúng |
+| Kiểm toán | Audit device `file` ra stdout (`docker compose logs openbao`), giá trị bí mật và token được băm HMAC | Khai báo trong `config.hcl` (OpenBao không cho bật audit qua API). Thật: chuyển log về kho log tập trung |
+| Xoay vòng | Đổi giá trị trong KV rồi `make up`: `db-init` đặt lại mật khẩu role PostgreSQL, agent render lại; khởi động lại dịch vụ dùng nó (`docker compose up -d --force-recreate <dịch vụ>`) | Khóa S3: xóa khóa `dxos-app-<app>` bằng `docker compose exec garage /garage key delete …` rồi `make up` (`garage-init` tạo và ghi khóa mới) |
+
+#### 4.4.2 Sơ đồ
+
+```mermaid
+flowchart LR
+  subgraph host["Máy chạy (ngoài git)"]
+    INIT[".data/openbao/tên-project.json<br/>unseal key + root token, quyền 600"]
+  end
+  BI["bao-init (một lần)<br/>init · unseal · KV · policy · AppRole"] <-->|root token| BAO[("openbao<br/>KV v2 dxos/ · raft · audit")]
+  INIT <--> BI
+  BI -->|role_id + secret_id| V1["volume db-secrets"] & V2["postgrest-secrets"] & V3["keycloak-secrets"] & V4["flowable-secrets"] & V5["garage-secrets"] & V6["app-realm-secrets"] & V7["garage-init-secrets"] & V8["app-secrets"]
+  BAO -->|"bao agent một lần<br/>(AppRole riêng)"| V1 & V2 & V3 & V4 & V5
+  V1 --> PG["postgres · db-init · app-migrate"]
+  V2 --> PGR["postgrest"]
+  V3 --> KC["keycloak"]
+  V4 --> FL["flowable"]
+  V5 --> GA["garage"]
+  V6 --> AR["app-realm"] <-->|"đọc admin Keycloak<br/>ghi client secret"| BAO
+  V7 --> GI["garage-init"] <-->|"đọc admin_token<br/>ghi khóa S3"| BAO
+  V8 --> BE["app-backend"] <-->|"đọc lúc cần, giữ trong RAM"| BAO
+```
+
+Thứ tự khởi động: `openbao` → `bao-init` (exit 0) → agent `*-secrets` (exit 0) → `postgres` → `db-init` → `keycloak`, `postgrest`, `flowable` → `app-realm`, `garage-init` → `app-backend` (xem §2.3).
+
+#### 4.4.3 Dịch vụ ↔ đường dẫn KV ↔ policy
+
+KV v2 gắn ở `dxos/`; policy viết theo đường dẫn API `dxos/data/<đường dẫn>`. `${DXOS_APP}` trong policy được `bao-init` thay bằng ứng dụng đang chọn, nên ứng dụng chỉ chạm nhánh của chính mình.
+
+| Danh tính (AppRole, policy `dxos-…`) | Dịch vụ dùng | Đọc | Ghi | Nhận bằng |
+|---|---|---|---|---|
+| `db` | `postgres` (initdb), `db-init`, `app-migrate` | `core/db/*` (`postgres`, `authenticator`, `keycloak`, `flowable`) | – | agent `db-secrets` (uid 70): `postgres_password`, `pgpass`, mật khẩu từng role |
+| `postgrest` | `postgrest` | `core/db/authenticator` | – | agent `postgrest-secrets` (uid 1000): `db-uri` |
+| `keycloak` | `keycloak` | `core/db/keycloak`, `core/keycloak/admin` | – | agent `keycloak-secrets` (uid 1000): `db_password`, `admin_password` |
+| `flowable` | `flowable` | `core/db/flowable`, `core/flowable/rest-admin` | – | agent `flowable-secrets` (uid 100): `flowable/spring.datasource.password`, `flowable/flowable.rest.app.admin.password` |
+| `garage` | `garage` | `core/garage` (`rpc_secret`, `admin_token`) | – | agent `garage-secrets` (root): `rpc_secret`, `admin_token` |
+| `garage-init` | `garage-init` | `core/garage`, `apps/${DXOS_APP}/s3` | `apps/${DXOS_APP}/s3` | HTTP API (Python) |
+| `app-realm` | `app-realm` | `core/keycloak/admin` | `apps/${DXOS_APP}/keycloak/*` (chỉ ghi, không đọc lại) | HTTP/1.0 qua `/dev/tcp` (image Keycloak không có curl) |
+| `app` | `app-backend` | `apps/${DXOS_APP}/*`, `core/flowable/rest-admin` | – | HTTP API (`apps/mot-cua/backend/bimat.py`), chỉ trong RAM |
+
+`make smoke` kiểm ma trận này bằng chính AppRole của từng dịch vụ (`core/openbao/kiem-quyen.py`, `scripts/smoke-openbao.sh`): 27 cặp danh tính × đường dẫn, gồm cả `app` không đọc được `apps/<ứng dụng khác>/…`, `garage-init` không ghi được `core/garage`, `keycloak` không ghi được bí mật của chính mình. Phép thử ghi dùng check-and-set `cas=0` lên đường dẫn đã có nên không bao giờ đổi bí mật thật.
+
+#### 4.4.4 Khởi tạo, unseal, khởi động lại
+
+```
+make up            # docker compose --profile core up -d; bao-init chạy trước mọi dịch vụ dùng bí mật
+make bao-init      # chạy riêng bước khởi tạo/unseal (idempotent)
+make bao-status    # initialized / sealed
+```
+
+- Lần đầu (volume `bao-data` trống): `bao-init` gọi `sys/init`, ghi **unseal key + root token** vào `${BAO_INIT_DIR:-./.data/openbao}/<tên compose project>.json` (thư mục 700, tệp 600; `.data/` đã nằm trong `.gitignore`), rồi unseal, bật KV v2 + AppRole, ghi policy, sinh bí mật lõi, cấp AppRole.
+- **Không xóa, không commit tệp này.** Mất tệp khi OpenBao đang seal = mất mọi bí mật (phải xóa volume và khởi tạo lại từ đầu). `git clean -fdx` xóa cả `.data/`: sao lưu tệp ra ngoài repo. Mỗi compose project một tệp, nên project tạm (`COMPOSE_PROJECT_NAME=…`) không ghi đè khóa của project chính. Nếu volume `bao-data` bị xóa mà tệp cũ còn, `bao-init` đổi tên tệp cũ thành `…json.<thời điểm>.bak` thay vì ghi đè.
+- Khởi động lại (`make down` rồi `make up`, khởi động lại Docker, `docker compose restart openbao`): OpenBao luôn về trạng thái **seal**. `make up` chạy lại `bao-init` → unseal → dịch vụ chạy tiếp. Khi đang seal, agent thoát mã 1 sau khoảng 1 giây, dịch vụ phụ thuộc không khởi động (fail-closed); dịch vụ đang chạy giữ bí mật đã nhận.
+- `BAO_UNSEAL=manual`: `bao-init` không đọc unseal key từ tệp; unseal tay `docker compose exec openbao bao operator unseal` (lặp đủ ngưỡng) rồi `make bao-init`.
+
+#### 4.4.5 Chuyển từ `.env` cũ (volume tạo trước #10)
+
+Volume cũ có mật khẩu role PostgreSQL, quản trị Keycloak, `rest-admin` của Flowable đã đặt theo `.env`. Không cần xóa volume:
+
+1. Giữ nguyên `.env` cũ (còn `POSTGRES_PASSWORD`, `PGRST_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `FLOWABLE_DB_PASSWORD`, `FLOWABLE_ADMIN_PASSWORD`), chạy `make up`. Bí mật nào **chưa có** trong OpenBao thì `bao-init` lấy từ biến `.env` tương ứng (truyền vào dưới tên `LEGACY_*`); `rpc_secret`/`admin_token` của Garage lấy từ volume `garage-secrets` cũ. Log ghi rõ `ĐÃ CHUYỂN từ .env sang OpenBao: …` (chỉ tên biến). Tệp rõ cũ `s3.json`, `keycloak-*.secret` trong volume `app-secrets` bị xóa (khóa S3 và client secret được `garage-init`/`app-realm` ghi lại vào OpenBao ngay lần chạy đó).
+2. Xóa 6 dòng mật khẩu khỏi `.env`, chạy lại `make up` và `make smoke`.
+3. Lỡ chạy `make up` bản mới với `.env` đã xóa mật khẩu trên volume cũ (bí mật mới sinh ngẫu nhiên, Keycloak/Flowable không đăng nhập được CSDL): đưa lại các dòng cũ vào `.env` rồi `make bao-import-env` (ghi đè bằng giá trị `.env`), sau đó `make up`.
+
+Đã chạy thử trên volume tạo bằng `develop` trước #10 (project tạm `commune-b10m`, smoke cũ 277/277 để có dữ liệu): §8.7.
+
+#### 4.4.6 Xem và đổi một bí mật (quản trị viên)
+
+Root token đọc từ tệp trên máy, đi qua biến môi trường của lệnh, không in ra:
+
+```
+TK="$(python3 -c 'import json; print(json.load(open(".data/openbao/commune.json"))["root_token"])')"
+docker compose exec -e BAO_TOKEN="$TK" openbao bao kv metadata get dxos/core/db/flowable   # phiên bản, không hiện giá trị
+docker compose exec -e BAO_TOKEN="$TK" openbao bao kv patch dxos/core/db/flowable password="$(openssl rand -hex 16)"
+make up                                                # db-init đặt lại mật khẩu role, agent render lại
+docker compose --profile core up -d --no-deps --force-recreate flowable
+```
+
+Quy trình xoay vòng này mới kiểm bằng tay từng bước (chưa có trong `make smoke`).
 
 ## 5. MFA cho cán bộ
 
@@ -397,10 +506,11 @@ Không bí mật nào được in ra log; client chỉ nhận link đã ký (ch�
 | Profile | Dịch vụ | Trạng thái | Ghi chú tài nguyên |
 |---|---|---|---|
 | `core` | PostgreSQL, Keycloak, PostgREST, APISIX (+ dịch vụ một lần `jwks-init`, `app-migrate`, `app-realm`) | chạy thử 17/10 và 20/10/2026 | mục tiêu laptop 16 GB |
-| `core` | Flowable REST (+ dịch vụ một lần `flowable-db-init`) | chạy thử 20/10/2026 (#8) | JVM `-Xmx512M` |
+| `core` | Flowable REST (+ dịch vụ một lần `db-init`, trước #10 là `flowable-db-init`) | chạy thử 20/10/2026 (#8) | JVM `-Xmx512M` |
 | `core` | `app-backend` (backend của ứng dụng, image `python` gốc) | chạy thử 21/10/2026 (#6) | ~20 MB RAM |
 | `core` | Garage (+ dịch vụ một lần `garage-secrets`, `garage-init`), ClamAV | chạy thử 21/10/2026 (#7) | Garage ~30 MB RAM; ClamAV ~1–1,5 GB RAM cho CSDL virus |
-| `core` | RabbitMQ, OpenBao | TODO tuần 2 | |
+| `core` | OpenBao (+ dịch vụ một lần `bao-init`, 5 agent `*-secrets`) | chạy thử 21/10/2026 (#10) | agent chạy khoảng 1 giây rồi thoát, không giữ RAM |
+| `core` | RabbitMQ | TODO tuần 2 | |
 | `docs` | Gotenberg, step-ca, Meilisearch CE | TODO tuần 2–5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | Apache Superset | TODO tuần 4 | |
@@ -596,6 +706,23 @@ Docker Desktop, macOS arm64. Ba lần chạy, mỗi lần `make smoke` **277 đ�
 
 Dung lượng ổ hệ thống: 11 GB trống trước khi kéo image, 1,3 GB sau khi `make down` + xóa volume project tạm + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả dung lượng tệp đĩa ảo cho macOS; cần dọn trước khi chạy lại).
 
+### 8.7 Kết quả chạy thử 21/10/2026 (OpenBao giữ bí mật dịch vụ, #10)
+
+Docker Desktop, macOS arm64, OpenBao 2.7.1. Mỗi lần chạy `make smoke` **328 đạt, 0 trượt** (277 kiểm tra cũ + 51 kiểm tra mới: dịch vụ một lần `bao-init`, 5 agent, `db-init` thoát mã 0, `openbao` healthy, và `scripts/smoke-openbao.sh`).
+
+| Kịch bản | Kết quả |
+|---|---|
+| Volume trống (project tạm `commune-b10`), `.env` = `.env.example` (không mật khẩu nào) | `make up` một lệnh: init (1 phần khóa), unseal, KV v2, AppRole, 7 bí mật lõi sinh ngẫu nhiên, 8 AppRole; mọi dịch vụ healthy; smoke 328/328 |
+| Chỉ khởi động lại OpenBao (`docker compose restart openbao`) | seal; agent `db-secrets` thoát mã 1 sau ~0,5 giây (fail-closed); `make up` unseal lại, giữ nguyên secret_id |
+| `make down` rồi `make up` (giữ volume) | unseal tự động, không sinh bí mật mới; smoke 328/328 |
+| Volume tạo bằng `develop` trước #10 (project tạm `commune-b10m`, `.env` cũ có 6 mật khẩu, đã chạy smoke cũ 277/277 để có dữ liệu) | `make up`: 6 mật khẩu chuyển từ `.env`, `rpc_secret`/`admin_token` lấy từ volume `garage-secrets` cũ, xóa `s3.json` và `keycloak-mot_cua_tep.secret` dạng rõ trong `app-secrets`; xóa 6 dòng mật khẩu khỏi `.env`, `make up` lại: smoke 328/328, 16 hồ sơ cũ còn nguyên |
+| Policy (27 cặp danh tính × đường dẫn bằng AppRole thật) | đúng ma trận §4.4.3, ví dụ `postgrest` đọc `core/db/postgres` → 403, `app` đọc `apps/ung-dung-khac/s3` → 403, `garage-init` ghi `core/garage` → 403 |
+| Cấu hình container | không biến môi trường nào chứa mật khẩu/secret/token ở 9 dịch vụ dùng bí mật; tệp render quyền 0400; tệp unseal key quyền 600 và bị git bỏ qua |
+| Nhật ký kiểm toán | có dòng đọc `dxos/data/core/flowable/rest-admin`; mật khẩu dạng rõ không xuất hiện trong log OpenBao |
+| Quét repo | mọi giá trị bí mật của hai project tạm (KV, root token, unseal key, mật khẩu `.env` cũ) không xuất hiện trong tệp nào mà git theo dõi hoặc chưa bị ignore |
+
+Dung lượng ổ hệ thống: 8,4 GB trống trước khi kéo image, 4,4 GB sau khi `make down` + `down -v` hai project tạm + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả dung lượng tệp đĩa ảo cho macOS).
+
 ## 9. Việc tiếp theo (tuần 2)
 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
@@ -603,6 +730,7 @@ Dung lượng ổ hệ thống: 11 GB trống trước khi kéo image, 1,3 GB sa
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
 - Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình và phát sự kiện (hồ sơ mới, chuyển bước, `quaHan`) sang RabbitMQ (#9); khởi tạo quy trình sau Poka-yoke (tuần 3).
-- RabbitMQ (#9), OpenBao (#10): chuyển mật khẩu từ `.env` (kể cả mật khẩu `rest-admin` mà `app-backend` dùng) và bí mật sinh lúc khởi tạo trong volume `garage-secrets`, `app-secrets` (§4.3) sang OpenBao.
+- RabbitMQ (#9): thông tin đăng nhập của RabbitMQ cũng đặt trong OpenBao (thêm đường dẫn `core/rabbitmq`, policy, agent theo mẫu §4.4).
+- OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
 - Tệp: giao diện tải/xem (tuần 3); Poka-yoke kiểm đủ thành phần theo JSON Schema dựa trên `thanh_phan_ho_so` đã quét (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

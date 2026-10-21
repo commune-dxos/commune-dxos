@@ -9,9 +9,12 @@ Chạy lại bao nhiêu lần cũng được (idempotent):
   3. Khóa S3 riêng của ứng dụng (tên dxos-app-<DXOS_APP>): tạo nếu chưa có, chỉ được
      đọc/ghi trên các bucket đã khai báo; bucket không còn khai báo thì thu hồi quyền.
      Khóa không được tạo bucket, không phải owner.
-  4. Ghi thông tin kết nối + khóa vào volume bí mật của ứng dụng (tệp s3.json, quyền 600)
-     cho backend của ứng dụng đọc. Khóa không nằm trong repo, không in ra log.
-     TODO(#10): ghi khóa vào OpenBao thay cho tệp trong volume.
+  4. Ghi thông tin kết nối + khóa vào OpenBao (dxos/apps/<DXOS_APP>/s3) cho backend của
+     ứng dụng đọc (#10). Khóa không nằm trong repo hay trên đĩa, không in ra log.
+
+admin_token của Garage cũng đọc từ OpenBao. Đăng nhập AppRole `garage-init` (role_id,
+secret_id do bao-init đặt trong volume garage-init-secrets); policy chỉ cho đọc
+dxos/core/garage và ghi dxos/apps/<DXOS_APP>/s3 (core/openbao/policies/garage-init.hcl).
 
 Chỉ dùng thư viện chuẩn Python (image python gốc, không cài gói).
 """
@@ -26,14 +29,14 @@ import urllib.parse
 import urllib.request
 
 ADMIN_URL = os.environ.get("GARAGE_ADMIN_URL", "http://garage:3903")
-ADMIN_TOKEN_FILE = os.environ.get("GARAGE_ADMIN_TOKEN_FILE", "/run/garage-secrets/admin_token")
+BAO_ADDR = os.environ.get("BAO_ADDR", "http://openbao:8200").rstrip("/")
+BAO_APPROLE_DIR = os.environ.get("BAO_APPROLE_DIR", "/run/dxos-secrets/approle")
 S3_ENDPOINT = os.environ.get("GARAGE_S3_ENDPOINT", "http://garage:3900")
 S3_REGION = os.environ.get("GARAGE_S3_REGION", "garage")
 ZONE = os.environ.get("GARAGE_ZONE", "dxos")
 CAPACITY = int(os.environ.get("GARAGE_CAPACITY_BYTES", str(10 * 1024**3)))
 APP = os.environ["DXOS_APP"]
 BUCKETS_FILE = os.environ.get("APP_BUCKETS_FILE", "/app/s3/buckets.conf")
-SECRETS_DIR = os.environ.get("APP_SECRETS_DIR", "/run/dxos-secrets")
 
 TEN_BUCKET = re.compile(r"[a-z0-9][a-z0-9-]{1,61}[a-z0-9]")
 
@@ -42,8 +45,33 @@ def log(msg):
     print(f"garage-init: {msg}", flush=True)
 
 
-with open(ADMIN_TOKEN_FILE, encoding="utf-8") as f:
-    _AUTH = "Bearer " + f.read().strip()
+def bao(method, path, body=None, token=None, cho_phep=()):
+    """HTTP API của OpenBao → JSON (None nếu mã lỗi nằm trong cho_phep). Lỗi khác → thoát
+    (không in body: có thể chứa bí mật)."""
+    data = None if body is None else json.dumps(body).encode()
+    req = urllib.request.Request(f"{BAO_ADDR}/v1/{path}", data=data, method=method)
+    if token:
+        req.add_header("X-Vault-Token", token)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            raw = r.read()
+    except urllib.error.HTTPError as e:
+        if e.code in cho_phep:
+            return None
+        sys.exit(f"garage-init: OpenBao {method} {path} → HTTP {e.code}")
+    return json.loads(raw) if raw else None
+
+
+def bao_token():
+    cred = {}
+    for k in ("role_id", "secret_id"):
+        with open(os.path.join(BAO_APPROLE_DIR, k), encoding="utf-8") as f:
+            cred[k] = f.read().strip()
+    return bao("POST", "auth/approle/login", cred)["auth"]["client_token"]
+
+
+BAO_TOKEN = bao_token()
+_AUTH = "Bearer " + bao("GET", "dxos/data/core/garage", token=BAO_TOKEN)["data"]["data"]["admin_token"]
 
 
 def admin(method, path, body=None, params=None, cho_phep=()):
@@ -126,15 +154,14 @@ def dam_bao_khoa(ten):
     return info
 
 
-def ghi_bi_mat(ten_tep, noi_dung):
-    os.makedirs(SECRETS_DIR, exist_ok=True)
-    duong = os.path.join(SECRETS_DIR, ten_tep)
-    tam = duong + ".tmp"
-    fd = os.open(tam, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(noi_dung, f)
-    os.replace(tam, duong)
-    os.chmod(duong, 0o600)
+def ghi_bi_mat(duong, noi_dung):
+    """Ghi vào OpenBao nếu khác giá trị hiện có (không tạo phiên bản KV thừa mỗi lần up)."""
+    hien = bao("GET", f"dxos/data/{duong}", token=BAO_TOKEN, cho_phep=(404,))
+    if hien and hien["data"]["data"] == noi_dung:
+        return False
+    bao("POST", f"dxos/data/{duong}", {"data": noi_dung}, BAO_TOKEN)
+    return True
+
 
 
 def main():
@@ -155,9 +182,11 @@ def main():
             admin("POST", "DenyBucketKey", {"bucketId": b["id"], "accessKeyId": key_id,
                                             "permissions": {"read": True, "write": True, "owner": True}})
             log(f"thu hồi quyền của {ten_khoa} trên bucket {b['id'][:16]}… (không còn khai báo)")
-    ghi_bi_mat("s3.json", {"endpoint": S3_ENDPOINT, "region": S3_REGION, "accessKeyId": key_id,
-                           "secretAccessKey": khoa["secretAccessKey"], "buckets": buckets})
-    log(f"khóa {ten_khoa} đọc/ghi {', '.join(buckets)}; thông tin kết nối ở {SECRETS_DIR}/s3.json")
+    duong = f"apps/{APP}/s3"
+    doi = ghi_bi_mat(duong, {"endpoint": S3_ENDPOINT, "region": S3_REGION, "accessKeyId": key_id,
+                             "secretAccessKey": khoa["secretAccessKey"], "buckets": buckets})
+    log(f"khóa {ten_khoa} đọc/ghi {', '.join(buckets)}; thông tin kết nối ở OpenBao dxos/{duong}"
+        + ("" if doi else " (không đổi)"))
 
 
 if __name__ == "__main__":

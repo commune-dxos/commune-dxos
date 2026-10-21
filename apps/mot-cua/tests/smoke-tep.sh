@@ -21,14 +21,14 @@ tai() {
 xem() {
   curl -s -o "$TD/xem.json" -w '%{http_code}' -H "Authorization: Bearer $1" "$GW/files/tep/$2${3:+?$3}"
 }
-# so_object <tiền tố> → số object trong bucket (ListObjectsV2 ký bằng khóa của ứng dụng,
-# chạy trong app-backend: khóa không ra khỏi container)
+# so_object <tiền tố> → số object trong bucket (ListObjectsV2 ký bằng khóa của ứng dụng đọc
+# từ OpenBao bằng AppRole của app-backend, chạy trong app-backend: khóa không ra khỏi container)
 so_object() {
   docker compose exec -T app-backend python - "$1" <<'PY'
-import hashlib, json, re, sys, urllib.parse, urllib.request
+import hashlib, re, sys, urllib.parse, urllib.request
 sys.path.insert(0, "/app/backend")
-import tep
-c = json.load(open("/run/dxos-secrets/s3.json"))
+import bimat, tep
+c = bimat.doc("apps/mot-cua/s3")
 url = f"{c['endpoint']}/mot-cua-ho-so?list-type=2&prefix={urllib.parse.quote(sys.argv[1], safe='')}"
 h = tep.ky_header("GET", url, c["region"], c["accessKeyId"], c["secretAccessKey"], hashlib.sha256(b"").hexdigest())
 print(len(re.findall(r"<Key>", urllib.request.urlopen(urllib.request.Request(url, headers=h)).read().decode())))
@@ -47,8 +47,8 @@ else
   kiem "khóa S3 của ứng dụng: không được tạo bucket" "false" "$(awk -F': *' '/Can create buckets/ {print $2}' <<<"$ki" | tr -d ' ')"
   kiem "khóa S3 của ứng dụng: chỉ RW trên $BUCKET" "RW $BUCKET" \
     "$(awk '/BUCKETS FOR THIS KEY/ {f=1; next} f && NF >= 3 && $1 != "Permissions" {print $1, $3}' <<<"$ki" | paste -sd, -)"
-  kiem "tệp khóa S3 trong volume bí mật chỉ chủ đọc được (600)" "600" \
-    "$(docker compose exec -T app-backend stat -c %a /run/dxos-secrets/s3.json)"
+  kiem "app-backend không giữ khóa S3 trên đĩa (volume bí mật chỉ có AppRole, #10)" "approle" \
+    "$(docker compose exec -T app-backend ls /run/dxos-secrets | paste -sd, -)"
   kiem "khóa S3 không nằm trong biến môi trường của app-backend" "0" \
     "$(docker compose exec -T app-backend env | grep -ci 'secretaccesskey\|aws_secret' || true)"
 
@@ -126,7 +126,7 @@ else
   kiem "link: tải về đúng nội dung (sha256), Content-Type PDF, nosniff" "$SHA application/pdf nosniff" \
     "$(curl -s "$LINK" | shasum -a 256 | cut -d' ' -f1) $(header_http Content-Type "$LINK") $(header_http X-Content-Type-Options "$LINK")"
   kiem "link không chứa secret của khóa S3" "0" \
-    "$(docker compose exec -T app-backend python -c 'import json,sys; print(int(json.load(open("/run/dxos-secrets/s3.json"))["secretAccessKey"] in sys.stdin.read()))' <<<"$LINK")"
+    "$(docker compose exec -T app-backend python -c 'import sys; sys.path.insert(0, "/app/backend"); import bimat; print(int(bimat.doc("apps/mot-cua/s3")["secretAccessKey"] in sys.stdin.read()))' <<<"$LINK")"
   ky="${LINK#*X-Amz-Signature=}"; ky="${ky:0:1}"
   kiem "link bị sửa chữ ký → 403" "403" \
     "$(ma_http "${LINK/X-Amz-Signature=$ky/X-Amz-Signature=$([ "$ky" = 0 ] && echo 1 || echo 0)}")"
