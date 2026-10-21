@@ -3,6 +3,14 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
 ## [Unreleased]
+### Changed
+- `README.md` viết lại thuần tiếng Việt, giữ đủ nội dung đã kiểm chứng từ máy sạch (#12); thêm banner, ảnh minh họa bài toán, huy hiệu giấy phép/phiên bản/CI, mục "Bài toán" và bảng 4 dịch vụ bắt buộc của đề (#26).
+
+### Added
+- `README.en.md`: bản tiếng Anh ngắn (mô tả, kiến trúc, chạy từ máy sạch, giấy phép) (#26).
+- `docs/images/kien-truc.svg`: sơ đồ kiến trúc vẽ tay bằng SVG theo `docker-compose.yml`, `core/`, `apps/mot-cua/` – Tầng 2 và Tầng 1, route gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao, đánh số 4 dịch vụ bắt buộc (#26).
+- `docs/images/luong-ho-so.svg`: luồng hồ sơ đăng ký khai sinh theo BPMN `dang_ky_khai_sinh` (làn công dân, cán bộ hộ tịch, lãnh đạo; hẹn giờ quá hạn; API và sự kiện từng bước) (#26).
+- `docs/images/banner.webp`, `docs/images/mot-cua-so.webp`: ảnh minh họa do đội tạo bằng công cụ AI, không chữ; nguồn và giấy phép ghi ở `docs/images/README.md` (#26).
 
 ## [0.1.0] - 2026-10-21
 ### Added
