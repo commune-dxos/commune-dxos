@@ -33,8 +33,14 @@ Kiểm quyền bằng token của người dùng (RLS); metadata và nhật ký 
 vụ Keycloak `mot_cua_tep` (role dich_vu_tep), nên công dân không tự khai được object_key hay
 kết quả quét qua /api.
 
-Bí mật (#10): mật khẩu rest-admin của Flowable, client secret `mot_cua_tep`, khóa S3 riêng
-của ứng dụng đều đọc từ OpenBao lúc cần (bimat.py, AppRole `app`), chỉ giữ trong bộ nhớ.
+Sự kiện (#9, hop_thu.py): sau mỗi lời gọi Flowable thành công, ghi sự kiện ho_so.moi (khởi
+tạo quy trình), ho_so.chuyen_buoc (hoàn thành task) và ho_so.hoan_tat | ho_so.tu_choi (quy
+trình kết thúc) vào hộp thư đi trong PostgreSQL; app-worker phát lên RabbitMQ. Ghi sự kiện
+lỗi thì chỉ ghi log, không làm hỏng request (quy trình đã chạy).
+
+Bí mật (#10): mật khẩu rest-admin của Flowable, client secret `mot_cua_tep`, `mot_cua_su_kien`,
+khóa S3 riêng của ứng dụng đều đọc từ OpenBao lúc cần (bimat.py, AppRole `app`), chỉ giữ trong
+bộ nhớ.
 
 Chỉ dùng thư viện chuẩn Python: chạy trên image python gốc, không cài gói, không build.
 """
@@ -56,6 +62,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bimat
+import hop_thu
 import tep
 
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
@@ -258,6 +265,14 @@ def _buoc_dang_mo(pi):
     return [{"id": t["id"], "buoc": t["taskDefinitionKey"], "ten": t["name"]} for t in data.get("data", [])]
 
 
+def phat_su_kien(loai, ho_so_id, du_lieu):
+    """Ghi sự kiện vào hộp thư đi (app-worker phát lên RabbitMQ). Lỗi không làm hỏng request."""
+    try:
+        hop_thu.ghi(loai, ho_so_id, du_lieu)
+    except (hop_thu.LoiHopThu, ValueError) as e:
+        log.error("không ghi được sự kiện %s của hồ sơ %s: %s", loai, ho_so_id, e)
+
+
 def _khoi_tao(hs, sub):
     """hs: dòng ho_so (đọc qua RLS) kèm thu_tuc(ma)."""
     ma_tt = (hs.get("thu_tuc") or {}).get("ma")
@@ -276,7 +291,10 @@ def _khoi_tao(hs, sub):
         "processDefinitionKey": key, "businessKey": hs["ma_ho_so"],
         "variables": [{"name": k, "value": v} for k, v in bien.items()]})
     log.info("khởi tạo %s cho hồ sơ %s → %s", key, hs["ma_ho_so"], pi["id"])
-    return {"processInstanceId": pi["id"], "quyTrinh": key, "buocDangMo": _buoc_dang_mo(pi["id"])}
+    buoc = _buoc_dang_mo(pi["id"])
+    phat_su_kien("ho_so.moi", hs["id"], {"processInstanceId": pi["id"], "quyTrinh": key,
+                                         "hanXuLy": hs["han_xu_ly"], "buocDangMo": [b["buoc"] for b in buoc]})
+    return {"processInstanceId": pi["id"], "quyTrinh": key, "buocDangMo": buoc}
 
 
 _COT_HO_SO = "id,ma_ho_so,trang_thai,han_xu_ly,nguoi_nop_sub,thu_tuc:thu_tuc_id(ma)"
@@ -383,6 +401,10 @@ def hoan_thanh(token, claims, task_id, body):
     if thieu:
         raise Loi(400, "Thiếu biến: " + ", ".join(thieu))
 
+    pi = t["processInstanceId"]
+    status, v = flowable("GET", f"/runtime/process-instances/{pi}/variables/hoSoId", cho_phep=(404,))
+    ho_so_id = v.get("value") if status == 200 and isinstance(v, dict) else None
+
     if not t.get("assignee"):  # nhận task để lịch sử ghi đúng người xử lý
         status, _ = flowable("POST", f"/runtime/tasks/{task_id}", {"action": "claim", "assignee": sub},
                              cho_phep=(409,))
@@ -391,8 +413,29 @@ def hoan_thanh(token, claims, task_id, body):
     flowable("POST", f"/runtime/tasks/{task_id}", {
         "action": "complete", "variables": [{"name": k, "value": v} for k, v in bien.items()]})
     log.info("hoàn thành %s (%s)", t["taskDefinitionKey"], task_id)
-    return 200, {"id": task_id, "buoc": t["taskDefinitionKey"],
-                 "buocDangMo": _buoc_dang_mo(t["processInstanceId"])}
+    buoc = _buoc_dang_mo(pi)
+    if ho_so_id:
+        phat_su_kien("ho_so.chuyen_buoc", ho_so_id, {
+            "processInstanceId": pi, "tuBuoc": t["taskDefinitionKey"], "denBuoc": [b["buoc"] for b in buoc],
+            "vaiTroXuLy": vai_tro(claims)})
+        if not buoc:
+            try:
+                _phat_ket_thuc(pi, ho_so_id)
+            except Loi as e:  # task đã hoàn thành: không trả lỗi cho người dùng
+                log.error("không đọc được kết quả quy trình %s: %s", pi, e.thong_diep)
+    return 200, {"id": task_id, "buoc": t["taskDefinitionKey"], "buocDangMo": buoc}
+
+
+def _phat_ket_thuc(pi, ho_so_id):
+    """Quy trình vừa kết thúc → ho_so.hoan_tat | ho_so.tu_choi theo biến ketQua của BPMN."""
+    _, p = flowable("GET", f"/history/historic-process-instances/{pi}")
+    if not p or not p.get("endTime"):
+        return
+    _, v = flowable("GET", f"/history/historic-variable-instances?processInstanceId={pi}&variableName=ketQua")
+    ket_qua = ((v or {}).get("data") or [{}])[0].get("variable", {}).get("value")
+    if ket_qua in ("hoan_tat", "tu_choi"):
+        phat_su_kien(f"ho_so.{ket_qua}", ho_so_id, {"processInstanceId": pi, "ketQua": ket_qua,
+                                                     "diemKetThuc": p.get("endActivityId")})
 
 
 # --- Tệp hồ sơ (#7) -------------------------------------------------------------------

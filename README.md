@@ -18,7 +18,7 @@ Requires Docker Compose v2 and about 3 GB free disk for the `core` images.
 ```bash
 cp .env.example .env      # không có mật khẩu nào cần điền / no passwords to fill in; DXOS_APP=mot-cua
 make up                   # lõi core/ + ứng dụng apps/$DXOS_APP; tự init + unseal OpenBao / core + app, auto init + unseal OpenBao
-make smoke                # JWT, MFA, RLS, policy OpenBao, migration chạy lại / end-to-end checks
+make smoke                # JWT, MFA, RLS, policy OpenBao, sự kiện RabbitMQ, migration chạy lại / end-to-end checks
 make check                # SPDX + docker-compose hợp lệ / SPDX + compose validation
 ```
 

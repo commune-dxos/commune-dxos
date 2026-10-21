@@ -18,7 +18,7 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 | Object storage | Garage v2.4.1 (S3, dịch vụ riêng, image gốc `dxflrs/garage`, không sửa mã; chỉ gọi qua mạng: S3 và Admin API) | AGPL-3.0 |
 | Workflow | Flowable engine, image `flowable/flowable-rest` (BPMN 2.0, REST). Không dùng flowable-ui/modeler; BPMN viết XML tay | Apache-2.0 |
 | Backend ứng dụng | Python 3.13 (image gốc `python`, chỉ thư viện chuẩn) | PSF-2.0 |
-| Hàng đợi | RabbitMQ | MPL-2.0 |
+| Hàng đợi | RabbitMQ 4.3.6 (dịch vụ riêng, image gốc `rabbitmq`, không sửa mã; plugin có sẵn trong image: STOMP, management). Backend chỉ nói giao thức STOMP bằng thư viện chuẩn Python, không nhúng thư viện của RabbitMQ | MPL-2.0 |
 | Tìm kiếm | Meilisearch Community Edition (MIT). Không dùng bản Enterprise (BUSL-1.1) | MIT |
 | Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | Apache-2.0 |
 | Ký số | step-ca (smallstep/certificates) + pyHanko | Apache-2.0 / MIT |

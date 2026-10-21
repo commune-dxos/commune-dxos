@@ -18,7 +18,7 @@ echo "== Lõi Tầng 1 (DXOS_APP=$DXOS_APP)"
 
 # 1. Dịch vụ một lần đã thoát với mã 0, dịch vụ chạy nền healthy ------------------
 for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secrets garage-secrets \
-           jwks-init db-init app-migrate app-realm garage-init; do
+           rabbitmq-secrets jwks-init db-init app-migrate app-realm garage-init rabbitmq-init; do
   for _ in $(seq 1 60); do  # chờ tối đa 2 phút nếu còn đang chạy
     tt="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' "$svc" 2>/dev/null)"
     case "$tt" in exited*) break ;; esac
@@ -26,7 +26,7 @@ for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secre
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in openbao postgres keycloak apisix flowable app-backend garage clamav; do
+for svc in openbao postgres keycloak apisix flowable app-backend garage clamav rabbitmq app-worker; do
   for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break
@@ -63,8 +63,8 @@ kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "12
   "$(docker compose port flowable 8080 | cut -d: -f1)"
 # cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
 cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
-kiem "app-backend, PostgREST, Garage, ClamAV, OpenBao không mở cổng ra host" "||||" \
-  "$(cong_host app-backend)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)"
+kiem "app-backend, app-worker, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "||||||" \
+  "$(cong_host app-backend)|$(cong_host app-worker)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
 
 # 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
 ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
@@ -96,6 +96,9 @@ except urllib.error.HTTPError as e: print(e.code)')"
 # 4c. OpenBao (#10): két đã unseal, policy theo danh tính, không bí mật trong cấu hình -----
 . scripts/smoke-openbao.sh
 
+# 4d. RabbitMQ (#9): management chỉ cho quản trị trong mạng nội bộ, user ứng dụng hạn chế ------
+. scripts/smoke-rabbitmq.sh
+
 # 5. Chạy lại migration và vai trò Keycloak: không lỗi, bỏ qua phần đã áp dụng ------
 if out="$(docker compose run --rm --no-deps app-migrate 2>&1)"; then ma=0; else ma=$?; fi
 kiem "app-migrate lần 2: mã thoát" "0" "$ma"
@@ -106,6 +109,9 @@ kiem "app-realm lần 2: không thêm gì (added=0)" "added=0" "$(grep -oE 'adde
 if out="$(docker compose run --rm --no-deps garage-init 2>&1)"; then ma=0; else ma=$?; fi
 kiem "garage-init lần 2: mã thoát" "0" "$ma"
 kiem "garage-init lần 2: không tạo thêm khóa, bucket, layout" "0" "$(grep -cE 'đã (tạo|áp dụng)' <<<"$out" || true)"
+if out="$(docker compose run --rm --no-deps rabbitmq-init 2>&1)"; then ma=0; else ma=$?; fi
+kiem "rabbitmq-init lần 2: mã thoát" "0" "$ma"
+kiem "rabbitmq-init lần 2: không tạo vhost, user; không đổi thông tin kết nối" "0" "$(grep -cE 'đã tạo|→ OpenBao' <<<"$out" || true)"
 
 # 5b. Workflow engine: REST cần đăng nhập, CSDL riêng ------------------------------
 kiem "Flowable REST không đăng nhập → 401" "401" "$(ma_http "$WF/repository/process-definitions")"

@@ -47,6 +47,17 @@ MA_TRAN=(
   "app:read:core/garage 403"
   "app:write:$A/s3 403"
   "app:read:apps/ung-dung-khac/s3 403"
+  "app:read:$A/rabbitmq 200"
+  "app:read:core/rabbitmq/admin 403"
+  "app:write:$A/rabbitmq 403"
+  "rabbitmq:read:core/rabbitmq/admin 200"
+  "rabbitmq:read:core/garage 403"
+  "rabbitmq:read:$A/rabbitmq 403"
+  "rabbitmq-init:read:core/rabbitmq/admin 200"
+  "rabbitmq-init:write:$A/rabbitmq 400"
+  "rabbitmq-init:write:core/rabbitmq/admin 403"
+  "rabbitmq-init:read:core/db/postgres 403"
+  "rabbitmq-init:read:$A/s3 403"
 )
 muc=(); for m in "${MA_TRAN[@]}"; do muc+=("${m% *}"); done
 kq="$(docker compose run --rm --no-deps --entrypoint python bao-init /core/openbao/kiem-quyen.py "${muc[@]}" 2>&1)"
@@ -57,7 +68,8 @@ done
 # Không còn mật khẩu/secret/token dạng giá trị trong biến môi trường của container
 # (cho phép *_FILE, *_URL và giá trị "@/đường dẫn tệp" như PGRST_JWT_SECRET=@/jwks/jwks.json là
 # khóa CÔNG KHAI). bao-init chỉ nhận biến LEGACY_* khi .env cũ còn mật khẩu.
-for svc in postgres keycloak postgrest flowable app-backend app-realm garage-init db-init app-migrate; do
+for svc in postgres keycloak postgrest flowable app-backend app-realm garage-init db-init app-migrate \
+           rabbitmq rabbitmq-init app-worker; do
   id="$(docker compose ps -aq "$svc" | head -1)"
   kiem "$svc: không có mật khẩu/secret trong biến môi trường" "0" \
     "$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$id" \

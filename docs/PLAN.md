@@ -26,7 +26,7 @@ Cách dùng tệp này:
 - [x] V1 · PostgREST phục vụ schema ứng dụng, JWT Keycloak → role PostgreSQL; APISIX route `/api`, `/public`, `/workflow` (qua API quy trình mỏng `apps/mot-cua/backend/`, chặn API quản trị Flowable), `/files` (giữ chỗ 503), CORS theo biến môi trường, rate limit cổng công dân (#6, PR chờ duyệt)
 - [x] V1 · Garage v2.4.1 (S3 một nút, dịch vụ riêng, khóa riêng mỗi ứng dụng) + API tải tệp hồ sơ `/files` (kiểm loại + magic bytes, link GET ký ngắn hạn, quyền theo RLS); ClamAV 1.5.4 quét tệp trước khi lưu, tệp nhiễm bị chặn và ghi nhật ký (#7, PR chờ duyệt)
 - [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `apps/mot-cua/processes/` (#8, PR chờ duyệt)
-- [ ] V2 · RabbitMQ nhận sự kiện từ Flowable (hồ sơ mới, chuyển bước, sắp trễ hạn)
+- [x] V2 · RabbitMQ 4.3.6 nhận sự kiện hồ sơ (mới, chuyển bước, hoàn tất/từ chối, sắp trễ hạn): outbox PostgreSQL → `app-worker` phát qua STOMP, vhost + user riêng của ứng dụng, consumer mẫu ghi nhật ký sự kiện (#9, PR chờ duyệt)
 - [x] V1 · OpenBao 2.7.1 giữ mọi bí mật dịch vụ (mật khẩu CSDL, quản trị Keycloak/Flowable, client secret, khóa S3, bí mật Garage); `.env` không còn mật khẩu; mỗi dịch vụ một AppRole + policy chỉ đọc đúng phần mình; `make up` tự init/unseal (dev); chuyển được từ `.env` cũ (#10, PR chờ duyệt)
 - [ ] V3 · CI: thêm lint/test cho từng thành phần đã có (shellcheck, yamllint, kiểm tra cú pháp BPMN, test SQL/RLS)
 - [ ] V3 · README song ngữ chạy được từ máy sạch (`cp .env.example .env` → `make up`)
@@ -36,7 +36,7 @@ Cách dùng tệp này:
 - [ ] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable
 - [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái
 - [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác
-- [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `apps/mot-cua/`)
+- [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `apps/mot-cua/`): sự kiện `ho_so.sap_tre_han` và `app-worker` đã có (#9); còn consumer thông báo cho cán bộ/công dân
 - [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả)
 
 ## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0

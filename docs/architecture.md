@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.0.1+ (tuần 2: tách `core/` và `apps/` #3, schema #5, Flowable #8, route gateway #6). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.0.1+ (tuần 2: tách `core/` và `apps/` #3, schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -66,7 +66,7 @@ flowchart TB
   PGR --> PG
   PG --> AUD
   FL --> PG
-  FL -- "sự kiện hồ sơ, trễ hạn" --> MQ
+  PG -- "hộp thư sự kiện (outbox) → app-worker" --> MQ
   AV -.->|sạch mới lưu| S3
   FL --> GOT --> CA
 
@@ -108,22 +108,28 @@ core/                         Tầng 1 – không có tên bảng, vai trò hay 
                                 mật khẩu theo OpenBao
   scripts/kc-start.sh           entrypoint Keycloak: đọc mật khẩu từ tệp bí mật
   scripts/garage-init.py        dịch vụ một lần: layout, bucket của ứng dụng, khóa S3 riêng của ứng dụng
+  rabbitmq/                     RabbitMQ một nút: rabbitmq.conf, enabled_plugins (STOMP + management) (§4.5)
+  scripts/rabbitmq-init.py      dịch vụ một lần: vhost + user riêng của ứng dụng, nạp topology ứng dụng khai báo
 apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   app.env                       PGRST_DB_SCHEMAS=mot_cua
   db/migrations/001_*.sql       role cong_dan/can_bo/lanh_dao, schema mot_cua (bản giữ chỗ tuần 1)
   db/migrations/002_*.sql       schema đầy đủ: lĩnh vực, thủ tục, thành phần, cán bộ, hồ sơ, RLS (#5)
   db/migrations/003_*.sql       tệp hồ sơ: role dich_vu_tep, cột kết quả quét, nhật ký tệp chỉ thêm (#7)
+  db/migrations/004_*.sql       sự kiện: role dich_vu_su_kien, hộp thư đi (outbox), nhật ký sự kiện (#9)
   db/seed/002_*.sql             danh mục thủ tục, cán bộ, hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
   db/tests/rls.sql              test quyền/RLS từng vai trò (make smoke chạy)
   keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, client dịch vụ
                                 mot_cua_tep (service account, role dich_vu_tep), người dùng mẫu
   processes/*.bpmn20.xml        quy trình BPMN viết tay, Flowable tự triển khai (#8)
   s3/buckets.conf               bucket S3 ứng dụng cần (mot-cua-ho-so) (#7)
+  rabbitmq/definitions.json     exchange mot_cua.su_kien, queue mot_cua.nhat_ky (+ queue lỗi) (#9)
   backend/main.py               API quy trình mỏng /workflow (#6, §4.2) và API tệp /files (#7, §4.3),
                                 dịch vụ app-backend
   backend/tep.py, tests/        phần thuần của API tệp + test đơn vị (make test, trong make check)
   backend/bimat.py              đọc bí mật của ứng dụng từ OpenBao (AppRole app) (#10)
-  tests/smoke.sh, smoke-tep.sh  kiểm tra riêng của ứng dụng (make smoke gọi)
+  backend/worker.py             dịch vụ app-worker: phát outbox lên RabbitMQ, quét sắp trễ hạn, consumer mẫu (#9)
+  backend/su_kien.py, hop_thu.py, stomp.py   định dạng sự kiện, outbox qua PostgREST, client STOMP (#9)
+  tests/smoke.sh, smoke-tep.sh, smoke-su-kien.sh   kiểm tra riêng của ứng dụng (make smoke gọi)
 ```
 
 | Thứ | Lõi `core/` | Ứng dụng `apps/mot-cua/` |
@@ -135,6 +141,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
 | APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*`, `/files/s3/*` (không nêu tên tài nguyên); upstream `app-backend`, `garage-s3` là tên dịch vụ chung | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow`, `/files` do `backend/main.py` của ứng dụng quyết định |
 | Object storage | Garage một nút, ClamAV; tạo bucket và **một khóa S3 riêng cho mỗi ứng dụng** chỉ có quyền trên bucket ứng dụng khai báo; không biết tên bucket nghiệp vụ nào | `s3/buckets.conf`; cấu trúc khóa object, loại tệp nhận, quyền xem do backend + RLS của ứng dụng quyết định |
 | Bí mật | OpenBao, policy theo danh tính; nhánh `dxos/apps/<DXOS_APP>/` cho ứng dụng (khóa S3, client secret) | đọc bí mật của mình qua AppRole `app` (`backend/bimat.py`) |
+| Hàng đợi | RabbitMQ một nút; **vhost + user riêng cho mỗi ứng dụng** (không tag quản trị, không quyền configure); không biết tên exchange/queue nghiệp vụ nào | `rabbitmq/definitions.json` (exchange, queue, binding); loại sự kiện, định dạng, consumer do ứng dụng quyết định (§4.5) |
 
 ### 2.3 Khởi động
 
@@ -161,11 +168,17 @@ flowchart LR
   AV["clamav"] -.->|started| BE
   BE -->|healthy| GW
   S3 -->|healthy| GW
+  AG -->|exit 0| MQ["rabbitmq<br/>core/rabbitmq"]
+  MQ -->|healthy| RI["rabbitmq-init (một lần)<br/>apps/mot-cua/rabbitmq/definitions.json"]
+  RI -->|exit 0, user ứng dụng → OpenBao| WK["app-worker<br/>apps/mot-cua/backend/worker.py"]
+  FL -->|healthy| WK
+  REALM -->|exit 0| WK
 ```
 
 - `app-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
 - `app-realm` (image `keycloak`, đã có sẵn, dùng `kcadm.sh`): gọi **Partial Import** của Keycloak vào realm `dxos` với `ifResourceExists=SKIP`: đối tượng đã có thì giữ nguyên, nên chạy lại không lỗi và không ghi đè người dùng đã cài OTP (ghi đè sẽ đổi `sub`, làm hồ sơ cũ mất chủ).
 - `garage-init` (image `python` đã dùng cho `app-backend`): §4.3. Chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
+- `rabbitmq-init` (image `python`): §4.5. Chạy lại an toàn (vhost, user đã có thì giữ, mật khẩu đặt lại theo OpenBao; topology khai báo lại không đổi gì).
 - `bao-init`, agent `db-secrets`, `postgrest-secrets`, `keycloak-secrets`, `flowable-secrets`, `garage-secrets` (image `openbao`), `db-init` (image `postgres`): §4.4. Đều chạy lại ở mỗi `up`.
 - Chạy lại tay: `make migrate`; nạp dữ liệu mẫu khi đã tắt seed: `make seed`.
 
@@ -182,7 +195,9 @@ Lõi chỉ biết các quy ước sau trong `apps/<DXOS_APP>/` (thiếu thư m�
 7. `backend/main.py` (#6, D-008 mục 4): backend riêng của ứng dụng, dịch vụ `app-backend` chạy bằng image `python` gốc (chỉ thư viện chuẩn), nhận `/workflow/*` từ APISIX (đã bỏ tiền tố). Lõi truyền vào địa chỉ PostgREST, Flowable, JWKS, issuer, audience, OpenBao qua biến môi trường, và role_id/secret_id của AppRole `app` trong `/run/dxos-secrets/approle/` (volume `app-secrets`, chỉ đọc); mật khẩu tài khoản kỹ thuật Flowable và bí mật của ứng dụng đọc từ OpenBao (§4.4). Thiếu tệp này thì dịch vụ chỉ chạy chỗ giữ, `/workflow` trả 502.
 8. `s3/buckets.conf` (#7): mỗi dòng một tên bucket. `garage-init` tạo bucket và khóa `dxos-app-<DXOS_APP>` chỉ đọc/ghi trên các bucket này (không tạo được bucket, không phải owner; bucket bỏ khỏi danh sách thì bị thu hồi quyền), ghi thông tin kết nối vào OpenBao `dxos/apps/<DXOS_APP>/s3`, `app-backend` đọc bằng AppRole `app` (§4.4).
 9. Client có service account trong `keycloak/realm.json` (confidential, `serviceAccountsEnabled`): Keycloak tự sinh client secret khi nạp, `app-realm` ghi vào `/run/dxos-secrets/keycloak-<clientId>.secret` cho backend lấy token Client Credentials. Service account mang client role của `dxos_api` trùng role PostgreSQL như người dùng.
-10. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
+10. `rabbitmq/definitions.json` (#9): định dạng definitions của RabbitMQ, **chỉ** `exchanges`, `queues`, `bindings` (không có `vhost`, hoặc `vhost` = tên ứng dụng). `rabbitmq-init` tạo vhost `<DXOS_APP>`, user `app-<DXOS_APP>` (không tag, configure `^$`, read/write `.*` trong vhost của mình), nạp topology bằng HTTP API quản trị, ghi thông tin kết nối (`username`, `password`, `vhost`, `host`, `stomp_port`) vào OpenBao `dxos/apps/<DXOS_APP>/rabbitmq`. Khai thêm `users`, `permissions`, `policies`… thì `rabbitmq-init` dừng.
+11. `backend/worker.py` (#9): tác vụ nền của ứng dụng, dịch vụ `app-worker` (cùng image, cùng AppRole `app` với `app-backend`, không có cổng). Healthcheck: tiến trình phải chạm `/tmp/song` ít nhất mỗi 60 giây. Thiếu tệp thì chỉ chạy chỗ giữ.
+12. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
 
 ### 2.5 Cắm một ứng dụng khác (cho lập trình viên)
 
@@ -327,7 +342,8 @@ sequenceDiagram
 - **Hồ sơ** luôn đọc/ghi qua PostgREST bằng token người dùng: khởi tạo quy trình hay xem tiến độ hồ sơ người khác → 404 vì RLS không trả dòng. Thủ tục chưa có quy trình → 422 trước khi lưu hồ sơ.
 - **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `app-backend` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
 - **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
-- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình và phát sự kiện sang RabbitMQ (#9); Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
+- **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện.
+- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình; Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
 
 ### 4.3 Dữ liệu phi cấu trúc: tải tệp, quét ClamAV, link ký ngắn hạn (#7)
 
@@ -453,9 +469,11 @@ KV v2 gắn ở `dxos/`; policy viết theo đường dẫn API `dxos/data/<đư
 | `garage` | `garage` | `core/garage` (`rpc_secret`, `admin_token`) | – | agent `garage-secrets` (root): `rpc_secret`, `admin_token` |
 | `garage-init` | `garage-init` | `core/garage`, `apps/${DXOS_APP}/s3` | `apps/${DXOS_APP}/s3` | HTTP API (Python) |
 | `app-realm` | `app-realm` | `core/keycloak/admin` | `apps/${DXOS_APP}/keycloak/*` (chỉ ghi, không đọc lại) | HTTP/1.0 qua `/dev/tcp` (image Keycloak không có curl) |
-| `app` | `app-backend` | `apps/${DXOS_APP}/*`, `core/flowable/rest-admin` | – | HTTP API (`apps/mot-cua/backend/bimat.py`), chỉ trong RAM |
+| `app` | `app-backend`, `app-worker` | `apps/${DXOS_APP}/*` (gồm `rabbitmq`), `core/flowable/rest-admin` | – | HTTP API (`apps/mot-cua/backend/bimat.py`), chỉ trong RAM |
+| `rabbitmq` (#9) | `rabbitmq` | `core/rabbitmq/admin` | – | agent `rabbitmq-secrets` (uid 100): `conf.d/20-admin.conf` (`default_user`/`default_pass`, chỉ áp dụng khi volume `rabbitmq-data` trống) |
+| `rabbitmq-init` (#9) | `rabbitmq-init` | `core/rabbitmq/admin`, `apps/${DXOS_APP}/rabbitmq` | `apps/${DXOS_APP}/rabbitmq` | HTTP API (Python) |
 
-`make smoke` kiểm ma trận này bằng chính AppRole của từng dịch vụ (`core/openbao/kiem-quyen.py`, `scripts/smoke-openbao.sh`): 27 cặp danh tính × đường dẫn, gồm cả `app` không đọc được `apps/<ứng dụng khác>/…`, `garage-init` không ghi được `core/garage`, `keycloak` không ghi được bí mật của chính mình. Phép thử ghi dùng check-and-set `cas=0` lên đường dẫn đã có nên không bao giờ đổi bí mật thật.
+`make smoke` kiểm ma trận này bằng chính AppRole của từng dịch vụ (`core/openbao/kiem-quyen.py`, `scripts/smoke-openbao.sh`): 38 cặp (27 từ #10, 11 thêm ở #9) danh tính × đường dẫn, gồm cả `app` không đọc được `apps/<ứng dụng khác>/…`, `garage-init` không ghi được `core/garage`, `keycloak` không ghi được bí mật của chính mình. Phép thử ghi dùng check-and-set `cas=0` lên đường dẫn đã có nên không bao giờ đổi bí mật thật.
 
 #### 4.4.4 Khởi tạo, unseal, khởi động lại
 
@@ -494,6 +512,73 @@ docker compose --profile core up -d --no-deps --force-recreate flowable
 
 Quy trình xoay vòng này mới kiểm bằng tay từng bước (chưa có trong `make smoke`).
 
+### 4.5 Sự kiện hồ sơ qua RabbitMQ (#9)
+
+RabbitMQ (MPL-2.0) chạy như **dịch vụ riêng bằng image gốc** `rabbitmq:4.3.6-alpine`, một nút, cấu hình `core/rabbitmq/` (D-004, `NOTICE`). Plugin bật: `rabbitmq_stomp` (cổng 61613, ứng dụng phát/nhận) và `rabbitmq_management` (HTTP API quản trị 15672). **Không cổng nào mở ra host, không có route APISIX**: chỉ dịch vụ trong mạng nội bộ Docker gọi được. Danh mục sự kiện và payload: [`apps/mot-cua/README.md`](../apps/mot-cua/README.md#sự-kiện-hồ-sơ-rabbitmq-9).
+
+#### 4.5.1 Thiết kế và lý do
+
+| Quyết định | Lý do |
+|---|---|
+| **Ứng dụng phát sau khi gọi Flowable thành công**, qua **hộp thư đi (transactional outbox) trong PostgreSQL**, không dùng listener trong BPMN | Listener HTTP của Flowable phải cầm thông tin đăng nhập vào backend, chạy trong transaction của engine (lỗi mạng làm hỏng bước quy trình hoặc phát sự kiện cho bước đã rollback) và phải lặp lại trong mọi tệp BPMN. Backend đã đứng giữa người dùng và Flowable (§4.2) nên biết chắc bước nào vừa xong. Ghi vào bảng rồi `app-worker` mới phát nên request không phụ thuộc broker: RabbitMQ dừng → request vẫn 200, sự kiện chờ trong bảng |
+| Phát **at-least-once**, consumer **chống trùng theo id** | Publisher chỉ đánh dấu `da_phat_luc` sau khi RabbitMQ trả RECEIPT (publisher confirm). Mất kết nối giữa RECEIPT và lúc đánh dấu → phát lại cùng id; consumer ghi `nhat_ky_su_kien` với khóa chính = id (`ON CONFLICT DO NOTHING`) |
+| **Sắp trễ hạn** = tác vụ định kỳ trong `app-worker`, chống trùng bằng ràng buộc `UNIQUE` | Hạn xử lý đúng nằm trong CSDL (`ho_so.han_xu_ly`, tính theo ngày làm việc, có thể gia hạn), không phải trong biến Flowable. Mỗi `DXOS_SU_KIEN_QUET_GIAY` (300) giây: hồ sơ chưa xong (trạng thái không phải `hoan_tat`/`tu_choi` **và** còn quy trình đang chạy trong Flowable), chưa quá 17:00 ngày hạn, còn ≤ `DXOS_SU_KIEN_SAP_TRE_NGAY` (1) ngày làm việc (bỏ thứ Bảy, Chủ nhật, `ngay_nghi`) → ghi `ho_so.sap_tre_han` với `khoa_chong_trung = ho_so.sap_tre_han:<hồ sơ>:<hạn>`. Quét lại, chạy nhiều worker hay khởi động lại đều không phát trùng; gia hạn sang ngày khác thì được cảnh báo lại. Quá hạn đã có hẹn giờ trong BPMN (`quaHan`, #8) |
+| **STOMP** thay vì AMQP 0-9-1 | Backend chỉ dùng thư viện chuẩn Python (không cài `pika`). STOMP là giao thức văn bản (`apps/mot-cua/backend/stomp.py`, ~150 dòng) và RabbitMQ hỗ trợ đủ: SEND có `receipt` (sau publisher confirm), `ack: client-individual` + `prefetch-count`, NACK `requeue: false` → dead-letter |
+| Lõi không biết tên exchange/queue nghiệp vụ | Ứng dụng khai `rabbitmq/definitions.json`; `rabbitmq-init` tạo **vhost riêng** `<DXOS_APP>` và user `app-<DXOS_APP>`: không tag (bị HTTP API quản trị từ chối), configure `^$` (không tự khai báo/xóa exchange, queue), read/write trong vhost của mình |
+| Sự kiện **không chứa dữ liệu cá nhân** | Chỉ id nội bộ + mã hồ sơ, mã lĩnh vực, mã thủ tục. Role `dich_vu_su_kien` chỉ được `SELECT` các cột `id, ma_ho_so, thu_tuc_id, trang_thai, han_xu_ly` của `ho_so` (quyền cột: đọc họ tên, số điện thoại, sub người nộp → 42501); `su_kien.kiem()` từ chối sự kiện có khóa như `hoTen`, `soDienThoai`, `nguoiNopSub` |
+
+#### 4.5.2 Sơ đồ
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant App as Tầng 2 (JWT)
+  participant BE as app-backend
+  participant FL as Flowable
+  participant PG as PostgreSQL<br/>mot_cua.hop_thu_su_kien
+  participant WK as app-worker
+  participant MQ as RabbitMQ<br/>vhost mot-cua
+  App->>BE: POST /workflow/tasks/{id}/complete
+  BE->>FL: complete task (rest-admin)
+  FL-->>BE: 200, bước kế tiếp
+  BE->>PG: INSERT ho_so.chuyen_buoc (token dịch vụ mot_cua_su_kien)
+  BE-->>App: 200 (không chờ broker)
+  loop mỗi 2 giây
+    WK->>PG: SELECT … WHERE da_phat_luc IS NULL
+    WK->>MQ: STOMP SEND /exchange/mot_cua.su_kien/ho_so.chuyen_buoc (receipt)
+    MQ-->>WK: RECEIPT (đã ghi vào queue bền vững)
+    WK->>PG: UPDATE da_phat_luc = now()
+  end
+  MQ->>WK: MESSAGE từ queue mot_cua.nhat_ky (consumer mẫu)
+  WK->>PG: INSERT nhat_ky_su_kien ON CONFLICT (su_kien_id) DO NOTHING
+  WK->>MQ: ACK
+  loop mỗi DXOS_SU_KIEN_QUET_GIAY
+    WK->>PG: hồ sơ chưa xong, hạn ≤ 1 ngày làm việc
+    WK->>FL: còn quy trình đang chạy?
+    WK->>PG: INSERT ho_so.sap_tre_han ON CONFLICT (khoa_chong_trung) DO NOTHING
+  end
+```
+
+Topology của `mot-cua` (`apps/mot-cua/rabbitmq/definitions.json`):
+
+```mermaid
+flowchart LR
+  P["app-worker<br/>(publisher)"] -->|"routing key = loại sự kiện"| EX{{"mot_cua.su_kien<br/>topic"}}
+  EX -->|"ho_so.#"| Q[["mot_cua.nhat_ky<br/>quorum, delivery-limit 5"]]
+  Q --> C["consumer mẫu<br/>→ nhat_ky_su_kien"]
+  Q -. "NACK / quá 5 lần giao" .-> DLX{{"mot_cua.su_kien.loi<br/>fanout"}}
+  DLX --> QL[["mot_cua.nhat_ky.loi"]]
+```
+
+Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `ho_so.sap_tre_han`, `ho_so.chuyen_buoc`) vào `definitions.json`, `make up` (rabbitmq-init nạp), viết vòng nhận theo mẫu `worker.vong_nhan`. Mỗi consumer một queue riêng nên không lấy tin của nhau.
+
+#### 4.5.3 Bí mật và quản trị
+
+- Tài khoản quản trị khởi tạo `RABBITMQ_ADMIN` (mặc định `admin`), mật khẩu sinh ngẫu nhiên trong OpenBao `dxos/core/rabbitmq/admin`; agent `rabbitmq-secrets` render `default_user`/`default_pass` vào `/run/dxos-secrets/conf.d/20-admin.conf` (quyền 0400), RabbitMQ nạp cùng `core/rabbitmq/rabbitmq.conf` (`RABBITMQ_CONFIG_FILE` + `RABBITMQ_CONFIG_FILES`). Giống `POSTGRES_PASSWORD`, giá trị này **chỉ áp dụng khi volume `rabbitmq-data` còn trống**; đổi sau đó: `docker compose exec rabbitmq rabbitmqctl change_password admin '<mật khẩu mới>'` rồi đặt cùng giá trị vào OpenBao (§4.4.6).
+- User ứng dụng: mật khẩu ở `dxos/apps/<DXOS_APP>/rabbitmq`; đổi trong OpenBao rồi `make up` (rabbitmq-init đặt lại, worker đọc lại khi kết nối lại).
+- `hostname: rabbitmq` cố định trong compose: tên nút `rabbit@rabbitmq` quyết định thư mục dữ liệu, tạo lại container không mất queue và tin bền vững.
+- Xem nhanh: `docker compose exec rabbitmq rabbitmqctl -q list_queues -p mot-cua name type messages`.
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; ứng dụng quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -510,7 +595,7 @@ Quy trình xoay vòng này mới kiểm bằng tay từng bước (chưa có tro
 | `core` | `app-backend` (backend của ứng dụng, image `python` gốc) | chạy thử 21/10/2026 (#6) | ~20 MB RAM |
 | `core` | Garage (+ dịch vụ một lần `garage-secrets`, `garage-init`), ClamAV | chạy thử 21/10/2026 (#7) | Garage ~30 MB RAM; ClamAV ~1–1,5 GB RAM cho CSDL virus |
 | `core` | OpenBao (+ dịch vụ một lần `bao-init`, 5 agent `*-secrets`) | chạy thử 21/10/2026 (#10) | agent chạy khoảng 1 giây rồi thoát, không giữ RAM |
-| `core` | RabbitMQ | TODO tuần 2 | |
+| `core` | RabbitMQ (+ dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`), `app-worker` | chạy thử 21/10/2026 (#9) | RabbitMQ ~150 MB RAM, chặn publisher ở 40% RAM; `app-worker` ~20 MB |
 | `docs` | Gotenberg, step-ca, Meilisearch CE | TODO tuần 2–5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | Apache Superset | TODO tuần 4 | |
@@ -723,14 +808,32 @@ Docker Desktop, macOS arm64, OpenBao 2.7.1. Mỗi lần chạy `make smoke` **32
 
 Dung lượng ổ hệ thống: 8,4 GB trống trước khi kéo image, 4,4 GB sau khi `make down` + `down -v` hai project tạm + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả dung lượng tệp đĩa ảo cho macOS).
 
+### 8.8 Kết quả chạy thử 21/10/2026 (sự kiện hồ sơ qua RabbitMQ, #9)
+
+Docker Desktop, macOS arm64, RabbitMQ 4.3.6. Mỗi lần chạy `make smoke` **405 đạt, 0 trượt** (328 kiểm tra cũ + 77 mới: dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`, `rabbitmq` và `app-worker` healthy, 11 cặp policy OpenBao mới, 22 kiểm tra SQL/RLS của `dich_vu_su_kien`, `scripts/smoke-rabbitmq.sh`, `apps/mot-cua/tests/smoke-su-kien.sh`). `make test`: 53 test đơn vị (36 mới).
+
+| Kịch bản | Kết quả |
+|---|---|
+| Volume trống (project tạm `commune-e9`), `make up` một lệnh | `rabbitmq-init`: tạo vhost `mot-cua`, user `app-mot-cua`, 2 exchange, 2 queue, 2 binding, ghi thông tin kết nối vào OpenBao; mọi dịch vụ healthy; smoke 405/405, chạy lại 405/405 |
+| `make down` rồi `make up` (giữ volume) | `rabbitmq-init` không tạo lại gì; queue và 57 dòng nhật ký sự kiện còn nguyên; smoke 405/405 |
+| Volume tạo bằng `develop` 29ce3df (project tạm `commune-e9m`, đã chạy smoke cũ 328/328 để có dữ liệu), chuyển sang nhánh #9 | `bao-init` sinh mật khẩu `core/rabbitmq/admin`, cấp 2 AppRole mới; `app-migrate` chỉ áp dụng `004_su_kien.sql`; `app-realm` thêm 3 đối tượng (role, client, service account); 11 hồ sơ cũ còn nguyên; smoke 405/405 |
+| Công dân nộp hồ sơ khai sinh qua `/workflow`, cán bộ/công dân/lãnh đạo đi hết quy trình (mục 4d) | consumer nhận đúng `ho_so.moi` ×1, `ho_so.chuyen_buoc` ×5 (tiep_nhan→bo_sung→tiep_nhan→tham_dinh→phe_duyet), `ho_so.hoan_tat` ×1; 7/7 dòng hộp thư đã phát, id khớp nhật ký; không có họ tên, số điện thoại hay `sub` người nộp trong sự kiện |
+| Thẩm định không đạt | `ho_so.tu_choi` |
+| Đẩy hạn một hồ sơ về ngày làm việc kế tiếp, quét 3 lần | lần 1 tạo cảnh báo, lần 2, 3 tạo 0; đúng 1 `ho_so.sap_tre_han` (`conLaiNgayLamViec` 1) trong hộp thư và nhật ký; ghi trùng khóa → CSDL bỏ qua |
+| Tin sai định dạng phát vào exchange | consumer NACK → queue `mot_cua.nhat_ky.loi` +1, không ghi nhật ký |
+| `docker compose stop rabbitmq`, cán bộ hoàn thành task | request 200; sự kiện nằm trong hộp thư, chưa phát; `app-worker` thử lại có giãn cách (1, 2, 4 giây…); `start rabbitmq` → phát và consumer nhận đúng 1 lần, queue trống, hộp thư không còn dòng chưa phát |
+| Management | không cổng host (15672, 61613 → không kết nối được), không route APISIX (`/rabbitmq/…` → 404); trong mạng nội bộ quản trị → 200, user ứng dụng → 401; không có user `guest`; user ứng dụng chỉ có quyền trong vhost `mot-cua`, configure `^$` |
+
+Dung lượng ổ hệ thống: 10 GB trống trước khi kéo image, 5,6 GB sau khi `make down` + `down -v` hai project tạm + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả dung lượng tệp đĩa ảo cho macOS).
+
 ## 9. Việc tiếp theo (tuần 2)
 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
-- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình và phát sự kiện (hồ sơ mới, chuyển bước, `quaHan`) sang RabbitMQ (#9); khởi tạo quy trình sau Poka-yoke (tuần 3).
-- RabbitMQ (#9): thông tin đăng nhập của RabbitMQ cũng đặt trong OpenBao (thêm đường dẫn `core/rabbitmq`, policy, agent theo mẫu §4.4).
+- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình (có thể làm bằng một consumer của sự kiện `ho_so.*`, §4.5); khởi tạo quy trình sau Poka-yoke (tuần 3).
+- Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `apps/mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
 - Tệp: giao diện tải/xem (tuần 3); Poka-yoke kiểm đủ thành phần theo JSON Schema dựa trên `thanh_phan_ho_so` đã quét (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).
