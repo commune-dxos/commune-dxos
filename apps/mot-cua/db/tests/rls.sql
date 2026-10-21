@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: Apache-2.0
--- Test quyền và RLS của schema mot_cua (#5): mỗi vai trò thấy/sửa đúng phần được phép.
+-- Test quyền và RLS của schema mot_cua (#5, tệp hồ sơ #7): mỗi vai trò thấy/sửa đúng phần được phép.
 -- Chạy bằng superuser trong container postgres, toàn bộ trong MỘT transaction rồi
 -- ROLLBACK, nên không để lại dữ liệu và không phụ thuộc seed (DXOS_SEED có thể là false):
 --   docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql
@@ -98,6 +98,8 @@ INSERT INTO mot_cua.thanh_phan_ho_so (id, ho_so_id, thanh_phan_yeu_cau_id, ten_t
   ('7e570000-0000-4000-8000-000000000011', '7e570000-0000-4000-8000-000000000001', '7e570000-0000-4000-8000-0000000000a4', 'x1.pdf', 'application/pdf', 1000),
   ('7e570000-0000-4000-8000-000000000012', '7e570000-0000-4000-8000-000000000002', '7e570000-0000-4000-8000-0000000000b4', 'x2.pdf', 'application/pdf', 1000);
 INSERT INTO mot_cua.ngay_nghi (ngay, ten) VALUES ('2030-01-02', 'Ngày nghỉ test');
+INSERT INTO mot_cua.nhat_ky_tep (hanh_dong, nguoi_sub, vai_tro, ho_so_id, ten_tep, chi_tiet) VALUES
+  ('tu_choi_ma_doc', 'test-cd-x', 'cong_dan', '7e570000-0000-4000-8000-000000000001', 'test-eicar.pdf', 'Eicar-Test');
 
 GRANT EXECUTE ON FUNCTION pg_temp.vai(text, text), pg_temp.kiem(text, text, text),
                           pg_temp.dem(text), pg_temp.thu(text) TO PUBLIC;
@@ -108,6 +110,9 @@ GRANT EXECUTE ON FUNCTION pg_temp.vai(text, text), pg_temp.kiem(text, text, text
 \set X2 '''7e570000-0000-4000-8000-000000000002'''
 \set Y1 '''7e570000-0000-4000-8000-000000000003'''
 \set Y2 '''7e570000-0000-4000-8000-000000000004'''
+-- Dòng metadata tệp mà API tệp ghi (tài khoản dịch vụ dich_vu_tep); :'X1' = hồ sơ X1.
+\set TEP_COT 'INSERT INTO mot_cua.thanh_phan_ho_so (ho_so_id, ten_tep, loai_mime, kich_thuoc, sha256, object_key, nguoi_tai_sub, ket_qua_quet, quet_luc'
+\set SHA '''aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'''
 
 -- Toàn schema --------------------------------------------------------------------------
 SELECT pg_temp.kiem('mọi bảng mot_cua bật và ép RLS (ENABLE + FORCE)', '0',
@@ -174,15 +179,17 @@ SELECT pg_temp.kiem('cong_dan X: xóa hồ sơ bị chặn', 'chặn 42501',
   pg_temp.thu('DELETE FROM mot_cua.ho_so WHERE id = ' || :'X1'));
 SELECT pg_temp.kiem('cong_dan X: thấy giấy tờ của mình (2), không của người khác', '2',
   pg_temp.dem('SELECT 1 FROM mot_cua.thanh_phan_ho_so'));
-SELECT pg_temp.kiem('cong_dan X: đính kèm giấy tờ vào hồ sơ mới của mình → 1 dòng', '1 dòng', pg_temp.thu(
+-- Từ #7 metadata tệp chỉ ghi qua API tệp (quét ClamAV trước), không INSERT thẳng được.
+SELECT pg_temp.kiem('cong_dan X: tự ghi metadata giấy tờ vào hồ sơ của mình (bỏ qua API tệp) bị chặn', 'chặn 42501', pg_temp.thu(
   'INSERT INTO mot_cua.thanh_phan_ho_so (ho_so_id, thanh_phan_yeu_cau_id, ten_tep, loai_mime, kich_thuoc) VALUES ('
   || :'X1' || ', ''7e570000-0000-4000-8000-0000000000a5'', ''phu-luc.pdf'', ''application/pdf'', 2000)'));
+SELECT pg_temp.kiem('cong_dan X: tự khai object_key + kết quả quét bị chặn', 'chặn 42501', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-x'', ''sach'', now())'));
 SELECT pg_temp.kiem('cong_dan X: đính kèm vào hồ sơ của Y bị chặn', 'chặn 42501', pg_temp.thu(
   'INSERT INTO mot_cua.thanh_phan_ho_so (ho_so_id, ten_tep, loai_mime, kich_thuoc) VALUES ('
   || :'Y1' || ', ''a.pdf'', ''application/pdf'', 2000)'));
-SELECT pg_temp.kiem('cong_dan X: thành phần không thuộc thủ tục của hồ sơ bị chặn', 'chặn 23514', pg_temp.thu(
-  'INSERT INTO mot_cua.thanh_phan_ho_so (ho_so_id, thanh_phan_yeu_cau_id, ten_tep, loai_mime, kich_thuoc) VALUES ('
-  || :'X1' || ', ''7e570000-0000-4000-8000-0000000000b4'', ''don.pdf'', ''application/pdf'', 2000)'));
+SELECT pg_temp.kiem('cong_dan X: đọc nhật ký tệp bị chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.nhat_ky_tep'));
 SELECT pg_temp.kiem('cong_dan X: tự đánh dấu giấy tờ hợp lệ bị chặn', 'chặn 42501', pg_temp.thu(
   'UPDATE mot_cua.thanh_phan_ho_so SET trang_thai_kiem_tra = ''hop_le'''));
 SELECT pg_temp.kiem('cong_dan X: đọc danh sách cán bộ bị chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.can_bo'));
@@ -229,6 +236,11 @@ SELECT pg_temp.kiem('can_bo A: không thấy giấy tờ hồ sơ lĩnh vực B'
 SELECT pg_temp.kiem('can_bo A: kiểm tra giấy tờ hồ sơ lĩnh vực B → 0 dòng', '0 dòng', pg_temp.thu(
   $$UPDATE mot_cua.thanh_phan_ho_so SET trang_thai_kiem_tra = 'hop_le' WHERE id = '7e570000-0000-4000-8000-000000000012'$$));
 
+SELECT pg_temp.kiem('can_bo A: đọc nhật ký tệp bị chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.nhat_ky_tep'));
+SELECT pg_temp.kiem('can_bo A: ghi metadata tệp bị chặn', 'chặn 42501', pg_temp.thu(
+  'INSERT INTO mot_cua.thanh_phan_ho_so (ho_so_id, ten_tep, loai_mime, kich_thuoc) VALUES ('
+  || :'Y1' || ', ''a.pdf'', ''application/pdf'', 2000)'));
+
 -- can_bo B, cán bộ chưa có trong danh sách ------------------------------------------------
 SELECT pg_temp.vai('can_bo', 'test-cb-b');
 SELECT pg_temp.kiem('can_bo B: chỉ thấy 1 hồ sơ thuộc lĩnh vực B', '1', pg_temp.dem(:'HS_TEST'));
@@ -249,6 +261,62 @@ SELECT pg_temp.kiem('lanh_dao: sửa giấy tờ bị chặn', 'chặn 42501', p
   $$UPDATE mot_cua.thanh_phan_ho_so SET trang_thai_kiem_tra = 'hop_le'$$));
 SELECT pg_temp.kiem('lanh_dao: sửa phân công lĩnh vực bị chặn', 'chặn 42501', pg_temp.thu(
   'DELETE FROM mot_cua.can_bo_linh_vuc'));
+SELECT pg_temp.kiem('lanh_dao: đọc nhật ký tệp (thấy dòng test)', '1',
+  pg_temp.dem($$SELECT 1 FROM mot_cua.nhat_ky_tep WHERE ten_tep = 'test-eicar.pdf'$$));
+SELECT pg_temp.kiem('lanh_dao: ghi nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu(
+  $$INSERT INTO mot_cua.nhat_ky_tep (hanh_dong, nguoi_sub, vai_tro) VALUES ('tai_len', 'x', 'lanh_dao')$$));
+
+-- dich_vu_tep: tài khoản dịch vụ của API tệp (#7) --------------------------------------------
+SELECT pg_temp.vai('dich_vu_tep', 'service-account-test');
+SELECT pg_temp.kiem('dich_vu_tep: đọc được mọi hồ sơ test để kiểm tồn tại', '4', pg_temp.dem(:'HS_TEST'));
+SELECT pg_temp.kiem('dich_vu_tep: ghi tệp đã quét vào hồ sơ mới của người nộp → 1 dòng', '1 dòng', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-x'', ''sach'', now())'));
+SELECT pg_temp.kiem('dich_vu_tep: ghi tệp vào hồ sơ chờ bổ sung → 1 dòng', '1 dòng', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X2' || ', ''b.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000002/b.pdf'', ''test-cd-x'', ''sach'', now())'));
+SELECT pg_temp.kiem('dich_vu_tep: ghi tệp vào hồ sơ đang xử lý bị RLS chặn', 'chặn 42501', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'Y1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000003/a.pdf'', ''test-cd-y'', ''sach'', now())'));
+SELECT pg_temp.kiem('dich_vu_tep: người tải khác người nộp bị RLS chặn', 'chặn 42501', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-y'', ''sach'', now())'));
+SELECT pg_temp.kiem('dich_vu_tep: object_key ngoài tiền tố của hồ sơ bị chặn', 'chặn 23514', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000003/a.pdf'', ''test-cd-x'', ''sach'', now())'));
+SELECT pg_temp.kiem('dich_vu_tep: có object mà chưa quét (ket_qua_quet NULL) bị chặn', 'chặn 23514', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-x'', NULL, now())'));
+SELECT pg_temp.kiem('dich_vu_tep: kết quả quét khác "sach" (tệp nhiễm) bị chặn', 'chặn 23514', pg_temp.thu(
+  :'TEP_COT' || ') VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-x'', ''nhiem'', now())'));
+SELECT pg_temp.kiem('dich_vu_tep: thành phần không thuộc thủ tục của hồ sơ bị chặn', 'chặn 23514', pg_temp.thu(
+  :'TEP_COT' || ', thanh_phan_yeu_cau_id) VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-x'', ''sach'', now(), ''7e570000-0000-4000-8000-0000000000b4'')'));
+SELECT pg_temp.kiem('dich_vu_tep: tự đánh dấu giấy tờ hợp lệ khi ghi bị chặn (quyền cột)', 'chặn 42501', pg_temp.thu(
+  :'TEP_COT' || ', trang_thai_kiem_tra) VALUES (' || :'X1' || ', ''a.pdf'', ''application/pdf'', 10, ' || :'SHA'
+  || ', ''ho-so/7e570000-0000-4000-8000-000000000001/a.pdf'', ''test-cd-x'', ''sach'', now(), ''hop_le'')'));
+SELECT pg_temp.kiem('dich_vu_tep: sửa metadata tệp bị chặn', 'chặn 42501', pg_temp.thu(
+  $$UPDATE mot_cua.thanh_phan_ho_so SET ten_tep = 'x.pdf'$$));
+SELECT pg_temp.kiem('dich_vu_tep: xóa metadata tệp bị chặn', 'chặn 42501', pg_temp.thu(
+  'DELETE FROM mot_cua.thanh_phan_ho_so'));
+SELECT pg_temp.kiem('dich_vu_tep: sửa hồ sơ bị chặn', 'chặn 42501', pg_temp.thu(
+  'UPDATE mot_cua.ho_so SET trang_thai = ''dang_xu_ly'' WHERE id = ' || :'X1'));
+SELECT pg_temp.kiem('dich_vu_tep: ghi nhật ký tệp → 1 dòng', '1 dòng', pg_temp.thu(
+  $$INSERT INTO mot_cua.nhat_ky_tep (hanh_dong, nguoi_sub, vai_tro, chi_tiet) VALUES ('tu_choi_ma_doc', 'test-cd-x', 'cong_dan', 'Eicar')$$));
+SELECT pg_temp.kiem('dich_vu_tep: hành động nhật ký lạ bị chặn', 'chặn 23514', pg_temp.thu(
+  $$INSERT INTO mot_cua.nhat_ky_tep (hanh_dong, nguoi_sub, vai_tro) VALUES ('xoa_tep', 'x', 'cong_dan')$$));
+SELECT pg_temp.kiem('dich_vu_tep: tự đặt thời điểm nhật ký bị chặn (quyền cột)', 'chặn 42501', pg_temp.thu(
+  $$INSERT INTO mot_cua.nhat_ky_tep (hanh_dong, nguoi_sub, vai_tro, luc) VALUES ('tai_len', 'x', 'cong_dan', '2000-01-01')$$));
+SELECT pg_temp.kiem('dich_vu_tep: sửa nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu(
+  $$UPDATE mot_cua.nhat_ky_tep SET chi_tiet = 'x'$$));
+
+-- Nhật ký tệp chỉ thêm: kể cả superuser cũng không sửa, xóa được (trigger) ------------------
+RESET ROLE;
+SELECT pg_temp.kiem('superuser: sửa nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu(
+  $$UPDATE mot_cua.nhat_ky_tep SET chi_tiet = 'x'$$));
+SELECT pg_temp.kiem('superuser: xóa nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu('DELETE FROM mot_cua.nhat_ky_tep'));
+SELECT pg_temp.kiem('superuser: TRUNCATE nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu('TRUNCATE mot_cua.nhat_ky_tep'));
 
 -- Kết quả -------------------------------------------------------------------------------
 RESET ROLE;

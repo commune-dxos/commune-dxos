@@ -20,7 +20,17 @@
 - `apps/mot-cua/backend/main.py`: API quy trình mỏng – công dân nộp hồ sơ + khởi tạo quy trình trong một lời gọi, xem tiến độ; cán bộ/lãnh đạo lấy task của nhóm mình (lĩnh vực phụ trách tra trong CSDL), nhận và hoàn thành task với biến khai báo cho từng bước. Tự kiểm JWT (RS256 theo JWKS), đọc/ghi hồ sơ qua PostgREST bằng token người dùng (RLS), gọi Flowable bằng tài khoản kỹ thuật – người dùng không cầm mật khẩu Flowable (#6).
 - `make smoke` (199 kiểm tra): 401 trên mọi route cần token, 403 khi gọi API quản trị Flowable qua gateway, CORS, cổng không mở ra host, luồng khai sinh đầy đủ qua `/workflow` bằng token thật của công dân, cán bộ, lãnh đạo, chặn chéo vai trò, backend tự kiểm token, `/public` vượt hạn mức → 429 (#6).
 
+- Dữ liệu phi cấu trúc trong profile `core`: Garage v2.4.1 một nút (AGPL-3.0, dịch vụ riêng, image gốc, không mở cổng ra host) và ClamAV 1.5.4 (GPL-2.0, dịch vụ riêng, image gốc, CSDL virus giữ trong volume `clamav-db`) (#7).
+- Dịch vụ một lần `garage-secrets` (sinh `rpc_secret`, `admin_token`) và `garage-init` (layout một nút, bucket do ứng dụng khai báo trong `apps/<DXOS_APP>/s3/buckets.conf`, khóa S3 riêng của ứng dụng chỉ đọc/ghi trên bucket đó), chạy lại an toàn; khóa và bí mật sinh lúc khởi tạo vào volume `garage-secrets`, `app-secrets` (quyền 600), không nằm trong repo hay `.env`. TODO #10: chuyển sang OpenBao (#7).
+- `app-realm` ghi client secret của client dịch vụ (service account) mà ứng dụng khai báo vào volume `app-secrets` (#7).
+- API tệp `apps/mot-cua/backend` (`/files`): công dân tải PDF/JPG/PNG ≤ 10 MiB vào hồ sơ của mình khi `moi`/`cho_bo_sung`; kiểm đuôi, Content-Type và magic bytes (giả mạo → 415); **ClamAV quét trước khi lưu** (tệp nhiễm → 422, không lưu, ghi nhật ký); lưu Garage, ghi metadata (object key, sha256, kích thước, người tải, kết quả quét); xem tệp theo RLS (cán bộ sai lĩnh vực → 403) bằng link GET ký SigV4 ngắn hạn, client không cầm khóa S3 (#7).
+- APISIX: `/files/*` chuyển tới backend của ứng dụng (JWT, 120 req/phút/IP, body ≤ 10 MiB → 413) thay cho chỗ giữ 503; `/files/s3/*` cho link ký sẵn tới Garage (chỉ GET/HEAD, `nosniff`) (#7).
+- Migration `003_tep_ho_so.sql`: role `dich_vu_tep` (client Keycloak `mot_cua_tep`, Client Credentials) ghi metadata tệp đã quét; cột `nguoi_tai_sub`, `ket_qua_quet`, `may_quet`, `quet_luc`; ràng buộc khóa object nằm dưới tiền tố hồ sơ; bảng `nhat_ky_tep` chỉ thêm (trigger chặn sửa/xóa/TRUNCATE kể cả superuser), lãnh đạo đọc được (#7).
+- `make test`: 17 test đơn vị cho API tệp (tên/đuôi, magic bytes, quy tắc quyền, SigV4 theo ví dụ chính thức của AWS, giao thức `clamd`), chạy trong `make check` và CI; `rls.sql` 88 kiểm tra; `make smoke` 277 kiểm tra, có tải EICAR, tệp giả mạo, quá cỡ, link hết hạn (#7).
+
 ### Changed
+- Công dân không còn `INSERT` trực tiếp vào `mot_cua.thanh_phan_ho_so` qua `/api`: metadata tệp chỉ ghi qua API tệp `/files` sau khi quét (#7).
+- ClamAV chuyển từ profile `docs` sang `core` vì quét là điều kiện bắt buộc để lưu tệp (#7).
 - PostgREST: `PGRST_OPENAPI_MODE=follow-privileges` (OpenAPI chỉ liệt kê những gì role của request được quyền), `PGRST_DB_MAX_ROWS=1000`, CORS giới hạn theo `DXOS_CORS_ORIGINS` thay vì mọi origin (#6).
 - Route `/public/*` nhận thêm `OPTIONS`, thông báo 429 dạng JSON (#6).
 - Migration 002 thay hai bảng giữ chỗ `thu_tuc`, `ho_so` của v0.0.1 (chỉ có dữ liệu giả); bỏ seed `001_du_lieu_mau.sql`. API đổi: `ho_so.thu_tuc_id` (UUID) thay cho `ma_thu_tuc`, trạng thái `moi_nop`/`bo_sung` đổi thành `moi`/`cho_bo_sung` (#5).

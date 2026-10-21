@@ -11,6 +11,7 @@
 #      OTP tạo riêng cho smoke rồi xóa, không đụng người dùng mẫu.
 #   4d. Quy trình qua APISIX /workflow (#6): công dân nộp + khởi tạo, cán bộ/lãnh đạo thấy và
 #      hoàn thành task của nhóm mình, chặn chéo vai trò, backend tự kiểm token.
+#   4e. Tệp hồ sơ qua APISIX /files (#7): tests/smoke-tep.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -95,7 +96,8 @@ kiem "cong_dan PATCH hồ sơ đã nộp (trạng thái moi) → 0 dòng" "0" \
 kiem "cong_dan PATCH cán bộ xử lý (cột không được cấp quyền) → 403" "403" \
   "$(ma_http -X PATCH "${AUTH[@]}" -d '{"can_bo_xu_ly_id":null}' "$GW/api/ho_so?id=eq.$ID_MOI")"
 YC_ID="$(sql "SELECT id FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$TT_ID' ORDER BY thu_tu LIMIT 1")"
-kiem "cong_dan đính kèm metadata giấy tờ vào hồ sơ của mình → 201" "201" \
+# Từ #7 metadata tệp chỉ ghi qua API tệp /files (quét ClamAV trước khi lưu).
+kiem "cong_dan tự ghi metadata giấy tờ qua /api (bỏ qua API tệp) → 403" "403" \
   "$(ma_http "${AUTH[@]}" -d "$(jq -nc --arg h "$ID_MOI" --arg y "$YC_ID" \
        '{ho_so_id: $h, thanh_phan_yeu_cau_id: (if $y == "" then null else $y end), ten_tep: "smoke.pdf", loai_mime: "application/pdf", kich_thuoc: 1024}')" \
      "$GW/api/thanh_phan_ho_so")"
@@ -281,8 +283,11 @@ except urllib.error.HTTPError as e: print(e.code)' <<<"$1"
   kiem "app-backend gọi thẳng, token sửa chữ ký → 401" "401" "$(goi_backend "${TOKEN%?????}AAAAA")"
   kiem "app-backend gọi thẳng, token sửa payload (đổi role) → 401" "401" \
     "$(goi_backend "$(cut -d. -f1 <<<"$TOKEN").$(jwt_payload "$TOKEN" | jq -c '.resource_access.dxos_api.roles = ["lanh_dao"]' | base64 | tr -d '=\n' | tr '/+' '_-').$(cut -d. -f3 <<<"$TOKEN")")"
-  kiem "/files với token hợp lệ → 503 (giữ chỗ cho Garage #7)" "503" "$(ma_http -H "Authorization: Bearer $TOKEN" "$GW/files/x")"
 fi
+
+# --- 4e. Tệp hồ sơ qua APISIX /files (#7) ------------------------------------------------
+# shellcheck source=apps/mot-cua/tests/smoke-tep.sh
+. "apps/$DXOS_APP/tests/smoke-tep.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';

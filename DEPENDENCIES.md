@@ -20,13 +20,13 @@ Quy tắc:
 | `apache/apisix` | 3.13.0-debian | Apache-2.0 | Docker Hub · https://github.com/apache/apisix | core |
 | `flowable/flowable-rest` | 8.0.0 | Apache-2.0 | Docker Hub · https://github.com/flowable/flowable-engine | core |
 | `python` | 3.13.16-alpine3.24 | PSF-2.0 | Docker Hub (official) · https://github.com/python/cpython | core |
-| `dxflrs/garage` | (tuần 2) | AGPL-3.0, dịch vụ riêng | Docker Hub · https://git.deuxfleurs.fr/Deuxfleurs/garage | core |
+| `dxflrs/garage` | v2.4.1 | AGPL-3.0 – dịch vụ riêng, image gốc, không sửa mã; chỉ gọi qua S3 HTTP và Admin API | Docker Hub · https://git.deuxfleurs.fr/Deuxfleurs/garage | core |
 | `rabbitmq` | (tuần 2) | MPL-2.0 | Docker Hub (official) · https://github.com/rabbitmq/rabbitmq-server | core |
 | `openbao/openbao` | (tuần 2) | MPL-2.0 | Docker Hub · https://github.com/openbao/openbao | core |
-| `clamav/clamav` | (tuần 2) | GPL-2.0, dịch vụ riêng | Docker Hub · https://github.com/Cisco-Talos/clamav | docs |
+| `clamav/clamav` | 1.5.4-debian (đa kiến trúc, có sẵn CSDL virus) | GPL-2.0 – dịch vụ riêng, image gốc, không sửa mã; chỉ gọi qua giao thức TCP của `clamd` | Docker Hub · https://github.com/Cisco-Talos/clamav | core |
 | `getmeili/meilisearch` | (tuần 5) – chỉ CE | MIT | Docker Hub · https://github.com/meilisearch/meilisearch | docs |
 
-Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `flowable-db-init` (tạo CSDL `flowable` bằng `psql`). `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3. Image `python` chạy dịch vụ `app-backend` (backend của ứng dụng, ví dụ `apps/mot-cua/backend/main.py`), chỉ dùng thư viện chuẩn, không cài gói.
+Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `flowable-db-init` (tạo CSDL `flowable` bằng `psql`). `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3. Image `python` chạy dịch vụ `app-backend` (backend của ứng dụng, ví dụ `apps/mot-cua/backend/main.py`) và các dịch vụ một lần `garage-secrets`, `garage-init`, chỉ dùng thư viện chuẩn, không cài gói. Backend tự ký S3 SigV4 và nói giao thức `clamd` bằng thư viện chuẩn (`apps/mot-cua/backend/tep.py`): không nhúng hay liên kết mã nào của Garage (AGPL-3.0) hay ClamAV (GPL-2.0). CSDL mẫu virus của ClamAV (tải bằng `freshclam`) do Cisco Talos phân phối kèm image, không nằm trong repo.
 
 ## 2. Thư viện npm (`web/package.json`, chưa có)
 

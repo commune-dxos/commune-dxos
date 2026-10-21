@@ -7,14 +7,17 @@
 | `app.env` | cấu hình PostgREST: phơi schema `mot_cua` |
 | `db/migrations/001_schema_mot_cua.sql` | role `cong_dan`/`can_bo`/`lanh_dao` + `GRANT … TO authenticator`, schema `mot_cua` (bảng giữ chỗ tuần 1, bị 002 thay) |
 | `db/migrations/002_schema_day_du.sql` | schema đầy đủ (#5): bảng, trigger, quyền theo cột, RLS mọi bảng |
+| `db/migrations/003_tep_ho_so.sql` | tệp hồ sơ (#7): role `dich_vu_tep`, cột người tải/kết quả quét, ràng buộc khóa object theo hồ sơ, bảng `nhat_ky_tep` chỉ thêm; công dân thôi `INSERT` metadata trực tiếp |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true` |
-| `db/tests/rls.sql` | test quyền/RLS (63 kiểm tra), chạy trong một transaction rồi ROLLBACK |
-| `keycloak/realm.json` | client role của `dxos_api`, nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
+| `db/tests/rls.sql` | test quyền/RLS (88 kiểm tra), chạy trong một transaction rồi ROLLBACK |
+| `keycloak/realm.json` | client role của `dxos_api` (kể cả `dich_vu_tep`), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep` (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `processes/dang_ky_khai_sinh.bpmn20.xml` | quy trình đăng ký khai sinh (#8), Flowable tự triển khai khi khởi động; sơ đồ và biến: [`processes/README.md`](processes/README.md) |
-| `backend/main.py` | API quy trình `/workflow/*` (#6): dịch vụ `app-backend`, chỉ thư viện chuẩn Python; xem [API cho Tầng 2](#api-cho-tầng-2) |
-| `tests/smoke.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh đầy đủ qua `/workflow`. Cần thêm `python3` trên máy để sinh mã TOTP |
+| `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; lõi tạo bucket và khóa S3 riêng của ứng dụng chỉ có quyền trên bucket này |
+| `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `app-backend`, chỉ thư viện chuẩn Python; xem [API cho Tầng 2](#api-cho-tầng-2) |
+| `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền) và test đơn vị: `make test` |
+| `tests/smoke.sh`, `tests/smoke-tep.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh đầy đủ qua `/workflow`, tải/xem tệp, EICAR, link ký sẵn. Cần thêm `python3` trên máy để sinh mã TOTP |
 
-Sửa schema: thêm tệp `db/migrations/003_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`app-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
+Sửa schema: thêm tệp `db/migrations/004_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`app-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
 
 ## Sơ đồ dữ liệu
 
@@ -31,6 +34,7 @@ erDiagram
   ho_so ||--o{ thanh_phan_ho_so : "đính kèm"
   thanh_phan_yeu_cau |o--o{ thanh_phan_ho_so : "loại"
   can_bo |o--o{ thanh_phan_ho_so : "kiểm tra"
+  ho_so |o--o{ nhat_ky_tep : "ghi lại"
 
   linh_vuc {
     uuid id PK
@@ -87,8 +91,22 @@ erDiagram
     text loai_mime
     bigint kich_thuoc
     text sha256
-    text object_key "khóa Garage (#7)"
+    text object_key "ho-so/<ho_so_id>/<uuid>.<đuôi> (Garage)"
+    text nguoi_tai_sub "sub người tải"
+    text ket_qua_quet "sach (tệp nhiễm không được lưu)"
+    text may_quet "phiên bản ClamAV"
+    timestamptz quet_luc
     text trang_thai_kiem_tra
+  }
+  nhat_ky_tep {
+    bigint id PK
+    timestamptz luc
+    text hanh_dong "tai_len, tu_choi_ma_doc, tu_choi_loai_tep, cap_link"
+    text nguoi_sub
+    text vai_tro
+    uuid ho_so_id "không FK: nhật ký giữ lại"
+    text sha256
+    text chi_tiet "tên mẫu virus, ttl…"
   }
   ngay_nghi {
     date ngay PK
@@ -132,8 +150,9 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 | `ho_so` – thêm | — | hồ sơ của mình, thủ tục công khai, trạng thái `moi`; chỉ cột `thu_tuc_id`, `ho_ten_nguoi_nop`, `so_dien_thoai` | — | — |
 | `ho_so` – sửa | — | chỉ khi `cho_bo_sung`: `ho_ten_nguoi_nop`, `so_dien_thoai`, chuyển về `dang_xu_ly` | hồ sơ lĩnh vực mình, chưa đóng: `trang_thai`, `ly_do`, `can_bo_xu_ly_id` (người được giao phải cùng lĩnh vực) | — |
 | `thanh_phan_ho_so` – đọc | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả |
-| `thanh_phan_ho_so` – thêm | — | vào hồ sơ mình khi `moi`/`cho_bo_sung`; loại thành phần phải thuộc thủ tục của hồ sơ | — | — |
+| `thanh_phan_ho_so` – thêm | — | không trực tiếp: qua API tệp `/files` (quét ClamAV trước); dòng do tài khoản dịch vụ `dich_vu_tep` ghi, chỉ vào hồ sơ của người tải khi `moi`/`cho_bo_sung`, loại thành phần phải thuộc thủ tục của hồ sơ | — | — |
 | `thanh_phan_ho_so` – sửa | — | — | `trang_thai_kiem_tra`, `ghi_chu_kiem_tra` (CSDL ghi người, giờ kiểm tra) | — |
+| `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
 
 Cán bộ phụ trách lĩnh vực nào được tra từ `can_bo` (theo `sub`) + `can_bo_linh_vuc`, không cần claim riêng trong JWT: đổi phân công có hiệu lực ngay. Hàm tra cứu nằm ở schema `mot_cua_noi_bo` (không phơi ra API), `SECURITY DEFINER`, `search_path` rỗng.
 
@@ -144,9 +163,10 @@ Web (cổng công dân, cổng cán bộ) chỉ gọi APISIX `http://localhost:$
 | Tiền tố | Dùng cho | Ví dụ |
 |---|---|---|
 | `/public/` (không token, 60 req/phút/IP) | danh mục công khai cho cổng công dân | `GET /public/thu_tuc?select=id,ma,ten,thanh_phan_yeu_cau(ma,ten,bat_buoc)`, `GET /public/rpc/json_schema_thu_tuc?ma=KS01`, `GET /public/linh_vuc` |
-| `/api/` (token) | đọc/ghi bảng `mot_cua` theo cú pháp PostgREST, quyền theo bảng ở mục [Quyền theo vai trò](#quyền-theo-vai-trò) | `GET /api/ho_so?select=*,thu_tuc:thu_tuc_id(ma,ten)&order=ngay_nhan.desc`, `PATCH /api/ho_so?id=eq.<id>` (cán bộ đổi trạng thái), `POST /api/thanh_phan_ho_so` |
+| `/api/` (token) | đọc/ghi bảng `mot_cua` theo cú pháp PostgREST, quyền theo bảng ở mục [Quyền theo vai trò](#quyền-theo-vai-trò) | `GET /api/ho_so?select=*,thu_tuc:thu_tuc_id(ma,ten)&order=ngay_nhan.desc`, `PATCH /api/ho_so?id=eq.<id>` (cán bộ đổi trạng thái), `PATCH /api/thanh_phan_ho_so?id=eq.<id>` (cán bộ kiểm tra giấy tờ) |
 | `/workflow/` (token) | quy trình Flowable của hồ sơ, qua `backend/main.py` | bảng dưới |
-| `/files/` (token) | tệp hồ sơ – **chưa có**, trả 503 tới khi xong #7 | |
+| `/files/` (token, body ≤ 10 MiB) | tải lên, liệt kê, cấp link xem tệp hồ sơ, qua `backend/main.py` | [bảng dưới](#files--tệp-hồ-sơ) |
+| `/files/s3/` (không token, link ký sẵn) | tải nội dung tệp bằng link mà `/files/tep/{id}` cấp | chỉ GET/HEAD |
 
 OpenAPI của PostgREST: `GET /api/` (kèm token) hoặc `GET /public/`, chỉ liệt kê bảng, cột, RPC mà vai trò của người gọi được quyền.
 
@@ -184,6 +204,24 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN_CAN_BO" -H 'Content-Type: appli
   -d '{"bien":{"hopLe":true}}' http://localhost:9080/workflow/tasks/<id>/complete
 ```
 
+### `/files` – tệp hồ sơ
+
+Thiết kế, luồng quét và nơi giữ khóa: `docs/architecture.md` §4.3. Chỉ nhận **PDF, JPG, PNG**, tối đa 10 MiB một tệp (`DXOS_FILE_MAX_BYTES`). Đuôi tệp, `Content-Type` của request và **nội dung thật (magic bytes)** phải cùng một loại. Mọi tệp được **ClamAV quét trước khi lưu**: tệp nhiễm bị từ chối, không lưu gì, ghi `nhat_ky_tep`. Client không bao giờ cầm khóa S3: xem tệp bằng link đã ký ngắn hạn.
+
+| Endpoint | Ai | Làm gì | Mã trả về |
+|---|---|---|---|
+| `POST /files/ho-so/{id}/tep?ten=<tên tệp>[&thanh_phan_yeu_cau_id=<uuid>]`, header `Content-Type: application/pdf` \| `image/jpeg` \| `image/png`, body = nội dung tệp | công dân, hồ sơ của mình đang `moi` hoặc `cho_bo_sung` | quét → lưu Garage `mot-cua-ho-so/ho-so/{id}/<uuid>.<đuôi>` → ghi `thanh_phan_ho_so`. Trả dòng metadata (`id`, `ten_tep`, `loai_mime`, `kich_thuoc`, `sha256`, `object_key`, `nguoi_tai_sub`, `ket_qua_quet`, `quet_luc`…) | 201; 400 tên tệp lạ, tệp rỗng, thành phần không thuộc thủ tục; 401; 403 không phải công dân; 404 hồ sơ không thấy (kể cả của người khác); 409 hồ sơ không nhận thêm tệp; 411 thiếu `Content-Length`; 413 quá cỡ; 415 sai loại/giả mạo; 422 có mã độc (`chiTiet.maDoc`); 503 ClamAV chưa sẵn sàng |
+| `GET /files/ho-so/{id}/tep` | ai xem được hồ sơ theo RLS | danh sách metadata tệp của hồ sơ | 200; 403 hồ sơ có nhưng không có quyền; 404 |
+| `GET /files/tep/{id}[?ttl=<giây>]` | công dân (hồ sơ của mình), cán bộ (lĩnh vực đang phụ trách), lãnh đạo | metadata + `link` (GET đã ký, `ttl` 1–300 giây, mặc định 300) + `hetHanLuc`; ghi nhật ký `cap_link` | 200; 400 `ttl` sai; 403 tệp có nhưng không có quyền (vd. cán bộ sai lĩnh vực); 404 tệp không có hoặc giấy tờ chưa có tệp |
+| `GET <link>` (`/files/s3/…`) | ai cầm link | nội dung tệp, `Content-Type` đúng loại, `Content-Disposition: inline`, `X-Content-Type-Options: nosniff` | 200; 403 link bị sửa; 400 `Date is too old` khi link hết hạn |
+
+```bash
+# Công dân tải tờ khai vào hồ sơ <HS> rồi lấy link xem 60 giây
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/pdf' \
+  --data-binary @to-khai.pdf "http://localhost:9080/files/ho-so/<HS>/tep?ten=to-khai.pdf"
+curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:9080/files/tep/<ID>?ttl=60" | jq -r .link
+```
+
 ## Người dùng mẫu
 
 | Người dùng | `sub` | Vai trò | Ghi chú |
@@ -200,8 +238,9 @@ Realm không chứa mật khẩu: đặt bằng `kcadm.sh set-password` (xem `do
 ## Chạy test
 
 ```bash
-make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable + /workflow (199 kiểm tra)
+make test                       # test đơn vị API tệp (không cần Docker; make check cũng chạy)
+make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable + /workflow + /files (277 kiểm tra)
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql   # chỉ RLS
 ```
 
-Sắp tới: API tệp và Garage (#7), sự kiện RabbitMQ (#9), cổng công dân và cổng cán bộ (React, tuần 3).
+Sắp tới: sự kiện RabbitMQ (#9), khóa S3 và secret client dịch vụ sang OpenBao (#10), cổng công dân và cổng cán bộ (React, tuần 3).
