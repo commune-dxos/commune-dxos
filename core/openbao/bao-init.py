@@ -48,7 +48,9 @@ DANH_TINH = {
     "flowable": 100,
     "garage": 0,
     "garage-init": 0,
-    "app": 0,           # app-backend (backend của ứng dụng DXOS_APP)
+    "app": 0,           # app-backend, app-worker (backend của ứng dụng DXOS_APP)
+    "rabbitmq": 100,    # rabbitmq:*-alpine (#9)
+    "rabbitmq-init": 0,
 }
 # Thời hạn token theo danh tính: agent một lần chỉ cần vài giây; backend chạy lâu thì
 # đăng nhập lại khi token hết hạn.
@@ -73,6 +75,7 @@ BI_MAT_LOI = {
     "core/keycloak/admin": {"password": ("KEYCLOAK_ADMIN_PASSWORD", _mat_khau)},
     "core/flowable/rest-admin": {"password": ("FLOWABLE_ADMIN_PASSWORD", _mat_khau)},
     "core/garage": {"rpc_secret": (None, _hex32), "admin_token": (None, _hex32)},
+    "core/rabbitmq/admin": {"password": (None, _mat_khau)},
 }
 
 

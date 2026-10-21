@@ -12,6 +12,8 @@ Cấu hình các dịch vụ lõi dùng chung cho mọi ứng dụng Tầng 2. �
 | `scripts/db-init.sh` | dịch vụ một lần: role + CSDL riêng của `authenticator`, `keycloak`, `flowable`, mật khẩu theo OpenBao (chạy lại không lỗi, dùng được với volume cũ) |
 | `scripts/kc-start.sh` | entrypoint Keycloak: đọc mật khẩu CSDL và quản trị từ tệp bí mật (OpenBao) |
 | `scripts/garage-init.py` | dịch vụ một lần: layout Garage, bucket ứng dụng khai báo, khóa S3 riêng của ứng dụng → OpenBao |
+| `rabbitmq/` | RabbitMQ một nút (#9): `rabbitmq.conf` (STOMP 61613, HTTP API quản trị 15672, chỉ trong mạng nội bộ), `enabled_plugins`; tài khoản quản trị từ OpenBao; `docs/architecture.md` §4.5 |
+| `scripts/rabbitmq-init.py` | dịch vụ một lần: vhost + user riêng của ứng dụng (không tag, không configure), nạp `apps/<DXOS_APP>/rabbitmq/definitions.json`, thông tin kết nối → OpenBao |
 | `openbao/` | két sắt bí mật (#10): `config.hcl` (server raft, không UI, audit), `bao-init.py` (init/unseal/KV/policy/AppRole, `make bao-init`), `policies/` (policy từng danh tính), `agent/` (agent một lần render tệp bí mật), `kiem-quyen.py` (kiểm policy trong `make smoke`); `docs/architecture.md` §4.4 |
 
 Workflow engine Flowable REST (`docker-compose.yml`, dịch vụ `flowable`) không có cấu hình riêng trong `core/`: nó tự triển khai `apps/<DXOS_APP>/processes/*.bpmn20.xml` khi khởi động.

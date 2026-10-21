@@ -8,16 +8,19 @@
 | `db/migrations/001_schema_mot_cua.sql` | role `cong_dan`/`can_bo`/`lanh_dao` + `GRANT … TO authenticator`, schema `mot_cua` (bảng giữ chỗ tuần 1, bị 002 thay) |
 | `db/migrations/002_schema_day_du.sql` | schema đầy đủ (#5): bảng, trigger, quyền theo cột, RLS mọi bảng |
 | `db/migrations/003_tep_ho_so.sql` | tệp hồ sơ (#7): role `dich_vu_tep`, cột người tải/kết quả quét, ràng buộc khóa object theo hồ sơ, bảng `nhat_ky_tep` chỉ thêm; công dân thôi `INSERT` metadata trực tiếp |
+| `db/migrations/004_su_kien.sql` | sự kiện (#9): role `dich_vu_su_kien`, hộp thư đi `hop_thu_su_kien` (outbox), `nhat_ky_su_kien` chỉ thêm; xem [Sự kiện hồ sơ](#sự-kiện-hồ-sơ-rabbitmq-9) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true` |
-| `db/tests/rls.sql` | test quyền/RLS (88 kiểm tra), chạy trong một transaction rồi ROLLBACK |
-| `keycloak/realm.json` | client role của `dxos_api` (kể cả `dich_vu_tep`), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep` (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
+| `db/tests/rls.sql` | test quyền/RLS (110 kiểm tra), chạy trong một transaction rồi ROLLBACK |
+| `keycloak/realm.json` | client role của `dxos_api` (kể cả `dich_vu_tep`), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien` (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `processes/dang_ky_khai_sinh.bpmn20.xml` | quy trình đăng ký khai sinh (#8), Flowable tự triển khai khi khởi động; sơ đồ và biến: [`processes/README.md`](processes/README.md) |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; lõi tạo bucket và khóa S3 riêng của ứng dụng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `app-backend`, chỉ thư viện chuẩn Python; xem [API cho Tầng 2](#api-cho-tầng-2) |
+| `rabbitmq/definitions.json` | exchange, queue, binding của sự kiện hồ sơ (#9); lõi tạo vhost `mot-cua`, user riêng rồi nạp tệp này |
+| `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `app-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, consumer mẫu |
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền) và test đơn vị: `make test` |
-| `tests/smoke.sh`, `tests/smoke-tep.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh đầy đủ qua `/workflow`, tải/xem tệp, EICAR, link ký sẵn. Cần thêm `python3` trên máy để sinh mã TOTP |
+| `tests/smoke.sh`, `tests/smoke-tep.sh`, `tests/smoke-su-kien.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh đầy đủ qua `/workflow`, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
 
-Sửa schema: thêm tệp `db/migrations/004_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`app-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
+Sửa schema: thêm tệp `db/migrations/005_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`app-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
 
 ## Sơ đồ dữ liệu
 
@@ -222,6 +225,60 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:9080/files/tep/<ID>?ttl=60" | jq -r .link
 ```
 
+## Sự kiện hồ sơ (RabbitMQ, #9)
+
+Thiết kế, lý do và sơ đồ: [`docs/architecture.md` §4.5](../../docs/architecture.md#45-sự-kiện-hồ-sơ-qua-rabbitmq-9). Tóm tắt: `app-backend` ghi sự kiện vào hộp thư đi `mot_cua.hop_thu_su_kien` ngay sau khi gọi Flowable thành công; `app-worker` phát lên exchange `mot_cua.su_kien` (topic, vhost `mot-cua`, routing key = loại sự kiện) qua STOMP, chờ RabbitMQ xác nhận rồi mới đánh dấu đã phát; consumer mẫu nhận từ queue `mot_cua.nhat_ky` và ghi `mot_cua.nhat_ky_su_kien` (lãnh đạo xem được qua `/api/nhat_ky_su_kien`).
+
+### Danh mục
+
+| Loại (routing key) | Khi nào | Ai phát | `duLieu` |
+|---|---|---|---|
+| `ho_so.moi` | khởi tạo quy trình thành công (`POST /workflow/ho-so`, `/ho-so/{id}/khoi-tao`) | app-backend | `processInstanceId`, `quyTrinh`, `hanXuLy` (ngày), `buocDangMo` (mã bước) |
+| `ho_so.chuyen_buoc` | hoàn thành một task (`POST /workflow/tasks/{id}/complete`) | app-backend | `processInstanceId`, `tuBuoc`, `denBuoc` (mã bước đang mở sau đó, rỗng nếu kết thúc), `vaiTroXuLy` |
+| `ho_so.hoan_tat` | quy trình kết thúc ở *Hoàn tất* (biến `ketQua = hoan_tat`) | app-backend, ngay sau `chuyen_buoc` cuối | `processInstanceId`, `ketQua`, `diemKetThuc` |
+| `ho_so.tu_choi` | quy trình kết thúc ở *Từ chối* (`ketQua = tu_choi`) | app-backend | như trên |
+| `ho_so.sap_tre_han` | hồ sơ chưa xong (còn quy trình đang chạy), chưa quá 17:00 ngày hạn, còn ≤ `DXOS_SU_KIEN_SAP_TRE_NGAY` (1) ngày làm việc; **mỗi (hồ sơ, hạn xử lý) một lần** | app-worker, quét mỗi `DXOS_SU_KIEN_QUET_GIAY` (300) giây | `processInstanceId`, `hanXuLy`, `hanXuLyLuc`, `conLaiNgayLamViec` (0 = hạn hôm nay), `buocDangMo` |
+
+### Định dạng (phiên bản 1)
+
+Một object JSON, `content-type: application/json`; header AMQP `message-id` = `id`, `type` = `loai`, `app-id` = `mot-cua`. Phát **ít nhất một lần**: consumer phải chống trùng theo `id`. Thêm trường không đổi `phienBan`; bỏ hay đổi nghĩa trường thì tăng `phienBan`.
+
+```json
+{
+  "phienBan": 1,
+  "id": "3f2c9a4e-8d1b-4c7a-9e55-0b6d2f1a7c33",
+  "loai": "ho_so.sap_tre_han",
+  "luc": "2026-10-22T09:00:00+07:00",
+  "nguon": "mot-cua",
+  "hoSoId": "5b8d0e6a-1f3c-4a2b-9c7d-2e4f6a8b0c1d",
+  "maHoSo": "HS20261021-000123",
+  "linhVuc": "ho_tich",
+  "thuTuc": "KS01",
+  "duLieu": {
+    "processInstanceId": "8c1e…",
+    "hanXuLy": "2026-10-23",
+    "hanXuLyLuc": "2026-10-23T17:00:00+07:00",
+    "conLaiNgayLamViec": 1,
+    "buocDangMo": ["tham_dinh"]
+  }
+}
+```
+
+**Không có dữ liệu cá nhân của công dân**: không họ tên, số điện thoại hay `sub` người nộp, chỉ id nội bộ và mã hồ sơ. Role `dich_vu_su_kien` không được đọc các cột đó (quyền cột), `su_kien.kiem()` từ chối sự kiện có các khóa này. Consumer cần liên hệ công dân (thông báo, tuần 3) tra bằng `hoSoId` qua API, theo quyền của mình.
+
+### Tệp
+
+| Tệp | Nội dung |
+|---|---|
+| `db/migrations/004_su_kien.sql` | role `dich_vu_su_kien`, bảng `hop_thu_su_kien` (outbox: `khoa_chong_trung` UNIQUE, nội dung phải khớp id/loại/hồ sơ của dòng, đã phát thì không bỏ phát được), `nhat_ky_su_kien` (chỉ thêm, khóa = id sự kiện) |
+| `rabbitmq/definitions.json` | exchange `mot_cua.su_kien` (topic) → queue `mot_cua.nhat_ky` (quorum, binding `ho_so.#`, dead-letter sang `mot_cua.su_kien.loi` → queue `mot_cua.nhat_ky.loi` khi NACK hoặc quá 5 lần giao) |
+| `keycloak/realm.json` | client dịch vụ `mot_cua_su_kien` (role `dich_vu_su_kien`) |
+| `backend/su_kien.py` | định dạng, kiểm tra, ngày làm việc, quy tắc sắp trễ hạn (hàm thuần) |
+| `backend/hop_thu.py` | ghi/đọc hộp thư và nhật ký qua PostgREST bằng token dịch vụ |
+| `backend/stomp.py` | client STOMP 1.2 tối thiểu (thư viện chuẩn) |
+| `backend/worker.py` | dịch vụ `app-worker`: phát, quét sắp trễ hạn, consumer mẫu. Quét tay một lần: `docker compose exec app-worker python /app/backend/worker.py quet-mot-lan` |
+| `tests/smoke-su-kien.sh` | `make smoke`: luồng thật qua `/workflow`, sắp trễ hạn đúng một lần, tin hỏng → queue lỗi, RabbitMQ dừng rồi lên lại |
+
 ## Người dùng mẫu
 
 | Người dùng | `sub` | Vai trò | Ghi chú |
@@ -238,11 +295,11 @@ Realm không chứa mật khẩu: đặt bằng `kcadm.sh set-password` (xem `do
 ## Chạy test
 
 ```bash
-make test                       # test đơn vị API tệp (không cần Docker; make check cũng chạy)
-make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable + /workflow + /files (277 kiểm tra)
+make test                       # test đơn vị API tệp, sự kiện (không cần Docker; make check cũng chạy)
+make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable + /workflow + /files + sự kiện
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql   # chỉ RLS
 ```
 
-Bí mật của ứng dụng (khóa S3, secret client `mot_cua_tep`, mật khẩu `rest-admin` của Flowable) đọc từ OpenBao của lõi bằng AppRole `app` (`backend/bimat.py`, chỉ giữ trong bộ nhớ), xem `docs/architecture.md` §4.4.
+Bí mật của ứng dụng (khóa S3, secret client `mot_cua_tep`, `mot_cua_su_kien`, thông tin kết nối RabbitMQ, mật khẩu `rest-admin` của Flowable) đọc từ OpenBao của lõi bằng AppRole `app` (`backend/bimat.py`, chỉ giữ trong bộ nhớ), xem `docs/architecture.md` §4.4.
 
-Sắp tới: sự kiện RabbitMQ (#9), cổng công dân và cổng cán bộ (React, tuần 3).
+Sắp tới: cổng công dân và cổng cán bộ (React, tuần 3), thông báo theo sự kiện `ho_so.*` (tuần 3).

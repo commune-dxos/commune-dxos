@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: Apache-2.0
--- Test quyền và RLS của schema mot_cua (#5, tệp hồ sơ #7): mỗi vai trò thấy/sửa đúng phần được phép.
+-- Test quyền và RLS của schema mot_cua (#5, tệp hồ sơ #7, sự kiện #9): mỗi vai trò thấy/sửa đúng phần được phép.
 -- Chạy bằng superuser trong container postgres, toàn bộ trong MỘT transaction rồi
 -- ROLLBACK, nên không để lại dữ liệu và không phụ thuộc seed (DXOS_SEED có thể là false):
 --   docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql
@@ -311,12 +311,70 @@ SELECT pg_temp.kiem('dich_vu_tep: tự đặt thời điểm nhật ký bị ch�
 SELECT pg_temp.kiem('dich_vu_tep: sửa nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu(
   $$UPDATE mot_cua.nhat_ky_tep SET chi_tiet = 'x'$$));
 
+-- dich_vu_su_kien: tài khoản dịch vụ sự kiện (#9) -----------------------------------------------
+-- Sự kiện mẫu đã phát của hồ sơ X1 (superuser ghi), khóa chống trùng 'k-test'.
+RESET ROLE;
+INSERT INTO mot_cua.hop_thu_su_kien (id, loai, ho_so_id, khoa_chong_trung, noi_dung, da_phat_luc) VALUES
+  ('7e570000-0000-4000-8000-0000000000e1', 'ho_so.sap_tre_han', '7e570000-0000-4000-8000-000000000001', 'k-test',
+   '{"phienBan": 1, "id": "7e570000-0000-4000-8000-0000000000e1", "loai": "ho_so.sap_tre_han",
+     "hoSoId": "7e570000-0000-4000-8000-000000000001"}', now());
+\set SK_COT 'INSERT INTO mot_cua.hop_thu_su_kien (id, loai, ho_so_id, khoa_chong_trung, noi_dung) VALUES (''7e570000-0000-4000-8000-0000000000e2'', '
+\set SK_ND '''{"phienBan": 1, "id": "7e570000-0000-4000-8000-0000000000e2", "loai": "ho_so.sap_tre_han", "hoSoId": "7e570000-0000-4000-8000-000000000001"}'''
+SELECT pg_temp.vai('dich_vu_su_kien', 'service-account-test');
+SELECT pg_temp.kiem('dich_vu_su_kien: đọc mã, trạng thái, hạn của mọi hồ sơ test', '4', pg_temp.dem(
+  $$SELECT id, ma_ho_so, trang_thai, han_xu_ly, thu_tuc_id FROM mot_cua.ho_so WHERE ma_ho_so LIKE 'TEST-%'$$));
+SELECT pg_temp.kiem('dich_vu_su_kien: đọc họ tên người nộp bị chặn (quyền cột)', 'chặn 42501', pg_temp.dem(
+  'SELECT ho_ten_nguoi_nop FROM mot_cua.ho_so'));
+SELECT pg_temp.kiem('dich_vu_su_kien: đọc số điện thoại, sub người nộp bị chặn', 'chặn 42501', pg_temp.dem(
+  'SELECT so_dien_thoai, nguoi_nop_sub FROM mot_cua.ho_so'));
+SELECT pg_temp.kiem('dich_vu_su_kien: đọc mã lĩnh vực của thủ tục', '3', pg_temp.dem(
+  $$SELECT t.ma, l.ma FROM mot_cua.thu_tuc t JOIN mot_cua.linh_vuc l ON l.id = t.linh_vuc_id WHERE t.ma LIKE 'TEST%'$$));
+SELECT pg_temp.kiem('dich_vu_su_kien: đọc ngày nghỉ', '1', pg_temp.dem(
+  $$SELECT ngay FROM mot_cua.ngay_nghi WHERE ngay = '2030-01-02'$$));
+SELECT pg_temp.kiem('dich_vu_su_kien: ghi sự kiện vào hộp thư đi → 1 dòng', '1 dòng', pg_temp.thu(
+  :'SK_COT' || $$'ho_so.sap_tre_han', '7e570000-0000-4000-8000-000000000001', NULL, $$ || :'SK_ND' || ')'));
+SELECT pg_temp.kiem('dich_vu_su_kien: ghi trùng khóa chống trùng bị bỏ qua → 0 dòng', '0 dòng', pg_temp.thu(
+  :'SK_COT' || $$'ho_so.sap_tre_han', '7e570000-0000-4000-8000-000000000001', 'k-test', $$ || :'SK_ND'
+  || ') ON CONFLICT (khoa_chong_trung) DO NOTHING'));
+SELECT pg_temp.kiem('dich_vu_su_kien: nội dung lệch loại của dòng bị chặn', 'chặn 23514', pg_temp.thu(
+  :'SK_COT' || $$'ho_so.moi', '7e570000-0000-4000-8000-000000000001', NULL, $$ || :'SK_ND' || ')'));
+SELECT pg_temp.kiem('dich_vu_su_kien: loại sự kiện lạ bị chặn', 'chặn 23514', pg_temp.thu(
+  :'SK_COT' || $$'ho_so.xoa', '7e570000-0000-4000-8000-000000000001', NULL, $$ || :'SK_ND' || ')'));
+SELECT pg_temp.kiem('dich_vu_su_kien: tự đặt da_phat_luc khi ghi bị chặn (quyền cột)', 'chặn 42501', pg_temp.thu(
+  $$INSERT INTO mot_cua.hop_thu_su_kien (id, loai, ho_so_id, noi_dung, da_phat_luc) VALUES ('7e570000-0000-4000-8000-0000000000e2', 'ho_so.sap_tre_han', '7e570000-0000-4000-8000-000000000001', $$ || :'SK_ND' || ', now())'));
+SELECT pg_temp.kiem('dich_vu_su_kien: sửa nội dung sự kiện bị chặn (quyền cột)', 'chặn 42501', pg_temp.thu(
+  $$UPDATE mot_cua.hop_thu_su_kien SET noi_dung = '{}'$$));
+SELECT pg_temp.kiem('dich_vu_su_kien: "bỏ phát" sự kiện đã phát → 0 dòng', '0 dòng', pg_temp.thu(
+  $$UPDATE mot_cua.hop_thu_su_kien SET da_phat_luc = NULL WHERE id = '7e570000-0000-4000-8000-0000000000e1'$$));
+SELECT pg_temp.kiem('dich_vu_su_kien: xóa sự kiện bị chặn', 'chặn 42501', pg_temp.thu(
+  'DELETE FROM mot_cua.hop_thu_su_kien'));
+SELECT pg_temp.kiem('dich_vu_su_kien: ghi nhật ký sự kiện đã nhận → 1 dòng', '1 dòng', pg_temp.thu(
+  $$INSERT INTO mot_cua.nhat_ky_su_kien (su_kien_id, loai, ho_so_id, ma_ho_so, linh_vuc, xay_ra_luc, noi_dung)
+    VALUES ('7e570000-0000-4000-8000-0000000000e1', 'ho_so.moi', '7e570000-0000-4000-8000-000000000001', 'TEST-X1', 'test_a', now(), '{}')$$));
+SELECT pg_temp.kiem('dich_vu_su_kien: sửa hồ sơ bị chặn', 'chặn 42501', pg_temp.thu(
+  'UPDATE mot_cua.ho_so SET han_xu_ly = NULL WHERE id = ' || :'X1'));
+SELECT pg_temp.vai('cong_dan', 'test-cd-x');
+SELECT pg_temp.kiem('cong_dan: đọc hộp thư sự kiện bị chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.hop_thu_su_kien'));
+SELECT pg_temp.kiem('cong_dan: đọc nhật ký sự kiện bị chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.nhat_ky_su_kien'));
+SELECT pg_temp.vai('can_bo', 'test-cb-a');
+SELECT pg_temp.kiem('can_bo: ghi hộp thư sự kiện bị chặn', 'chặn 42501', pg_temp.thu(
+  :'SK_COT' || $$'ho_so.sap_tre_han', '7e570000-0000-4000-8000-000000000001', NULL, $$ || :'SK_ND' || ')'));
+SELECT pg_temp.vai('lanh_dao', 'test-ld');
+SELECT pg_temp.kiem('lanh_dao: đọc được nhật ký sự kiện', 'có',
+  CASE WHEN pg_temp.dem('SELECT 1 FROM mot_cua.nhat_ky_su_kien') ~ '^[0-9]+$' THEN 'có' ELSE 'không' END);
+SELECT pg_temp.kiem('lanh_dao: đọc hộp thư sự kiện bị chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.hop_thu_su_kien'));
+
 -- Nhật ký tệp chỉ thêm: kể cả superuser cũng không sửa, xóa được (trigger) ------------------
 RESET ROLE;
 SELECT pg_temp.kiem('superuser: sửa nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu(
   $$UPDATE mot_cua.nhat_ky_tep SET chi_tiet = 'x'$$));
 SELECT pg_temp.kiem('superuser: xóa nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu('DELETE FROM mot_cua.nhat_ky_tep'));
 SELECT pg_temp.kiem('superuser: TRUNCATE nhật ký tệp bị chặn', 'chặn 42501', pg_temp.thu('TRUNCATE mot_cua.nhat_ky_tep'));
+INSERT INTO mot_cua.nhat_ky_su_kien (su_kien_id, loai, ho_so_id, ma_ho_so, xay_ra_luc, noi_dung)
+  VALUES ('7e570000-0000-4000-8000-0000000000e1', 'ho_so.moi', '7e570000-0000-4000-8000-000000000001', 'TEST-X1', now(), '{}');
+SELECT pg_temp.kiem('superuser: sửa nhật ký sự kiện bị chặn', 'chặn 42501', pg_temp.thu(
+  $$UPDATE mot_cua.nhat_ky_su_kien SET loai = 'x'$$));
+SELECT pg_temp.kiem('superuser: xóa nhật ký sự kiện bị chặn', 'chặn 42501', pg_temp.thu('DELETE FROM mot_cua.nhat_ky_su_kien'));
 
 -- Kết quả -------------------------------------------------------------------------------
 RESET ROLE;

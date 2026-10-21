@@ -12,6 +12,7 @@
 #   4d. Quy trình qua APISIX /workflow (#6): công dân nộp + khởi tạo, cán bộ/lãnh đạo thấy và
 #      hoàn thành task của nhóm mình, chặn chéo vai trò, backend tự kiểm token.
 #   4e. Tệp hồ sơ qua APISIX /files (#7): tests/smoke-tep.sh.
+#   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -288,6 +289,12 @@ fi
 # --- 4e. Tệp hồ sơ qua APISIX /files (#7) ------------------------------------------------
 # shellcheck source=apps/mot-cua/tests/smoke-tep.sh
 . "apps/$DXOS_APP/tests/smoke-tep.sh"
+
+# --- 4f. Sự kiện hồ sơ qua RabbitMQ (#9) -------------------------------------------------
+if [ -n "${WH:-}" ]; then
+  # shellcheck source=apps/mot-cua/tests/smoke-su-kien.sh
+  . "apps/$DXOS_APP/tests/smoke-su-kien.sh"
+fi
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
