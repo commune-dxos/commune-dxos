@@ -3,6 +3,16 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
 ## [Unreleased]
+### Added
+- `apps/mot-cua/db/migrations/002_schema_day_du.sql`: schema `mot_cua` đầy đủ – `linh_vuc`, `thu_tuc` (thời hạn theo ngày làm việc, phí, công khai), `thanh_phan_yeu_cau`, `ngay_nghi`, `can_bo` (liên kết `sub` Keycloak) + `can_bo_linh_vuc`, `ho_so` (mã hồ sơ, hạn xử lý tính theo ngày làm việc, trạng thái `moi → dang_xu_ly → cho_bo_sung → hoan_tat | tu_choi` có trigger chặn bước sai), `thanh_phan_ho_so` (metadata, tệp ở Garage); khóa UUID, `created_at`/`updated_at` (#5).
+- RLS bật và `FORCE` trên mọi bảng `mot_cua`: công dân chỉ thấy/nộp hồ sơ của mình và chỉ sửa khi chờ bổ sung; cán bộ chỉ thấy/xử lý hồ sơ thuộc lĩnh vực phụ trách; lãnh đạo chỉ đọc; `anon` chỉ đọc danh mục thủ tục công khai. Quyền GRANT theo cột, hàm nội bộ ở schema `mot_cua_noi_bo` không phơi ra API (#5).
+- RPC công khai `json_schema_thu_tuc(ma)`: JSON Schema thành phần hồ sơ của thủ tục, chuẩn bị cho Poka-yoke tuần 3 (#5).
+- Seed `002_du_lieu_mau.sql` (dữ liệu giả): 3 lĩnh vực, 6 thủ tục cấp xã kèm thành phần hồ sơ, 3 cán bộ khác lĩnh vực, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; người dùng mẫu `congdan02`, `canbo02`, `canbo03`, `id` Keycloak cố định khớp seed (#5).
+- `apps/mot-cua/db/tests/rls.sql`: 63 kiểm tra quyền/RLS từng vai trò, chạy trong một transaction rồi ROLLBACK; `make smoke` chạy tệp này và gọi API qua APISIX bằng token thật của cả 4 vai trò (cán bộ, lãnh đạo dùng người dùng tạm có OTP, mã TOTP sinh trong script) (#5).
+- `apps/mot-cua/README.md`: sơ đồ ER, sơ đồ trạng thái, bảng quyền theo vai trò, ghi chú dữ liệu cá nhân tối thiểu; `docs/architecture.md` §2.7, §8.3 (#5).
+
+### Changed
+- Migration 002 thay hai bảng giữ chỗ `thu_tuc`, `ho_so` của v0.0.1 (chỉ có dữ liệu giả); bỏ seed `001_du_lieu_mau.sql`. API đổi: `ho_so.thu_tuc_id` (UUID) thay cho `ma_thu_tuc`, trạng thái `moi_nop`/`bo_sung` đổi thành `moi`/`cho_bo_sung` (#5).
 
 ## [0.0.1] - 2026-10-20
 ### Added
