@@ -619,7 +619,7 @@ D-004: image `flowable-ui` (có modeler) dừng ở 6.8.0 (2022), bpmn-js bị c
 Cách nhanh nhất: `make up` rồi `make smoke` (`scripts/smoke.sh` + `apps/<DXOS_APP>/tests/smoke.sh`). Smoke đặt mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu), không in mật khẩu hay token, không xóa dữ liệu có sẵn (chỉ xóa người dùng và cán bộ tạm do chính smoke tạo); mỗi lần chạy thêm một hồ sơ thử của `congdan01`. Kết quả gần nhất ở mục 8.3. Thử tay từng bước:
 
 ```bash
-cp .env.example .env            # đổi mật khẩu; DXOS_APP=mot-cua
+cp .env.example .env            # không có mật khẩu nào cần điền; DXOS_APP=mot-cua
 make up
 docker compose ps -a            # postgres, keycloak, apisix "healthy"; jwks-init, app-migrate, app-realm "Exited (0)"
 
@@ -629,12 +629,9 @@ curl -i http://localhost:9080/api/ho_so
 # 2. Đọc công khai (role anon), giới hạn 60 request/phút/IP
 curl -i http://localhost:9080/public/thu_tuc
 
-# 3. Đặt mật khẩu cho người dùng mẫu (realm không chứa mật khẩu)
-set -a; . ./.env; set +a
-docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-  --server http://localhost:8080 --realm master --user "$KEYCLOAK_ADMIN" --password "$KEYCLOAK_ADMIN_PASSWORD"
-docker compose exec keycloak /opt/keycloak/bin/kcadm.sh set-password -r dxos \
-  --username congdan01 --new-password 'mat-khau-thu-nghiem'
+# 3. Đặt mật khẩu cho người dùng mẫu (realm không chứa mật khẩu; scripts/demo-users.sh dùng
+#    tài khoản quản trị Keycloak đọc từ tệp bí mật trong container, nguồn là OpenBao)
+DXOS_DEMO_PASSWORD='mat-khau-thu-nghiem' make demo-users
 
 # 4. Lấy token công dân và gọi lại → 200, danh sách rỗng (công dân mới chưa có hồ sơ)
 TOKEN=$(curl -s http://localhost:8080/realms/dxos/protocol/openid-connect/token \
@@ -825,6 +822,21 @@ Docker Desktop, macOS arm64, RabbitMQ 4.3.6. Mỗi lần chạy `make smoke` **4
 | Management | không cổng host (15672, 61613 → không kết nối được), không route APISIX (`/rabbitmq/…` → 404); trong mạng nội bộ quản trị → 200, user ứng dụng → 401; không có user `guest`; user ứng dụng chỉ có quyền trong vhost `mot-cua`, configure `^$` |
 
 Dung lượng ổ hệ thống: 10 GB trống trước khi kéo image, 5,6 GB sau khi `make down` + `down -v` hai project tạm + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop không trả dung lượng tệp đĩa ảo cho macOS).
+
+### 8.9 Kết quả chạy từ máy sạch theo README 21/10/2026 (#12)
+
+Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã gốc, Docker không có image nào của dự án (chỉ còn `postgres`), không `.env`, không volume, không `.data/`; project tạm `COMPOSE_PROJECT_NAME=commune-c12` để không đụng volume của project chính. Docker Desktop 28.5.1, Compose v2.40.3, macOS arm64 (10 CPU, Docker 7,6 GiB RAM).
+
+| Bước theo README | Kết quả |
+|---|---|
+| `cp .env.example .env` → `make up` | exit 0 sau **128 giây** (gồm tải 9 image); OpenBao tự init, tệp khóa `.data/openbao/commune-c12.json` quyền 600 |
+| `make smoke` | **405 đạt, 0 trượt**, 93 giây |
+| `make -C <bản clone> demo-users` gọi từ `/` | đặt mật khẩu 6 người dùng mẫu; token `congdan01` → `/api/ho_so` chỉ trả hồ sơ của mình; `canbo01` qua curl → `Account is not fully set up`; trang account console → đăng nhập `canbo01` chuyển tới trang cài OTP |
+| `docker compose restart openbao` → `make bao-status` → `make bao-init` | `Sealed true` → unseal, `Sealed false`, secret_id giữ nguyên |
+| `make down` → `make up` → `make smoke` | `make up` 35 giây, smoke 405/405 |
+| Dung lượng | 10 image giải nén 4,1 GB (tải nén bản arm64 1,1 GiB); volume ≈ 0,3 GB (`clamav-db` 175 MB, `pg-data` 92 MB); ổ hệ thống giảm ≈ 5 GB; RAM các container ≈ 2,3 GB (ClamAV ~1 GB) |
+
+Đã sửa sau lần chạy: thêm `make demo-users` (README cũ không có cách đặt mật khẩu người dùng mẫu sau #10), bước 3 mục 8 bỏ `KEYCLOAK_ADMIN_PASSWORD` (không còn trong `.env` từ #10). Sau khi chạy: `down -v` project tạm, xóa bản clone, `docker image prune -a -f`, `docker builder prune -f`.
 
 ## 9. Việc tiếp theo (tuần 2)
 

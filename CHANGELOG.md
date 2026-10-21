@@ -47,7 +47,12 @@
 - `make lint` (`scripts/lint.sh`): shellcheck mọi `*.sh`, yamllint theo `.yamllint.yml` (compose, APISIX, workflow), kiểm cấu trúc BPMN + 13 test của chính bộ kiểm (`scripts/tests/test_check_bpmn.py`); thiếu công cụ thì in cách cài (#11).
 - `make test` = `test-backend` + `test-sql`; `make test-sql` (`scripts/test-sql.sh`): PostgreSQL trống (service container trên CI, container tạm cùng image compose trên máy) → `10-core.sql` → `app-migrate.sh` hai lần (lần sau phải bỏ qua hết) → `apps/*/db/tests/*.sql` trước và sau khi nạp seed; dòng TRƯỢT hay lỗi psql làm job đỏ (#11).
 
+- `make demo-users` (`scripts/demo-users.sh`): đặt một mật khẩu chung cho 6 người dùng mẫu (dữ liệu giả) để thử tay từng vai trò sau `make smoke`; mật khẩu lấy từ `DXOS_DEMO_PASSWORD` hoặc sinh ngẫu nhiên và in một lần, đi qua stdin vào `kcadm.sh` (#12).
+- `docs/architecture.md` §8.9: kết quả chạy từ máy sạch theo README (bản clone mới ngoài thư mục mã, `make up` 128 giây, smoke 405/405, dung lượng image và RAM đo được) (#12).
+
 ### Changed
+- README viết lại song ngữ Việt – Anh: kiến trúc 3 tầng (Mermaid), yêu cầu máy (Docker/Compose tối thiểu, RAM, ổ, amd64/arm64), chạy từ máy sạch kèm thời gian và dung lượng đo thật, địa chỉ/cổng, tài khoản mẫu theo vai trò, biến cấu hình trong `.env`, thêm ứng dụng vào `apps/`, kiểm thử và đóng góp, xử lý lỗi thường gặp (cổng bị chiếm, OpenBao sealed, thiếu RAM/ổ), giấy phép, phiên bản (#12).
+- `docs/architecture.md` §8 bước 3 đặt mật khẩu bằng `make demo-users` thay cho lệnh `kcadm.sh` dùng `KEYCLOAK_ADMIN_PASSWORD` (đã chuyển vào OpenBao ở #10) (#12).
 - `make test` cũ đổi tên thành `make test-backend` (`make check` vẫn chạy test đơn vị, không cần Docker) (#11).
 - Sửa cảnh báo shellcheck: mẫu `*.bpmn20.xml` thừa trong `scripts/lib-spdx.sh` (đã khớp `*.xml`), `scripts/smoke.sh` khai báo nguồn `.env.example` cho `. ./.env` (CI không có `.env`), chú thích lý do cho biến dùng ở tệp `source` và chuỗi nháy đơn có chủ ý trong `scripts/lib-smoke.sh`, `apps/mot-cua/tests/smoke-tep.sh`; không đổi hành vi (#11).
 - Bỏ mọi mật khẩu khỏi `.env`/`.env.example` (`POSTGRES_PASSWORD`, `PGRST_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `FLOWABLE_DB_PASSWORD`, `FLOWABLE_ADMIN_PASSWORD`): nguồn duy nhất là OpenBao. `.env` cũ còn các biến này thì lần `make up` đầu tiên chuyển giá trị sang OpenBao, giữ được volume cũ (#10).

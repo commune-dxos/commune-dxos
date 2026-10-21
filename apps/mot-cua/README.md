@@ -290,7 +290,7 @@ Một object JSON, `content-type: application/json`; header AMQP `message-id` = 
 | `canbo03` | `…0000b003` | `can_bo` | đất đai; bắt cài OTP |
 | `lanhdao01` | `…0000d001` | `lanh_dao` | bắt cài OTP |
 
-Realm không chứa mật khẩu: đặt bằng `kcadm.sh set-password` (xem `docs/architecture.md` §8). `sub` cố định chỉ áp dụng khi realm được nạp lần đầu; volume Keycloak cũ giữ `sub` cũ.
+Realm không chứa mật khẩu: đặt bằng `make demo-users` (chạy sau `make smoke`; xem README gốc mục 4 và `docs/architecture.md` §8). `sub` cố định chỉ áp dụng khi realm được nạp lần đầu; volume Keycloak cũ giữ `sub` cũ.
 
 ## Chạy test
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed smoke lint test test-backend test-sql license check bao-init bao-status bao-import-env
+.PHONY: up down logs ps migrate seed smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -37,6 +37,9 @@ seed:          ## Nạp dữ liệu mẫu giả apps/$$DXOS_APP/db/seed/ (kể c
 
 smoke:         ## Kiểm tra lõi đang chạy: JWT qua APISIX, JWKS, migration chạy lại + smoke của ứng dụng
 	bash scripts/smoke.sh
+
+demo-users:    ## Đặt mật khẩu chung cho người dùng mẫu để thử tay (chạy sau smoke). DXOS_DEMO_PASSWORD=… hoặc sinh ngẫu nhiên
+	bash scripts/demo-users.sh
 
 lint:          ## Lint như CI (job shellcheck, yamllint, bpmn). Cài công cụ: pip install -r scripts/requirements-lint.txt
 	bash scripts/lint.sh
