@@ -22,15 +22,15 @@ jobs:
   make-check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v5.0.0
       - name: Kiểm tra giấy phép và compose
         run: make check
 
   shellcheck:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.6.0
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
         with:
           python-version: "3.13"
       - name: Cài công cụ lint (phiên bản ghim)
@@ -41,8 +41,8 @@ jobs:
   yamllint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.6.0
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
         with:
           python-version: "3.13"
       - name: Cài công cụ lint (phiên bản ghim)
@@ -53,8 +53,8 @@ jobs:
   bpmn:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.6.0
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
         with:
           python-version: "3.13"
       - name: Kiểm cấu trúc BPMN apps/*/processes
@@ -63,9 +63,9 @@ jobs:
   test-backend:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v5.0.0
       # Cùng nhánh Python với image app-backend (python:3.13.16-alpine3.24).
-      - uses: actions/setup-python@v5.6.0
+      - uses: actions/setup-python@v6.0.0
         with:
           python-version: "3.13"
       - name: Test đơn vị backend của ứng dụng
@@ -92,7 +92,7 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: test-sql
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v5.0.0
       - name: Image PostgreSQL khớp docker-compose.yml
         run: |
           grep -Eq '^ +image: postgres:17\.6-alpine$' docker-compose.yml

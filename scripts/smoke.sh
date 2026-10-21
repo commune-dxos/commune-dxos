@@ -8,7 +8,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
-set -a; . ./.env; set +a
+# .env sinh từ .env.example (cùng biến); shellcheck kiểm theo mẫu vì CI không có .env.
+set -a
+# shellcheck source=.env.example
+. ./.env
+set +a
 export COMPOSE_PROFILES=core
 : "${DXOS_APP:?Đặt DXOS_APP trong .env}"
 # shellcheck source=scripts/lib-smoke.sh
