@@ -4,6 +4,7 @@
 # apps/<DXOS_APP>/tests/smoke.sh nếu có. Không xóa dữ liệu; chỉ thêm hồ sơ thử và đặt
 # mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu).
 # Cần trên máy: docker compose v2.20+, curl, jq. Thoát mã 1 nếu có kiểm tra không đạt.
+# Bước cuối dùng hết hạn mức /public (kiểm 429): chạy lại ngay thì bước đầu chờ tới khi /public mở lại.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
@@ -24,8 +25,13 @@ for svc in jwks-init app-migrate app-realm flowable-db-init; do
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in postgres keycloak apisix flowable; do
-  kiem "$svc healthy" "healthy" "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
+for svc in postgres keycloak apisix flowable app-backend; do
+  for _ in $(seq 1 30); do  # vừa `make up` xong thì có thể còn "starting"
+    st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
+    [ "$st" = "starting" ] || break
+    sleep 2
+  done
+  kiem "$svc healthy" "healthy" "$st"
 done
 
 # Chờ APISIX thấy PostgREST sẵn sàng (upstream /ready).
@@ -35,9 +41,32 @@ for _ in $(seq 1 20); do
 done
 kiem "PostgREST sẵn sàng sau APISIX (/public/)" "200" "$(ma_http "$GW/public/")"
 
-# 2. Gateway: /api/* bắt buộc JWT -----------------------------------------------
+# 2. Gateway: /api, /workflow, /files bắt buộc JWT; API quản trị Flowable bị chặn ------
 kiem "/api/ không token → 401" "401" "$(ma_http "$GW/api/")"
 kiem "/api/ token rác → 401" "401" "$(ma_http -H 'Authorization: Bearer abc.def.ghi' "$GW/api/")"
+
+for r in /workflow/tasks /files/x; do
+  kiem "$r không token → 401" "401" "$(ma_http "$GW$r")"
+  kiem "$r token rác → 401" "401" "$(ma_http -H 'Authorization: Bearer abc.def.ghi' "$GW$r")"
+done
+# API quản trị Flowable không mở qua gateway (kể cả khi không biết backend phía sau là gì).
+for r in /workflow/repository/deployments /workflow/management/engine /workflow/identity/users \
+         /workflow/runtime/tasks /workflow/query/tasks /flowable-rest/service/repository/deployments; do
+  kiem "$r qua gateway → 403" "403" "$(ma_http -u "rest-admin:$FLOWABLE_ADMIN_PASSWORD" "$GW$r")"
+done
+kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "127.0.0.1" \
+  "$(docker compose port flowable 8080 | cut -d: -f1)"
+# cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
+cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
+kiem "app-backend, PostgREST không mở cổng ra host" "|" "$(cong_host app-backend)|$(cong_host postgrest)"
+
+# 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
+ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
+kiem "CORS: origin $ORIGIN được phép" "$ORIGIN" "$(header_http Access-Control-Allow-Origin -H "Origin: $ORIGIN" "$GW/public/")"
+kiem "CORS: preflight /api từ $ORIGIN → 200" "200" \
+  "$(ma_http -X OPTIONS -H "Origin: $ORIGIN" -H 'Access-Control-Request-Method: POST' "$GW/api/x")"
+kiem "CORS: origin lạ không nhận header cho phép" "" \
+  "$(header_http Access-Control-Allow-Origin -H 'Origin: http://evil.example' "$GW/public/")"
 
 # 3. JWKS chỉ có một khóa ký RS256 ------------------------------------------------
 jwks="$(curl -s "$KC/realms/dxos/protocol/openid-connect/certs")"
@@ -75,5 +104,14 @@ if [ -f "apps/$DXOS_APP/tests/smoke.sh" ]; then
   # shellcheck source=/dev/null
   . "apps/$DXOS_APP/tests/smoke.sh"
 fi
+
+# 7. Rate limit cổng công dân: dùng hết hạn mức /public của IP này → 429 -------------
+# Chạy cuối cùng: sau bước này /public của máy chạy smoke bị khóa tới hết cửa sổ 60 giây.
+echo "== Rate limit /public"
+kiem "/public có header X-RateLimit-Limit = 60" "60" "$(header_http X-RateLimit-Limit "$GW/public/")"
+con="$(header_http X-RateLimit-Remaining "$GW/public/")"
+for _ in $(seq 1 "${con:-0}"); do curl -s -o /dev/null "$GW/public/"; done
+kiem "vượt 60 request/phút trên /public → 429" "429" "$(ma_http "$GW/public/thu_tuc")"
+kiem "/api không bị ảnh hưởng bởi hạn mức /public (không token → 401)" "401" "$(ma_http "$GW/api/ho_so")"
 
 tong_ket

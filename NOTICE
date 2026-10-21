@@ -17,6 +17,7 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 | Tự sinh API | PostgREST | MIT |
 | Object storage | Garage (S3, dịch vụ riêng, image gốc) | AGPL-3.0 |
 | Workflow | Flowable engine, image `flowable/flowable-rest` (BPMN 2.0, REST). Không dùng flowable-ui/modeler; BPMN viết XML tay | Apache-2.0 |
+| Backend ứng dụng | Python 3.13 (image gốc `python`, chỉ thư viện chuẩn) | PSF-2.0 |
 | Hàng đợi | RabbitMQ | MPL-2.0 |
 | Tìm kiếm | Meilisearch Community Edition (MIT). Không dùng bản Enterprise (BUSL-1.1) | MIT |
 | Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | Apache-2.0 |

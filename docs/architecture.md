@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.0.1+ (đầu tuần 2, sau khi tách `core/` và `apps/`, #3). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.0.1+ (tuần 2: tách `core/` và `apps/` #3, schema #5, Flowable #8, route gateway #6). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -73,7 +73,7 @@ flowchart TB
   BAO -.->|cấp bí mật| FL
 ```
 
-Đường nét đứt là luồng nội bộ giữa các dịch vụ lõi. Route `/workflow`, `/files`, `/search` làm ở tuần 2–5; hiện có `/api/*` (bắt buộc JWT) và `/public/*` (đọc công khai bằng role `anon`).
+Đường nét đứt là luồng nội bộ giữa các dịch vụ lõi. Hiện có `/public/*` (đọc công khai bằng role `anon`), `/api/*` (JWT → PostgREST), `/workflow/*` (JWT → backend của ứng dụng → Flowable) và `/files/*` (giữ chỗ 503 tới khi có Garage, #7); `/search` ở tuần 5. Bảng route: §4.1.
 
 ## 2. Lõi độc lập nghiệp vụ: `core/` và `apps/<tên>/`
 
@@ -92,8 +92,9 @@ core/                         Tầng 1 – không có tên bảng, vai trò hay 
   postgres/initdb/20-auth.sh    mật khẩu authenticator, CSDL riêng của Keycloak
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
-  apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP);
-                                /api/* → bắt buộc JWT realm dxos
+  apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
+                                /workflow/* → app-backend, /files/* (giữ chỗ): bắt buộc JWT realm dxos;
+                                chặn API quản trị Flowable; CORS theo DXOS_CORS_ORIGINS (§4.1)
   scripts/app-migrate.sh        dịch vụ một lần: áp dụng SQL của ứng dụng
   scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng
   scripts/flowable-db-init.sh   dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine
@@ -105,6 +106,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
   db/tests/rls.sql              test quyền/RLS từng vai trò (make smoke chạy)
   keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, người dùng mẫu
   processes/*.bpmn20.xml        quy trình BPMN viết tay, Flowable tự triển khai (#8)
+  backend/main.py               API quy trình mỏng /workflow (dịch vụ app-backend, #6, §4.2)
   tests/smoke.sh                kiểm tra riêng của ứng dụng (make smoke gọi)
 ```
 
@@ -114,7 +116,7 @@ apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
 | Schema | `dxos` (hàm đọc claim, sổ migration; không phơi ra API) | `mot_cua` (phơi ra API qua `app.env`) |
 | RLS | hàm `dxos.jwt_sub()`, `dxos.jwt_claim()` dùng trong policy | policy trên mọi bảng `mot_cua`, theo vai trò và lĩnh vực cán bộ phụ trách (§2.7) |
 | Keycloak | realm `dxos`, khóa, OTP, client `dxos_api`, `dxos_cli` | client role của `dxos_api`, nhóm, client web, người dùng mẫu, required action OTP |
-| APISIX | `/public/*`, `/api/*` (không nêu tên tài nguyên) | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon` |
+| APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*` (không nêu tên tài nguyên); upstream `app-backend` là tên dịch vụ chung | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow` do `backend/main.py` của ứng dụng quyết định |
 
 ### 2.3 Khởi động
 
@@ -128,6 +130,9 @@ flowchart LR
   JWKS -->|exit 0| PGR
   PGR --> GW["apisix<br/>core/apisix"]
   REALM -->|exit 0| GW
+  FL["flowable<br/>apps/mot-cua/processes"] -->|healthy| BE["app-backend<br/>apps/mot-cua/backend/main.py"]
+  PGR --> BE
+  BE -->|healthy| GW
 ```
 
 - `app-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
@@ -144,7 +149,8 @@ Lõi chỉ biết các quy ước sau trong `apps/<DXOS_APP>/` (thiếu thư m�
 4. `keycloak/realm.json`: định dạng `PartialImportRepresentation` (`roles.client.dxos_api`, `groups`, `clients`, `users`). Mỗi người dùng có **đúng một** client role của `dxos_api`, trùng tên role PostgreSQL (PostgREST đọc `resource_access.dxos_api.roles[0]`).
 5. `tests/smoke.sh`: đoạn bash được `scripts/smoke.sh` `source`, dùng các hàm `kiem`, `ma_http`, `sql`, `kc`, `lay_token` trong `scripts/lib-smoke.sh`.
 6. `processes/*.bpmn20.xml` (#8): Flowable đọc thư mục này (mount chỉ đọc vào `/dxos/processes`, thuộc tính `flowable.process-definition-location-prefix`) và tự triển khai khi khởi động; tệp không đổi thì không tạo phiên bản mới. Cú pháp được `scripts/check-bpmn.py` kiểm trong `make check`/CI.
-7. Sau này (tuần 3): `web/` cho giao diện, backend riêng của ứng dụng (D-008 mục 4) – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
+7. `backend/main.py` (#6, D-008 mục 4): backend riêng của ứng dụng, dịch vụ `app-backend` chạy bằng image `python` gốc (chỉ thư viện chuẩn), nhận `/workflow/*` từ APISIX (đã bỏ tiền tố). Lõi truyền vào địa chỉ PostgREST, Flowable, JWKS, issuer, audience và mật khẩu tài khoản kỹ thuật Flowable qua biến môi trường. Thiếu tệp này thì dịch vụ chỉ chạy chỗ giữ, `/workflow` trả 502.
+8. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
 
 ### 2.5 Cắm một ứng dụng khác (cho lập trình viên)
 
@@ -184,10 +190,10 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`apps/mo
 | Yêu cầu của đề (Tầng 1) | Thành phần | Bằng chứng trong repo |
 |---|---|---|
 | Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do ứng dụng nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `core/keycloak/realm-dxos.json`, `apps/mot-cua/keycloak/realm.json` |
-| API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); kiểm JWT, giới hạn tần suất | `core/apisix/config.yaml`, `core/apisix/apisix.yaml` |
+| API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `core/apisix/config.yaml`, `core/apisix/apisix.yaml`, §4.1, §8.5 |
 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của ứng dụng; migration theo ứng dụng; pgAudit (tuần 2) | `core/postgres/initdb/10-core.sql`, `core/scripts/app-migrate.sh`, `apps/mot-cua/db/` |
 | Quản trị dữ liệu phi cấu trúc | Garage (S3), ClamAV quét trước khi lưu; Meilisearch CE để tìm toàn văn | tuần 2 (TODO trong `docker-compose.yml`) |
-| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động | `docker-compose.yml` (`flowable`, `flowable-db-init`), `apps/mot-cua/processes/`, §7, §8.4 |
+| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động; Tầng 2 dùng qua `/workflow` (API quy trình của ứng dụng) | `docker-compose.yml` (`flowable`, `flowable-db-init`, `app-backend`), `apps/mot-cua/processes/`, `apps/mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
 ## 4. Luồng xác thực: JWT Keycloak → APISIX → PostgREST → RLS
 
@@ -233,7 +239,60 @@ Bảng đầy đủ theo từng bảng và cột: `apps/mot-cua/README.md`.
 
 Vì sao kiểm JWT hai lần: APISIX chặn sớm request không hợp lệ và giới hạn tần suất; PostgREST vẫn tự kiểm để CSDL không tin bất kỳ thứ gì đứng trước nó (Zero-Trust, nguyên lý B4).
 
+OpenAPI: `GET /api/` (có token) hoặc `GET /public/` trả đặc tả OpenAPI do PostgREST sinh, với `PGRST_OPENAPI_MODE=follow-privileges` – chỉ liệt kê bảng, cột, RPC mà role của request được quyền (anon chỉ thấy danh mục công khai), nên không lộ cấu trúc ngoài quyền. `PGRST_DB_MAX_ROWS=1000` chặn trên số dòng mỗi response.
+
 JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ một lần `jwks-init` tải `.../realms/dxos/protocol/openid-connect/certs` vào volume `jwks`, PostgREST đọc qua `PGRST_JWT_SECRET=@/jwks/jwks.json`. Realm chỉ khai báo một khóa RSA dùng để ký (RS256), không có khóa mã hóa, để JWKS gọn. Khi xoay khóa Keycloak: `docker compose --profile core up -d --force-recreate jwks-init postgrest`.
+
+### 4.1 Bảng route của gateway (`core/apisix/apisix.yaml`)
+
+| Route | Phương thức | Xác thực | Đích | Giới hạn / ghi chú |
+|---|---|---|---|---|
+| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì ứng dụng `GRANT … TO anon` |
+| `/api/*` | mọi | JWT Keycloak (APISIX + PostgREST kiểm) | PostgREST, `SET ROLE` theo `resource_access.dxos_api.roles[0]` → RLS | 600 req/phút/IP |
+| `/workflow/*` | mọi (backend chỉ nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `app-backend:8000` (backend của ứng dụng), bỏ tiền tố `/workflow` | 300 req/phút/IP; endpoint: `apps/<DXOS_APP>/README.md` |
+| `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
+| `/files/*` | mọi | JWT Keycloak | – | giữ chỗ, 503 tới khi có Garage + API tải tệp (#7) |
+
+- Toàn cục: plugin `cors` với `allow_origins` lấy từ biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
+- Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
+- Không mở cổng ra host: PostgREST, `app-backend`. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+
+### 4.2 Luồng `/workflow`: API quy trình mỏng của ứng dụng
+
+Flowable REST chỉ có Basic auth bằng tài khoản của chính nó, không hiểu JWT Keycloak và không biết công dân nào sở hữu hồ sơ nào. Hai cách đã cân nhắc:
+
+| Cách | Vì sao không/có chọn |
+|---|---|
+| APISIX proxy thẳng `/workflow/*` → Flowable, lọc đường dẫn, gateway gắn Basic auth | **Không chọn**: mọi người dùng thành `rest-admin` trong mắt Flowable; lọc đường dẫn không ngăn công dân liệt kê task của người khác, hoàn thành task tiếp nhận hay khởi tạo quy trình với biến tùy ý |
+| API mỏng `apps/mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; ~300 dòng Python thư viện chuẩn, không build image |
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant App as Web Tầng 2
+  participant GW as APISIX
+  participant BE as app-backend (mot-cua)
+  participant API as PostgREST
+  participant FL as Flowable REST
+
+  App->>GW: POST /workflow/ho-so<br/>Bearer TOKEN công dân
+  GW->>GW: openid-connect (JWKS). Sai → 401
+  GW->>BE: POST /ho-so (giữ Authorization)
+  BE->>BE: kiểm lại RS256, exp, iss, aud = dxos_api
+  BE->>API: GET /thu_tuc?id=… (token người dùng)<br/>thủ tục có quy trình?
+  BE->>API: POST /ho_so (token người dùng) → RLS: người nộp = sub
+  API-->>BE: hồ sơ (mã, hạn xử lý do CSDL tính)
+  BE->>FL: POST runtime/process-instances (Basic rest-admin)<br/>businessKey = mã hồ sơ, biến lấy từ CSDL
+  FL-->>BE: process instance, task tiep_nhan (nhóm ho_tich)
+  BE-->>App: 201 hồ sơ + processInstanceId + bước đang mở
+```
+
+- **Ai thấy task nào** (`GET /workflow/tasks`): task giao đích danh cho `sub` của người gọi (bước `bo_sung` của công dân) cộng task chưa ai nhận của nhóm người gọi. Nhóm = `candidateGroups` trong BPMN: lãnh đạo → `lanh_dao`; cán bộ → mã các lĩnh vực đang phụ trách, tra trong `mot_cua.can_bo` + `can_bo_linh_vuc` **bằng token của chính cán bộ** (đổi phân công có hiệu lực ngay, giống RLS). Công dân không có nhóm.
+- **Hoàn thành task** (`POST /workflow/tasks/{id}/complete`): chỉ người được giao, hoặc người thuộc nhóm ứng viên khi task chưa ai nhận; backend nhận (`claim`) task cho `sub` rồi hoàn thành, nên lịch sử Flowable ghi đúng người xử lý. Chỉ nhận biến khai báo cho bước đó (`hopLe`, `datYeuCau`, `pheDuyet`, `ghiChu`), đúng kiểu, đủ biến bắt buộc; biến hệ thống (`hoSoId`, `nguoiNopSub`, `hanXuLyLuc`, `quaHan`, `ketQua`) client không đặt được.
+- **Hồ sơ** luôn đọc/ghi qua PostgREST bằng token người dùng: khởi tạo quy trình hay xem tiến độ hồ sơ người khác → 404 vì RLS không trả dòng. Thủ tục chưa có quy trình → 422 trước khi lưu hồ sơ.
+- **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `app-backend` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
+- **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
+- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình và phát sự kiện sang RabbitMQ (#9); Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
 
 ## 5. MFA cho cán bộ
 
@@ -248,6 +307,7 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 |---|---|---|---|
 | `core` | PostgreSQL, Keycloak, PostgREST, APISIX (+ dịch vụ một lần `jwks-init`, `app-migrate`, `app-realm`) | chạy thử 17/10 và 20/10/2026 | mục tiêu laptop 16 GB |
 | `core` | Flowable REST (+ dịch vụ một lần `flowable-db-init`) | chạy thử 20/10/2026 (#8) | JVM `-Xmx512M` |
+| `core` | `app-backend` (backend của ứng dụng, image `python` gốc) | chạy thử 21/10/2026 (#6) | ~20 MB RAM |
 | `core` | Garage, RabbitMQ, OpenBao | TODO tuần 2 | |
 | `docs` | Gotenberg, step-ca, ClamAV, Meilisearch CE | TODO tuần 2–5 | ClamAV cần ~1,5 GB RAM cho cơ sở dữ liệu mẫu virus |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
@@ -304,6 +364,13 @@ curl -i -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/
 # 5b. Danh mục kèm thành phần hồ sơ, JSON Schema cho Poka-yoke (không cần token)
 curl -s 'http://localhost:9080/public/thu_tuc?select=ma,ten,so_ngay_xu_ly,thanh_phan_yeu_cau(ma,ten,bat_buoc)'
 curl -s 'http://localhost:9080/public/rpc/json_schema_thu_tuc?ma=KS01'
+
+# 5c. Nộp hồ sơ và khởi tạo quy trình khai sinh trong một lời gọi qua /workflow (§4.2), xem task, tiến độ
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"thu_tuc_id\":\"$TT\",\"ho_ten_nguoi_nop\":\"Nguyễn Văn Mẫu\"}" http://localhost:9080/workflow/ho-so | jq
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:9080/workflow/tasks | jq
+# API quản trị Flowable không mở qua gateway → 403
+curl -i http://localhost:9080/workflow/repository/deployments
 
 # 6. Token sai chữ ký → 401
 curl -i -H "Authorization: Bearer ${TOKEN%?????}AAAAA" http://localhost:9080/api/ho_so
@@ -395,13 +462,33 @@ Docker Desktop, macOS arm64, image `flowable/flowable-rest:8.0.0` (arm64, 172 MB
 
 Quy trình qua REST (cổng debug `127.0.0.1:8090`): hồ sơ KS01 do công dân nộp qua APISIX → khởi tạo với `businessKey` = mã hồ sơ → `tiep_nhan` (nhóm `ho_tich`) → thiếu thành phần → `bo_sung` (giao đúng `sub` người nộp) → `tiep_nhan` → `tham_dinh` → `phe_duyet` (nhóm `lanh_dao`) → kết thúc `ket_thuc_hoan_tat`, `ketQua=hoan_tat`. Nhánh thẩm định không đạt → `ket_thuc_tu_choi`. Hạn đã qua → hẹn giờ không ngắt quy trình đặt `quaHan=true` trong khoảng 2 giây, task vẫn mở. REST không đăng nhập → 401; CSDL ứng dụng không có bảng `act_*`.
 
+### 8.5 Kết quả chạy thử 21/10/2026 (route gateway + `/workflow`, #6)
+
+Docker Desktop, macOS arm64. Ba lần chạy, mỗi lần `make smoke` **199 đạt, 0 trượt**: volume trống (project tạm `commune-i6`), chạy lại (`make down` → `make up`), volume có sẵn tạo trước khi có `app-backend` (`commune-i8`, không cần xóa volume).
+
+| Route | Kiểm | Kết quả |
+|---|---|---|
+| `/api/*`, `/workflow/*`, `/files/*` | không token; token rác; token sửa chữ ký | 401 |
+| `/api/*` | token công dân, cán bộ (mật khẩu + TOTP), lãnh đạo (mật khẩu + TOTP) | đúng quyền theo RLS (§8.3) |
+| `/public/*` | không token: danh mục thủ tục, JSON Schema; hồ sơ, cán bộ | 200; 401 |
+| `/public/*` | dùng hết 60 request/phút | 429; `/api` không bị ảnh hưởng |
+| `/workflow/ho-so` | công dân nộp hồ sơ KS01 | 201, quy trình `dang_ky_khai_sinh` ở `tiep_nhan`, hồ sơ trong CSDL có người nộp = `sub`, trạng thái `moi` (bỏ qua `trang_thai` client gửi); khởi tạo lại → 409; thủ tục chưa có quy trình → 422, không lưu hồ sơ; cán bộ, lãnh đạo nộp → 403 |
+| `/workflow/ho-so/{id}/…` | công dân với hồ sơ người khác | 404 (RLS) |
+| `/workflow/tasks` | cán bộ chưa/đã được giao lĩnh vực hộ tịch; lãnh đạo; công dân | không thấy/thấy task `tiep_nhan`; số task = số task của các nhóm lĩnh vực phụ trách; lãnh đạo chỉ thấy `phe_duyet`; công dân chỉ thấy `bo_sung` của mình |
+| `/workflow/tasks/{id}/complete` | đi hết quy trình bằng token thật | tiep_nhan (thiếu) → bo_sung (công dân) → tiep_nhan → tham_dinh → phe_duyet (lãnh đạo) → `ket_thuc_hoan_tat`; Flowable ghi người xử lý = `sub` cán bộ; biến sai bước hoặc thiếu biến → 400; công dân làm bước của cán bộ, cán bộ làm bước của công dân/lãnh đạo → 403; task đã xong → 404 |
+| `/workflow/{repository,management,identity,runtime,query}/…`, `/flowable-rest/…` | gọi kèm cả Basic auth `rest-admin` | 403 |
+| `app-backend` gọi thẳng trong mạng nội bộ | token đúng; sửa chữ ký; sửa payload đổi role | 200; 401; 401 |
+| CORS | origin `DXOS_CORS_ORIGINS`; preflight `/api`; origin lạ | có header; 200; không có header |
+| Cổng host | PostgREST, `app-backend`; Flowable | không mở; chỉ `127.0.0.1` |
+
+Dung lượng ổ hệ thống: 11 GB trống trước khi kéo image, 4,6 GB sau khi `make down` + `docker image prune -a -f` + `docker builder prune -f` (Docker Desktop chưa trả dung lượng tệp đĩa ảo).
+
 ## 9. Việc tiếp theo (tuần 2)
 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
-- Route `/workflow` (#6): Tầng 2 gọi Flowable qua APISIX, kiểm JWT; hiện Flowable chỉ có Basic auth `rest-admin` và cổng debug trên 127.0.0.1.
 - Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình và phát sự kiện (hồ sơ mới, chuyển bước, `quaHan`) sang RabbitMQ (#9); khởi tạo quy trình sau Poka-yoke (tuần 3).
-- Route `/files`; Garage, RabbitMQ, OpenBao; chuyển mật khẩu từ `.env` sang OpenBao.
+- Route `/files` thật (thay giữ chỗ 503) với Garage + ClamAV (#7); RabbitMQ, OpenBao; chuyển mật khẩu từ `.env` (kể cả mật khẩu `rest-admin` mà `app-backend` dùng) sang OpenBao.
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

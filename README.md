@@ -31,6 +31,7 @@ make check                # SPDX + docker-compose hợp lệ / SPDX + compose va
 |---|---|
 | API Gateway (APISIX) – có JWT / with JWT | http://localhost:9080/api/ |
 | API Gateway (APISIX) – công khai / public (`anon`) | http://localhost:9080/public/ |
+| API Gateway (APISIX) – quy trình / workflow (JWT) | http://localhost:9080/workflow/tasks |
 | Keycloak (realm `dxos`) | http://localhost:8080/admin/ |
 
 Lệnh thử route có/không token: [`docs/architecture.md`](docs/architecture.md#8-chạy-thử).

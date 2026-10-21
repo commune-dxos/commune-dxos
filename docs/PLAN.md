@@ -23,7 +23,7 @@ Cách dùng tệp này:
 ## Tuần 2 · 22–28/10 · Lõi headless → v0.1.0
 - [x] V1 · Tách `core/` (Tầng 1, không chứa nghiệp vụ) và `apps/mot-cua/` (Tầng 2), chọn ứng dụng bằng `DXOS_APP`; bảng hồ sơ chuyển khỏi init SQL của lõi; dịch vụ một lần `app-migrate`, `app-realm`; `make smoke` (JWT/MFA/RLS, migration chạy lại) (#3)
 - [ ] V2 · Schema ứng dụng trong `apps/mot-cua/`: thủ tục, hồ sơ, thành phần hồ sơ, cán bộ, lĩnh vực + RLS theo lĩnh vực; migration và seed dữ liệu giả (#5, PR chờ duyệt)
-- [ ] V1 · PostgREST phục vụ schema ứng dụng, JWT Keycloak → role PostgreSQL; APISIX route `/api`, `/files`, `/workflow`, rate limit cổng công dân
+- [x] V1 · PostgREST phục vụ schema ứng dụng, JWT Keycloak → role PostgreSQL; APISIX route `/api`, `/public`, `/workflow` (qua API quy trình mỏng `apps/mot-cua/backend/`, chặn API quản trị Flowable), `/files` (giữ chỗ 503), CORS theo biến môi trường, rate limit cổng công dân (#6, PR chờ duyệt)
 - [ ] V1 · Garage (S3, dịch vụ riêng) + API tải tệp hồ sơ; ClamAV quét tệp trước khi lưu
 - [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `apps/mot-cua/processes/` (#8, PR chờ duyệt)
 - [ ] V2 · RabbitMQ nhận sự kiện từ Flowable (hồ sơ mới, chuyển bước, sắp trễ hạn)

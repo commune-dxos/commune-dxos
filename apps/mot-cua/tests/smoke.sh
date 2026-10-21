@@ -9,8 +9,10 @@
 #   4. Qua APISIX → PostgREST với token thật của từng vai trò: cong_dan (mật khẩu),
 #      can_bo và lanh_dao (mật khẩu + mã TOTP). Cán bộ, lãnh đạo dùng người dùng TẠM có
 #      OTP tạo riêng cho smoke rồi xóa, không đụng người dùng mẫu.
-#   5. Quy trình Flowable "Đăng ký khai sinh": tiếp nhận → (bổ sung) → thẩm định → phê duyệt,
-#      nhánh từ chối, hẹn giờ quá hạn.
+#   4d. Quy trình qua APISIX /workflow (#6): công dân nộp + khởi tạo, cán bộ/lãnh đạo thấy và
+#      hoàn thành task của nhóm mình, chặn chéo vai trò, backend tự kiểm token.
+#   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
+#      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
 # Cần thêm trên máy: python3 (sinh mã TOTP), openssl.
 
@@ -183,9 +185,109 @@ kiem "lanh_dao PATCH hồ sơ → 403" "403" \
 kiem "lanh_dao nộp hồ sơ → 403" "403" \
   "$(ma_http "${A_LD[@]}" -d "{\"thu_tuc_id\":\"$TT_ID\",\"ho_ten_nguoi_nop\":\"X\"}" "$GW/api/ho_so")"
 
+# --- 4d. Quy trình qua APISIX /workflow (#6) ---------------------------------------------
+# Công dân nộp hồ sơ khai sinh + khởi tạo quy trình bằng MỘT lời gọi; cán bộ, lãnh đạo thấy
+# và hoàn thành task của nhóm mình. Không ai cầm mật khẩu Flowable; backend app-backend tự
+# kiểm token và quyền, đọc/ghi hồ sơ bằng token người dùng (RLS).
+# gw <token> <đường dẫn sau /workflow> [JSON] → body response; gw_ma … → mã HTTP
+gw() {
+  local tk="$1" duong="$2"; shift 2
+  curl -s -H "Authorization: Bearer $tk" -H 'Content-Type: application/json' ${1:+-d "$1"} "$GW/workflow$duong"
+}
+gw_ma() {
+  local tk="$1" duong="$2"; shift 2
+  curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $tk" -H 'Content-Type: application/json' \
+    ${1:+-d "$1"} "$GW/workflow$duong"
+}
+# task_cua <token> <hoSoId> <bước> → id task (rỗng nếu người dùng không thấy)
+task_cua() { gw "$1" /tasks | jq -r --arg h "$2" --arg b "$3" '[.[] | select(.hoSoId == $h and .buoc == $b)][0].id // empty'; }
+
+KS_ID="$(sql "SELECT id FROM mot_cua.thu_tuc WHERE ma = 'KS01' AND cong_khai")"
+LV_HT="$(sql "SELECT id FROM mot_cua.linh_vuc WHERE ma = 'ho_tich'")"
+if [ -z "$KS_ID" ] || [ -z "$LV_HT" ]; then
+  kiem "có thủ tục KS01, lĩnh vực ho_tich để chạy /workflow (DXOS_SEED=true)" "có" "không"
+else
+  r="$(gw "$TOKEN" /ho-so "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Workflow\",\"so_dien_thoai\":\"0900000098\",\"trang_thai\":\"hoan_tat\"}")"
+  WH="$(jq -r '.hoSo.id // empty' <<<"$r")"; WMA="$(jq -r '.hoSo.ma_ho_so // empty' <<<"$r")"
+  WPI="$(jq -r '.processInstanceId // empty' <<<"$r")"
+  kiem "cong_dan POST /workflow/ho-so → hồ sơ + quy trình, bước tiep_nhan" "có có tiep_nhan" \
+    "$([ -n "$WH" ] && echo có || echo không) $([ -n "$WPI" ] && echo có || echo không) $(jq -r '[.buocDangMo[]?.buoc] | join(",")' <<<"$r")"
+  kiem "hồ sơ trong CSDL: người nộp = sub token, trạng thái moi (bỏ qua trang_thai client gửi)" "$SUB moi" \
+    "$(sql "SELECT nguoi_nop_sub || ' ' || trang_thai FROM mot_cua.ho_so WHERE id = '${WH:-00000000-0000-0000-0000-000000000000}'")"
+  kiem "Flowable: quy trình dang_ky_khai_sinh, businessKey = mã hồ sơ, biến lấy từ CSDL" "dang_ky_khai_sinh $WMA $WH $SUB" \
+    "$(wf "runtime/process-instances/$WPI" | jq -r '"\(.processDefinitionId | split(":")[0]) \(.businessKey)"') $(wf "runtime/process-instances/$WPI/variables/hoSoId" | jq -r .value) $(wf "runtime/process-instances/$WPI/variables/nguoiNopSub" | jq -r .value)"
+  kiem "khởi tạo lại quy trình cho cùng hồ sơ → 409" "409" "$(gw_ma "$TOKEN" "/ho-so/$WH/khoi-tao" '{}')"
+  truoc="$(sql "SELECT count(*) FROM mot_cua.ho_so WHERE nguoi_nop_sub = '$SUB'")"
+  kiem "cong_dan nộp thủ tục chưa có quy trình qua /workflow → 422, không lưu hồ sơ" "422 $truoc" \
+    "$(gw_ma "$TOKEN" /ho-so "{\"thu_tuc_id\":\"$(sql "SELECT id FROM mot_cua.thu_tuc WHERE cong_khai AND ma <> 'KS01' LIMIT 1")\",\"ho_ten_nguoi_nop\":\"X\"}") $(sql "SELECT count(*) FROM mot_cua.ho_so WHERE nguoi_nop_sub = '$SUB'")"
+  HS_KHAC="$(sql "SELECT id FROM mot_cua.ho_so WHERE nguoi_nop_sub <> '$SUB' LIMIT 1")"
+  if [ -n "$HS_KHAC" ]; then
+    kiem "cong_dan khởi tạo quy trình cho hồ sơ người khác → 404 (RLS)" "404" "$(gw_ma "$TOKEN" "/ho-so/$HS_KHAC/khoi-tao" '{}')"
+    kiem "cong_dan xem tiến độ hồ sơ người khác → 404 (RLS)" "404" "$(gw_ma "$TOKEN" "/ho-so/$HS_KHAC/tien-do")"
+  fi
+  kiem "cong_dan xem tiến độ hồ sơ của mình → đang ở tiep_nhan" "tiep_nhan" \
+    "$(gw "$TOKEN" "/ho-so/$WH/tien-do" | jq -r '[.quyTrinh[].buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ, lãnh đạo nộp qua /workflow → 403" "403 403" \
+    "$(gw_ma "$TK_CB" /ho-so "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"X\"}") $(gw_ma "$TK_LD" /ho-so "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"X\"}")"
+
+  TID="$(wf "runtime/tasks?processInstanceId=$WPI" | jq -r '.data[0].id')"
+  kiem "cong_dan không thấy task tiep_nhan trong /workflow/tasks" "" "$(task_cua "$TOKEN" "$WH" tiep_nhan)"
+  kiem "cong_dan hoàn thành task tiep_nhan → 403" "403" "$(gw_ma "$TOKEN" "/tasks/$TID/complete" '{"bien":{"hopLe":true}}')"
+  if [ "$LV_ID" != "$LV_HT" ]; then
+    kiem "cán bộ chưa phụ trách hộ tịch: không thấy task, hoàn thành → 403" " 403" \
+      "$(task_cua "$TK_CB" "$WH" tiep_nhan) $(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":true}}')"
+  fi
+  sql "INSERT INTO mot_cua.can_bo_linh_vuc (can_bo_id, linh_vuc_id) VALUES ('$CB_ID', '$LV_HT') ON CONFLICT DO NOTHING" > /dev/null
+  kiem "cán bộ hộ tịch thấy task tiep_nhan của hồ sơ" "$TID" "$(task_cua "$TK_CB" "$WH" tiep_nhan)"
+  NHOM_CB="$(sql "SELECT string_agg(l.ma, ',') FROM mot_cua.can_bo_linh_vuc c JOIN mot_cua.linh_vuc l ON l.id = c.linh_vuc_id WHERE c.can_bo_id = '$CB_ID'")"
+  kiem "cán bộ thấy đúng số task của các lĩnh vực mình phụ trách ($NHOM_CB)" \
+    "$(wf query/tasks -d "$(jq -nc --arg g "$NHOM_CB" '{candidateGroupIn: ($g | split(",")), size: 500}')" | jq .total)" \
+    "$(gw "$TK_CB" /tasks | jq length)"
+  kiem "lãnh đạo không thấy task tiep_nhan" "" "$(task_cua "$TK_LD" "$WH" tiep_nhan)"
+  kiem "cán bộ hoàn thành với biến của bước khác → 400" "400" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+  kiem "cán bộ hoàn thành thiếu biến hopLe → 400" "400" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{}}')"
+  kiem "cán bộ: thiếu thành phần (hopLe=false) → bước bo_sung" "bo_sung" \
+    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":false,"ghiChu":"thiếu tờ khai"}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "Flowable ghi người xử lý tiep_nhan = sub cán bộ" "$SUB_CB" \
+    "$(wf "history/historic-task-instances?processInstanceId=$WPI&taskDefinitionKey=tiep_nhan" | jq -r '.data[0].assignee')"
+  TID="$(task_cua "$TOKEN" "$WH" bo_sung)"
+  kiem "cong_dan thấy task bo_sung của mình" "có" "$([ -n "$TID" ] && echo có || echo không)"
+  kiem "cán bộ hoàn thành task bo_sung của công dân → 403" "403" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{}')"
+  kiem "cong_dan bổ sung xong → quay lại tiep_nhan" "tiep_nhan" \
+    "$(gw "$TOKEN" "/tasks/$TID/complete" '{"bien":{"ghiChu":"đã bổ sung"}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  TID="$(task_cua "$TK_CB" "$WH" tiep_nhan)"
+  kiem "cán bộ: đủ thành phần → tham_dinh" "tham_dinh" \
+    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":true}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  TID="$(task_cua "$TK_CB" "$WH" tham_dinh)"
+  kiem "cán bộ: thẩm định đạt → phe_duyet" "phe_duyet" \
+    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"datYeuCau":true}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  TID="$(wf "runtime/tasks?processInstanceId=$WPI" | jq -r '.data[0].id')"
+  kiem "cán bộ hoàn thành phe_duyet (nhóm lanh_dao) → 403" "403" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+  kiem "lãnh đạo thấy task phe_duyet" "$TID" "$(task_cua "$TK_LD" "$WH" phe_duyet)"
+  kiem "lãnh đạo phê duyệt → 200, không còn bước mở" "200" "$(gw_ma "$TK_LD" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+  td="$(gw "$TOKEN" "/ho-so/$WH/tien-do")"
+  kiem "tiến độ: kết thúc Hoàn tất, đi đúng các bước" "ket_thuc_hoan_tat tiep_nhan,bo_sung,tiep_nhan,tham_dinh,phe_duyet" \
+    "$(jq -r '.quyTrinh[0] | "\(.diemKetThuc) \([.lichSu[].buoc] | join(","))"' <<<"$td")"
+  kiem "task đã xong → hoàn thành lại → 404" "404" "$(gw_ma "$TK_LD" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+
+  # Zero-Trust: backend tự kiểm token, không tin gateway (gọi thẳng trong mạng nội bộ).
+  goi_backend() {
+    docker compose exec -T app-backend python -c 'import sys, urllib.request, urllib.error
+r = urllib.request.Request("http://127.0.0.1:8000/tasks", headers={"Authorization": "Bearer " + sys.stdin.read().strip()})
+try: print(urllib.request.urlopen(r, timeout=5).status)
+except urllib.error.HTTPError as e: print(e.code)' <<<"$1"
+  }
+  kiem "app-backend gọi thẳng, token đúng → 200" "200" "$(goi_backend "$TOKEN")"
+  kiem "app-backend gọi thẳng, token sửa chữ ký → 401" "401" "$(goi_backend "${TOKEN%?????}AAAAA")"
+  kiem "app-backend gọi thẳng, token sửa payload (đổi role) → 401" "401" \
+    "$(goi_backend "$(cut -d. -f1 <<<"$TOKEN").$(jwt_payload "$TOKEN" | jq -c '.resource_access.dxos_api.roles = ["lanh_dao"]' | base64 | tr -d '=\n' | tr '/+' '_-').$(cut -d. -f3 <<<"$TOKEN")")"
+  kiem "/files với token hợp lệ → 503 (giữ chỗ cho Garage #7)" "503" "$(ma_http -H "Authorization: Bearer $TOKEN" "$GW/files/x")"
+fi
+
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
 UPDATE mot_cua.thanh_phan_ho_so SET nguoi_kiem_tra_id = NULL WHERE nguoi_kiem_tra_id = '$CB_ID';
+DELETE FROM mot_cua.can_bo_linh_vuc WHERE can_bo_id = '$CB_ID';
 DELETE FROM mot_cua.can_bo WHERE id = '$CB_ID'" > /dev/null
 xoa_nguoi_dung "$U_CB"; xoa_nguoi_dung "$U_LD"
 kiem "đã xóa người dùng tạm của smoke" "0" \
@@ -193,7 +295,8 @@ kiem "đã xóa người dùng tạm của smoke" "0" \
 
 # --- 5. Quy trình Flowable "Đăng ký khai sinh" (#8) ----------------------------------
 # Hồ sơ KS01 do công dân nộp qua API → khởi tạo quy trình với biến lấy từ hồ sơ → cán bộ
-# hoàn thành từng bước. Gọi Flowable REST trực tiếp (cổng debug); qua APISIX là việc #6.
+# hoàn thành từng bước. Gọi Flowable REST trực tiếp (cổng debug 127.0.0.1) để kiểm riêng
+# engine và BPMN; luồng người dùng qua gateway ở mục 4d.
 # wf_bat_dau <businessKey> <hoSoId> <hanXuLyLuc> → id process instance
 wf_bat_dau() {
   wf runtime/process-instances -d "$(jq -nc --arg bk "$1" --arg id "$2" --arg sub "$SUB" --arg han "$3" \

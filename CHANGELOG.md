@@ -15,7 +15,14 @@
 - Quy trình `apps/mot-cua/processes/dang_ky_khai_sinh.bpmn20.xml` viết tay: tiếp nhận → (công dân bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn không ngắt quy trình; Flowable tự triển khai thư mục `processes/` của ứng dụng khi khởi động (#8).
 - `scripts/check-bpmn.py` kiểm cú pháp và cấu trúc BPMN trong `make check` và CI; `make smoke` kiểm Flowable và chạy quy trình khai sinh qua các bước (#8).
 
+- APISIX: route `/workflow/*` (bắt buộc JWT, 300 req/phút/IP) chuyển tới backend của ứng dụng; route chặn 403 các đường dẫn API quản trị Flowable (`repository`, `management`, `identity`, `runtime`, `history`, `query`, `form`, `flowable-rest`); `/files/*` kiểm JWT rồi trả 503 giữ chỗ cho Garage; CORS toàn cục theo biến `DXOS_CORS_ORIGINS`; cấu hình JWT dùng chung bằng `plugin_configs` (#6).
+- Dịch vụ `app-backend` trong profile `core`: chạy `apps/<DXOS_APP>/backend/main.py` trên image `python:3.13.16-alpine3.24` (chỉ thư viện chuẩn, không build), không mở cổng ra host (#6).
+- `apps/mot-cua/backend/main.py`: API quy trình mỏng – công dân nộp hồ sơ + khởi tạo quy trình trong một lời gọi, xem tiến độ; cán bộ/lãnh đạo lấy task của nhóm mình (lĩnh vực phụ trách tra trong CSDL), nhận và hoàn thành task với biến khai báo cho từng bước. Tự kiểm JWT (RS256 theo JWKS), đọc/ghi hồ sơ qua PostgREST bằng token người dùng (RLS), gọi Flowable bằng tài khoản kỹ thuật – người dùng không cầm mật khẩu Flowable (#6).
+- `make smoke` (199 kiểm tra): 401 trên mọi route cần token, 403 khi gọi API quản trị Flowable qua gateway, CORS, cổng không mở ra host, luồng khai sinh đầy đủ qua `/workflow` bằng token thật của công dân, cán bộ, lãnh đạo, chặn chéo vai trò, backend tự kiểm token, `/public` vượt hạn mức → 429 (#6).
+
 ### Changed
+- PostgREST: `PGRST_OPENAPI_MODE=follow-privileges` (OpenAPI chỉ liệt kê những gì role của request được quyền), `PGRST_DB_MAX_ROWS=1000`, CORS giới hạn theo `DXOS_CORS_ORIGINS` thay vì mọi origin (#6).
+- Route `/public/*` nhận thêm `OPTIONS`, thông báo 429 dạng JSON (#6).
 - Migration 002 thay hai bảng giữ chỗ `thu_tuc`, `ho_so` của v0.0.1 (chỉ có dữ liệu giả); bỏ seed `001_du_lieu_mau.sql`. API đổi: `ho_so.thu_tuc_id` (UUID) thay cho `ma_thu_tuc`, trạng thái `moi_nop`/`bo_sung` đổi thành `moi`/`cho_bo_sung` (#5).
 
 ## [0.0.1] - 2026-10-20

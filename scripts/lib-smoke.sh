@@ -26,6 +26,12 @@ tong_ket() {
 # ma_http [tham số curl…] <url> → mã HTTP
 ma_http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
+# header_http <tên header> [tham số curl…] <url> → giá trị header của response (rỗng nếu không có)
+header_http() {
+  local h="$1"; shift
+  curl -s -D - -o /dev/null "$@" | tr -d '\r' | awk -F': ' -v h="$h" 'tolower($1) == tolower(h) {print $2}'
+}
+
 # sql <câu lệnh> → kết quả dạng text (chạy bằng superuser trong container postgres)
 sql() {
   docker compose exec -T postgres psql -XqtA -v ON_ERROR_STOP=1 \
