@@ -3,8 +3,11 @@
 # Hàm dùng chung cho scripts/smoke.sh và apps/<DXOS_APP>/tests/smoke.sh.
 # Không in mật khẩu hay token ra màn hình.
 
+# Dùng trong các tệp `source` thư viện này (smoke của lõi và ứng dụng).
+# shellcheck disable=SC2034
 GW="http://localhost:${APISIX_PORT:-9080}"
 KC="http://localhost:${KEYCLOAK_PORT:-8080}"
+WF="http://localhost:${FLOWABLE_PORT:-8090}/flowable-rest/service"
 SMOKE_DAT=0
 SMOKE_TRUOT=0
 
@@ -25,6 +28,12 @@ tong_ket() {
 # ma_http [tham số curl…] <url> → mã HTTP
 ma_http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
+# header_http <tên header> [tham số curl…] <url> → giá trị header của response (rỗng nếu không có)
+header_http() {
+  local h="$1"; shift
+  curl -s -D - -o /dev/null "$@" | tr -d '\r' | awk -F': ' -v h="$h" 'tolower($1) == tolower(h) {print $2}'
+}
+
 # sql <câu lệnh> → kết quả dạng text (chạy bằng superuser trong container postgres)
 sql() {
   docker compose exec -T postgres psql -XqtA -v ON_ERROR_STOP=1 \
@@ -38,11 +47,13 @@ sql_loi() {
 }
 
 # Đoạn bash chạy trong container keycloak: đăng nhập kcadm bằng tài khoản quản trị khởi
-# tạo (biến môi trường của chính container, không đi qua máy host), lưu cấu hình tạm.
+# tạo (mật khẩu đọc từ tệp OpenBao trong chính container, không đi qua máy host), lưu cấu
+# hình tạm. Nháy đơn có chủ ý: biến được mở rộng trong container, không phải trên host.
+# shellcheck disable=SC2016
 _KC_LOGIN='cfg=/tmp/smoke-kcadm.config
 [ -s "$cfg" ] || /opt/keycloak/bin/kcadm.sh config credentials --config "$cfg" \
   --server http://localhost:8080 --realm master \
-  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" >/dev/null 2>&1'
+  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$(< /run/dxos-secrets/admin_password)" >/dev/null 2>&1'
 
 # kc <lệnh kcadm…> : chạy kcadm.sh trong container keycloak
 kc() {
@@ -62,6 +73,14 @@ lay_token() {
   curl -s "$KC/realms/dxos/protocol/openid-connect/token" \
     -d grant_type=password -d client_id=dxos_cli \
     --data-urlencode "username=$1" --data-urlencode "password=$2"
+}
+
+# wf <đường dẫn> [tham số curl…] → JSON từ Flowable REST (Basic auth rest-admin, cổng debug
+# 127.0.0.1). Có tham số -d thì là POST. FLOWABLE_ADMIN_PASSWORD do scripts/smoke.sh đọc từ
+# tệp bí mật trong container flowable (nguồn là OpenBao), chỉ giữ trong biến của tiến trình.
+wf() {
+  local duong="$1"; shift
+  curl -s -u "rest-admin:${FLOWABLE_ADMIN_PASSWORD:?}" -H 'Content-Type: application/json' "$@" "$WF/$duong"
 }
 
 # jwt_payload <token> → JSON phần payload

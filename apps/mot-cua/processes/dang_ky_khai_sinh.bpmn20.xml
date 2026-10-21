@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!--
+  Quy trình "Đăng ký khai sinh" (thủ tục KS01, lĩnh vực ho_tich) – BPMN 2.0 viết tay (#8).
+  Không có phần bpmndi (tọa độ vẽ): Flowable chạy được; sơ đồ ở processes/README.md.
+
+  Biến khi khởi tạo (POST /runtime/process-instances, processDefinitionKey=dang_ky_khai_sinh):
+    hoSoId       uuid của mot_cua.ho_so
+    maHoSo       mã hồ sơ (HSyyyymmdd-nnnnnn), đặt làm businessKey
+    nguoiNopSub  sub Keycloak của công dân (người làm bước bổ sung)
+    hanXuLyLuc   hạn xử lý dạng ISO 8601, ví dụ 2026-10-21T17:00:00+07:00 (từ ho_so.han_xu_ly)
+  Biến do cán bộ đặt khi hoàn thành task: hopLe, datYeuCau, pheDuyet (boolean), ghiChu.
+  Biến quy trình tự đặt: ketQua (hoan_tat | tu_choi), quaHan (true khi quá hạn chưa xong).
+
+  candidateGroups trùng mã lĩnh vực trong mot_cua.linh_vuc (ho_tich) và vai trò lanh_dao:
+  cổng cán bộ lấy task theo lĩnh vực cán bộ phụ trách (mot_cua.can_bo_linh_vuc), khớp RLS.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="urn:dxos:mot-cua"
+             id="def_dang_ky_khai_sinh">
+
+  <process id="dang_ky_khai_sinh" name="Đăng ký khai sinh" isExecutable="true">
+    <documentation>Một cửa cấp xã – thủ tục KS01: tiếp nhận → thẩm định → phê duyệt.</documentation>
+
+    <startEvent id="bat_dau" name="Hồ sơ đã nộp"/>
+    <sequenceFlow id="f_bat_dau" sourceRef="bat_dau" targetRef="tiep_nhan"/>
+
+    <!-- 1. Tiếp nhận: cán bộ một cửa kiểm thành phần hồ sơ -->
+    <userTask id="tiep_nhan" name="Tiếp nhận, kiểm tra thành phần hồ sơ" flowable:candidateGroups="ho_tich">
+      <documentation>Đặt biến hopLe = true nếu đủ thành phần; false kèm ghiChu để yêu cầu bổ sung.</documentation>
+    </userTask>
+    <sequenceFlow id="f_tiep_nhan" sourceRef="tiep_nhan" targetRef="gw_tiep_nhan"/>
+    <exclusiveGateway id="gw_tiep_nhan" name="Đủ thành phần?" default="f_can_bo_sung"/>
+    <sequenceFlow id="f_hop_le" name="đủ" sourceRef="gw_tiep_nhan" targetRef="tham_dinh">
+      <conditionExpression xsi:type="tFormalExpression">${hopLe == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_can_bo_sung" name="thiếu" sourceRef="gw_tiep_nhan" targetRef="bo_sung"/>
+
+    <!-- 1b. Công dân bổ sung rồi quay lại tiếp nhận -->
+    <userTask id="bo_sung" name="Công dân bổ sung hồ sơ" flowable:assignee="${nguoiNopSub}">
+      <documentation>Hồ sơ ở trạng thái cho_bo_sung; công dân nộp thêm giấy tờ rồi hoàn thành task.</documentation>
+    </userTask>
+    <sequenceFlow id="f_bo_sung" sourceRef="bo_sung" targetRef="tiep_nhan"/>
+
+    <!-- 2. Thẩm định: công chức Tư pháp – Hộ tịch -->
+    <userTask id="tham_dinh" name="Thẩm định hồ sơ" flowable:candidateGroups="ho_tich">
+      <documentation>Đặt datYeuCau = true để trình lãnh đạo; false (kèm ghiChu) để từ chối.</documentation>
+    </userTask>
+    <sequenceFlow id="f_tham_dinh" sourceRef="tham_dinh" targetRef="gw_tham_dinh"/>
+    <exclusiveGateway id="gw_tham_dinh" name="Đạt yêu cầu?" default="f_khong_dat"/>
+    <sequenceFlow id="f_dat" name="đạt" sourceRef="gw_tham_dinh" targetRef="phe_duyet">
+      <conditionExpression xsi:type="tFormalExpression">${datYeuCau == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_khong_dat" name="không đạt" sourceRef="gw_tham_dinh" targetRef="ket_thuc_tu_choi"/>
+
+    <!-- 3. Phê duyệt: lãnh đạo xã ký -->
+    <userTask id="phe_duyet" name="Phê duyệt, ký giấy khai sinh" flowable:candidateGroups="lanh_dao">
+      <documentation>Đặt pheDuyet = true để hoàn tất; false để trả lại bước thẩm định.</documentation>
+    </userTask>
+    <sequenceFlow id="f_phe_duyet" sourceRef="phe_duyet" targetRef="gw_phe_duyet"/>
+    <exclusiveGateway id="gw_phe_duyet" name="Phê duyệt?" default="f_tra_lai"/>
+    <sequenceFlow id="f_duyet" name="duyệt" sourceRef="gw_phe_duyet" targetRef="ket_thuc_hoan_tat">
+      <conditionExpression xsi:type="tFormalExpression">${pheDuyet == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_tra_lai" name="trả lại" sourceRef="gw_phe_duyet" targetRef="tham_dinh"/>
+
+    <endEvent id="ket_thuc_hoan_tat" name="Hoàn tất – trả kết quả">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'hoan_tat')}"/>
+      </extensionElements>
+    </endEvent>
+    <endEvent id="ket_thuc_tu_choi" name="Từ chối">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'tu_choi')}"/>
+      </extensionElements>
+    </endEvent>
+
+    <!-- Quá hạn: hẹn giờ không ngắt quy trình, đánh dấu quaHan = true (sự kiện cho #9) -->
+    <subProcess id="qua_han" name="Quá hạn xử lý" triggeredByEvent="true">
+      <startEvent id="den_han" name="Đến hạn xử lý" isInterrupting="false">
+        <timerEventDefinition>
+          <timeDate>${hanXuLyLuc}</timeDate>
+        </timerEventDefinition>
+      </startEvent>
+      <sequenceFlow id="f_den_han" sourceRef="den_han" targetRef="danh_dau_qua_han"/>
+      <serviceTask id="danh_dau_qua_han" name="Đánh dấu quá hạn"
+                   flowable:expression="${execution.setVariable('quaHan', true)}"/>
+      <sequenceFlow id="f_danh_dau" sourceRef="danh_dau_qua_han" targetRef="ket_thuc_qua_han"/>
+      <endEvent id="ket_thuc_qua_han"/>
+    </subProcess>
+  </process>
+</definitions>

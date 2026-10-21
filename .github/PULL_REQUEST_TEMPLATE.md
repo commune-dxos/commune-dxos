@@ -17,6 +17,7 @@ Closes #
 ## Kiểm tra trước khi xin duyệt
 
 - [ ] `make check` đạt trên máy (SPDX + compose hợp lệ mọi profile)
+- [ ] `make lint` và `make test` đạt trên máy (cùng lệnh với các job CI, xem `CONTRIBUTING.md` mục 6)
 - [ ] Mọi tệp mã/cấu hình mới có header `SPDX-License-Identifier: Apache-2.0` (`make license`)
 - [ ] `CHANGELOG.md` mục `[Unreleased]` có dòng cho thay đổi này, kèm `(#số-issue)`
 - [ ] Tài liệu liên quan đã cập nhật (README, `docs/`, `DEPENDENCIES.md`, `NOTICE` nếu thêm thành phần)

@@ -12,3 +12,6 @@ deployment:
 
 nginx_config:
   error_log_level: warn
+  # Biến môi trường mà apisix.yaml đọc bằng ${{TÊN}} phải được khai báo cho worker nginx.
+  envs:
+    - DXOS_CORS_ORIGINS

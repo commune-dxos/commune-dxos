@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+# Garage (AGPL-3.0) – object storage S3 cho dữ liệu phi cấu trúc của lõi Tầng 1.
+# Chạy như dịch vụ riêng bằng image gốc dxflrs/garage, không sửa mã (D-004, NOTICE).
+# Một nút, replication_factor = 1: đủ cho máy local và demo. Triển khai thật: ≥ 3 nút,
+# replication_factor = 3 (https://garagehq.deuxfleurs.fr/documentation/cookbook/real-world/).
+#
+# Bí mật KHÔNG nằm ở đây: rpc_secret và admin_token nằm trong OpenBao (dxos/core/garage, #10);
+# agent một lần garage-secrets render ra volume garage-secrets (chủ root, quyền 0400), Garage
+# đọc qua *_file.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+replication_factor = 1
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "127.0.0.1:3901"
+rpc_secret_file = "/run/garage-secrets/rpc_secret"
+
+[s3_api]
+# Client ký SigV4 với vùng này (backend ứng dụng, link ký ngắn hạn).
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:3900"
+
+[admin]
+# API quản trị v2 (layout, khóa, bucket): chỉ dịch vụ garage-init gọi, không qua gateway.
+api_bind_addr = "0.0.0.0:3903"
+admin_token_file = "/run/garage-secrets/admin_token"

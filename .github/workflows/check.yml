@@ -1,7 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-# Chạy `make check` trên mỗi push và PR: SPDX trong từng tệp (PoF tiêu chí 2)
-# và docker-compose.yml hợp lệ với mọi profile (PoF tiêu chí 4).
-# Thay cho ci.yml cũ (job `docker compose build` không có gì để build).
+# CI trên mỗi push vào main/develop và mỗi PR. Mỗi job là một check riêng, tên ngắn và ổn định
+# để đặt làm check bắt buộc trong bảo vệ nhánh; không job nào lọc theo đường dẫn (check bắt
+# buộc bị bỏ qua sẽ chặn PR). Mỗi job gọi đúng lệnh `make` chạy được trên máy (#11):
+#   make-check    SPDX trong từng tệp (PoF tiêu chí 2) + compose hợp lệ mọi profile (tiêu chí 4)
+#   shellcheck    make lint → scripts/lint.sh shellcheck
+#   yamllint      make lint → scripts/lint.sh yamllint (.yamllint.yml)
+#   bpmn          make lint → scripts/lint.sh bpmn (cấu trúc BPMN + test bộ kiểm)
+#   test-backend  make test-backend (unittest của apps/*/backend)
+#   test-sql      make test-sql: PostgreSQL trống → migration lõi + ứng dụng → apps/*/db/tests/*.sql
+# Action và công cụ ghim phiên bản; công cụ lint ghim trong scripts/requirements-lint.txt.
 name: check
 on:
   push:
@@ -15,6 +22,81 @@ jobs:
   make-check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5.0.0
       - name: Kiểm tra giấy phép và compose
         run: make check
+
+  shellcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Cài công cụ lint (phiên bản ghim)
+        run: pip install -r scripts/requirements-lint.txt
+      - name: shellcheck mọi *.sh
+        run: bash scripts/lint.sh shellcheck
+
+  yamllint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Cài công cụ lint (phiên bản ghim)
+        run: pip install -r scripts/requirements-lint.txt
+      - name: yamllint compose, APISIX, workflow
+        run: bash scripts/lint.sh yamllint
+
+  bpmn:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Kiểm cấu trúc BPMN apps/*/processes
+        run: bash scripts/lint.sh bpmn
+
+  test-backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      # Cùng nhánh Python với image app-backend (python:3.13.16-alpine3.24).
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Test đơn vị backend của ứng dụng
+        run: make test-backend
+
+  test-sql:
+    runs-on: ubuntu-24.04
+    services:
+      # Cùng image với dịch vụ postgres trong docker-compose.yml (bước đầu tiên kiểm điều này).
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_PASSWORD: test-sql
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: test-sql
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - name: Image PostgreSQL khớp docker-compose.yml
+        run: |
+          grep -Eq '^ +image: postgres:17\.6-alpine$' docker-compose.yml
+      - name: Migration + test SQL/RLS
+        run: |
+          psql --version
+          make test-sql

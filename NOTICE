@@ -12,17 +12,18 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 |---|---|---|
 | SSO/MFA | Keycloak (bắt buộc MFA cán bộ) | Apache-2.0 |
 | API Gateway | Apache APISIX (rate limit cổng công dân) | Apache-2.0 |
-| Bí mật | OpenBao | MPL-2.0 |
+| Bí mật | OpenBao 2.7.1 (dịch vụ riêng, image gốc `openbao/openbao`, không sửa mã; chỉ gọi qua HTTP API và `bao agent` của chính image). Không dùng HashiCorp Vault (BSL-1.1) | MPL-2.0 |
 | CSDL | PostgreSQL + Row-Level Security + pgAudit | PostgreSQL |
 | Tự sinh API | PostgREST | MIT |
-| Object storage | Garage (S3, dịch vụ riêng, image gốc) | AGPL-3.0 |
+| Object storage | Garage v2.4.1 (S3, dịch vụ riêng, image gốc `dxflrs/garage`, không sửa mã; chỉ gọi qua mạng: S3 và Admin API) | AGPL-3.0 |
 | Workflow | Flowable engine, image `flowable/flowable-rest` (BPMN 2.0, REST). Không dùng flowable-ui/modeler; BPMN viết XML tay | Apache-2.0 |
-| Hàng đợi | RabbitMQ | MPL-2.0 |
+| Backend ứng dụng | Python 3.13 (image gốc `python`, chỉ thư viện chuẩn) | PSF-2.0 |
+| Hàng đợi | RabbitMQ 4.3.6 (dịch vụ riêng, image gốc `rabbitmq`, không sửa mã; plugin có sẵn trong image: STOMP, management). Backend chỉ nói giao thức STOMP bằng thư viện chuẩn Python, không nhúng thư viện của RabbitMQ | MPL-2.0 |
 | Tìm kiếm | Meilisearch Community Edition (MIT). Không dùng bản Enterprise (BUSL-1.1) | MIT |
 | Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | Apache-2.0 |
 | Ký số | step-ca (smallstep/certificates) + pyHanko | Apache-2.0 / MIT |
 | Sinh PDF | Gotenberg | MIT |
-| Quét mã độc | ClamAV (dịch vụ riêng, image gốc) | GPL-2.0 |
+| Quét mã độc | ClamAV 1.5.4 (dịch vụ riêng, image gốc `clamav/clamav`, không sửa mã; chỉ gọi qua giao thức TCP của `clamd`) | GPL-2.0 |
 | Web | React + Vite + Tailwind + shadcn/ui | MIT |
 | Dữ liệu lịch sử + lineage | Parquet + DuckDB; dbt-core 1.x (PyPI). Không dùng dbt Fusion | MIT / Apache-2.0 |
 | Dashboard | Apache Superset | Apache-2.0 |

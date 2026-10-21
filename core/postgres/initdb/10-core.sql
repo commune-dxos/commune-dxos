@@ -2,7 +2,7 @@
 -- Khởi tạo phần dùng chung của lõi Tầng 1. KHÔNG chứa bảng, thủ tục hay vai trò
 -- nghiệp vụ: những thứ đó thuộc ứng dụng trong apps/<DXOS_APP>/db/ (xem
 -- docs/architecture.md §2). Chạy một lần khi volume PostgreSQL còn trống
--- (docker-entrypoint-initdb.d). Mật khẩu đặt ở 20-auth.sh từ biến môi trường.
+-- (docker-entrypoint-initdb.d). Mật khẩu role đăng nhập do dịch vụ db-init đặt theo OpenBao.
 
 BEGIN;
 
