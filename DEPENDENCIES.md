@@ -19,13 +19,14 @@ Quy tắc:
 | `postgrest/postgrest` | v13.0.4 | MIT | Docker Hub · https://github.com/PostgREST/postgrest | core |
 | `apache/apisix` | 3.13.0-debian | Apache-2.0 | Docker Hub · https://github.com/apache/apisix | core |
 | `flowable/flowable-rest` | 8.0.0 | Apache-2.0 | Docker Hub · https://github.com/flowable/flowable-engine | core |
+| `python` | 3.13.16-alpine3.24 | PSF-2.0 | Docker Hub (official) · https://github.com/python/cpython | core |
 | `dxflrs/garage` | (tuần 2) | AGPL-3.0, dịch vụ riêng | Docker Hub · https://git.deuxfleurs.fr/Deuxfleurs/garage | core |
 | `rabbitmq` | (tuần 2) | MPL-2.0 | Docker Hub (official) · https://github.com/rabbitmq/rabbitmq-server | core |
 | `openbao/openbao` | (tuần 2) | MPL-2.0 | Docker Hub · https://github.com/openbao/openbao | core |
 | `clamav/clamav` | (tuần 2) | GPL-2.0, dịch vụ riêng | Docker Hub · https://github.com/Cisco-Talos/clamav | docs |
 | `getmeili/meilisearch` | (tuần 5) – chỉ CE | MIT | Docker Hub · https://github.com/meilisearch/meilisearch | docs |
 
-Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `flowable-db-init` (tạo CSDL `flowable` bằng `psql`). `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3.
+Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `flowable-db-init` (tạo CSDL `flowable` bằng `psql`). `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3. Image `python` chạy dịch vụ `app-backend` (backend của ứng dụng, ví dụ `apps/mot-cua/backend/main.py`), chỉ dùng thư viện chuẩn, không cài gói.
 
 ## 2. Thư viện npm (`web/package.json`, chưa có)
 

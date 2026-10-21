@@ -6,7 +6,7 @@ Cấu hình các dịch vụ lõi dùng chung cho mọi ứng dụng Tầng 2. �
 |---|---|
 | `postgres/initdb/` | role `authenticator` (PostgREST) và `anon`; schema `dxos`: hàm đọc claim JWT cho RLS (`dxos.jwt_sub()`…), sổ `dxos.app_migration` |
 | `keycloak/realm-dxos.json` | realm `dxos`: khóa ký RS256, chính sách OTP, chống dò mật khẩu, client `dxos_api` (audience, không có role) và `dxos_cli` (chỉ dev) |
-| `apisix/` | `/public/*` → role `anon`, chỉ GET; `/api/*` → bắt buộc JWT realm `dxos` |
+| `apisix/` | `/public/*` → role `anon`, chỉ GET, 60 req/phút/IP; `/api/*` → PostgREST, `/workflow/*` → backend của ứng dụng (dịch vụ `app-backend`), `/files/*` giữ chỗ 503: bắt buộc JWT realm `dxos`; chặn 403 API quản trị Flowable; CORS theo `DXOS_CORS_ORIGINS` (`docs/architecture.md` §4.1) |
 | `scripts/app-migrate.sh` | dịch vụ một lần: áp dụng `apps/<DXOS_APP>/db/` (migration + seed) |
 | `scripts/app-realm.sh` | dịch vụ một lần: nạp `apps/<DXOS_APP>/keycloak/realm.json` vào realm `dxos` |
 | `scripts/flowable-db-init.sh` | dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine (chạy lại không lỗi, dùng được với volume cũ) |

@@ -11,7 +11,8 @@
 | `db/tests/rls.sql` | test quyền/RLS (63 kiểm tra), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api`, nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `processes/dang_ky_khai_sinh.bpmn20.xml` | quy trình đăng ký khai sinh (#8), Flowable tự triển khai khi khởi động; sơ đồ và biến: [`processes/README.md`](processes/README.md) |
-| `tests/smoke.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP). Cần thêm `python3` trên máy để sinh mã TOTP |
+| `backend/main.py` | API quy trình `/workflow/*` (#6): dịch vụ `app-backend`, chỉ thư viện chuẩn Python; xem [API cho Tầng 2](#api-cho-tầng-2) |
+| `tests/smoke.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh đầy đủ qua `/workflow`. Cần thêm `python3` trên máy để sinh mã TOTP |
 
 Sửa schema: thêm tệp `db/migrations/003_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`app-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
 
@@ -136,6 +137,53 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 
 Cán bộ phụ trách lĩnh vực nào được tra từ `can_bo` (theo `sub`) + `can_bo_linh_vuc`, không cần claim riêng trong JWT: đổi phân công có hiệu lực ngay. Hàm tra cứu nằm ở schema `mot_cua_noi_bo` (không phơi ra API), `SECURITY DEFINER`, `search_path` rỗng.
 
+## API cho Tầng 2
+
+Web (cổng công dân, cổng cán bộ) chỉ gọi APISIX `http://localhost:${APISIX_PORT:-9080}`, gửi access token Keycloak realm `dxos` (client `mot_cua_web`, Authorization Code + PKCE; cán bộ, lãnh đạo nhập thêm OTP) ở header `Authorization: Bearer …`. Origin của web phải nằm trong `DXOS_CORS_ORIGINS` (`.env`). Bảng route đầy đủ và lý do thiết kế: `docs/architecture.md` §4.1, §4.2.
+
+| Tiền tố | Dùng cho | Ví dụ |
+|---|---|---|
+| `/public/` (không token, 60 req/phút/IP) | danh mục công khai cho cổng công dân | `GET /public/thu_tuc?select=id,ma,ten,thanh_phan_yeu_cau(ma,ten,bat_buoc)`, `GET /public/rpc/json_schema_thu_tuc?ma=KS01`, `GET /public/linh_vuc` |
+| `/api/` (token) | đọc/ghi bảng `mot_cua` theo cú pháp PostgREST, quyền theo bảng ở mục [Quyền theo vai trò](#quyền-theo-vai-trò) | `GET /api/ho_so?select=*,thu_tuc:thu_tuc_id(ma,ten)&order=ngay_nhan.desc`, `PATCH /api/ho_so?id=eq.<id>` (cán bộ đổi trạng thái), `POST /api/thanh_phan_ho_so` |
+| `/workflow/` (token) | quy trình Flowable của hồ sơ, qua `backend/main.py` | bảng dưới |
+| `/files/` (token) | tệp hồ sơ – **chưa có**, trả 503 tới khi xong #7 | |
+
+OpenAPI của PostgREST: `GET /api/` (kèm token) hoặc `GET /public/`, chỉ liệt kê bảng, cột, RPC mà vai trò của người gọi được quyền.
+
+### `/workflow` – quy trình hồ sơ
+
+Body và response là JSON; lỗi có dạng `{"loi": "…", "chiTiet": …}`. Người dùng không gọi thẳng Flowable và không cầm mật khẩu của nó; backend tự kiểm token, tra quyền rồi gọi Flowable bằng tài khoản kỹ thuật.
+
+| Endpoint | Ai | Làm gì | Mã trả về |
+|---|---|---|---|
+| `POST /workflow/ho-so` body `{"thu_tuc_id", "ho_ten_nguoi_nop", "so_dien_thoai"?}` | công dân | kiểm thủ tục có quy trình → lưu hồ sơ qua PostgREST bằng token của công dân (RLS, CSDL tự đặt người nộp, trạng thái `moi`, hạn xử lý; cột khác client gửi bị bỏ) → khởi tạo quy trình với `businessKey` = mã hồ sơ. Trả `{"hoSo", "processInstanceId", "quyTrinh", "buocDangMo"}` | 201; 400 body sai; 403 không phải công dân; 404 thủ tục không thấy; 422 thủ tục chưa có quy trình (không lưu hồ sơ); 502 Flowable lỗi (hồ sơ đã lưu, trả kèm `chiTiet.hoSo` để gọi lại `khoi-tao`) |
+| `POST /workflow/ho-so/{id}/khoi-tao` | công dân (người nộp) | khởi tạo quy trình cho hồ sơ đã nộp (ví dụ nộp qua `/api/ho_so`) | 201; 404 không thấy hồ sơ (kể cả hồ sơ người khác); 409 đã có quy trình hoặc hồ sơ không còn `moi`; 422 |
+| `GET /workflow/ho-so/{id}/tien-do` | ai xem được hồ sơ theo RLS | các quy trình của hồ sơ: `batDau`, `ketThuc`, `diemKetThuc` (`ket_thuc_hoan_tat`/`ket_thuc_tu_choi`), `buocDangMo`, `lichSu` các bước | 200; 404 |
+| `GET /workflow/tasks` | mọi vai trò | task của người gọi: giao đích danh cho mình (`bo_sung` của công dân, task mình đã nhận) + task chưa ai nhận của nhóm mình (cán bộ: các lĩnh vực đang phụ trách; lãnh đạo: `lanh_dao`). Mỗi task: `id`, `buoc`, `ten`, `nguoiNhan`, `taoLuc`, `processInstanceId`, `hoSoId`, `maHoSo`, `hanXuLyLuc`, `quaHan` | 200 |
+| `POST /workflow/tasks/{id}/complete` body `{"bien": {…}}` | người được giao hoặc thuộc nhóm ứng viên | nhận task cho mình (nếu chưa ai nhận) rồi hoàn thành; trả `buocDangMo` sau đó | 200; 400 biến sai/thiếu; 403 không có quyền; 404 không thấy task; 409 người khác vừa nhận |
+
+Biến được phép khi hoàn thành (khớp `processes/dang_ky_khai_sinh.bpmn20.xml`; biến khác bị từ chối 400):
+
+| Bước | Ai | Biến bắt buộc | Biến tùy chọn |
+|---|---|---|---|
+| `tiep_nhan` | cán bộ lĩnh vực `ho_tich` | `hopLe` (bool: đủ thành phần?) | `ghiChu` (chuỗi) |
+| `bo_sung` | công dân nộp hồ sơ | – | `ghiChu` |
+| `tham_dinh` | cán bộ lĩnh vực `ho_tich` | `datYeuCau` (bool) | `ghiChu` |
+| `phe_duyet` | lãnh đạo | `pheDuyet` (bool) | `ghiChu` |
+
+Thêm thủ tục có quy trình: thêm tệp BPMN vào `processes/`, rồi thêm mã thủ tục → khóa quy trình vào `QUY_TRINH_THEO_THU_TUC` và biến của các bước mới vào `BIEN_THEO_BUOC` trong `backend/main.py`. Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình (#9).
+
+```bash
+# Công dân (token lấy như docs/architecture.md §8) nộp hồ sơ khai sinh và khởi tạo quy trình
+TT=$(curl -s 'http://localhost:9080/public/thu_tuc?ma=eq.KS01&select=id' | jq -r '.[0].id')
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"thu_tuc_id\":\"$TT\",\"ho_ten_nguoi_nop\":\"Nguyễn Văn Mẫu\"}" http://localhost:9080/workflow/ho-so
+# Cán bộ hộ tịch: xem task, tiếp nhận (đủ thành phần)
+curl -s -H "Authorization: Bearer $TOKEN_CAN_BO" http://localhost:9080/workflow/tasks
+curl -s -X POST -H "Authorization: Bearer $TOKEN_CAN_BO" -H 'Content-Type: application/json' \
+  -d '{"bien":{"hopLe":true}}' http://localhost:9080/workflow/tasks/<id>/complete
+```
+
 ## Người dùng mẫu
 
 | Người dùng | `sub` | Vai trò | Ghi chú |
@@ -152,7 +200,7 @@ Realm không chứa mật khẩu: đặt bằng `kcadm.sh set-password` (xem `do
 ## Chạy test
 
 ```bash
-make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable (147 kiểm tra)
+make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable + /workflow (199 kiểm tra)
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql   # chỉ RLS
 ```
 

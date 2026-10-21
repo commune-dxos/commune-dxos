@@ -8,10 +8,11 @@
 #   db/seed/*.sql        dữ liệu giả        → app-migrate khi DXOS_SEED=true
 #   keycloak/realm.json  vai trò, nhóm, client, người dùng mẫu → dịch vụ một lần app-realm
 #   processes/*.bpmn20.xml  quy trình BPMN 2.0 → Flowable tự triển khai khi khởi động
+#   backend/main.py      backend riêng của ứng dụng (D-008) → dịch vụ app-backend, APISIX /workflow/*
 #
 # Profile:
 #   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
-#          + Flowable REST (workflow, #8)
+#          + Flowable REST (workflow, #8), app-backend (/workflow, #6)
 #          + Garage, RabbitMQ, OpenBao                (tuần 2, đang là TODO bên dưới)
 #   docs : Gotenberg, step-ca, ClamAV, Meilisearch CE (tuần 2–5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
@@ -165,6 +166,13 @@ services:
       PGRST_JWT_ROLE_CLAIM_KEY: .resource_access.dxos_api.roles[0]
       PGRST_ADMIN_SERVER_PORT: "3001"
       PGRST_LOG_LEVEL: info
+      # OpenAPI ở gốc /api/ và /public/ chỉ liệt kê bảng, cột mà role của request được quyền
+      # (anon thấy danh mục công khai) – không lộ cấu trúc ngoài quyền của người gọi.
+      PGRST_OPENAPI_MODE: follow-privileges
+      # Chặn trên số dòng mỗi response, tránh một request đọc cả bảng lớn.
+      PGRST_DB_MAX_ROWS: "1000"
+      # PostgREST mặc định cho mọi origin; giới hạn giống CORS của APISIX.
+      PGRST_SERVER_CORS_ALLOWED_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
     env_file:
       - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/app.env
     volumes:
@@ -191,6 +199,10 @@ services:
     profiles: [core]
     # Chế độ standalone khai báo trong config.yaml (không đặt APISIX_STAND_ALONE,
     # vì entrypoint sẽ ghi đè config.yaml đã mount).
+    environment:
+      # Nguồn (origin) web của Tầng 2 được gọi API từ trình duyệt, cách nhau bởi dấu phẩy.
+      # Đọc trong core/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}.
+      DXOS_CORS_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
     volumes:
       - ./core/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ./core/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
@@ -203,6 +215,8 @@ services:
         condition: service_started
       app-realm:
         condition: service_completed_successfully
+      app-backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
       interval: 10s
@@ -234,7 +248,8 @@ services:
   # BPMN viết XML tay trong apps/<DXOS_APP>/processes/. Flowable tự triển khai các tệp
   # *.bpmn20.xml ở đó khi khởi động (bỏ qua tệp không đổi), tắt quy trình demo của image.
   # REST API: http://flowable:8080/flowable-rest/service (Basic auth tài khoản rest-admin).
-  # Tầng 2 sẽ gọi qua APISIX /workflow (#6); cổng host chỉ mở trên 127.0.0.1 để debug/smoke.
+  # Tầng 2 không gọi thẳng: APISIX /workflow/* → app-backend → Flowable (#6). Cổng host chỉ
+  # mở trên 127.0.0.1 để debug/smoke; API quản trị không đi qua gateway.
   flowable:
     image: flowable/flowable-rest:8.0.0
     profiles: [core]
@@ -270,6 +285,53 @@ services:
       timeout: 5s
       retries: 30
       start_period: 40s
+    restart: unless-stopped
+
+  # Backend riêng của ứng dụng (D-008): apps/<DXOS_APP>/backend/main.py, chạy trên image
+  # python gốc, chỉ thư viện chuẩn (không build, không cài gói). APISIX chuyển /workflow/*
+  # tới đây sau khi kiểm JWT. Với mot-cua: API quy trình mỏng – gọi Flowable bằng tài
+  # khoản kỹ thuật thay người dùng, sau khi tự kiểm quyền (người dùng không cầm mật khẩu
+  # Flowable); đọc/ghi hồ sơ qua PostgREST bằng token của người dùng nên RLS áp dụng.
+  # Ứng dụng không có backend/main.py thì dịch vụ chỉ chạy chỗ giữ và /workflow trả 502.
+  app-backend:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    command:
+      - sh
+      - -c
+      - >-
+        [ -f /app/backend/main.py ] && exec python -u /app/backend/main.py;
+        echo "apps/$$DXOS_APP không có backend/main.py"; exec sleep infinity
+    environment:
+      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_POSTGREST_URL: http://postgrest:3000
+      DXOS_FLOWABLE_URL: http://flowable:8080/flowable-rest/service
+      DXOS_FLOWABLE_USER: rest-admin
+      DXOS_FLOWABLE_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD:?Đặt FLOWABLE_ADMIN_PASSWORD trong .env}
+      DXOS_JWKS_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/certs
+      # Issuer trong token = KC_HOSTNAME của Keycloak + /realms/dxos
+      DXOS_JWT_ISSUER: http://localhost:${KEYCLOAK_PORT:-8080}/realms/dxos
+      DXOS_JWT_AUD: dxos_api
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+    # Không mở cổng ra host: chỉ APISIX gọi.
+    expose:
+      - "8000"
+    depends_on:
+      postgrest:
+        condition: service_started
+      flowable:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          [ ! -f /app/backend/main.py ] ||
+          python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
 
   # ------------------------------------------------- core – TODO tuần 2 ----
