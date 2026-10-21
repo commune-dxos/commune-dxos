@@ -10,6 +10,7 @@
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true` |
 | `db/tests/rls.sql` | test quyền/RLS (63 kiểm tra), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api`, nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
+| `processes/dang_ky_khai_sinh.bpmn20.xml` | quy trình đăng ký khai sinh (#8), Flowable tự triển khai khi khởi động; sơ đồ và biến: [`processes/README.md`](processes/README.md) |
 | `tests/smoke.sh` | `make smoke`: route công khai, `rls.sql`, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP). Cần thêm `python3` trên máy để sinh mã TOTP |
 
 Sửa schema: thêm tệp `db/migrations/003_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`app-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
@@ -151,8 +152,8 @@ Realm không chứa mật khẩu: đặt bằng `kcadm.sh set-password` (xem `do
 ## Chạy test
 
 ```bash
-make smoke                      # toàn bộ: lõi + ứng dụng (126 kiểm tra)
+make smoke                      # toàn bộ: lõi + ứng dụng + quy trình Flowable (147 kiểm tra)
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < apps/mot-cua/db/tests/rls.sql   # chỉ RLS
 ```
 
-Sắp tới: `processes/*.bpmn20.xml` (Flowable, #8), API tệp và Garage (#7), cổng công dân và cổng cán bộ (React, tuần 3).
+Sắp tới: API tệp và Garage (#7), sự kiện RabbitMQ (#9), cổng công dân và cổng cán bộ (React, tuần 3).

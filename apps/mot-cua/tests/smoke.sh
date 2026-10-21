@@ -9,6 +9,8 @@
 #   4. Qua APISIX → PostgREST với token thật của từng vai trò: cong_dan (mật khẩu),
 #      can_bo và lanh_dao (mật khẩu + mã TOTP). Cán bộ, lãnh đạo dùng người dùng TẠM có
 #      OTP tạo riêng cho smoke rồi xóa, không đụng người dùng mẫu.
+#   5. Quy trình Flowable "Đăng ký khai sinh": tiếp nhận → (bổ sung) → thẩm định → phê duyệt,
+#      nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
 # Cần thêm trên máy: python3 (sinh mã TOTP), openssl.
 
@@ -188,3 +190,73 @@ DELETE FROM mot_cua.can_bo WHERE id = '$CB_ID'" > /dev/null
 xoa_nguoi_dung "$U_CB"; xoa_nguoi_dung "$U_LD"
 kiem "đã xóa người dùng tạm của smoke" "0" \
   "$(kc get users -r dxos -q "search=smoke-" --fields username | jq '[.[] | select(.username | startswith("smoke-"))] | length')"
+
+# --- 5. Quy trình Flowable "Đăng ký khai sinh" (#8) ----------------------------------
+# Hồ sơ KS01 do công dân nộp qua API → khởi tạo quy trình với biến lấy từ hồ sơ → cán bộ
+# hoàn thành từng bước. Gọi Flowable REST trực tiếp (cổng debug); qua APISIX là việc #6.
+# wf_bat_dau <businessKey> <hoSoId> <hanXuLyLuc> → id process instance
+wf_bat_dau() {
+  wf runtime/process-instances -d "$(jq -nc --arg bk "$1" --arg id "$2" --arg sub "$SUB" --arg han "$3" \
+    '{processDefinitionKey: "dang_ky_khai_sinh", businessKey: $bk, variables: [
+       {name: "hoSoId", value: $id}, {name: "maHoSo", value: $bk},
+       {name: "nguoiNopSub", value: $sub}, {name: "hanXuLyLuc", value: $han}]}')" | jq -r '.id // empty'
+}
+# wf_buoc <process instance> → taskDefinitionKey của task đang mở (rỗng nếu không có)
+wf_buoc() { wf "runtime/tasks?processInstanceId=$1" | jq -r '[.data[].taskDefinitionKey] | join(",")'; }
+# wf_xong <process instance> <biến> <giá trị JSON> → mã HTTP khi hoàn thành task đang mở
+wf_xong() {
+  local tid
+  tid="$(wf "runtime/tasks?processInstanceId=$1" | jq -r '.data[0].id')"
+  wf "runtime/tasks/$tid" -o /dev/null -w '%{http_code}' \
+    -d "{\"action\":\"complete\",\"variables\":[{\"name\":\"$2\",\"value\":$3}]}"
+}
+
+kiem "quy trình dang_ky_khai_sinh đã tự triển khai từ apps/mot-cua/processes/" "1" \
+  "$(wf "repository/process-definitions?key=dang_ky_khai_sinh&latest=true" | jq .total)"
+
+KS_ID="$(sql "SELECT id FROM mot_cua.thu_tuc WHERE ma = 'KS01' AND cong_khai")"
+if [ -z "$KS_ID" ]; then
+  kiem "có thủ tục KS01 để chạy quy trình (DXOS_SEED=true)" "có" "không"
+else
+  hs="$(curl -s "${AUTH[@]}" "${REP[@]}" \
+    -d "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Quy Trình\"}" "$GW/api/ho_so")"
+  HS_ID="$(jq -r '.[0].id' <<<"$hs")"; MA_HS="$(jq -r '.[0].ma_ho_so' <<<"$hs")"
+  HAN="$(jq -r '.[0].han_xu_ly' <<<"$hs")T17:00:00+07:00"
+  PI="$(wf_bat_dau "$MA_HS" "$HS_ID" "$HAN")"
+  kiem "khởi tạo quy trình cho hồ sơ khai sinh $MA_HS → bước tiếp nhận" "tiep_nhan" "$(wf_buoc "$PI")"
+  TID="$(wf "runtime/tasks?processInstanceId=$PI" | jq -r '.data[0].id')"
+  kiem "bước tiếp nhận giao cho nhóm lĩnh vực ho_tich" "ho_tich" \
+    "$(wf "runtime/tasks/$TID/identitylinks" | jq -r '[.[] | select(.type == "candidate") | .group] | join(",")')"
+  wf_xong "$PI" hopLe false > /dev/null
+  kiem "thiếu thành phần → bước công dân bổ sung, giao đúng sub người nộp" "bo_sung $SUB" \
+    "$(wf "runtime/tasks?processInstanceId=$PI" | jq -r '.data[0] | "\(.taskDefinitionKey) \(.assignee)"')"
+  wf_xong "$PI" ghiChu '"đã bổ sung"' > /dev/null
+  kiem "bổ sung xong → quay lại tiếp nhận" "tiep_nhan" "$(wf_buoc "$PI")"
+  wf_xong "$PI" hopLe true > /dev/null
+  kiem "đủ thành phần → bước thẩm định" "tham_dinh" "$(wf_buoc "$PI")"
+  wf_xong "$PI" datYeuCau true > /dev/null
+  kiem "thẩm định đạt → bước phê duyệt của lãnh đạo" "phe_duyet" "$(wf_buoc "$PI")"
+  kiem "phê duyệt: hoàn thành task → 200" "200" "$(wf_xong "$PI" pheDuyet true)"
+  kiem "quy trình kết thúc ở Hoàn tất" "ket_thuc_hoan_tat" \
+    "$(wf "history/historic-process-instances/$PI" | jq -r '.endActivityId')"
+  kiem "biến ketQua = hoan_tat" "hoan_tat" \
+    "$(wf "history/historic-variable-instances?processInstanceId=$PI&variableName=ketQua" | jq -r '.data[0].variable.value')"
+  kiem "lịch sử đi đúng các bước" "tiep_nhan,bo_sung,tiep_nhan,tham_dinh,phe_duyet" \
+    "$(wf "history/historic-activity-instances?processInstanceId=$PI&activityType=userTask&sort=startTime&size=50" | jq -r '[.data[].activityId] | join(",")')"
+  kiem "chưa tới hạn → không đánh dấu quá hạn" "null" \
+    "$(wf "history/historic-variable-instances?processInstanceId=$PI&variableName=quaHan" | jq -r '.data[0].variable.value // "null"')"
+
+  # Thẩm định không đạt → từ chối.
+  PI2="$(wf_bat_dau "$MA_HS-TC" "$HS_ID" "$HAN")"
+  wf_xong "$PI2" hopLe true > /dev/null; wf_xong "$PI2" datYeuCau false > /dev/null
+  kiem "thẩm định không đạt → kết thúc ở Từ chối" "ket_thuc_tu_choi" \
+    "$(wf "history/historic-process-instances/$PI2" | jq -r '.endActivityId')"
+
+  # Hạn đã qua → hẹn giờ không ngắt quy trình đặt quaHan = true, task vẫn còn.
+  PI3="$(wf_bat_dau "$MA_HS-QH" "$HS_ID" "2020-01-01T17:00:00+07:00")"
+  qh=""; for _ in $(seq 1 20); do
+    qh="$(wf "runtime/process-instances/$PI3/variables/quaHan" | jq -r '.value // empty')"; [ -n "$qh" ] && break; sleep 1
+  done
+  kiem "quá hạn → biến quaHan = true, quy trình vẫn ở tiếp nhận" "true tiep_nhan" "${qh:-null} $(wf_buoc "$PI3")"
+  wf "runtime/process-instances/$PI3?deleteReason=smoke" -X DELETE -o /dev/null
+fi

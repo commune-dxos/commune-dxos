@@ -11,6 +11,10 @@
 - `apps/mot-cua/db/tests/rls.sql`: 63 kiểm tra quyền/RLS từng vai trò, chạy trong một transaction rồi ROLLBACK; `make smoke` chạy tệp này và gọi API qua APISIX bằng token thật của cả 4 vai trò (cán bộ, lãnh đạo dùng người dùng tạm có OTP, mã TOTP sinh trong script) (#5).
 - `apps/mot-cua/README.md`: sơ đồ ER, sơ đồ trạng thái, bảng quyền theo vai trò, ghi chú dữ liệu cá nhân tối thiểu; `docs/architecture.md` §2.7, §8.3 (#5).
 
+- Workflow engine Flowable REST 8.0.0 trong profile `core`: CSDL riêng `flowable` (dịch vụ một lần `flowable-db-init`, chạy được với volume cũ), tắt quy trình demo, healthcheck có xác thực, cổng debug chỉ trên 127.0.0.1; biến `FLOWABLE_DB_PASSWORD`, `FLOWABLE_ADMIN_PASSWORD`, `FLOWABLE_PORT` (#8).
+- Quy trình `apps/mot-cua/processes/dang_ky_khai_sinh.bpmn20.xml` viết tay: tiếp nhận → (công dân bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn không ngắt quy trình; Flowable tự triển khai thư mục `processes/` của ứng dụng khi khởi động (#8).
+- `scripts/check-bpmn.py` kiểm cú pháp và cấu trúc BPMN trong `make check` và CI; `make smoke` kiểm Flowable và chạy quy trình khai sinh qua các bước (#8).
+
 ### Changed
 - Migration 002 thay hai bảng giữ chỗ `thu_tuc`, `ho_so` của v0.0.1 (chỉ có dữ liệu giả); bỏ seed `001_du_lieu_mau.sql`. API đổi: `ho_so.thu_tuc_id` (UUID) thay cho `ma_thu_tuc`, trạng thái `moi_nop`/`bo_sung` đổi thành `moi`/`cho_bo_sung` (#5).
 

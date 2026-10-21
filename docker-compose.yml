@@ -7,10 +7,12 @@
 #   db/migrations/*.sql  schema, role, RLS  → dịch vụ một lần app-migrate
 #   db/seed/*.sql        dữ liệu giả        → app-migrate khi DXOS_SEED=true
 #   keycloak/realm.json  vai trò, nhóm, client, người dùng mẫu → dịch vụ một lần app-realm
+#   processes/*.bpmn20.xml  quy trình BPMN 2.0 → Flowable tự triển khai khi khởi động
 #
 # Profile:
 #   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
-#          + Garage, Flowable, RabbitMQ, OpenBao      (tuần 2, đang là TODO bên dưới)
+#          + Flowable REST (workflow, #8)
+#          + Garage, RabbitMQ, OpenBao                (tuần 2, đang là TODO bên dưới)
 #   docs : Gotenberg, step-ca, ClamAV, Meilisearch CE (tuần 2–5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : Apache Superset                            (tuần 4)
@@ -208,17 +210,74 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Tạo role + CSDL riêng `flowable` trong PostgreSQL rồi thoát. Chạy mỗi lần `up`, không
+  # lỗi nếu đã có, nên dùng được cả với volume tạo trước khi có Flowable (initdb chỉ chạy
+  # một lần trên volume trống). Dùng lại image postgres.
+  flowable-db-init:
+    image: postgres:17.6-alpine
+    profiles: [core]
+    entrypoint: ["/bin/sh", "/core/scripts/flowable-db-init.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
+      PGDATABASE: ${POSTGRES_DB:-commune}
+      FLOWABLE_DB_PASSWORD: ${FLOWABLE_DB_PASSWORD:?Đặt FLOWABLE_DB_PASSWORD trong .env}
+    volumes:
+      - ./core/scripts:/core/scripts:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Workflow engine BPMN 2.0 (Apache-2.0). Chỉ dùng flowable-rest (D-004): không có modeler,
+  # BPMN viết XML tay trong apps/<DXOS_APP>/processes/. Flowable tự triển khai các tệp
+  # *.bpmn20.xml ở đó khi khởi động (bỏ qua tệp không đổi), tắt quy trình demo của image.
+  # REST API: http://flowable:8080/flowable-rest/service (Basic auth tài khoản rest-admin).
+  # Tầng 2 sẽ gọi qua APISIX /workflow (#6); cổng host chỉ mở trên 127.0.0.1 để debug/smoke.
+  flowable:
+    image: flowable/flowable-rest:8.0.0
+    profiles: [core]
+    environment:
+      SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowable
+      SPRING_DATASOURCE_USERNAME: flowable
+      SPRING_DATASOURCE_PASSWORD: ${FLOWABLE_DB_PASSWORD:?Đặt FLOWABLE_DB_PASSWORD trong .env}
+      SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: "2"
+      SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: "10"
+      FLOWABLE_REST_APP_ADMIN_USER-ID: rest-admin
+      FLOWABLE_REST_APP_ADMIN_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD:?Đặt FLOWABLE_ADMIN_PASSWORD trong .env}
+      FLOWABLE_REST_APP_CREATE-DEMO-DEFINITIONS: "false"
+      FLOWABLE_PROCESS-DEFINITION-LOCATION-PREFIX: file:/dxos/processes/
+      JAVA_OPTS: -Xmx512M
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/processes:/dxos/processes:ro
+    ports:
+      - "127.0.0.1:${FLOWABLE_PORT:-8090}:8080"
+    depends_on:
+      flowable-db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # Image có wget, base64 (busybox). /actuator/health của flowable-rest bắt Basic auth;
+      # mật khẩu lấy từ biến môi trường của chính container.
+      test:
+        - CMD-SHELL
+        - >-
+          wget -qO- --header "Authorization: Basic $$(printf 'rest-admin:%s' "$$FLOWABLE_REST_APP_ADMIN_PASSWORD" | base64)"
+          http://127.0.0.1:8080/flowable-rest/actuator/health | grep -q '"status":"UP"'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
   # ------------------------------------------------- core – TODO tuần 2 ----
   # Bật từng dịch vụ khi làm việc tương ứng trong docs/PLAN.md tuần 2.
   # Kiểm tra lại tag mới nhất trên trang dự án trước khi ghim.
   #
   # garage:      # Object storage S3, AGPL-3.0 → chạy như dịch vụ riêng, image gốc dxflrs/garage
   #   image: dxflrs/garage:<tag>
-  #   profiles: [core]
-  #
-  # flowable:    # Workflow BPMN 2.0, Apache-2.0. Chỉ dùng flowable-rest (D-004), BPMN viết XML tay
-  #              # trong apps/<DXOS_APP>/processes/, triển khai bằng dịch vụ một lần như app-migrate
-  #   image: flowable/flowable-rest:8.0.0
   #   profiles: [core]
   #
   # rabbitmq:    # Hàng đợi sự kiện, MPL-2.0

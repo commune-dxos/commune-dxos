@@ -16,7 +16,7 @@ export COMPOSE_PROFILES=core
 echo "== Lõi Tầng 1 (DXOS_APP=$DXOS_APP)"
 
 # 1. Dịch vụ một lần đã thoát với mã 0, dịch vụ chạy nền healthy ------------------
-for svc in jwks-init app-migrate app-realm; do
+for svc in jwks-init app-migrate app-realm flowable-db-init; do
   for _ in $(seq 1 60); do  # chờ tối đa 2 phút nếu còn đang chạy
     tt="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' "$svc" 2>/dev/null)"
     case "$tt" in exited*) break ;; esac
@@ -24,7 +24,7 @@ for svc in jwks-init app-migrate app-realm; do
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in postgres keycloak apisix; do
+for svc in postgres keycloak apisix flowable; do
   kiem "$svc healthy" "healthy" "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
 done
 
@@ -57,6 +57,17 @@ kiem "app-migrate lần 2: không áp dụng lại tệp nào" "0" "$(grep -c '�
 if out="$(docker compose run --rm --no-deps app-realm 2>&1)"; then ma=0; else ma=$?; fi
 kiem "app-realm lần 2: mã thoát" "0" "$ma"
 kiem "app-realm lần 2: không thêm gì (added=0)" "added=0" "$(grep -oE 'added=[0-9]+' <<<"$out" || echo "$out" | tail -1)"
+
+# 5b. Workflow engine: REST cần đăng nhập, CSDL riêng ------------------------------
+kiem "Flowable REST không đăng nhập → 401" "401" "$(ma_http "$WF/repository/process-definitions")"
+kiem "Flowable REST với rest-admin → 200" "200" "$(ma_http -u "rest-admin:$FLOWABLE_ADMIN_PASSWORD" "$WF/repository/process-definitions")"
+kiem "Flowable dùng CSDL riêng flowable (có bảng act_re_procdef)" "1" \
+  "$(docker compose exec -T postgres psql -XqtA -U "${POSTGRES_USER:-postgres}" -d flowable \
+     -c "SELECT count(*) FROM pg_tables WHERE tablename = 'act_re_procdef'")"
+kiem "CSDL $POSTGRES_DB không chứa bảng của Flowable" "0" \
+  "$(sql "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'act\\_%'")"
+kiem "Flowable không nạp quy trình demo của image" "0" \
+  "$(wf "repository/process-definitions?key=oneTaskProcess" | jq .total)"
 
 # 6. Smoke riêng của ứng dụng ----------------------------------------------------
 if [ -f "apps/$DXOS_APP/tests/smoke.sh" ]; then

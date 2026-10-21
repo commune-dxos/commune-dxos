@@ -9,5 +9,8 @@ Cấu hình các dịch vụ lõi dùng chung cho mọi ứng dụng Tầng 2. �
 | `apisix/` | `/public/*` → role `anon`, chỉ GET; `/api/*` → bắt buộc JWT realm `dxos` |
 | `scripts/app-migrate.sh` | dịch vụ một lần: áp dụng `apps/<DXOS_APP>/db/` (migration + seed) |
 | `scripts/app-realm.sh` | dịch vụ một lần: nạp `apps/<DXOS_APP>/keycloak/realm.json` vào realm `dxos` |
+| `scripts/flowable-db-init.sh` | dịch vụ một lần: role + CSDL riêng `flowable` cho workflow engine (chạy lại không lỗi, dùng được với volume cũ) |
+
+Workflow engine Flowable REST (`docker-compose.yml`, dịch vụ `flowable`) không có cấu hình riêng trong `core/`: nó tự triển khai `apps/<DXOS_APP>/processes/*.bpmn20.xml` khi khởi động.
 
 Vì sao tách và hợp đồng giữa lõi với ứng dụng: [`docs/architecture.md` §2](../docs/architecture.md#2-lõi-độc-lập-nghiệp-vụ-core-và-appstên).
