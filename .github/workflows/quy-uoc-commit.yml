@@ -51,4 +51,5 @@ jobs:
               echo "::warning::Commit chưa theo quy ước (sẽ vào nhóm \"Khác\" nếu merge không squash): $dong"
             done
           fi
-          git-cliff --config cliff.toml --unreleased "$BASE..$HEAD"
+          # Không dùng --unreleased: cờ này bỏ qua khoảng commit truyền vào.
+          git-cliff --config cliff.toml "$BASE..$HEAD"

@@ -49,6 +49,19 @@
 
 ### Hạ tầng và CI
 
+- **phat-hanh:** Git-cliff tự sinh CHANGELOG và ghi chú phát hành ([#36](https://github.com/commune-dxos/commune-dxos/issues/36))
+    - cliff.toml: nhóm theo loại commit với tiêu đề tiếng Việt, phạm vi in đậm và xếp theo
+      phạm vi, (#số) thành link GitHub, gạch đầu dòng của mô tả squash thành mục con;
+      bỏ commit Merge và chore(release), commit không theo quy ước vào nhóm Khác
+    - scripts/nhat_ky.py: chỉ viết lại mục [Unreleased] (khoảng <tag mới nhất>..HEAD vì tag nằm
+      trên merge commit của main), giữ nguyên mục v0.0.1, v0.1.0 viết tay
+    - make nhat-ky [PHIEN_BAN=x.y.z], make ghi-chu-phat-hanh PHIEN_BAN=x.y.z; git-cliff 2.14.2 ghim
+      trong scripts/requirements-phat-hanh.txt, cài bằng venv
+    - workflow phat-hanh (tag vX.Y.Z): ghi chú git-cliff, commune-dxos-X.Y.Z.tar.gz bằng git archive,
+      SHA256SUMS, GitHub Release; quyền contents: write
+    - workflow quy-uoc-commit trên PR (không bắt buộc): tiêu đề PR theo quy ước, chạy thử git-cliff
+    - docs/quy-trinh-lam-viec.md mục 5–6: quy ước commit, sinh CHANGELOG, quy trình phát hành;
+      link trong CONTRIBUTING.md và mẫu PR; DEPENDENCIES.md, NOTICE; CHANGELOG [Unreleased] sinh lại
 - **tien-do:** Milestone theo tuần, nhãn thành phần tự gắn, mẫu issue ([#34](https://github.com/commune-dxos/commune-dxos/issues/34)) ([#35](https://github.com/commune-dxos/commune-dxos/issues/35))
     - .github/labeler.yml + workflow gan-nhan (actions/labeler, pull_request_target,
       không checkout mã PR): tự gắn nen-tang, mot-cua, thu-tuc, docs, ci theo tệp sửa

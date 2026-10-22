@@ -71,7 +71,8 @@ def nhat_ky(phien_ban: str | None) -> None:
     if phien_ban and f"v{phien_ban}" in tags:
         loi(f"tag v{phien_ban} đã có; mục của phiên bản đã phát hành không sinh lại")
     khoang = f"{tags[0]}..HEAD" if tags else None
-    sinh = git_cliff(khoang, *(["--tag", f"v{phien_ban}"] if phien_ban else ["--unreleased"]))
+    # Không dùng --unreleased: cờ này bỏ qua khoảng commit truyền vào. Khoảng không chứa tag nên ra [Unreleased].
+    sinh = git_cliff(khoang, *(["--tag", f"v{phien_ban}"] if phien_ban else []))
     if phien_ban:
         sinh = "## [Unreleased]\n\n" + sinh
 
