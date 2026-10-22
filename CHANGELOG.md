@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 ### Changed
+- `README.md` thêm một dòng link tới trang tài liệu https://commune-dxos.github.io/commune-dxos/ (#32).
 - Cấu trúc gói thủ tục (D-009, #30): `core/` → `nen-tang/` (Tầng 1, không nghiệp vụ), `apps/mot-cua/` → `mot-cua/` (bộ máy một cửa dùng chung cho mọi thủ tục), mỗi thủ tục một gói `thu-tuc/<ma>/` (`thu-tuc.yaml`, `quy-trinh.bpmn20.xml`, `thanh-phan-ho-so.schema.json`, `du-lieu-mau.json`, `README.md`); chuyển bằng `git mv`, giữ lịch sử.
 - Bỏ biến `DXOS_APP`: dịch vụ Tầng 2 cố định `mot-cua` trong `docker-compose.yml` (`x-tang2`). Dịch vụ đổi tên: `app-migrate` → `tang2-migrate`, `app-realm` → `tang2-realm`, `app-backend` → `mot-cua-api`, `app-worker` → `mot-cua-worker`; `apps/mot-cua/app.env` → `mot-cua/postgrest.env`; danh tính OpenBao `app`, `app-realm` → `tang2`, `tang2-realm`, nhánh bí mật `dxos/apps/<tên>/` → `dxos/tang2/<tên>/`; user RabbitMQ `tang2-mot-cua`, khóa Garage `dxos-tang2-mot-cua` (#30).
 - Flowable không tự quét thư mục BPMN nữa (`FLOWABLE_CHECK-PROCESS-DEFINITIONS=false`): BPMN của từng gói do bộ nạp deploy qua REST (#30).
@@ -16,6 +17,10 @@
 - Sơ đồ SVG chi tiết `kien-truc.svg`, `luong-ho-so.svg` chuyển sang `docs/architecture.md` §1 và §4.2 (#28).
 
 ### Added
+- Trang tài liệu MkDocs + Material for MkDocs bản community (D-009 hướng 2, #32): `mkdocs.yml`, giao diện tiếng Việt, tìm kiếm tiếng Việt, điều hướng theo vai người đọc (Người dân / cán bộ, Lập trình viên thêm thủ tục, Vận hành, Kiến trúc, Đóng góp), dựng từ các tệp có sẵn trong `docs/`; trang chủ `docs/index.md`; phiên bản ghim ở `docs/requirements.txt`.
+- Trang **Danh mục thủ tục** sinh lúc build từ mọi gói `thu-tuc/*/` bằng bộ kiểm của bộ nạp (mã, tên, lĩnh vực, thời hạn, lệ phí, căn cứ pháp lý, các bước xử lý, thành phần hồ sơ, link BPMN và JSON Schema); mỗi gói một trang từ `README.md` của gói, kèm sơ đồ Mermaid; thêm gói là site tự có trang mới. Hook `scripts/tai_lieu_hooks.py` còn đưa `mot-cua/README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` lên site, tính neo tiêu đề như GitHub và đổi link ra ngoài `docs/` sang GitHub (#32).
+- Lệnh `make tai-lieu` (build `--strict`: link gãy, neo sai, gói lỗi là lỗi) và `make xem-tai-lieu` (`mkdocs serve`), không cần Docker; `site/` vào `.gitignore` (#32).
+- Workflow `.github/workflows/tai-lieu.yml`: build `--strict` trên PR đổi tài liệu hoặc gói thủ tục; push vào `main` hoặc chạy tay trên `main` thì deploy GitHub Pages. Không phải check bắt buộc (#32).
 - Bộ nạp gói thủ tục `mot-cua/backend/nap_thu_tuc.py` (dịch vụ một lần `nap-thu-tuc` ở mỗi `make up`, lệnh `make nap-thu-tuc`): kiểm gói (đủ tệp, tập con YAML, JSON Schema 2020-12, BPMN, dữ liệu mẫu khớp schema, không có dãy số giống CMND/CCCD), deploy BPMN lên Flowable (bỏ qua nếu không đổi), ghi danh mục qua RPC; gói lỗi được báo rõ và bỏ qua, xóa thư mục là rút thủ tục (#30).
 - Migration `005_goi_thu_tuc.sql`: cột `goi`, `quy_trinh`, `bien_theo_buoc`, `json_schema`, `goi_sha256`, `nap_luc` của `mot_cua.thu_tuc`; thời hạn 0 ngày làm việc (trong ngày); role `dich_vu_danh_muc` + client Keycloak `mot_cua_danh_muc`; RPC `nap_thu_tuc`, `rut_goi_vang`; `json_schema_thu_tuc` trả schema của gói (#30).
 - Gói mới `thu-tuc/chung-thuc-ban-sao/` (CT01): tiếp nhận → kiểm tra bản chính → ký chứng thực → trả kết quả, hạn trong ngày (#30).

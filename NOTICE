@@ -27,5 +27,6 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 | Web | React + Vite + Tailwind + shadcn/ui | MIT |
 | Dữ liệu lịch sử + lineage | Parquet + DuckDB; dbt-core 1.x (PyPI). Không dùng dbt Fusion | MIT / Apache-2.0 |
 | Dashboard | Apache Superset | Apache-2.0 |
+| Trang tài liệu (công cụ build, không đi vào sản phẩm) | MkDocs 1.6.1 + Material for MkDocs 9.7.7 bản community + PyMdown Extensions; trình duyệt tải Mermaid để vẽ sơ đồ | BSD-2-Clause / MIT |
 | AI | PaddleOCR + VietOCR; Ollama + bge-m3 + pgvector + LlamaIndex | Apache-2.0 / MIT / PostgreSQL |
 | Mô hình ngôn ngữ | Qwen2.5 bản 7B hoặc 14B. Không dùng bản 3B (giấy phép Qwen Research, không OSI) | Apache-2.0 |

@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: Apache-2.0
+# Trang tài liệu MkDocs (D-009 hướng 2, #32): https://commune-dxos.github.io/commune-dxos/
+#   - PR đổi tài liệu, gói thủ tục hoặc tệp mà site đọc: build `make tai-lieu` (--strict), không deploy.
+#   - Push vào main (phát hành) hoặc chạy tay trên main: build rồi deploy GitHub Pages
+#     (Settings → Pages → Source: GitHub Actions).
+# Workflow này lọc theo đường dẫn nên KHÔNG đặt làm check bắt buộc của bảo vệ nhánh (check bắt buộc
+# bị bỏ qua sẽ chặn PR); 6 check bắt buộc nằm ở check.yml. Action ghim phiên bản.
+name: tai-lieu
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "thu-tuc/**"
+      - "scripts/tai_lieu_hooks.py"
+      - "mot-cua/README.md"
+      - "mot-cua/backend/goi_thu_tuc.py"
+      - "mot-cua/backend/kiem_bpmn.py"
+      - "CONTRIBUTING.md"
+      - "CHANGELOG.md"
+      - ".github/workflows/tai-lieu.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Một lần deploy Pages tại một thời điểm; không hủy lần đang chạy giữa chừng.
+concurrency:
+  group: tai-lieu-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: tai-lieu
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Cài MkDocs (phiên bản ghim)
+        run: pip install -r docs/requirements.txt
+      - name: Build --strict
+        run: make tai-lieu
+      - name: Đóng gói site cho Pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1

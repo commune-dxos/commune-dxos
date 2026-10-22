@@ -44,7 +44,12 @@ Sinh bảng tự động khi có mã: `pip-licenses --format=markdown --with-url
 |---|---|---|---|---|
 | _(chưa có — tuần 4: dbt-core 1.x, duckdb, pyhanko…)_ | | | pypi.org | |
 | `yamllint` | 1.38.0 | GPL-3.0 – chỉ là công cụ lint, chạy riêng, không đi vào sản phẩm | pypi.org · https://github.com/adrienverge/yamllint | `make lint`, CI (`scripts/requirements-lint.txt`) |
+| `mkdocs` | 1.6.1 | BSD-2-Clause – công cụ build trang tài liệu, không đi vào sản phẩm | pypi.org · https://github.com/mkdocs/mkdocs | `make tai-lieu`, CI `tai-lieu` (`docs/requirements.txt`) |
+| `mkdocs-material` | 9.7.7 | MIT – giao diện trang tài liệu, bản community (không dùng Insiders); JS/CSS của giao diện nằm trong site đã build | pypi.org · https://github.com/squidfunk/mkdocs-material | `make tai-lieu`, CI `tai-lieu` (`docs/requirements.txt`) |
+| `pymdown-extensions` | 12.3 | MIT – phần mở rộng Markdown (khối ghi chú, sơ đồ Mermaid) | pypi.org · https://github.com/facelessuser/pymdown-extensions | `make tai-lieu`, CI `tai-lieu` (`docs/requirements.txt`) |
 | `shellcheck-py` (ShellCheck 0.11.0) | 0.11.0.1 | MIT (gói bọc), ShellCheck GPL-3.0 – công cụ lint, không đi vào sản phẩm | pypi.org · https://github.com/koalaman/shellcheck | `make lint`, CI (`scripts/requirements-lint.txt`) |
+
+Trang tài liệu (`mkdocs.yml`, #32): hook `scripts/tai_lieu_hooks.py` chỉ dùng thư viện chuẩn và bộ kiểm gói của đội (`mot-cua/backend/goi_thu_tuc.py`). Giao diện không tải phông chữ từ Google Fonts (`theme.font: false`). Trang có sơ đồ Mermaid (README các gói thủ tục) để Material tải thư viện `mermaid` (MIT, https://github.com/mermaid-js/mermaid) từ CDN unpkg lúc người đọc mở trang; repo và site không chứa mã Mermaid.
 
 ## 4. Mô hình AI (tuần 5)
 
