@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # make smoke: kiểm tra nền tảng Tầng 1 đang chạy (sau `make up`) rồi gọi smoke của bộ máy
 # một cửa mot-cua/tests/smoke.sh (gồm cả gói thủ tục thu-tuc/). Không xóa dữ liệu; chỉ thêm hồ sơ thử và đặt
 # mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu).

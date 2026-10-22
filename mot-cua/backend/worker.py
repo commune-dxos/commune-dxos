@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tác vụ nền của mot-cua (dịch vụ mot-cua-worker, #9). Ba luồng, mỗi luồng tự kết nối lại khi lỗi:
 
   phat     đọc hộp thư đi (mot_cua.hop_thu_su_kien) các sự kiện chưa phát, phát lên exchange

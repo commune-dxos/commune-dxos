@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Smoke gói thủ tục (D-009), được mot-cua/tests/smoke.sh `source` sau mục 4f (dùng kiem, sql,
 # wf, gw, gw_ma, task_cua và TOKEN, TK_CB, TK_LD, CB_ID, HAU_TO do smoke.sh đặt). Kiểm:
 #   1. Danh mục /public/thu_tuc có đúng các gói trong thu-tuc/, Flowable có quy trình của từng gói.

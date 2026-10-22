@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Entrypoint của dịch vụ `keycloak` (#10): Keycloak không đọc được mật khẩu từ tệp (*_FILE),
 # nên đọc tệp do agent `keycloak-secrets` render từ OpenBao (volume keycloak-secrets, chỉ
 # đọc) vào biến môi trường của RIÊNG tiến trình Keycloak rồi chạy kc.sh. Mật khẩu không nằm

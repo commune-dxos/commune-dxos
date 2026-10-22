@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Công cụ xuất sơ đồ kiến trúc động ra GIF/MP4 (make xuat-kien-truc, #43). Ghim phiên bản để
 # máy cá nhân ra cùng kết quả. Chỉ là công cụ trên máy người xuất, không đi vào sản phẩm.
 #   python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-xuat.txt

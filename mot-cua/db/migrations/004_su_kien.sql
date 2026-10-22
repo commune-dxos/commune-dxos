@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Ứng dụng mot-cua – sự kiện hồ sơ qua RabbitMQ (#9).
 -- core/scripts/app-migrate.sh áp dụng tệp này đúng một lần, trong một transaction.
 --

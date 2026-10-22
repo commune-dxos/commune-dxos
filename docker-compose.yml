@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Commune DX-OS – nền tảng Tầng 1 (headless) + bộ máy một cửa Tầng 2 + gói thủ tục. Sơ đồ: docs/architecture.md
 #
 # Ba lớp thư mục (D-009):

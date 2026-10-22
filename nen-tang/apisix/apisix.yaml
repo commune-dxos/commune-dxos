@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Route của API Gateway (standalone). APISIX nạp lại tệp này khi thay đổi.
 # Tầng 2 chỉ gọi lõi qua đây; PostgREST, Flowable và backend Tầng 2 không mở cổng ra
 # ngoài (Flowable chỉ có cổng debug trên 127.0.0.1).

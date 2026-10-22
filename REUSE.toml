@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Khai báo giấy phép cho tệp không chứa được chú thích SPDX (JSON, ảnh, video, tài liệu .md) theo
+# đặc tả REUSE 3.x (https://reuse.software). Tệp mã/cấu hình mang header riêng (make license, make check);
+# precedence = "closest": header trong tệp (nếu có) được ưu tiên. Kiểm: reuse lint (D-010, #47).
+version = 1
+SPDX-PackageName = "Commune DX-OS"
+SPDX-PackageSupplier = "DTU_DZ_2"
+SPDX-PackageDownloadLocation = "https://github.com/commune-dxos/commune-dxos"
+
+[[annotations]]
+path = [
+  "**/*.md",
+  "**/*.json",
+  "docs/images/**",
+  "docs/media/**",
+  ".gitignore",
+  "NOTICE",
+  "nen-tang/rabbitmq/enabled_plugins",
+  # Tệp có header SPDX đúng, nhưng reuse 6.2 đọc 2048 byte đầu để đoán bảng mã, cắt giữa một ký tự
+  # UTF-8 tiếng Việt nên coi là tệp nhị phân và bỏ qua header.
+  "nen-tang/postgres/initdb/10-core.sql",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 DTU_DZ_2"
+SPDX-License-Identifier = "GPL-3.0-or-later"

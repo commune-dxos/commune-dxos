@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Phần thuần của API tệp mot-cua (#7): kiểm tệp, ký S3 SigV4, quét clamd, quy tắc quyền.
 
 Không đọc biến môi trường, không gọi PostgREST: main.py ghép các hàm này vào luồng HTTP,

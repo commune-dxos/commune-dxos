@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Đọc và kiểm một gói thủ tục thu-tuc/<goi>/ (D-009), phần thuần của bộ nạp (không gọi mạng).
 
 Một gói gồm đúng các tệp trong TEP_BAT_BUOC:

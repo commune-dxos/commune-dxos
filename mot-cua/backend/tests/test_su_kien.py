@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Test đơn vị sự kiện hồ sơ (#9): su_kien.py (định dạng, ngày làm việc, sắp trễ hạn),
 stomp.py (mã hóa/tách frame), worker.py (chống trùng sắp trễ hạn, consumer mẫu) với
 PostgREST/Flowable/RabbitMQ giả. Thư viện chuẩn unittest, không cần Docker.

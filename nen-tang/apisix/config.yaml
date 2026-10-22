@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # APISIX chế độ standalone: không cần etcd, route đọc từ conf/apisix.yaml.
 # Tài liệu: https://apisix.apache.org/docs/apisix/deployment-modes/#standalone
 apisix:

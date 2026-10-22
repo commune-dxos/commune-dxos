@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Công cụ build trang tài liệu (make tai-lieu, CI .github/workflows/tai-lieu.yml). Ghim phiên bản
 # để máy cá nhân và CI ra cùng kết quả. Chỉ dùng bản community, không plugin trả phí.
 # Chỉ là công cụ build tài liệu, không đi vào sản phẩm.

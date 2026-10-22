@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Client STOMP 1.2 tối thiểu cho RabbitMQ (plugin rabbitmq_stomp của lõi, #9), chỉ thư viện
 chuẩn Python.
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Smoke sự kiện hồ sơ qua RabbitMQ (#9). Được mot-cua/tests/smoke.sh `source` sau mục 4d
 # (dùng kiem, sql, gw, gw_ma, task_cua, lay_token, lay_token_otp, ma_totp, MK, U_CB, OTP_CB, CB_ID,
 # LV_HT, KS_ID, WH, WMA, SUB), không chạy riêng.

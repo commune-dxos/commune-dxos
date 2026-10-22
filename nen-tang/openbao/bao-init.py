@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Dịch vụ một lần `bao-init` của lõi (make bao-init): đưa OpenBao về trạng thái dùng được.
 
 Chạy lại bao nhiêu lần cũng được (idempotent), chạy tự động ở mỗi `make up`:

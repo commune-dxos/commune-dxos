@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Mẫu issue đề xuất một gói thủ tục mới thu-tuc/<ma>/ (D-009 hướng 3, #34).
 # Các ô khớp với khóa trong thu-tuc.yaml, xem docs/thu-tuc.md.
 name: Thủ tục mới

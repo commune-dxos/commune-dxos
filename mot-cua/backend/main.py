@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """API một cửa: quy trình và tệp hồ sơ của bộ máy mot-cua (backend riêng của Tầng 2, D-008).
 
 APISIX chuyển /workflow/* tới đây (bỏ tiền tố /workflow) và /files/* (giữ tiền tố) sau khi

@@ -1,4 +1,5 @@
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Đóng góp
 
 Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách đội DTU_DZ_2 làm việc trên kho mã; người ngoài đội đóng góp cũng theo đúng các bước này.
@@ -52,8 +53,10 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 
 ## 5. Giấy phép
 
-- Mã của dự án dùng Apache-2.0. Mọi tệp mã và cấu hình có dòng `SPDX-License-Identifier: Apache-2.0` ngay trong commit đầu tiên của tệp: chạy `make license` để thêm, `make check` để kiểm.
-- Chỉ dùng thành phần có giấy phép được OSI phê duyệt. Thêm hoặc nâng phiên bản một thành phần thì sửa [`DEPENDENCIES.md`](DEPENDENCIES.md) (và [`NOTICE`](NOTICE) nếu là thành phần mới) trong cùng PR. Danh sách thành phần đội không dùng nằm ở `DEPENDENCIES.md`.
+- Dự án phát hành theo **GPL-3.0-or-later** ([`LICENSE`](LICENSE)) từ sau v0.2.0 (D-010); v0.0.1–v0.2.0 là Apache-2.0.
+- **Inbound = outbound:** gửi đóng góp (commit, PR) là bạn đồng ý cấp phép phần đóng góp đó theo GPL-3.0-or-later, cùng giấy phép của dự án. Không cần ký CLA. Chỉ gửi mã do bạn viết hoặc có quyền cấp phép như vậy.
+- Mọi tệp mã và cấu hình có header 2 dòng ngay trong commit đầu tiên của tệp: `SPDX-FileCopyrightText: 2026 DTU_DZ_2` và `SPDX-License-Identifier: GPL-3.0-or-later`. Chạy `make license` để thêm, `make check` để kiểm (tệp thiếu header hoặc còn giấy phép khác, kể cả Apache-2.0 cũ, đều bị báo lỗi). Tệp không chứa được chú thích (JSON, ảnh) khai trong [`REUSE.toml`](REUSE.toml).
+- Chỉ dùng thành phần có giấy phép được OSI phê duyệt và tương thích GPL-3.0 (cột "Tương thích GPL-3.0" trong `DEPENDENCIES.md`); thành phần AGPL/GPL-2.0 chỉ chạy như dịch vụ riêng. Thêm hoặc nâng phiên bản một thành phần thì sửa [`DEPENDENCIES.md`](DEPENDENCIES.md) (và [`NOTICE`](NOTICE) nếu là thành phần mới) trong cùng PR. Danh sách thành phần đội không dùng nằm ở `DEPENDENCIES.md`.
 - Không sao chép, vendor hay sửa mã của thư viện bên thứ ba; khai báo qua trình quản lý gói hoặc dùng image gốc.
 
 ## 6. Trước khi mở PR

@@ -17,7 +17,7 @@
 - Ảnh minh họa không chứa người, giấy tờ có thật; không lấy ảnh từ nguồn bên ngoài. Chữ trong ảnh do đội kiểm lại sau khi tạo.
 - `kien-truc-dong.svg` không dùng logo của dự án nào: mỗi thành phần là một hộp chữ. Sửa SVG rồi chạy lại `make xuat-kien-truc` để GIF, MP4 khớp (cài công cụ: xem đầu `scripts/xuat_kien_truc.py`; Playwright và FFmpeg chỉ là công cụ trên máy, không phải phụ thuộc của dự án).
 - Biểu tượng của Keycloak, APISIX, PostgreSQL, Flowable, RabbitMQ, ClamAV, Garage, OpenBao trong `kien-truc-tong-quan.webp` là **hình minh họa** do công cụ AI vẽ, **không phải logo chính thức**. Tên và nhãn hiệu thuộc dự án tương ứng; dùng ở đây chỉ để chỉ thành phần trong hệ thống, không ngụ ý dự án đó bảo trợ Commune DX-OS.
-- Mọi tệp trong thư mục này phát hành cùng giấy phép của dự án: [Apache License 2.0](../../LICENSE).
+- Mọi tệp trong thư mục này (và `docs/media/`) phát hành cùng giấy phép của dự án: [GPL-3.0-or-later](../../LICENSE) (khai trong `REUSE.toml`). Các tệp có trong v0.0.1–v0.2.0 cũng đã phát hành theo Apache-2.0 ở các bản đó.
 - Sơ đồ SVG là văn bản, sửa được bằng trình soạn thảo bất kỳ; khi hệ thống đổi (thêm dịch vụ, đổi route) thì cập nhật sơ đồ cùng PR.
 
 ## Quay GIF demo (tuần 3–4)

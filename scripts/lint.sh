@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Lint từng thành phần (#11). `make lint` chạy tất cả; CI chạy từng phần trong một job riêng
 # cùng tên, nên lỗi ở máy và ở CI giống nhau:
 #   - phần shellcheck: mọi *.sh trong git hoặc chưa add (trừ .gitignore), theo cả tệp `source` (-x)

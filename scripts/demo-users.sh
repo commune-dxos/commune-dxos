@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # make demo-users: đặt một mật khẩu chung cho người dùng mẫu (dữ liệu giả) của realm `dxos`
 # để thử tay từng vai trò sau `make up`. Realm không chứa mật khẩu; `make smoke` đặt mật khẩu
 # ngẫu nhiên, nên chạy lệnh này SAU smoke.

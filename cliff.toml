@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Cấu hình git-cliff (D-009 hướng 4, #36): sinh CHANGELOG và ghi chú phát hành từ Conventional Commits.
 # Không gọi git-cliff trực tiếp lên CHANGELOG.md; dùng `make nhat-ky` và
 # `make ghi-chu-phat-hanh PHIEN_BAN=x.y.z` (scripts/nhat_ky.py chọn khoảng commit đúng, giữ nguyên

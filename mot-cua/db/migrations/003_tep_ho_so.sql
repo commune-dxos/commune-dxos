@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Ứng dụng mot-cua – tệp thành phần hồ sơ trên Garage, quét ClamAV trước khi lưu (#7).
 -- core/scripts/app-migrate.sh áp dụng tệp này đúng một lần, trong một transaction.
 --

@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Test quyền và RLS của schema mot_cua (#5, tệp hồ sơ #7, sự kiện #9): mỗi vai trò thấy/sửa đúng phần được phép.
 -- Chạy bằng superuser trong container postgres, toàn bộ trong MỘT transaction rồi
 -- ROLLBACK, nên không để lại dữ liệu và không phụ thuộc seed (DXOS_SEED có thể là false):

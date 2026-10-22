@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Đọc bí mật của bộ máy một cửa từ OpenBao của lõi (#10), chỉ thư viện chuẩn Python.
 
 mot-cua-api đăng nhập AppRole `tang2` bằng role_id/secret_id mà bao-init của lõi đặt trong

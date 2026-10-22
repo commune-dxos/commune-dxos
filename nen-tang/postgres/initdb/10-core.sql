@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Khởi tạo phần dùng chung của lõi Tầng 1. KHÔNG chứa bảng, thủ tục hay vai trò
 -- nghiệp vụ: những thứ đó thuộc Tầng 2 trong mot-cua/db/ (xem
 -- docs/architecture.md §2). Chạy một lần khi volume PostgreSQL còn trống

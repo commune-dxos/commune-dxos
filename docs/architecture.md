@@ -635,7 +635,7 @@ Mọi image ghim phiên bản cụ thể, lấy từ dự án gốc (bảng ở 
 
 D-004: image `flowable-ui` (có modeler) dừng ở 6.8.0 (2022), bpmn-js bị cấm vì giấy phép bpmn.io không phải OSI. Cách làm:
 
-1. Viết tay tệp `thu-tuc/<ma>/quy-trinh.bpmn20.xml` của gói thủ tục ([`docs/thu-tuc.md`](thu-tuc.md)) theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2 là `<!-- SPDX-License-Identifier: Apache-2.0 -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
+1. Viết tay tệp `thu-tuc/<ma>/quy-trinh.bpmn20.xml` của gói thủ tục ([`docs/thu-tuc.md`](thu-tuc.md)) theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2–3 là `<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->` và `<!-- SPDX-License-Identifier: GPL-3.0-or-later -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
 2. Chỉ dùng tập phần tử nhỏ: `startEvent`, `userTask` (có `flowable:candidateGroups` = mã lĩnh vực của thủ tục hoặc `lanh_dao`, biến người xử lý đặt khai bằng `flowable:formProperty`), `serviceTask`, `exclusiveGateway`, `boundaryEvent` + `timerEventDefinition` cho cảnh báo trễ hạn, `endEvent`.
 3. Không cần phần `bpmndi` (tọa độ vẽ): Flowable chạy được khi thiếu phần này. Sơ đồ cho tài liệu và slide vẽ bằng Mermaid `flowchart` đặt cạnh tệp XML.
 4. Kiểm tra hai lớp: `make check` (và CI) chạy `scripts/check-bpmn.py` và bộ nạp ở chế độ `--chi-kiem` (cùng luật `mot-cua/backend/kiem_bpmn.py`) – XML hợp lệ, id không trùng, mũi tên trỏ đúng phần tử, nút nào cũng có đường vào/ra, gateway có `default` và điều kiện, userTask có người nhận, biến có kiểu hợp lệ; khi deploy, Flowable từ chối tệp sai ngữ nghĩa và bộ nạp bỏ qua gói đó (`make smoke` kiểm quy trình đã lên và chạy được).

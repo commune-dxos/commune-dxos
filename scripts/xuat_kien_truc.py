@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Xuất sơ đồ kiến trúc động docs/images/kien-truc-dong.svg ra GIF (README) và MP4 (slide trình bày).
 
 Chromium headless (Playwright) mở SVG, dừng đồng hồ SMIL rồi chụp từng khung ở đúng thời điểm

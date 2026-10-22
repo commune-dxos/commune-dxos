@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Smoke OpenBao (#10), được scripts/smoke.sh `source` (dùng kiem, cong_host, FLOWABLE_ADMIN_PASSWORD).
 #   - két đã khởi tạo, đã unseal; tệp unseal key trên máy quyền 600 và bị git bỏ qua;
 #   - policy: mỗi danh tính chỉ đọc/ghi đúng phần của mình (đăng nhập bằng AppRole thật của

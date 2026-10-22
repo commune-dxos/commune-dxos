@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Dịch vụ một lần `garage-init` của lõi: cấu hình Garage qua Admin API v2 rồi thoát.
 
 Chạy lại bao nhiêu lần cũng được (idempotent):

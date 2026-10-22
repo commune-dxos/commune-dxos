@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Sơ đồ kiến trúc động Commune DX-OS (#43): 2 tầng, gói thủ tục, một hồ sơ KS01 chạy qua hệ thống. -->
 <!-- Vẽ tay bằng SVG thuần, không JS, không phông hay ảnh ngoài. Chuyển động: SMIL, vòng 14 giây. -->
 <!-- Khung tĩnh (không chạy animation) vẫn là sơ đồ đầy đủ. Theo docker-compose.yml, nen-tang/, mot-cua/, thu-tuc/ v0.2.0. -->
@@ -161,7 +162,7 @@ svg{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial
 <path d="M1050,815 L1114,815" stroke="#64748b" stroke-width="2" class="dut"/><text x="1124" y="820">nét đứt: đang làm (tuần 3) hoặc cấp bí mật</text>
 <circle cx="1082" cy="845" r="8" fill="#f59e0b" stroke="#fff" stroke-width="2"/><text x="1124" y="850">hồ sơ đang đi, đường sáng là chặng đã qua</text>
 </g>
-<text x="1560" y="886" text-anchor="end" font-size="12" fill="#94a3b8">Commune DX-OS v0.2.0 · DTU_DZ_2 · Apache-2.0</text>
+<text x="1560" y="886" text-anchor="end" font-size="12" fill="#94a3b8">Commune DX-OS · DTU_DZ_2 · GPL-3.0-or-later</text>
 <g class="dong">
 <rect x="67" y="445" width="218" height="66" rx="10" class="nhay" opacity="0"><animate attributeName="opacity" values="0;0;1;.35;1;0;0" keyTimes="0;0.1714;0.1857;0.2036;0.2179;0.2357;1" dur="14s" repeatCount="indefinite"/></rect>
 <rect x="697" y="293" width="326" height="54" rx="26" class="nhay" opacity="0"><animate attributeName="opacity" values="0;0;1;.35;1;0;0" keyTimes="0;0.2929;0.3071;0.325;0.3393;0.3571;1" dur="14s" repeatCount="indefinite"/></rect>
