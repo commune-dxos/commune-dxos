@@ -22,21 +22,22 @@ Cách dùng tệp này:
 
 ## Tuần 2 · 22–28/10 · Lõi headless → v0.1.0
 - [x] V1 · Tách `core/` (Tầng 1, không chứa nghiệp vụ) và `apps/mot-cua/` (Tầng 2), chọn ứng dụng bằng `DXOS_APP`; bảng hồ sơ chuyển khỏi init SQL của lõi; dịch vụ một lần `app-migrate`, `app-realm`; `make smoke` (JWT/MFA/RLS, migration chạy lại) (#3)
-- [ ] V2 · Schema ứng dụng trong `apps/mot-cua/`: thủ tục, hồ sơ, thành phần hồ sơ, cán bộ, lĩnh vực + RLS theo lĩnh vực; migration và seed dữ liệu giả (#5, PR chờ duyệt)
+- [ ] V2 · Schema ứng dụng trong `mot-cua/`: thủ tục, hồ sơ, thành phần hồ sơ, cán bộ, lĩnh vực + RLS theo lĩnh vực; migration và seed dữ liệu giả (#5, PR chờ duyệt)
 - [x] V1 · PostgREST phục vụ schema ứng dụng, JWT Keycloak → role PostgreSQL; APISIX route `/api`, `/public`, `/workflow` (qua API quy trình mỏng `apps/mot-cua/backend/`, chặn API quản trị Flowable), `/files` (giữ chỗ 503), CORS theo biến môi trường, rate limit cổng công dân (#6, PR chờ duyệt)
 - [x] V1 · Garage v2.4.1 (S3 một nút, dịch vụ riêng, khóa riêng mỗi ứng dụng) + API tải tệp hồ sơ `/files` (kiểm loại + magic bytes, link GET ký ngắn hạn, quyền theo RLS); ClamAV 1.5.4 quét tệp trước khi lưu, tệp nhiễm bị chặn và ghi nhật ký (#7, PR chờ duyệt)
-- [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `apps/mot-cua/processes/` (#8, PR chờ duyệt)
+- [ ] V2 · Flowable (`flowable/flowable-rest:8.0.0`) + quy trình BPMN đầu tiên (đăng ký khai sinh) **viết XML tay** trong `thu-tuc/khai-sinh/` (#8, PR chờ duyệt)
 - [x] V2 · RabbitMQ 4.3.6 nhận sự kiện hồ sơ (mới, chuyển bước, hoàn tất/từ chối, sắp trễ hạn): outbox PostgreSQL → `app-worker` phát qua STOMP, vhost + user riêng của ứng dụng, consumer mẫu ghi nhật ký sự kiện (#9, PR chờ duyệt)
 - [x] V1 · OpenBao 2.7.1 giữ mọi bí mật dịch vụ (mật khẩu CSDL, quản trị Keycloak/Flowable, client secret, khóa S3, bí mật Garage); `.env` không còn mật khẩu; mỗi dịch vụ một AppRole + policy chỉ đọc đúng phần mình; `make up` tự init/unseal (dev); chuyển được từ `.env` cũ (#10, PR chờ duyệt)
 - [x] V3 · CI: thêm lint/test cho từng thành phần đã có – job `shellcheck`, `yamllint`, `bpmn`, `test-backend`, `test-sql` (PostgreSQL service container, migration lõi + app, `rls.sql` trước/sau seed); `make lint`, `make test` chạy cùng lệnh trên máy (#11, PR chờ duyệt)
 - [x] V3 · README song ngữ chạy được từ máy sạch (`cp .env.example .env` → `make up` → `make smoke` → `make demo-users`), yêu cầu máy, xử lý lỗi; kiểm chứng trên bản clone mới ngoài thư mục mã: `make up` 128 giây, smoke 405/405 (#12, PR chờ duyệt)
 - [x] V1 · Release v0.1.0 (#13)
+- [ ] V2 · D-009 hướng 1 – mô hình gói thủ tục: `nen-tang/` + bộ máy `mot-cua/` + `thu-tuc/<ma>/` (khai sinh, chứng thực bản sao), bộ nạp `make nap-thu-tuc`, `docs/thu-tuc.md` (#30, PR chờ duyệt)
 
 ## Tuần 3 · 29/10–04/11 · Luồng nghiệp vụ chính
 - [ ] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable
 - [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái
 - [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác
-- [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `apps/mot-cua/`): sự kiện `ho_so.sap_tre_han` và `app-worker` đã có (#9); còn consumer thông báo cho cán bộ/công dân
+- [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `mot-cua/`): sự kiện `ho_so.sap_tre_han` và `mot-cua-worker` đã có (#9); còn consumer thông báo cho cán bộ/công dân
 - [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả)
 
 ## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0
@@ -56,8 +57,8 @@ Cách dùng tệp này:
 
 ## Tuần 6 · 19–25/11 · Tuần UX + cộng đồng → v0.3.0
 - [ ] V2 · **Tuần UX:** sửa giao diện và luồng theo phản hồi người dùng (mỗi phản hồi một issue `user-feedback`)
-- [ ] V3 · Tài liệu song ngữ; hướng dẫn cho **lập trình viên** viết một module `apps/<tên>/` (realm, schema, BPMN, seed, route) cắm vào lõi mà không sửa `core/`
-- [ ] V1 · **Module mẫu thứ hai**, nhỏ, khác đề tài chính (gợi ý: `apps/dat-phong-hop/` – một bảng + một quy trình duyệt) để chứng minh lõi dùng lại được
+- [ ] V3 · Tài liệu song ngữ; hướng dẫn cho **lập trình viên** viết gói thủ tục `thu-tuc/<ma>/` đã có ở `docs/thu-tuc.md` (#30, D-009), bổ sung ví dụ theo phản hồi
+- [ ] V1 · **Thêm gói thủ tục** (ngoài khai sinh, chứng thực bản sao), mỗi gói một thư mục, không sửa mã bộ máy, để chứng minh cắm–rút theo gói (D-009 thay cho "module mẫu thứ hai" kiểu `apps/<tên>/`)
 - [ ] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ)
 - [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp)
 - [ ] V1 · Release v0.3.0

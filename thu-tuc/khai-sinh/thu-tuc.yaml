@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# Gói thủ tục: Đăng ký khai sinh (D-009). Định dạng: docs/thu-tuc.md (tập con YAML).
+# Bộ nạp nap-thu-tuc đọc tệp này, kiểm cùng các tệp khác trong thư mục rồi ghi danh mục.
+ma: KS01
+ten: Đăng ký khai sinh
+linh_vuc: ho_tich
+ten_linh_vuc: Hộ tịch
+# Ngày làm việc (bỏ thứ Bảy, Chủ nhật, ngày nghỉ lễ trong mot_cua.ngay_nghi).
+thoi_han_ngay_lam_viec: 1
+# Đồng.
+le_phi: 0
+ghi_chu_le_phi: Miễn lệ phí khi đăng ký đúng hạn
+cong_khai: true
+# process id trong quy-trinh.bpmn20.xml.
+quy_trinh: dang_ky_khai_sinh
+can_cu_phap_ly:
+  - Luật Hộ tịch 2014, Điều 16
+  - Nghị định 123/2015/NĐ-CP

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- Luồng hồ sơ đăng ký khai sinh, vẽ tay theo apps/mot-cua/processes/dang_ky_khai_sinh.bpmn20.xml và apps/mot-cua/backend/. -->
+<!-- Luồng hồ sơ đăng ký khai sinh, vẽ tay theo thu-tuc/khai-sinh/quy-trinh.bpmn20.xml và mot-cua/backend/. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-labelledby="tieu-de mo-ta">
   <title id="tieu-de">Luồng hồ sơ đăng ký khai sinh</title>
   <desc id="mo-ta">Công dân nộp hồ sơ, cán bộ hộ tịch tiếp nhận; thiếu thành phần thì công dân bổ sung rồi quay lại tiếp nhận; đủ thì thẩm định; không đạt thì từ chối; đạt thì lãnh đạo phê duyệt; duyệt thì hoàn tất, trả lại thì về bước thẩm định. Hẹn giờ quá hạn không ngắt quy trình. Mỗi bước phát sự kiện qua hộp thư đi lên RabbitMQ.</desc>
@@ -28,7 +28,7 @@
 
   <rect x="0" y="0" width="1200" height="740" fill="#f8fafc"/>
   <text class="tieude" x="36" y="42">Luồng hồ sơ đăng ký khai sinh</text>
-  <text class="phude" x="1164" y="42" text-anchor="end">quy trình dang_ky_khai_sinh · apps/mot-cua/processes/ · Flowable 8.0</text>
+  <text class="phude" x="1164" y="42" text-anchor="end">quy trình dang_ky_khai_sinh · thu-tuc/khai-sinh/ · Flowable 8.0</text>
 
   <!-- Làn -->
   <rect x="20" y="66" width="1160" height="150" fill="#fff1f2" stroke="#fda4af"/>
@@ -139,7 +139,7 @@
 
   <!-- Khung dưới: API -->
   <rect class="khung" x="410" y="536" width="380" height="160" rx="12"/>
-  <text class="ten" x="426" y="560">Mỗi bước đi qua APISIX → app-backend</text>
+  <text class="ten" x="426" y="560">Mỗi bước đi qua APISIX → mot-cua-api</text>
   <text class="ma" x="426" y="582">GET /workflow/tasks</text>
   <text class="dong" x="426" y="598">task của nhóm, lĩnh vực mình đang phụ trách</text>
   <text class="ma" x="426" y="620">POST /workflow/tasks/{id}/complete</text>
@@ -150,7 +150,7 @@
 
   <!-- Khung dưới: sự kiện -->
   <rect class="khung" x="810" y="536" width="370" height="160" rx="12"/>
-  <text class="ten" x="826" y="560">Sự kiện RabbitMQ (outbox → app-worker)</text>
+  <text class="ten" x="826" y="560">Sự kiện RabbitMQ (outbox → mot-cua-worker)</text>
   <text class="ma" x="826" y="582">ho_so.moi</text>
   <text class="dong" x="966" y="582">khởi tạo quy trình</text>
   <text class="ma" x="826" y="602">ho_so.chuyen_buoc</text>

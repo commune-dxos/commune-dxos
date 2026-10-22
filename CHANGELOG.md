@@ -4,12 +4,23 @@
 
 ## [Unreleased]
 ### Changed
+- Cấu trúc gói thủ tục (D-009, #30): `core/` → `nen-tang/` (Tầng 1, không nghiệp vụ), `apps/mot-cua/` → `mot-cua/` (bộ máy một cửa dùng chung cho mọi thủ tục), mỗi thủ tục một gói `thu-tuc/<ma>/` (`thu-tuc.yaml`, `quy-trinh.bpmn20.xml`, `thanh-phan-ho-so.schema.json`, `du-lieu-mau.json`, `README.md`); chuyển bằng `git mv`, giữ lịch sử.
+- Bỏ biến `DXOS_APP`: dịch vụ Tầng 2 cố định `mot-cua` trong `docker-compose.yml` (`x-tang2`). Dịch vụ đổi tên: `app-migrate` → `tang2-migrate`, `app-realm` → `tang2-realm`, `app-backend` → `mot-cua-api`, `app-worker` → `mot-cua-worker`; `apps/mot-cua/app.env` → `mot-cua/postgrest.env`; danh tính OpenBao `app`, `app-realm` → `tang2`, `tang2-realm`, nhánh bí mật `dxos/apps/<tên>/` → `dxos/tang2/<tên>/`; user RabbitMQ `tang2-mot-cua`, khóa Garage `dxos-tang2-mot-cua` (#30).
+- Flowable không tự quét thư mục BPMN nữa (`FLOWABLE_CHECK-PROCESS-DEFINITIONS=false`): BPMN của từng gói do bộ nạp deploy qua REST (#30).
+- API một cửa `/workflow` đọc quy trình (`thu_tuc.quy_trinh`) và biến được phép từng bước (`thu_tuc.bien_theo_buoc`, từ `flowable:formProperty` trong BPMN) từ danh mục; bỏ bảng `QUY_TRINH_THEO_THU_TUC`, `BIEN_THEO_BUOC` gắn cứng trong `main.py` (#30).
+- Quy trình khai sinh chuyển vào gói `thu-tuc/khai-sinh/`, khai biến từng bước bằng `flowable:formProperty`; luật kiểm BPMN chuyển từ `scripts/check-bpmn.py` sang `mot-cua/backend/kiem_bpmn.py` (dùng chung với bộ nạp), job CI `bpmn` kiểm mọi `thu-tuc/*/quy-trinh.bpmn20.xml` (#30).
+- `make check` kiểm thêm mọi gói thủ tục (bộ nạp `--chi-kiem`, không cần Docker); `make test-sql`, `make smoke` chạy mọi tệp `mot-cua/db/tests/*.sql` (#30).
 - `README.md` viết lại thuần tiếng Việt, giữ đủ nội dung đã kiểm chứng từ máy sạch (#12); thêm banner, ảnh minh họa bài toán, huy hiệu giấy phép/phiên bản/CI, mục "Bài toán" và bảng 4 dịch vụ bắt buộc của đề (#26).
 - `README.md` viết lại theo trình tự kể chuyện sản phẩm: Giới thiệu → Thách thức → Giải pháp → Đối tượng → Chức năng (đã có ở v0.1.0 / sắp có) → Kiến trúc → Công nghệ → Luồng hồ sơ → Hướng phát triển → Cài đặt từ máy sạch → Đóng góp, Báo lỗi, Giấy phép, CHANGELOG; ảnh mới ít chữ, nhãn tiếng Việt; bỏ `README.en.md` (#28).
 - Hướng dẫn cài đặt chi tiết (yêu cầu máy, OpenBao, cổng và tài khoản mẫu, cấu hình, thêm ứng dụng, kiểm thử, xử lý lỗi) chuyển sang `docs/cai-dat.md`; README giữ các lệnh chính (#28).
 - Sơ đồ SVG chi tiết `kien-truc.svg`, `luong-ho-so.svg` chuyển sang `docs/architecture.md` §1 và §4.2 (#28).
 
 ### Added
+- Bộ nạp gói thủ tục `mot-cua/backend/nap_thu_tuc.py` (dịch vụ một lần `nap-thu-tuc` ở mỗi `make up`, lệnh `make nap-thu-tuc`): kiểm gói (đủ tệp, tập con YAML, JSON Schema 2020-12, BPMN, dữ liệu mẫu khớp schema, không có dãy số giống CMND/CCCD), deploy BPMN lên Flowable (bỏ qua nếu không đổi), ghi danh mục qua RPC; gói lỗi được báo rõ và bỏ qua, xóa thư mục là rút thủ tục (#30).
+- Migration `005_goi_thu_tuc.sql`: cột `goi`, `quy_trinh`, `bien_theo_buoc`, `json_schema`, `goi_sha256`, `nap_luc` của `mot_cua.thu_tuc`; thời hạn 0 ngày làm việc (trong ngày); role `dich_vu_danh_muc` + client Keycloak `mot_cua_danh_muc`; RPC `nap_thu_tuc`, `rut_goi_vang`; `json_schema_thu_tuc` trả schema của gói (#30).
+- Gói mới `thu-tuc/chung-thuc-ban-sao/` (CT01): tiếp nhận → kiểm tra bản chính → ký chứng thực → trả kết quả, hạn trong ngày (#30).
+- Test: `mot-cua/backend/tests/test_goi_thu_tuc.py` (gói hợp lệ, thiếu tệp, YAML/schema/BPMN/dữ liệu mẫu sai, bộ nạp bỏ qua gói lỗi), `mot-cua/db/tests/goi_thu_tuc.sql` (23 kiểm tra RPC nạp/rút và quyền), `mot-cua/tests/smoke-goi-thu-tuc.sh` (danh mục khớp `thu-tuc/`, cắm–rút gói tạm, hồ sơ chứng thực bản sao chạy hết quy trình qua `/workflow`) (#30).
+- `docs/thu-tuc.md`: thêm một thủ tục mới trong 5 bước (#30).
 - `docs/images/kien-truc.svg`: sơ đồ kiến trúc vẽ tay bằng SVG theo `docker-compose.yml`, `core/`, `apps/mot-cua/` – Tầng 2 và Tầng 1, route gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao, đánh số 4 dịch vụ bắt buộc (#26).
 - `docs/images/luong-ho-so.svg`: luồng hồ sơ đăng ký khai sinh theo BPMN `dang_ky_khai_sinh` (làn công dân, cán bộ hộ tịch, lãnh đạo; hẹn giờ quá hạn; API và sự kiện từng bước) (#26).
 - `docs/images/banner.webp`, `docs/images/mot-cua-so.webp`: ảnh minh họa do đội tạo bằng công cụ AI, không chữ; nguồn và giấy phép ghi ở `docs/images/README.md` (#26).

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# make smoke: kiểm tra lõi Tầng 1 đang chạy (sau `make up`) rồi gọi smoke của ứng dụng
-# apps/<DXOS_APP>/tests/smoke.sh nếu có. Không xóa dữ liệu; chỉ thêm hồ sơ thử và đặt
+# make smoke: kiểm tra nền tảng Tầng 1 đang chạy (sau `make up`) rồi gọi smoke của bộ máy
+# một cửa mot-cua/tests/smoke.sh (gồm cả gói thủ tục thu-tuc/). Không xóa dữ liệu; chỉ thêm hồ sơ thử và đặt
 # mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu).
 # Cần trên máy: docker compose v2.20+, curl, jq. Thoát mã 1 nếu có kiểm tra không đạt.
 # Bước cuối dùng hết hạn mức /public (kiểm 429): chạy lại ngay thì bước đầu chờ tới khi /public mở lại.
@@ -14,15 +14,16 @@ set -a
 . ./.env
 set +a
 export COMPOSE_PROFILES=core
-: "${DXOS_APP:?Đặt DXOS_APP trong .env}"
+# Tên dịch vụ Tầng 2 mà nền tảng phục vụ (x-tang2 trong docker-compose.yml).
+DXOS_TANG2=mot-cua
 # shellcheck source=scripts/lib-smoke.sh
 . scripts/lib-smoke.sh
 
-echo "== Lõi Tầng 1 (DXOS_APP=$DXOS_APP)"
+echo "== Nền tảng Tầng 1 (nen-tang/, Tầng 2 = $DXOS_TANG2)"
 
 # 1. Dịch vụ một lần đã thoát với mã 0, dịch vụ chạy nền healthy ------------------
 for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secrets garage-secrets \
-           rabbitmq-secrets jwks-init db-init app-migrate app-realm garage-init rabbitmq-init; do
+           rabbitmq-secrets jwks-init db-init tang2-migrate tang2-realm garage-init rabbitmq-init nap-thu-tuc; do
   for _ in $(seq 1 60); do  # chờ tối đa 2 phút nếu còn đang chạy
     tt="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' "$svc" 2>/dev/null)"
     case "$tt" in exited*) break ;; esac
@@ -30,7 +31,7 @@ for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secre
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in openbao postgres keycloak apisix flowable app-backend garage clamav rabbitmq app-worker; do
+for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker; do
   for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break
@@ -67,8 +68,8 @@ kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "12
   "$(docker compose port flowable 8080 | cut -d: -f1)"
 # cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
 cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
-kiem "app-backend, app-worker, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "||||||" \
-  "$(cong_host app-backend)|$(cong_host app-worker)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
+kiem "mot-cua-api, mot-cua-worker, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "||||||" \
+  "$(cong_host mot-cua-api)|$(cong_host mot-cua-worker)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
 
 # 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
 ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
@@ -86,30 +87,30 @@ kiem "JWKS realm dxos: 1 khóa RS256/sig" "1 RS256 sig" \
 # 4. Lõi không chứa bảng nghiệp vụ: schema dxos chỉ có sổ migration ------------------
 kiem "schema dxos chỉ có bảng app_migration" "app_migration" \
   "$(sql "SELECT string_agg(tablename, ',') FROM pg_tables WHERE schemaname = 'dxos'")"
-kiem "sổ migration có tệp của $DXOS_APP" "có" \
-  "$(sql "SELECT CASE WHEN count(*) > 0 THEN 'có' ELSE 'không' END FROM dxos.app_migration WHERE ung_dung = '$DXOS_APP'")"
+kiem "sổ migration có tệp của $DXOS_TANG2" "có" \
+  "$(sql "SELECT CASE WHEN count(*) > 0 THEN 'có' ELSE 'không' END FROM dxos.app_migration WHERE ung_dung = '$DXOS_TANG2'")"
 
 # 4b. Garage: một nút đã có layout, API quản trị đòi token ------------------------------
 kiem "Garage: nút có vai trò trong layout (zone dxos)" "dxos" \
   "$(docker compose exec -T garage /garage status 2>/dev/null | awk '/HEALTHY NODES/ {f=1; next} f && $1 ~ /^[0-9a-f]+$/ {print $4; exit}' | tr -d '[]')"
 kiem "Garage Admin API không token → 403" "403" \
-  "$(docker compose exec -T app-backend python -c 'import urllib.request, urllib.error
+  "$(docker compose exec -T mot-cua-api python -c 'import urllib.request, urllib.error
 try: print(urllib.request.urlopen("http://garage:3903/v2/ListKeys", timeout=5).status)
 except urllib.error.HTTPError as e: print(e.code)')"
 
 # 4c. OpenBao (#10): két đã unseal, policy theo danh tính, không bí mật trong cấu hình -----
 . scripts/smoke-openbao.sh
 
-# 4d. RabbitMQ (#9): management chỉ cho quản trị trong mạng nội bộ, user ứng dụng hạn chế ------
+# 4d. RabbitMQ (#9): management chỉ cho quản trị trong mạng nội bộ, user Tầng 2 hạn chế ------
 . scripts/smoke-rabbitmq.sh
 
 # 5. Chạy lại migration và vai trò Keycloak: không lỗi, bỏ qua phần đã áp dụng ------
-if out="$(docker compose run --rm --no-deps app-migrate 2>&1)"; then ma=0; else ma=$?; fi
-kiem "app-migrate lần 2: mã thoát" "0" "$ma"
-kiem "app-migrate lần 2: không áp dụng lại tệp nào" "0" "$(grep -c 'đã áp dụng ' <<<"$out" || true)"
-if out="$(docker compose run --rm --no-deps app-realm 2>&1)"; then ma=0; else ma=$?; fi
-kiem "app-realm lần 2: mã thoát" "0" "$ma"
-kiem "app-realm lần 2: không thêm gì (added=0)" "added=0" "$(grep -oE 'added=[0-9]+' <<<"$out" || echo "$out" | tail -1)"
+if out="$(docker compose run --rm --no-deps tang2-migrate 2>&1)"; then ma=0; else ma=$?; fi
+kiem "tang2-migrate lần 2: mã thoát" "0" "$ma"
+kiem "tang2-migrate lần 2: không áp dụng lại tệp nào" "0" "$(grep -c 'đã áp dụng ' <<<"$out" || true)"
+if out="$(docker compose run --rm --no-deps tang2-realm 2>&1)"; then ma=0; else ma=$?; fi
+kiem "tang2-realm lần 2: mã thoát" "0" "$ma"
+kiem "tang2-realm lần 2: không thêm gì (added=0)" "added=0" "$(grep -oE 'added=[0-9]+' <<<"$out" || echo "$out" | tail -1)"
 if out="$(docker compose run --rm --no-deps garage-init 2>&1)"; then ma=0; else ma=$?; fi
 kiem "garage-init lần 2: mã thoát" "0" "$ma"
 kiem "garage-init lần 2: không tạo thêm khóa, bucket, layout" "0" "$(grep -cE 'đã (tạo|áp dụng)' <<<"$out" || true)"
@@ -128,12 +129,10 @@ kiem "CSDL $POSTGRES_DB không chứa bảng của Flowable" "0" \
 kiem "Flowable không nạp quy trình demo của image" "0" \
   "$(wf "repository/process-definitions?key=oneTaskProcess" | jq .total)"
 
-# 6. Smoke riêng của ứng dụng ----------------------------------------------------
-if [ -f "apps/$DXOS_APP/tests/smoke.sh" ]; then
-  echo "== Ứng dụng $DXOS_APP"
-  # shellcheck source=/dev/null
-  . "apps/$DXOS_APP/tests/smoke.sh"
-fi
+# 6. Bộ máy một cửa và gói thủ tục ----------------------------------------------
+echo "== Bộ máy một cửa (mot-cua/)"
+# shellcheck source=mot-cua/tests/smoke.sh
+. mot-cua/tests/smoke.sh
 
 # 7. Rate limit cổng công dân: dùng hết hạn mức /public của IP này → 429 -------------
 # Chạy cuối cùng: sau bước này /public của máy chạy smoke bị khóa tới hết cửa sổ 60 giây.

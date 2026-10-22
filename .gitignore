@@ -15,3 +15,6 @@ models/
 
 # Claude Code – cấu hình riêng máy
 .claude/settings.local.json
+
+# Gói tạm do make smoke tạo để thử cắm–rút (tự xóa khi smoke chạy xong)
+thu-tuc/zz-smoke-*/
