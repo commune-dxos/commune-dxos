@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.2.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.3.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
