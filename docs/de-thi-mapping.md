@@ -37,12 +37,12 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 | 3 | Release đánh phiên bản, `.tar.gz`, trước hạn | | ☐ |
 | 4 | Build từ mã nguồn, cấu hình qua .env, chạy ngoài thư mục mã | README mục 2–3, 5 (hướng dẫn từ máy sạch, yêu cầu máy, bảng biến `.env` đọc lúc `make up`, không sửa header tay: `make license`, chỉ image gốc + công cụ nguồn mở); `docs/architecture.md` §8.9: bản clone mới trong thư mục tạm, gọi `make -C` từ thư mục khác, `make up` 128 giây, smoke 405/405 (#12) | ◐ (còn kiểm trên máy amd64/Linux) |
 | 5 | Không vendor/sửa thư viện, khai báo phụ thuộc | `DEPENDENCIES.md` (image đã ghim; npm/pip khi có mã) | ◐ |
-| 6 | README, CHANGELOG, bug tracker | README song ngữ (#12): cài đặt, cấu hình, thêm ứng dụng, xử lý lỗi, giấy phép; `CHANGELOG.md` theo Keep a Changelog; GitHub Issues có mẫu issue, README mục 7 hướng dẫn báo lỗi | ◐ (README đủ; còn phiên bản v0.1.0) |
+| 6 | README, CHANGELOG, bug tracker | README tiếng Việt kể chuyện sản phẩm (#28), hướng dẫn cài đặt đầy đủ ở `docs/cai-dat.md`: cài đặt, cấu hình, thêm ứng dụng, xử lý lỗi, giấy phép; `CHANGELOG.md` theo Keep a Changelog; GitHub Issues có mẫu issue, README mục Báo lỗi | ◐ (README đủ; còn phiên bản v0.1.0) |
 
 ## E. Cộng đồng & bền vững (tiêu chí 10, 11)
 | Việc | Trạng thái |
 |---|---|
-| README song ngữ, CONTRIBUTING, CODE_OF_CONDUCT | ✔ (README viết lại song ngữ, #12) |
+| README song ngữ, CONTRIBUTING, CODE_OF_CONDUCT | ✔ (README viết lại #12, kể chuyện sản phẩm #28) |
 | Hướng dẫn viết module cắm–rút + module mẫu | ◐ (quy ước `apps/<tên>/` + ví dụ: `docs/architecture.md` §2.4–2.5; module mẫu thứ hai: tuần 6) |
 | Demo công khai trên Internet, người dùng thật thử | ☐ |
 | Kênh trao đổi (Discussions/Telegram), bài giới thiệu | ☐ |

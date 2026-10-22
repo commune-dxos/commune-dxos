@@ -8,6 +8,12 @@ Phiên bản tài liệu: v0.0.1+ (tuần 2: tách `core/` và `apps/` #3, schem
 - **Tầng 2 – Ứng dụng** (`apps/<tên>/`): ứng dụng chính là `apps/mot-cua/` (một cửa cấp xã): schema, vai trò, quy trình, dữ liệu mẫu, sau này cổng cán bộ và cổng công dân (React), dashboard Superset. Tầng 2 **chỉ gọi lõi qua APISIX**, không kết nối thẳng CSDL, Flowable hay Garage.
 - **Người dùng:** công dân, cán bộ một cửa, cán bộ chuyên môn, lãnh đạo xã.
 
+Sơ đồ dưới đây vẽ đúng các dịch vụ đang chạy trong `docker-compose.yml` (profile `core`) và ứng dụng `apps/mot-cua/`: route của gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao; 4 dịch vụ bắt buộc của đề được đánh số 1–4. Sơ đồ Mermaid tiếp theo là kiến trúc đích, gồm cả các thành phần của tuần sau.
+
+<p align="center">
+  <img src="images/kien-truc.svg" alt="Sơ đồ kiến trúc chi tiết: Tầng 2 apps/mot-cua gọi lõi qua APISIX; Tầng 1 core gồm Keycloak, APISIX, PostgREST, PostgreSQL, Flowable, Garage, ClamAV, RabbitMQ, OpenBao" width="100%">
+</p>
+
 ```mermaid
 flowchart TB
   subgraph U["Người dùng"]
@@ -308,6 +314,12 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 - Không mở cổng ra host: PostgREST, `app-backend`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
 ### 4.2 Luồng `/workflow`: API quy trình mỏng của ứng dụng
+
+Luồng hồ sơ đăng ký khai sinh theo BPMN `dang_ky_khai_sinh` (làn công dân, cán bộ hộ tịch, lãnh đạo; hẹn giờ quá hạn), kèm lời gọi API và sự kiện phát ra ở từng bước:
+
+<p align="center">
+  <img src="images/luong-ho-so.svg" alt="Luồng hồ sơ khai sinh chi tiết: công dân nộp, cán bộ hộ tịch tiếp nhận và thẩm định, lãnh đạo phê duyệt; thiếu thành phần thì công dân bổ sung; hẹn giờ đánh dấu quá hạn" width="100%">
+</p>
 
 Flowable REST chỉ có Basic auth bằng tài khoản của chính nó, không hiểu JWT Keycloak và không biết công dân nào sở hữu hồ sơ nào. Hai cách đã cân nhắc:
 

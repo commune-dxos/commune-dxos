@@ -5,12 +5,15 @@
 ## [Unreleased]
 ### Changed
 - `README.md` viết lại thuần tiếng Việt, giữ đủ nội dung đã kiểm chứng từ máy sạch (#12); thêm banner, ảnh minh họa bài toán, huy hiệu giấy phép/phiên bản/CI, mục "Bài toán" và bảng 4 dịch vụ bắt buộc của đề (#26).
+- `README.md` viết lại theo trình tự kể chuyện sản phẩm: Giới thiệu → Thách thức → Giải pháp → Đối tượng → Chức năng (đã có ở v0.1.0 / sắp có) → Kiến trúc → Công nghệ → Luồng hồ sơ → Hướng phát triển → Cài đặt từ máy sạch → Đóng góp, Báo lỗi, Giấy phép, CHANGELOG; ảnh mới ít chữ, nhãn tiếng Việt; bỏ `README.en.md` (#28).
+- Hướng dẫn cài đặt chi tiết (yêu cầu máy, OpenBao, cổng và tài khoản mẫu, cấu hình, thêm ứng dụng, kiểm thử, xử lý lỗi) chuyển sang `docs/cai-dat.md`; README giữ các lệnh chính (#28).
+- Sơ đồ SVG chi tiết `kien-truc.svg`, `luong-ho-so.svg` chuyển sang `docs/architecture.md` §1 và §4.2 (#28).
 
 ### Added
-- `README.en.md`: bản tiếng Anh ngắn (mô tả, kiến trúc, chạy từ máy sạch, giấy phép) (#26).
 - `docs/images/kien-truc.svg`: sơ đồ kiến trúc vẽ tay bằng SVG theo `docker-compose.yml`, `core/`, `apps/mot-cua/` – Tầng 2 và Tầng 1, route gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao, đánh số 4 dịch vụ bắt buộc (#26).
 - `docs/images/luong-ho-so.svg`: luồng hồ sơ đăng ký khai sinh theo BPMN `dang_ky_khai_sinh` (làn công dân, cán bộ hộ tịch, lãnh đạo; hẹn giờ quá hạn; API và sự kiện từng bước) (#26).
 - `docs/images/banner.webp`, `docs/images/mot-cua-so.webp`: ảnh minh họa do đội tạo bằng công cụ AI, không chữ; nguồn và giấy phép ghi ở `docs/images/README.md` (#26).
+- `docs/images/banner.webp` thay bằng ảnh có tiêu đề; `vong-chuc-nang.webp` (6 chức năng), `kien-truc-tong-quan.webp` (kiến trúc dạng biểu tượng), `luong-ho-so.webp` (5 bước + cảnh báo trễ hạn), nhãn tiếng Việt; `docs/images/README.md` ghi nguồn, giấy phép và lưu ý biểu tượng trong ảnh kiến trúc không phải logo chính thức (#28).
 
 ## [0.1.0] - 2026-10-21
 ### Added

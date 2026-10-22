@@ -1,12 +1,10 @@
-<sub>English: [README.en.md](README.en.md)</sub>
-
 <p align="center">
-  <img src="docs/images/banner.webp" alt="Bộ phận một cửa của xã: hồ sơ giấy được chuyển thành hồ sơ điện tử và đi qua các bước xử lý" width="100%">
+  <img src="docs/images/banner.webp" alt="Ảnh đầu trang có tiêu đề DTU_DZ_2 · OLP PMNM 2026 · COMMUNE DX-OS, Hệ điều hành Chính quyền số Cấp xã: bộ phận một cửa của xã, người dân nộp hồ sơ từ điện thoại, hồ sơ điện tử chuyển giữa các bàn cán bộ" width="100%">
 </p>
 
 # Commune DX-OS — Hệ điều hành Chính quyền số Cấp xã
 
-Nền tảng nguồn mở giúp chính quyền cấp xã tiếp nhận và xử lý thủ tục hành chính trực tuyến (một cửa), theo dõi trễ hạn, lưu hồ sơ điện tử an toàn và hỗ trợ người dân tra cứu thủ tục.
+Nền tảng nguồn mở giúp xã tiếp nhận, xử lý và theo dõi thủ tục hành chính trực tuyến: người dân nộp hồ sơ từ xa, cán bộ xử lý theo quy trình, lãnh đạo thấy ngay hồ sơ nào sắp trễ hạn.
 
 [![Giấy phép Apache-2.0](https://img.shields.io/badge/gi%E1%BA%A5y%20ph%C3%A9p-Apache--2.0-blue.svg)](LICENSE)
 [![Phiên bản](https://img.shields.io/github/v/release/commune-dxos/commune-dxos?label=phi%C3%AAn%20b%E1%BA%A3n)](https://github.com/commune-dxos/commune-dxos/releases)
@@ -14,217 +12,159 @@ Nền tảng nguồn mở giúp chính quyền cấp xã tiếp nhận và xử 
 
 OLP PMNM 2026 · Đề tài DX-OS Open-Core · Đội DTU_DZ_2
 
-Mục lục: [Bài toán](#1-bài-toán) · [Kiến trúc](#2-kiến-trúc) · [Yêu cầu máy](#3-yêu-cầu-máy) · [Chạy từ máy sạch](#4-chạy-từ-máy-sạch) · [Địa chỉ và tài khoản mẫu](#5-địa-chỉ-cổng-và-tài-khoản-mẫu) · [Cấu hình](#6-cấu-hình-trước-khi-chạy) · [Thêm ứng dụng](#7-thêm-một-ứng-dụng-vào-apps) · [Kiểm thử, đóng góp](#8-kiểm-thử-và-đóng-góp) · [Xử lý lỗi](#9-xử-lý-lỗi-thường-gặp) · [Giấy phép](#10-giấy-phép) · [Phiên bản](#11-phiên-bản)
+## 🧭 Giới thiệu
 
-## 1. Bài toán
+Cấp xã là nơi người dân làm thủ tục hành chính nhiều nhất: đăng ký khai sinh, chứng thực bản sao, xác nhận đất đai… Mỗi ngày bộ phận một cửa nhận hàng chục hồ sơ, phần lớn vẫn là giấy, mỗi hồ sơ phải qua tay nhiều cán bộ và có thời hạn giải quyết theo luật.
 
-Ở cấp xã, khối lượng thủ tục hành chính lớn mà phần nhiều vẫn là hồ sơ giấy: người dân phải đến bộ phận một cửa nhiều lần để nộp, bổ sung, hỏi tiến độ; cán bộ khó biết hồ sơ nào sắp trễ hạn; lãnh đạo thiếu số liệu về thời gian giải quyết.
+Commune DX-OS đưa toàn bộ vòng đời hồ sơ lên mạng: từ lúc người dân nộp, qua tiếp nhận, thẩm định, phê duyệt, đến khi trả kết quả. Hệ thống gồm một lõi dùng chung (đăng nhập, cổng API, dữ liệu, quy trình) và các ứng dụng nghiệp vụ cắm vào lõi; ứng dụng đầu tiên là **một cửa cấp xã**.
 
-<p align="center">
-  <img src="docs/images/mot-cua-so.webp" alt="Công dân nộp hồ sơ khai sinh từ điện thoại; hồ sơ được quét an toàn rồi đi qua các bước tiếp nhận, thẩm định, phê duyệt" width="80%">
-</p>
+## ⚠️ Thách thức
 
-Commune DX-OS đưa luồng này lên mạng, cho bốn nhóm người dùng: **công dân**, **cán bộ một cửa**, **cán bộ chuyên môn**, **lãnh đạo xã**.
+- **Hồ sơ giấy:** khó lưu trữ, khó tra cứu, dễ thất lạc khi chuyển giữa các bàn.
+- **Đi lại nhiều lần:** người dân phải đến xã để nộp, để bổ sung, để hỏi tiến độ.
+- **Thiếu thành phần hồ sơ:** nộp thiếu giấy tờ chỉ phát hiện khi cán bộ xem, hồ sơ bị trả về.
+- **Khó theo dõi trễ hạn:** hạn tính theo ngày làm việc, cán bộ khó biết hồ sơ nào sắp quá hạn.
+- **Tệp tải lên có thể chứa mã độc:** nhận tệp từ người dân mà không quét là rủi ro cho cả hệ thống.
+- **Dữ liệu phân tán:** mỗi bộ phận giữ sổ riêng, lãnh đạo thiếu số liệu về thời gian giải quyết.
 
-- Công dân nộp hồ sơ trực tuyến và tải giấy tờ; mọi tệp được quét mã độc trước khi lưu.
-- Hồ sơ chạy theo quy trình BPMN (tiếp nhận → bổ sung nếu thiếu → thẩm định → phê duyệt), mỗi cán bộ chỉ thấy hồ sơ thuộc lĩnh vực mình phụ trách.
-- Hạn xử lý tính theo ngày làm việc; hồ sơ sắp trễ hạn phát cảnh báo qua hàng đợi sự kiện.
-- Cán bộ và lãnh đạo đăng nhập một lần (SSO) với xác thực hai lớp (OTP).
-
-Bản v0.1.0 đã có lõi và API của ứng dụng một cửa (kiểm chứng bằng `make smoke`, 405 kiểm tra). Cổng web cho công dân và cán bộ, dashboard, ký số, OCR và trợ lý tra cứu thủ tục nằm trong kế hoạch các tuần tiếp theo: [`docs/PLAN.md`](docs/PLAN.md).
-
-## 2. Kiến trúc
+## 💡 Giải pháp
 
 <p align="center">
-  <img src="docs/images/kien-truc.svg" alt="Sơ đồ kiến trúc: Tầng 2 apps/mot-cua gọi lõi qua APISIX; Tầng 1 core gồm Keycloak, APISIX, PostgREST, PostgreSQL, Flowable, Garage, ClamAV, RabbitMQ, OpenBao" width="100%">
+  <img src="docs/images/mot-cua-so.webp" alt="Minh họa: công dân nộp hồ sơ khai sinh từ điện thoại; hồ sơ được quét an toàn rồi đi qua các bước tiếp nhận, thẩm định, phê duyệt" width="80%">
 </p>
 
-Hệ thống chia hai tầng, tách bằng thư mục:
+- **Nộp trực tuyến, một lần:** người dân nộp hồ sơ và giấy tờ từ điện thoại, xem tiến độ mà không cần đến xã.
+- **Quy trình rõ ràng:** mỗi thủ tục là một quy trình BPMN; mỗi cán bộ chỉ thấy hồ sơ thuộc lĩnh vực mình phụ trách.
+- **Hạn xử lý tự tính:** theo ngày làm việc (bỏ cuối tuần, ngày lễ); hồ sơ sắp trễ hạn tự phát cảnh báo.
+- **An toàn mặc định:** đăng nhập một lần có xác thực hai lớp cho cán bộ, tệp được quét mã độc trước khi lưu, bí mật hệ thống nằm trong két riêng.
+- **Mở để mở rộng:** lõi không chứa nghiệp vụ; ứng dụng mới cắm vào thư mục `apps/` mà không sửa lõi.
 
-- **Tầng 1 – `core/`** là lõi headless: không có giao diện cho người dùng cuối, chỉ có API, và **không chứa nghiệp vụ**. Gồm SSO (Keycloak), API Gateway (APISIX), dữ liệu có cấu trúc (PostgreSQL + Row-Level Security, API tự sinh bằng PostgREST) và phi cấu trúc (Garage S3, quét ClamAV), workflow engine (Flowable BPMN 2.0), hàng đợi (RabbitMQ), két bí mật (OpenBao). Mọi thành phần chạy bằng image gốc của dự án upstream.
-- **Tầng 2 – `apps/<tên>/`** là ứng dụng cắm vào lõi, chọn bằng biến `DXOS_APP`. Ứng dụng chính là [`apps/mot-cua/`](apps/mot-cua/) (một cửa cấp xã): schema và RLS, vai trò Keycloak, quy trình BPMN, backend mỏng `/workflow`, `/files` và tác vụ nền phát sự kiện. Tầng 2 chỉ gọi lõi qua APISIX.
+## 👥 Đối tượng
 
-Luồng chính trên sơ đồ:
-
-1. Người dùng đăng nhập Keycloak (OIDC + PKCE, cán bộ và lãnh đạo thêm OTP), nhận access token RS256.
-2. Mọi request đi qua APISIX với `Bearer JWT`: gateway kiểm chữ ký bằng JWKS, giới hạn tần suất, rồi chuyển `/public`, `/api` tới PostgREST, `/workflow`, `/files` tới backend của ứng dụng. PostgREST và backend kiểm lại token (Zero-Trust); PostgreSQL áp RLS theo vai trò trong token.
-3. Tệp tải lên được ClamAV quét **trước**, sạch mới lưu vào Garage; người xem nhận link ký sẵn ngắn hạn.
-4. Mỗi bước quy trình ghi một sự kiện vào hộp thư đi (outbox) trong PostgreSQL; `app-worker` phát lên RabbitMQ, nên request không phụ thuộc broker.
-
-Bốn dịch vụ bắt buộc của đề (đánh số 1–4 trên sơ đồ):
-
-| Yêu cầu của đề (Tầng 1) | Thành phần |
+| Đối tượng | Dùng để |
 |---|---|
-| Identity / SSO | Keycloak 26.3, realm `dxos`, MFA (OTP) bắt buộc cho cán bộ |
-| API Gateway | Apache APISIX 3.13 (standalone), JWT, rate limit, CORS |
-| Dữ liệu có cấu trúc và phi cấu trúc | PostgreSQL 17.6 + RLS + PostgREST 13; Garage 2.4 (S3) + ClamAV 1.5 |
-| Workflow engine | Flowable REST 8.0, BPMN 2.0 viết tay trong `apps/<tên>/processes/` |
+| Công dân | Nộp hồ sơ, tải giấy tờ, theo dõi tiến độ, bổ sung khi được yêu cầu |
+| Cán bộ một cửa | Tiếp nhận, kiểm tra thành phần, yêu cầu bổ sung |
+| Cán bộ chuyên môn | Thẩm định hồ sơ thuộc lĩnh vực phụ trách (hộ tịch, chứng thực, đất đai…) |
+| Lãnh đạo xã | Phê duyệt, theo dõi hồ sơ sắp trễ hạn và thời gian giải quyết |
+| Quản trị hệ thống | Cài đặt, quản lý người dùng, bí mật, sao lưu |
+| Lập trình viên | Viết ứng dụng mới cắm vào lõi qua API, không sửa `core/` |
 
-Luồng hồ sơ đăng ký khai sinh, từ lúc công dân nộp đến khi lãnh đạo phê duyệt:
+## 📱 Chức năng
 
 <p align="center">
-  <img src="docs/images/luong-ho-so.svg" alt="Luồng hồ sơ khai sinh: công dân nộp, cán bộ hộ tịch tiếp nhận và thẩm định, lãnh đạo phê duyệt; thiếu thành phần thì công dân bổ sung" width="100%">
+  <img src="docs/images/vong-chuc-nang.webp" alt="Vòng tròn 6 chức năng quanh Commune DX-OS: Nộp hồ sơ online, Kiểm tra đủ giấy tờ, Quy trình xử lý, Cảnh báo trễ hạn, Ký số, Trợ lý AI" width="80%">
 </p>
 
-Chi tiết (route gateway, luồng tệp, bí mật, sự kiện, hợp đồng lõi–ứng dụng): [`docs/architecture.md`](docs/architecture.md). Nguồn và giấy phép hình ảnh: [`docs/images/README.md`](docs/images/README.md).
-
-## 3. Yêu cầu máy
-
-| Mục | Tối thiểu | Ghi chú |
+| Chức năng | Bản v0.1.0 | Sắp có |
 |---|---|---|
-| Hệ điều hành | Linux, macOS, Windows (WSL2) | CPU **amd64 hoặc arm64** (mọi image đều có cả hai) |
-| Docker | Docker Engine **24+** hoặc Docker Desktop **4.25+** | đã thử: Docker Desktop 28.5 (macOS arm64) |
-| Docker Compose | **v2.20+** (`docker compose version`) | Docker Desktop đã có sẵn |
-| RAM cho Docker | **4 GB**, khuyên **6 GB** (máy 8–16 GB) | đo được ≈ 2,3 GB khi chạy; ClamAV ~1 GB, Keycloak ~0,5 GB, Flowable ~0,4 GB |
-| Ổ trống | **6 GB** | đo được: 10 image ≈ 4,1 GB + volume ≈ 0,3 GB (CSDL virus ClamAV 175 MB) |
-| Công cụ | `git`, `make`, `bash`, `curl`, `jq`, `python3` (3.10+) | dùng cho `make smoke`, `make test`; Windows: chạy trong WSL2 |
-| Mạng | tải ≈ 1,1 GB lần đầu | 10 image nén (bản arm64 đo được 1,1 GiB) |
+| Nộp hồ sơ online | ✅ API nộp hồ sơ, tải tệp, xem tiến độ (`/workflow`, `/files`) | Cổng web công dân và cổng cán bộ (React), tuần 3 |
+| Kiểm tra đủ giấy tờ | ✅ JSON Schema thành phần hồ sơ của từng thủ tục, API công khai | Chặn nộp khi thiếu thành phần trước khi khởi tạo quy trình (Poka-yoke), tuần 3 |
+| Quy trình xử lý | ✅ Quy trình đăng ký khai sinh (BPMN): tiếp nhận → bổ sung → thẩm định → phê duyệt | Thêm thủ tục khác |
+| Cảnh báo trễ hạn | ✅ Sự kiện "sắp trễ hạn" qua hàng đợi; hẹn giờ quá hạn trong quy trình | Thông báo tới cán bộ và công dân, tuần 3; dashboard tỷ lệ trễ hạn, tuần 4 |
+| Ký số | — | Ký số biên nhận và kết quả PDF, văn bản đi/đến, tuần 4 |
+| Trợ lý AI | — | OCR giấy tờ tự điền hồ sơ (cán bộ xác nhận), trợ lý tra cứu thủ tục, tuần 5 |
 
-Không cần cài Java, Node hay PostgreSQL trên máy: mọi dịch vụ chạy bằng image gốc của dự án upstream, không có bước build image riêng.
+Bản v0.1.0 là lõi và API của ứng dụng một cửa, kiểm chứng đầu-cuối bằng `make smoke` (405 kiểm tra).
 
-## 4. Chạy từ máy sạch
+## 🗺️ Kiến trúc
 
-Clone vào thư mục nào cũng chạy được (không có đường dẫn tuyệt đối), và gọi được từ thư mục khác: `make -C /duong/dan/commune-dxos up`. Lần đầu `make up` mất khoảng **2–10 phút** tùy mạng (phần lớn là tải image), `make smoke` thêm khoảng 1,5 phút; các lần sau `make up` khoảng 35 giây. Đo được trên bản clone sạch (Docker Desktop, macOS arm64, 21/10/2026): `make up` lần đầu 2 phút 8 giây, `make smoke` 93 giây, 405/405 đạt.
+<p align="center">
+  <img src="docs/images/kien-truc-tong-quan.webp" alt="Kiến trúc tổng quan: công dân và cán bộ xã gọi qua APISIX bằng HTTPS và JWT; Keycloak lo đăng nhập và xác thực hai lớp; APISIX chuyển tới PostgREST và PostgreSQL có RLS, Flowable BPMN phát sự kiện qua RabbitMQ để cảnh báo trễ hạn, dịch vụ tệp quét ClamAV rồi lưu Garage S3; OpenBao cấp bí mật cho các dịch vụ" width="100%">
+</p>
+
+Hệ thống chia hai tầng. **Tầng 1 – [`core/`](core/)** là lõi headless: chỉ có API, không có giao diện cho người dùng cuối và không chứa nghiệp vụ. **Tầng 2 – [`apps/mot-cua/`](apps/mot-cua/)** là ứng dụng một cửa: schema và phân quyền dữ liệu, vai trò, quy trình BPMN, backend mỏng; ứng dụng chỉ gọi lõi qua API Gateway và được chọn bằng biến `DXOS_APP`. Lõi có đủ 4 dịch vụ bắt buộc của đề: **SSO** (Keycloak, MFA cho cán bộ), **API Gateway** (APISIX), **dữ liệu có cấu trúc và phi cấu trúc** (PostgreSQL + RLS + PostgREST; Garage S3 + ClamAV), **workflow engine** (Flowable BPMN 2.0). Mọi thành phần chạy bằng image gốc của dự án upstream.
+
+Sơ đồ chi tiết (route gateway, luồng JWT, luồng tệp, bí mật, sự kiện, hợp đồng lõi–ứng dụng): [`docs/architecture.md`](docs/architecture.md).
+
+## ⚙️ Công nghệ
+
+| Lớp | Thành phần | Giấy phép |
+|---|---|---|
+| SSO, MFA | Keycloak 26.3 | Apache-2.0 |
+| API Gateway | Apache APISIX 3.13 | Apache-2.0 |
+| CSDL, API tự sinh | PostgreSQL 17.6 + Row-Level Security, PostgREST 13 | PostgreSQL, MIT |
+| Lưu tệp | Garage 2.4 (S3), dịch vụ riêng | AGPL-3.0 |
+| Quét mã độc | ClamAV 1.5, dịch vụ riêng | GPL-2.0 |
+| Workflow | Flowable REST 8.0 (BPMN 2.0) | Apache-2.0 |
+| Hàng đợi sự kiện | RabbitMQ 4.3 | MPL-2.0 |
+| Két bí mật | OpenBao 2.7 | MPL-2.0 |
+| Backend ứng dụng | Python 3.13 (thư viện chuẩn) | PSF-2.0 |
+| Sắp dùng | React + Vite, Superset, step-ca + pyHanko, Gotenberg, Meilisearch CE, PaddleOCR, Ollama + Qwen2.5 | xem [`DEPENDENCIES.md`](DEPENDENCIES.md) |
+
+Thành phần AGPL/GPL chỉ chạy như dịch vụ riêng bằng image gốc, không sửa, không liên kết vào mã của dự án.
+
+## 🔄 Luồng hồ sơ
+
+<p align="center">
+  <img src="docs/images/luong-ho-so.webp" alt="Luồng hồ sơ 5 bước: 1 Nộp hồ sơ, 2 Quét virus, 3 Thẩm định, 4 Phê duyệt, 5 Hoàn tất; cảnh báo trễ hạn gắn vào bước thẩm định" width="100%">
+</p>
+
+1. **Nộp hồ sơ:** công dân đăng nhập, chọn thủ tục, nộp hồ sơ; hệ thống tạo mã hồ sơ, tính hạn xử lý và khởi tạo quy trình.
+2. **Quét virus:** mỗi tệp giấy tờ được ClamAV quét trước, sạch mới lưu vào Garage.
+3. **Thẩm định:** cán bộ phụ trách lĩnh vực tiếp nhận, kiểm tra thành phần (thiếu thì công dân bổ sung) rồi thẩm định; không đạt thì từ chối.
+4. **Phê duyệt:** lãnh đạo xã duyệt, hoặc trả lại để thẩm định lại.
+5. **Hoàn tất:** hồ sơ đóng, công dân xem kết quả; mỗi bước đều phát sự kiện lên hàng đợi.
+
+**Cảnh báo trễ hạn:** tác vụ nền quét định kỳ, hồ sơ chưa xong mà còn ≤ 1 ngày làm việc tới hạn sinh sự kiện `ho_so.sap_tre_han`; quá hạn thì hẹn giờ trong quy trình đánh dấu hồ sơ trễ.
+
+## 🚀 Hướng phát triển
+
+| Giai đoạn | Nội dung |
+|---|---|
+| Tuần 3 | Poka-yoke bằng JSON Schema, cổng công dân và cổng cán bộ (React), thông báo trễ hạn |
+| Tuần 4 → v0.2.0 | Log kiểm toán chuỗi băm, ký số, sinh PDF, dữ liệu lịch sử Parquet + dbt, dashboard Superset, triển khai VPS |
+| Tuần 5 | OCR giấy tờ tự điền hồ sơ (cán bộ xác nhận), trợ lý tra cứu thủ tục (RAG), demo công khai |
+| Tuần 6 → v0.3.0 | Cải thiện theo phản hồi người dùng, module mẫu thứ hai cắm vào lõi, công bố bộ JSON Schema thủ tục dạng dữ liệu mở |
+| Tuần 7 → v1.0.0 | Đóng băng tính năng, phát hành v1.0.0 |
+
+Chi tiết theo tuần: [`docs/PLAN.md`](docs/PLAN.md); đối chiếu yêu cầu đề thi: [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md).
+
+## 🛠️ Cài đặt từ máy sạch
+
+**Yêu cầu:** Linux, macOS hoặc Windows (WSL2), CPU amd64/arm64; Docker Engine 24+ hoặc Docker Desktop 4.25+ với Compose v2.20+; RAM cho Docker 4 GB (khuyên 6 GB); ổ trống 6 GB; `git`, `make`, `bash`, `curl`, `jq`, `python3` 3.10+. Không cần cài Java, Node hay PostgreSQL, không có bước build image.
 
 ```bash
 git clone https://github.com/commune-dxos/commune-dxos.git
 cd commune-dxos
 cp .env.example .env      # không có mật khẩu nào cần điền
 make up                   # lõi + ứng dụng DXOS_APP; tự init + unseal OpenBao
+make bao-init             # (tùy chọn) init/unseal OpenBao lại, chạy lại an toàn; make up đã tự gọi
 make ps                   # dịch vụ chạy nền "healthy", dịch vụ một lần "Exited (0)"
 make smoke                # kiểm tra đầu-cuối: "== Kết quả: 405 đạt, 0 trượt"
-make demo-users           # đặt mật khẩu cho người dùng mẫu và in ra
+make demo-users           # đặt mật khẩu cho người dùng mẫu và in ra (chạy SAU smoke)
 ```
 
-- `make up` tự gọi `bao-init`: lần đầu khởi tạo OpenBao, sinh bí mật ngẫu nhiên cho mọi dịch vụ và ghi **unseal key + root token** vào `.data/openbao/commune.json` (quyền 600, ngoài git). Chỉ cần gọi `make bao-init` riêng khi OpenBao bị seal mà không muốn khởi động lại cả hệ thống (mục 9).
-- `make up` trả về khi container đã tạo; ClamAV cần thêm 1–2 phút để nạp CSDL virus. `make smoke` tự chờ dịch vụ healthy (tối đa ~3 phút) rồi mới kiểm.
-- `make smoke` không xóa dữ liệu: nó thêm hồ sơ thử và đặt mật khẩu **ngẫu nhiên** cho người dùng mẫu, nên chạy `make demo-users` **sau** `make smoke`.
-- Dừng: `make down` (giữ dữ liệu). Xóa sạch dữ liệu để chạy lại từ đầu: `docker compose --profile '*' down -v` rồi xóa `.data/openbao/commune.json`.
+Lần đầu `make up` mất khoảng 2–10 phút tùy mạng (đo trên bản clone sạch: 2 phút 8 giây), `make smoke` khoảng 1,5 phút. Dừng: `make down` (giữ dữ liệu). **Không xóa, không commit `.data/openbao/commune.json`** (unseal key + root token của OpenBao, sinh ở lần `make up` đầu): mất tệp là mất mọi bí mật, hãy sao lưu ra ngoài repo.
 
-### Bí mật: OpenBao
-
-Mọi mật khẩu, khóa, token của dịch vụ nằm trong OpenBao (MPL-2.0), không nằm trong repo hay `.env`. **Không xóa, không commit `.data/openbao/commune.json`**: mất tệp khi OpenBao đang seal là mất mọi bí mật; hãy sao lưu ra ngoài repo (`git clean -fdx` cũng xóa `.data/`). Tự unseal bằng tệp **chỉ dùng cho máy dev**; triển khai thật đặt `BAO_UNSEAL=manual` và unseal tay. Mỗi dịch vụ chỉ đọc được bí mật của mình (AppRole + policy). Chi tiết: [`docs/architecture.md` §4.4](docs/architecture.md#44-quản-lý-bí-mật-openbao-10).
-
-```bash
-make bao-init             # init (lần đầu) + unseal + policy, chạy lại an toàn
-make bao-status           # initialized / sealed
-docker compose exec openbao bao operator unseal   # unseal tay khi BAO_UNSEAL=manual
-make bao-import-env       # chuyển mật khẩu từ .env cũ (trước v0.1.0)
-```
-
-## 5. Địa chỉ, cổng và tài khoản mẫu
-
-| Dịch vụ | Địa chỉ | Ghi chú |
-|---|---|---|
-| API Gateway – công khai | http://localhost:9080/public/thu_tuc | không token, 60 request/phút/IP |
-| API Gateway – dữ liệu (JWT) | http://localhost:9080/api/ho_so | PostgREST qua APISIX, RLS theo vai trò |
-| API Gateway – quy trình (JWT) | http://localhost:9080/workflow/tasks | API quy trình của `mot-cua` → Flowable |
-| API Gateway – tệp (JWT) | http://localhost:9080/files/ | tải tệp hồ sơ, ClamAV quét trước khi lưu |
-| Keycloak – trang tài khoản | http://localhost:8080/realms/dxos/account | đăng nhập thử, cài OTP |
-| Keycloak – quản trị | http://localhost:8080/admin/ | user `admin`; mật khẩu: `docker compose exec keycloak cat /run/dxos-secrets/admin_password` |
-| PostgreSQL (debug) | `127.0.0.1:55432` | chỉ localhost |
-| Flowable REST (debug) | `127.0.0.1:8090` | chỉ localhost; Tầng 2 gọi qua APISIX |
-
-OpenBao, Garage, ClamAV, RabbitMQ, PostgREST không mở cổng ra máy host; chỉ truy cập qua gateway hoặc mạng nội bộ Docker.
-
-**Tài khoản mẫu** (dữ liệu giả, realm `dxos`, mật khẩu do `make demo-users` đặt):
-
-| Người dùng | Vai trò | Thử gì |
-|---|---|---|
-| `congdan01`, `congdan02` | `cong_dan` – công dân | nộp hồ sơ, chỉ thấy hồ sơ của mình |
-| `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) | `can_bo` – cán bộ | task theo lĩnh vực phụ trách; **bắt buộc OTP** |
-| `lanhdao01` | `lanh_dao` – lãnh đạo | phê duyệt, chỉ đọc hồ sơ; **bắt buộc OTP** |
-
-```bash
-make demo-users                                   # in mật khẩu chung
-DXOS_DEMO_PASSWORD='mat-khau-cua-ban' make demo-users   # hoặc tự chọn
-PW='<mật khẩu>'
-TOKEN=$(curl -s http://localhost:8080/realms/dxos/protocol/openid-connect/token \
-  -d grant_type=password -d client_id=dxos_cli -d username=congdan01 -d password="$PW" | jq -r .access_token)
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:9080/api/ho_so | jq    # chỉ hồ sơ của congdan01 (3 mẫu + hồ sơ do smoke nộp)
-curl -s 'http://localhost:9080/public/rpc/json_schema_thu_tuc?ma=KS01' | jq      # JSON Schema thành phần hồ sơ (không token)
-```
-
-Cán bộ, lãnh đạo phải đăng nhập một lần ở trang tài khoản và quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…); sau đó lấy token bằng curl thì gửi thêm `-d totp=<mã 6 số>`. Thêm lệnh thử từng route: [`docs/architecture.md` §8](docs/architecture.md#8-chạy-thử).
-
-## 6. Cấu hình trước khi chạy
-
-Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](.env.example), có chú thích từng biến), đọc lúc `make up`; không cần sửa mã hay `docker-compose.yml`. `.env` không chứa bí mật. Biến hay đổi:
-
-| Biến | Mặc định | Ý nghĩa |
-|---|---|---|
-| `DXOS_APP` | `mot-cua` | ứng dụng Tầng 2 trong `apps/` được nạp |
-| `DXOS_SEED` | `true` | nạp dữ liệu mẫu giả; `false` khi triển khai thật |
-| `APISIX_PORT`, `KEYCLOAK_PORT` | `9080`, `8080` | cổng gateway, SSO trên máy host |
-| `POSTGRES_PORT`, `FLOWABLE_PORT` | `55432`, `8090` | cổng debug, chỉ 127.0.0.1 |
-| `DXOS_CORS_ORIGINS` | `http://localhost:5173` | origin web được gọi API |
-| `DXOS_GATEWAY_URL` | `http://localhost:9080` | địa chỉ gateway trong link tải tệp |
-| `DXOS_FILE_MAX_BYTES` | `10485760` | cỡ tệp tối đa (≤ 10 MiB) |
-| `BAO_UNSEAL` | `file` | `file` (máy dev) hoặc `manual` (triển khai thật) |
-| `DXOS_SU_KIEN_QUET_GIAY`, `DXOS_SU_KIEN_SAP_TRE_NGAY` | `300`, `1` | chu kỳ quét và ngưỡng cảnh báo sắp trễ hạn |
-
-Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng). Đổi `DXOS_APP` sang ứng dụng khác cần CSDL mới (mục 7).
-
-## 7. Thêm một ứng dụng vào `apps/`
-
-Lõi chỉ biết **quy ước thư mục** `apps/<DXOS_APP>/`, không đọc nghiệp vụ. Một ứng dụng mới không sửa tệp nào trong `core/`, `docker-compose.yml` hay APISIX:
-
-| Tệp | Lõi dùng để |
+| Địa chỉ | Dùng để |
 |---|---|
-| `app.env` | schema PostgREST phơi ra API (`PGRST_DB_SCHEMAS=…`) |
-| `db/migrations/*.sql`, `db/seed/*.sql` | role, schema, RLS; dữ liệu giả khi `DXOS_SEED=true` (`app-migrate`) |
-| `keycloak/realm.json` | vai trò, nhóm, client, người dùng mẫu (`app-realm`) |
-| `processes/*.bpmn20.xml` | quy trình BPMN, Flowable tự triển khai |
-| `backend/main.py`, `backend/worker.py` | backend riêng (`/workflow`, `/files`) và tác vụ nền |
-| `s3/buckets.conf`, `rabbitmq/definitions.json` | bucket S3 và exchange/queue riêng của ứng dụng |
+| http://localhost:9080/public/thu_tuc | API công khai (không token, 60 request/phút) |
+| http://localhost:9080/api/ho_so · `/workflow/tasks` · `/files/` | API dữ liệu, quy trình, tệp (cần JWT) |
+| http://localhost:8080/realms/dxos/account | Đăng nhập thử, cài OTP |
+
+**Tài khoản mẫu** (dữ liệu giả, mật khẩu do `make demo-users` đặt): `congdan01`, `congdan02` (công dân); `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) (cán bộ, bắt buộc OTP); `lanhdao01` (lãnh đạo, bắt buộc OTP).
+
+Hướng dẫn đầy đủ (yêu cầu máy chi tiết, bí mật OpenBao, cổng và tài khoản, gọi API thử bằng `curl`, biến cấu hình `.env`, thêm ứng dụng vào `apps/`, kiểm thử, **xử lý lỗi thường gặp**): [`docs/cai-dat.md`](docs/cai-dat.md).
+
+## 🤝 Đóng góp
 
 ```bash
-mkdir -p apps/dat-phong-hop/{db/migrations,db/seed,keycloak,tests}
-# viết app.env, db/migrations/001_schema.sql, keycloak/realm.json theo mẫu apps/mot-cua/ (nhớ dòng SPDX: make license)
-sed -i.bak 's/^DXOS_APP=.*/DXOS_APP=dat-phong-hop/' .env && rm .env.bak
-docker compose --profile '*' down -v && rm -f .data/openbao/commune.json   # CSDL mới
-make up && make smoke
-```
-
-Hướng dẫn đầy đủ, hợp đồng giữa lõi và ứng dụng: [`docs/architecture.md` §2](docs/architecture.md#2-lõi-độc-lập-nghiệp-vụ-core-và-appstên); ứng dụng mẫu: [`apps/mot-cua/README.md`](apps/mot-cua/README.md).
-
-## 8. Kiểm thử và đóng góp
-
-```bash
-make check                # SPDX + BPMN + test đơn vị + compose hợp lệ (mọi profile)
-make lint                 # shellcheck, yamllint, BPMN (như CI); cài: pip install -r scripts/requirements-lint.txt
+make check                # SPDX + BPMN + test đơn vị + compose hợp lệ, chạy trước mỗi commit
+make lint                 # shellcheck, yamllint, BPMN như CI
 make test                 # test đơn vị + SQL/RLS trên PostgreSQL tạm
-make smoke                # kiểm tra đầu-cuối trên hệ thống đang chạy
-make license              # thêm header SPDX cho tệp mới
 ```
 
-CI trên GitHub Actions chạy 6 job bắt buộc cho mỗi PR: `make-check`, `shellcheck`, `yamllint`, `bpmn`, `test-backend`, `test-sql`, cùng lệnh như trên máy. Quy trình issue → nhánh `feature/<số>-<tên>` → PR về `develop`, quy ước commit: [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Báo lỗi, đề xuất: [GitHub Issues](https://github.com/commune-dxos/commune-dxos/issues) (có mẫu issue; ghi lệnh đã chạy, output `make ps` và `docker compose version`).
+Quy trình issue → nhánh `feature/<số>-<tên>` → PR về `develop`; CI chạy 6 job bắt buộc (`make-check`, `shellcheck`, `yamllint`, `bpmn`, `test-backend`, `test-sql`). Quy ước commit và cách làm: [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
-## 9. Xử lý lỗi thường gặp
+## 🐛 Báo lỗi
 
-| Triệu chứng | Cách xử lý |
-|---|---|
-| `port is already allocated` / `address already in use` (8080, 9080, 55432, 8090) | Đổi cổng trong `.env` (`KEYCLOAK_PORT`, `APISIX_PORT`, `POSTGRES_PORT`, `FLOWABLE_PORT`) rồi `make up`; tìm tiến trình chiếm cổng: `lsof -i :8080` |
-| Sau khi khởi động lại máy/Docker, dịch vụ không lên, `*-secrets` thoát mã 1, `make bao-status` báo `Sealed true` | Bình thường: OpenBao luôn seal sau khi khởi động lại. Chạy `make up` (hoặc `make bao-init` rồi `make up`) để unseal bằng `.data/openbao/commune.json` |
-| `bao-init: thiếu /bao-init/commune.json: OpenBao đã khởi tạo nhưng không có unseal key/root token trên máy này` | Đã mất tệp `.data/openbao/commune.json`: khôi phục từ bản sao lưu. Không còn bản nào thì chỉ còn cách xóa dữ liệu: `docker compose --profile '*' down -v`, `make up` |
-| Container bị `OOMKilled`, Keycloak/Flowable khởi động lại liên tục | Tăng RAM cho Docker lên ≥ 6 GB (Docker Desktop → Settings → Resources); tắt ứng dụng nặng khác |
-| `no space left on device` khi tải image | Cần ≥ 5 GB trống. Dọn: `docker image prune -a -f`, `docker builder prune -f`; xem `docker system df` |
-| `make smoke` trượt `clamav healthy` (`starting`) | Lần đầu ClamAV tải CSDL virus (~250 MB); chờ 1–2 phút rồi chạy lại |
-| `/public/…` trả 429 hoặc `{"error_msg":…}` ngay sau `make smoke` | Bước cuối của smoke cố ý dùng hết hạn mức 60 request/phút; đợi 1 phút (lần smoke kế tiếp tự chờ) |
-| `invalid_grant – Account is not fully set up` khi lấy token cán bộ/lãnh đạo | Chưa cài OTP: đăng nhập trang tài khoản một lần (mục 5) |
-| `Thiếu .env` | `cp .env.example .env` |
-| Muốn chạy song song bản thứ hai | Đặt `COMPOSE_PROJECT_NAME=<tên khác>` và đổi 4 cổng trong `.env`; mỗi project có volume và tệp khóa OpenBao riêng (`.data/openbao/<tên>.json`) |
+Báo lỗi và đề xuất tại [GitHub Issues](https://github.com/commune-dxos/commune-dxos/issues) (có mẫu issue). Hãy ghi lệnh đã chạy, output `make ps` và `docker compose version`.
 
-## 10. Giấy phép
+## 📜 Giấy phép
 
-Mã nguồn của dự án phát hành theo [Apache License 2.0](LICENSE); mỗi tệp mã và tệp cấu hình đều có dòng `SPDX-License-Identifier: Apache-2.0`, được kiểm tra bằng `make check` trên mỗi PR. Đội chọn Apache-2.0 vì:
+Mã nguồn phát hành theo [Apache License 2.0](LICENSE); mọi tệp mã và cấu hình có dòng `SPDX-License-Identifier: Apache-2.0`, kiểm bằng `make check` trên mỗi PR. Apache-2.0 cho phép cơ quan nhà nước và doanh nghiệp tự do dùng, sửa, triển khai lại, có điều khoản cấp quyền sáng chế rõ ràng và tương thích với các thành phần lõi. Thành phần bên thứ ba giữ giấy phép riêng: [`NOTICE`](NOTICE), [`DEPENDENCIES.md`](DEPENDENCIES.md). Nguồn và giấy phép hình ảnh: [`docs/images/README.md`](docs/images/README.md).
 
-- cho phép cơ quan nhà nước và doanh nghiệp tự do dùng, sửa và triển khai lại, kể cả tích hợp vào hệ thống riêng;
-- có điều khoản cấp quyền sáng chế rõ ràng, giảm rủi ro pháp lý cho đơn vị triển khai;
-- tương thích với các thành phần lõi (Keycloak, APISIX, Flowable, Superset đều dùng Apache-2.0).
+## 📝 CHANGELOG
 
-Thành phần bên thứ ba giữ giấy phép riêng, liệt kê trong [`NOTICE`](NOTICE) và [`DEPENDENCIES.md`](DEPENDENCIES.md). Thành phần AGPL/GPL (Garage, ClamAV) chỉ chạy như dịch vụ riêng bằng image gốc, không sửa và không liên kết vào mã của dự án. Hình ảnh trong `docs/images/` do đội tạo (ảnh minh họa bằng công cụ AI tạo ảnh, sơ đồ vẽ tay bằng SVG), phát hành cùng giấy phép Apache-2.0: [`docs/images/README.md`](docs/images/README.md).
-
-## 11. Phiên bản
-
-Phiên bản theo [SemVer](https://semver.org/lang/vi/); thay đổi ghi trong [`CHANGELOG.md`](CHANGELOG.md) (mục `[Unreleased]` là phần đang làm). Bản phát hành kèm gói mã nguồn `.tar.gz`: [Releases](https://github.com/commune-dxos/commune-dxos/releases). Tiến độ theo tuần: [`docs/PLAN.md`](docs/PLAN.md); đối chiếu yêu cầu đề thi: [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md).
+Phiên bản theo [SemVer](https://semver.org/lang/vi/); thay đổi ghi trong [`CHANGELOG.md`](CHANGELOG.md) (mục `[Unreleased]` là phần đang làm). Bản phát hành kèm gói mã nguồn `.tar.gz`: [Releases](https://github.com/commune-dxos/commune-dxos/releases).
