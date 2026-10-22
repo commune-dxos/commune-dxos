@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Quy trình làm việc và theo dõi tiến độ
 
-Đội DTU_DZ_2 theo dõi tiến độ ngay trên GitHub, để ai cũng xem được tuần này đội làm gì, việc nào xong, việc nào đang chờ duyệt (D-009 hướng 3, #34).
+Đội DTU_DZ_2 theo dõi tiến độ ngay trên GitHub, để ai cũng xem được tuần này đội làm gì, việc nào xong, việc nào đang chờ duyệt (D-009 hướng 3, #34). CHANGELOG và ghi chú phát hành sinh tự động từ commit (D-009 hướng 4, #36), xem mục 5–6.
 
 | Xem ở đâu | Link |
 |---|---|
@@ -88,3 +88,65 @@ flowchart LR
 5. **Cuối tuần.** Mọi việc của tuần đã merge thì đóng milestone. Việc chưa xong chuyển sang milestone tuần sau, ghi lý do trong issue.
 
 Chi tiết về commit, kiểm tra trước khi mở PR và giấy phép: [Hướng dẫn đóng góp](../CONTRIBUTING.md).
+
+## 5. Quy ước commit
+
+CHANGELOG và ghi chú phát hành sinh tự động từ tiêu đề commit bằng [git-cliff](https://git-cliff.org) (D-009 hướng 4, #36), nên tiêu đề commit là nội dung người đọc thấy trong nhật ký thay đổi.
+
+```
+<loai>(<pham-vi>): <mô tả ngắn bằng tiếng Việt> (#<số-issue>)
+```
+
+PR merge kiểu squash, nên **tiêu đề PR** trở thành commit vào `develop`; GitHub thêm số PR vào cuối, ví dụ `refactor(thu-tuc): mô hình gói thủ tục nen-tang/ + mot-cua/ + thu-tuc/ (#30) (#31)`. Gạch đầu dòng trong mô tả squash (`- ...`) được giữ thành mục con trong CHANGELOG.
+
+| Loại | Vào mục CHANGELOG |
+|---|---|
+| `feat` | Tính năng mới |
+| `fix` | Sửa lỗi |
+| `refactor` | Tái cấu trúc |
+| `docs` | Tài liệu |
+| `test` | Kiểm thử |
+| `ci`, `chore`, `build` | Hạ tầng và CI |
+| khác, hoặc không theo quy ước | Khác |
+
+- **Phạm vi** in đậm ở đầu dòng, trong mỗi mục các dòng xếp theo phạm vi. Ưu tiên tên thành phần: `nen-tang`, `mot-cua`, `thu-tuc`, hoặc tên dịch vụ (`apisix`, `flowable`, `keycloak`…).
+- `(#số)` ở tiêu đề tự thành link tới issue/PR trên GitHub.
+- Không vào CHANGELOG: commit `Merge ...` (merge `develop` → `main`) và `chore(release): ...`.
+- Workflow `quy-uoc-commit` kiểm tiêu đề PR theo mẫu trên và chạy thử git-cliff trên các commit của PR. Workflow này không phải check bắt buộc, nhưng tiêu đề sai nghĩa là dòng CHANGELOG sai: sửa tiêu đề PR trước khi merge.
+- Cấu hình: [`cliff.toml`](../cliff.toml).
+
+## 6. CHANGELOG và phát hành
+
+**Không sửa tay `CHANGELOG.md`.** Mục `[Unreleased]` sinh lại từ commit sau tag mới nhất; các mục `[0.0.1]`, `[0.1.0]` viết tay trước khi có git-cliff được giữ nguyên, lệnh không chạm vào mục đã phát hành.
+
+Cài git-cliff một lần (gói PyPI có sẵn binary, không cần Docker hay Homebrew):
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
+```
+
+| Lệnh | Việc |
+|---|---|
+| `make nhat-ky GIT_CLIFF=.venv/bin/git-cliff` | Viết lại mục `[Unreleased]` từ commit sau tag mới nhất |
+| `make nhat-ky PHIEN_BAN=x.y.z GIT_CLIFF=…` | Đổi các commit đó thành mục `[x.y.z] - hôm nay`, thêm `[Unreleased]` trống, cập nhật link so sánh cuối tệp |
+| `make ghi-chu-phat-hanh PHIEN_BAN=x.y.z GIT_CLIFF=…` | In ghi chú phát hành ra màn hình. Tag `vx.y.z` đã có: từ tag liền trước tới tag đó; chưa có: xem trước tới `HEAD` |
+
+Tag phát hành nằm trên merge commit của `main`, không phải tổ tiên của `develop`; lệnh tự lấy khoảng `<tag mới nhất>..HEAD` nên chạy được trên `develop`.
+
+Các bước phát hành `vX.Y.Z`:
+
+```mermaid
+flowchart LR
+    A["PR chore(release): vX.Y.Z<br/>về develop<br/>make nhat-ky PHIEN_BAN=X.Y.Z"] --> B["PR develop → main<br/>merge commit"]
+    B --> C["Tag vX.Y.Z<br/>trên merge commit"]
+    C --> D["Workflow phat-hanh<br/>ghi chú + .tar.gz + SHA256SUMS<br/>GitHub Release"]
+```
+
+1. **PR phát hành về `develop`.** Nhánh `feature/release-X.Y.Z`: `make nhat-ky PHIEN_BAN=X.Y.Z`, xem lại mục mới trong CHANGELOG, cập nhật số phiên bản ở tài liệu nếu có. Tiêu đề `chore(release): vX.Y.Z (#issue)`. Merge squash như mọi PR.
+2. **PR `develop` → `main`.** Merge kiểu **merge commit** (không squash) để `main` giữ đủ commit của `develop`.
+3. **Tag.** Trưởng nhóm đặt tag có chú thích trên merge commit vừa tạo rồi đẩy tag:
+   ```bash
+   git fetch origin && git tag -a vX.Y.Z -m "vX.Y.Z" origin/main && git push origin vX.Y.Z
+   ```
+4. **Workflow [`phat-hanh`](../.github/workflows/phat-hanh.yml)** chạy khi có tag `vX.Y.Z`: sinh ghi chú bằng `make ghi-chu-phat-hanh`, đóng gói `commune-dxos-X.Y.Z.tar.gz` bằng `git archive --prefix=commune-dxos-X.Y.Z/`, tính `SHA256SUMS`, tạo GitHub Release đính kèm hai tệp. Workflow chỉ có quyền `contents: write`, không đẩy commit hay tag.
+5. **Kiểm tra.** Mở trang Release, tải `.tar.gz` và đối chiếu: `sha256sum -c SHA256SUMS`. Trang tài liệu tự deploy khi `main` thay đổi (workflow `tai-lieu`).

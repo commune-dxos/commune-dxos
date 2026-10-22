@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu
+.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -66,6 +66,19 @@ tai-lieu:      ## Build trang tài liệu vào site/ (--strict: link gãy, neo s
 
 xem-tai-lieu:  ## Xem trang tài liệu trên máy ở http://127.0.0.1:8000, tự build lại khi sửa docs/, thu-tuc/
 	$(TAI_LIEU_ENV) $(MKDOCS) serve
+
+# CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
+# Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
+# rồi chạy với PATH="$$PWD/.venv/bin:$$PATH" hoặc GIT_CLIFF=.venv/bin/git-cliff. Quy trình: docs/quy-trinh-lam-viec.md.
+GIT_CLIFF ?= git-cliff
+NHAT_KY := GIT_CLIFF=$(GIT_CLIFF) PYTHONDONTWRITEBYTECODE=1 python3 scripts/nhat_ky.py
+
+nhat-ky:       ## Viết lại mục [Unreleased] của CHANGELOG từ commit sau tag mới nhất; PHIEN_BAN=x.y.z: đổi thành mục phiên bản đó
+	$(NHAT_KY) nhat-ky $(PHIEN_BAN)
+
+ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có thì xem trước tới HEAD). Cần PHIEN_BAN=x.y.z
+	@test -n "$(PHIEN_BAN)" || { echo "Thiếu PHIEN_BAN — ví dụ: make ghi-chu-phat-hanh PHIEN_BAN=0.1.0"; exit 1; }
+	@$(NHAT_KY) ghi-chu $(PHIEN_BAN)
 
 license:       ## Thêm header SPDX cho tệp mới
 	bash scripts/add-license-header.sh

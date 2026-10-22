@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Công cụ sinh CHANGELOG và ghi chú phát hành (make nhat-ky, make ghi-chu-phat-hanh, CI
+# .github/workflows/phat-hanh.yml và quy-uoc-commit.yml). Ghim phiên bản để máy cá nhân và CI ra
+# cùng kết quả. Chỉ là công cụ phát triển, không đi vào sản phẩm. Gói PyPI chứa sẵn binary (~30 MB venv).
+#   python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
+git-cliff==2.14.2       # MIT OR Apache-2.0, https://github.com/orhun/git-cliff

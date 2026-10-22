@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+# Phát hành tự động (D-009 hướng 4, #36): khi đẩy tag vX.Y.Z (đặt trên merge commit develop → main)
+#   1. sinh ghi chú phát hành bằng git-cliff (make ghi-chu-phat-hanh, cliff.toml);
+#   2. đóng gói mã nguồn commune-dxos-X.Y.Z.tar.gz bằng git archive, kèm SHA256SUMS;
+#   3. tạo GitHub Release vX.Y.Z đính kèm hai tệp trên.
+# Quy trình đầy đủ: docs/quy-trinh-lam-viec.md mục 6. git-cliff ghim trong scripts/requirements-phat-hanh.txt,
+# action ghim phiên bản. Chỉ cần quyền ghi nội dung repo (tạo Release); không đẩy commit hay tag nào.
+name: phat-hanh
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phat-hanh-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  phat-hanh:
+    name: phat-hanh
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          # git-cliff cần toàn bộ lịch sử và mọi tag để tìm tag liền trước.
+          fetch-depth: 0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Cài git-cliff (phiên bản ghim)
+        run: pip install -r scripts/requirements-phat-hanh.txt
+      - name: Sinh ghi chú phát hành
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          echo "PHIEN_BAN=${TAG#v}" >> "$GITHUB_ENV"
+          mkdir -p dist
+          make --no-print-directory ghi-chu-phat-hanh PHIEN_BAN="${TAG#v}" > dist/ghi-chu.md
+          cat dist/ghi-chu.md
+      - name: Đóng gói mã nguồn và SHA256SUMS
+        run: |
+          goi="commune-dxos-${PHIEN_BAN}.tar.gz"
+          git archive --format=tar.gz --prefix="commune-dxos-${PHIEN_BAN}/" -o "dist/${goi}" "v${PHIEN_BAN}"
+          (cd dist && sha256sum "${goi}" > SHA256SUMS && cat SHA256SUMS)
+      - name: Tạo GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${PHIEN_BAN}" \
+            "dist/commune-dxos-${PHIEN_BAN}.tar.gz" dist/SHA256SUMS \
+            --verify-tag \
+            --title "v${PHIEN_BAN}" \
+            --notes-file dist/ghi-chu.md
