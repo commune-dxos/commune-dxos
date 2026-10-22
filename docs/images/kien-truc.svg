@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- Sơ đồ kiến trúc Commune DX-OS v0.1.0, vẽ tay theo docker-compose.yml (profile core), nen-tang/, mot-cua/. -->
+<!-- Sơ đồ kiến trúc Commune DX-OS v0.2.0, vẽ tay theo docker-compose.yml (profile core), nen-tang/, mot-cua/. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 960" width="1200" height="960" role="img" aria-labelledby="tieu-de mo-ta">
-  <title id="tieu-de">Kiến trúc Commune DX-OS v0.1.0</title>
+  <title id="tieu-de">Kiến trúc Commune DX-OS v0.2.0</title>
   <desc id="mo-ta">Tầng 2 (bộ máy mot-cua và các gói thu-tuc) gồm cổng công dân, cổng cán bộ (tuần 3), mot-cua-api và mot-cua-worker. Tầng 1 (nen-tang) gồm Keycloak, APISIX, PostgREST, PostgreSQL, Flowable, Garage, ClamAV, RabbitMQ, OpenBao. Người dùng đăng nhập Keycloak, gọi APISIX bằng JWT; APISIX chuyển /public và /api tới PostgREST, /workflow và /files tới mot-cua-api, /files/s3 tới Garage. mot-cua-api quét tệp bằng ClamAV trước khi lưu vào Garage, ghi sự kiện vào hộp thư đi trong PostgreSQL; mot-cua-worker phát sự kiện lên RabbitMQ. OpenBao cấp bí mật cho mọi dịch vụ.</desc>
   <defs>
     <style>
@@ -40,7 +40,7 @@
   <rect x="0" y="0" width="1200" height="960" fill="#f8fafc"/>
 
   <!-- Tiêu đề -->
-  <text class="tieude" x="36" y="42">Commune DX-OS · Kiến trúc hệ thống v0.1.0</text>
+  <text class="tieude" x="36" y="42">Commune DX-OS · Kiến trúc hệ thống v0.2.0</text>
   <text class="phude" x="1164" y="42" text-anchor="end">vẽ theo docker-compose.yml (profile core), nen-tang/, mot-cua/</text>
 
   <!-- Người dùng -->
@@ -61,7 +61,7 @@
   <text class="nho" x="232" y="134">bộ máy Một cửa + gói thủ tục thu-tuc/&lt;ma&gt;/; chỉ gọi lõi qua APISIX</text>
 
   <rect class="app" x="40" y="146" width="250" height="90" rx="10"/>
-  <text class="ten" x="56" y="170" fill="#be123c">Hiện tại (v0.1.0)</text>
+  <text class="ten" x="56" y="170" fill="#be123c">Hiện tại (v0.2.0)</text>
   <text class="dong" x="56" y="191">chưa có giao diện web:</text>
   <text class="dong" x="56" y="208">gọi cùng API bằng curl, Postman</text>
   <text class="dong" x="56" y="225">(make smoke, make demo-users)</text>
