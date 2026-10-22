@@ -1,17 +1,17 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.0.1+ (tuần 2: tách `core/` và `apps/` #3, schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.1.0+ (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
-- **Tầng 1 – Lõi headless** (`core/`): không có giao diện cho người dùng cuối, chỉ có API (và giao diện quản trị của từng dịch vụ cho quản trị viên). Gồm SSO, API Gateway, dữ liệu có cấu trúc và phi cấu trúc, workflow, cùng các dịch vụ hỗ trợ (bí mật, hàng đợi, tìm kiếm, ký số, sinh PDF, quét mã độc, log kiểm toán). **Không chứa nghiệp vụ** (mục 2).
-- **Tầng 2 – Ứng dụng** (`apps/<tên>/`): ứng dụng chính là `apps/mot-cua/` (một cửa cấp xã): schema, vai trò, quy trình, dữ liệu mẫu, sau này cổng cán bộ và cổng công dân (React), dashboard Superset. Tầng 2 **chỉ gọi lõi qua APISIX**, không kết nối thẳng CSDL, Flowable hay Garage.
+- **Tầng 1 – Lõi headless** (`nen-tang/`): không có giao diện cho người dùng cuối, chỉ có API (và giao diện quản trị của từng dịch vụ cho quản trị viên). Gồm SSO, API Gateway, dữ liệu có cấu trúc và phi cấu trúc, workflow, cùng các dịch vụ hỗ trợ (bí mật, hàng đợi, tìm kiếm, ký số, sinh PDF, quét mã độc, log kiểm toán). **Không chứa nghiệp vụ** (mục 2).
+- **Tầng 2 – Bộ máy một cửa** (`mot-cua/`) và **gói thủ tục** (`thu-tuc/<ma>/`): bộ máy giữ schema, vai trò, API dùng chung cho mọi thủ tục; mỗi gói mang mô tả, quy trình BPMN, JSON Schema thành phần hồ sơ, dữ liệu mẫu của một thủ tục (§2); sau này cổng cán bộ và cổng công dân (React), dashboard Superset. Tầng 2 **chỉ gọi lõi qua APISIX**, không kết nối thẳng CSDL, Flowable hay Garage.
 - **Người dùng:** công dân, cán bộ một cửa, cán bộ chuyên môn, lãnh đạo xã.
 
-Sơ đồ dưới đây vẽ đúng các dịch vụ đang chạy trong `docker-compose.yml` (profile `core`) và ứng dụng `apps/mot-cua/`: route của gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao; 4 dịch vụ bắt buộc của đề được đánh số 1–4. Sơ đồ Mermaid tiếp theo là kiến trúc đích, gồm cả các thành phần của tuần sau.
+Sơ đồ dưới đây vẽ đúng các dịch vụ đang chạy trong `docker-compose.yml` (profile `core`) và bộ máy `mot-cua/`: route của gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao; 4 dịch vụ bắt buộc của đề được đánh số 1–4. Sơ đồ Mermaid tiếp theo là kiến trúc đích, gồm cả các thành phần của tuần sau.
 
 <p align="center">
-  <img src="images/kien-truc.svg" alt="Sơ đồ kiến trúc chi tiết: Tầng 2 apps/mot-cua gọi lõi qua APISIX; Tầng 1 core gồm Keycloak, APISIX, PostgREST, PostgreSQL, Flowable, Garage, ClamAV, RabbitMQ, OpenBao" width="100%">
+  <img src="images/kien-truc.svg" alt="Sơ đồ kiến trúc chi tiết: Tầng 2 mot-cua gọi lõi qua APISIX; Tầng 1 core gồm Keycloak, APISIX, PostgREST, PostgreSQL, Flowable, Garage, ClamAV, RabbitMQ, OpenBao" width="100%">
 </p>
 
 ```mermaid
@@ -22,7 +22,7 @@ flowchart TB
     LD["Lãnh đạo xã"]
   end
 
-  subgraph T2["Tầng 2 – apps/mot-cua (H-P-D-I)"]
+  subgraph T2["Tầng 2 – mot-cua (H-P-D-I)"]
     WEBCD["Cổng công dân (React)"]
     WEBCB["Cổng cán bộ (React)"]
     BI["Dashboard Superset"]
@@ -65,14 +65,14 @@ flowchart TB
   GW -.->|JWKS| KC
   GW -- "/api (JWT), /public (anon)" --> PGR
   GW -- "/workflow" --> FL
-  GW -- "/files (JWT) → backend ứng dụng" --> AV
+  GW -- "/files (JWT) → mot-cua-api" --> AV
   GW -- "/files/s3 (link ký sẵn)" --> S3
   GW -- "/search" --> MS
 
   PGR --> PG
   PG --> AUD
   FL --> PG
-  PG -- "hộp thư sự kiện (outbox) → app-worker" --> MQ
+  PG -- "hộp thư sự kiện (outbox) → mot-cua-worker" --> MQ
   AV -.->|sạch mới lưu| S3
   FL --> GOT --> CA
 
@@ -80,175 +80,185 @@ flowchart TB
   BAO -.->|cấp bí mật| FL
 ```
 
-Đường nét đứt là luồng nội bộ giữa các dịch vụ lõi. Hiện có `/public/*` (đọc công khai bằng role `anon`), `/api/*` (JWT → PostgREST), `/workflow/*` (JWT → backend của ứng dụng → Flowable), `/files/*` (JWT → backend của ứng dụng: quét ClamAV rồi lưu Garage, #7) và `/files/s3/*` (link GET đã ký ngắn hạn tới Garage); `/search` ở tuần 5. Bảng route: §4.1, luồng tệp: §4.3.
+Đường nét đứt là luồng nội bộ giữa các dịch vụ lõi. Hiện có `/public/*` (đọc công khai bằng role `anon`), `/api/*` (JWT → PostgREST), `/workflow/*` (JWT → API một cửa → Flowable), `/files/*` (JWT → API một cửa: quét ClamAV rồi lưu Garage, #7) và `/files/s3/*` (link GET đã ký ngắn hạn tới Garage); `/search` ở tuần 5. Bảng route: §4.1, luồng tệp: §4.3.
 
-## 2. Lõi độc lập nghiệp vụ: `core/` và `apps/<tên>/`
+## 2. Ba lớp: `nen-tang/`, bộ máy `mot-cua/`, gói `thu-tuc/<ma>/` (D-009)
 
 ### 2.1 Vì sao tách
 
 - BTC trả lời (D-005 mục 11): **dịch vụ Tầng 1 phải độc lập hoàn toàn với nghiệp vụ cụ thể**, chỉ cung cấp dịch vụ cơ bản. D-008: backend Tầng 1 "cố gắng ở mức tổng quát nhất có thể"; cắm–rút là khái niệm cho **người thiết kế, xây dựng hệ thống**.
-- Bản tuần 1 trộn hai tầng: init SQL của lõi tạo luôn bảng `ho_so`, role `cong_dan`/`can_bo`/`lanh_dao`; realm Keycloak có sẵn người dùng một cửa; APISIX có route riêng cho bảng `thu_tuc`. Một tổ chức khác (hợp tác xã, trường học…) muốn dùng lõi sẽ phải sửa lõi.
-- Sau khi tách, lõi chỉ cung cấp **cơ chế** (đăng nhập, kiểm JWT, chuyển JWT thành role PostgreSQL để RLS áp dụng, sổ migration), còn **chính sách** (bảng nào, vai trò nào, ai thấy dòng nào) do ứng dụng khai báo. Đổi ứng dụng = đổi một biến `DXOS_APP`, không sửa tệp nào trong `core/`.
+- Bản tuần 1 trộn hai tầng: init SQL của lõi tạo luôn bảng `ho_so`, role `cong_dan`/`can_bo`/`lanh_dao`; realm Keycloak có sẵn người dùng một cửa; APISIX có route riêng cho bảng `thu_tuc`. Bản #3 tách nền tảng khỏi nghiệp vụ.
+- Ở cấp xã, thứ thay đổi thường xuyên là **thủ tục hành chính** (hàng trăm thủ tục, mỗi thủ tục một quy trình, một bộ giấy tờ, một thời hạn), còn cách tiếp nhận, phân quyền, theo dõi hạn, lưu tệp, phát sự kiện thì giống nhau. Vì vậy đơn vị cắm–rút của Commune DX-OS là **gói thủ tục** (D-009), không phải cả ứng dụng: thêm thủ tục = thả thêm một thư mục `thu-tuc/<ma>/`, bộ nạp tự kiểm và nạp, không sửa dòng mã nào.
+- Nền tảng chỉ cung cấp **cơ chế** (đăng nhập, kiểm JWT, chuyển JWT thành role PostgreSQL để RLS áp dụng, sổ migration, két bí mật, hàng đợi, kho tệp). Bộ máy một cửa cung cấp **chính sách chung** của mọi thủ tục (bảng hồ sơ, vai trò, ai thấy dòng nào, API quy trình). Gói thủ tục cung cấp **nội dung riêng** của một thủ tục (mô tả, quy trình BPMN, thành phần hồ sơ).
 
 ### 2.2 Phân chia
 
 ```
-core/                         Tầng 1 – không có tên bảng, vai trò hay thủ tục nghiệp vụ
+nen-tang/                       Tầng 1 – không có tên bảng, vai trò hay thủ tục nghiệp vụ
   postgres/initdb/10-core.sql   role authenticator + anon; schema dxos: dxos.jwt_claims(),
                                 dxos.jwt_claim(ten), dxos.jwt_sub(); sổ dxos.app_migration
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
-                                /workflow/*, /files/* → app-backend: bắt buộc JWT realm dxos;
+                                /workflow/*, /files/* → mot-cua-api: bắt buộc JWT realm dxos;
                                 /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD);
                                 chặn API quản trị Flowable; CORS theo DXOS_CORS_ORIGINS (§4.1)
   garage/garage.toml            Garage một nút (S3 :3900, Admin API :3903), bí mật đọc từ tệp (§4.3)
   openbao/config.hcl            OpenBao server (raft, không UI, audit ra stdout) (§4.4)
-  openbao/bao-init.py           dịch vụ một lần: init, unseal, KV, policy, AppRole, bí mật lõi
+  openbao/bao-init.py           dịch vụ một lần: init, unseal, KV, policy, AppRole, bí mật nền tảng
   openbao/policies/*.hcl        policy từng danh tính; openbao/agent/*.hcl: agent render tệp bí mật
   openbao/kiem-quyen.py         kiểm policy bằng AppRole thật của từng dịch vụ (make smoke)
-  scripts/app-migrate.sh        dịch vụ một lần: áp dụng SQL của ứng dụng
-  scripts/app-realm.sh          dịch vụ một lần: nạp vai trò/nhóm/người dùng của ứng dụng; ghi secret
+  scripts/tang2-migrate.sh      dịch vụ một lần: áp dụng SQL của dịch vụ Tầng 2
+  scripts/tang2-realm.sh        dịch vụ một lần: nạp vai trò/nhóm/người dùng của Tầng 2; ghi secret
                                 của client dịch vụ vào OpenBao
   scripts/db-init.sh            dịch vụ một lần: role + CSDL riêng của authenticator, keycloak, flowable,
                                 mật khẩu theo OpenBao
   scripts/kc-start.sh           entrypoint Keycloak: đọc mật khẩu từ tệp bí mật
-  scripts/garage-init.py        dịch vụ một lần: layout, bucket của ứng dụng, khóa S3 riêng của ứng dụng
+  scripts/garage-init.py        dịch vụ một lần: layout, bucket Tầng 2 khai báo, khóa S3 riêng
   rabbitmq/                     RabbitMQ một nút: rabbitmq.conf, enabled_plugins (STOMP + management) (§4.5)
-  scripts/rabbitmq-init.py      dịch vụ một lần: vhost + user riêng của ứng dụng, nạp topology ứng dụng khai báo
-apps/mot-cua/                 Tầng 2 – ứng dụng một cửa
-  app.env                       PGRST_DB_SCHEMAS=mot_cua
-  db/migrations/001_*.sql       role cong_dan/can_bo/lanh_dao, schema mot_cua (bản giữ chỗ tuần 1)
-  db/migrations/002_*.sql       schema đầy đủ: lĩnh vực, thủ tục, thành phần, cán bộ, hồ sơ, RLS (#5)
-  db/migrations/003_*.sql       tệp hồ sơ: role dich_vu_tep, cột kết quả quét, nhật ký tệp chỉ thêm (#7)
-  db/migrations/004_*.sql       sự kiện: role dich_vu_su_kien, hộp thư đi (outbox), nhật ký sự kiện (#9)
-  db/seed/002_*.sql             danh mục thủ tục, cán bộ, hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
-  db/tests/rls.sql              test quyền/RLS từng vai trò (make smoke chạy)
+  scripts/rabbitmq-init.py      dịch vụ một lần: vhost + user riêng của Tầng 2, nạp topology Tầng 2 khai báo
+mot-cua/                        Tầng 2 – bộ máy một cửa, dùng chung cho MỌI thủ tục
+  postgrest.env                 PGRST_DB_SCHEMAS=mot_cua
+  db/migrations/001…004_*.sql   role, schema mot_cua, RLS (#5), tệp hồ sơ (#7), sự kiện (#9)
+  db/migrations/005_*.sql       danh mục nạp từ gói: cột goi/quy_trinh/bien_theo_buoc/json_schema,
+                                role dich_vu_danh_muc, RPC nap_thu_tuc, rut_goi_vang (D-009)
+  db/seed/002_*.sql             lĩnh vực, danh mục thủ tục, cán bộ, hồ sơ mẫu GIẢ (chỉ khi DXOS_SEED=true)
+  db/tests/*.sql                test quyền/RLS, test danh mục gói (make test-sql, make smoke)
   keycloak/realm.json           client role của dxos_api, nhóm, client mot_cua_web, client dịch vụ
-                                mot_cua_tep (service account, role dich_vu_tep), người dùng mẫu
-  processes/*.bpmn20.xml        quy trình BPMN viết tay, Flowable tự triển khai (#8)
-  s3/buckets.conf               bucket S3 ứng dụng cần (mot-cua-ho-so) (#7)
+                                mot_cua_tep, mot_cua_su_kien, mot_cua_danh_muc, người dùng mẫu
+  s3/buckets.conf               bucket S3 (mot-cua-ho-so) (#7)
   rabbitmq/definitions.json     exchange mot_cua.su_kien, queue mot_cua.nhat_ky (+ queue lỗi) (#9)
   backend/main.py               API quy trình mỏng /workflow (#6, §4.2) và API tệp /files (#7, §4.3),
-                                dịch vụ app-backend
+                                dịch vụ mot-cua-api; quy trình và biến từng bước đọc từ danh mục
+  backend/nap_thu_tuc.py        bộ nạp gói: dịch vụ một lần nap-thu-tuc, make nap-thu-tuc (§2.4)
+  backend/goi_thu_tuc.py        phần thuần của bộ nạp: đọc YAML tập con, kiểm gói (make check --chi-kiem)
+  backend/kiem_bpmn.py          luật kiểm BPMN dùng chung cho bộ nạp và scripts/check-bpmn.py (CI)
   backend/tep.py, tests/        phần thuần của API tệp + test đơn vị (make test-backend, trong make check)
-  backend/bimat.py              đọc bí mật của ứng dụng từ OpenBao (AppRole app) (#10)
-  backend/worker.py             dịch vụ app-worker: phát outbox lên RabbitMQ, quét sắp trễ hạn, consumer mẫu (#9)
+  backend/bimat.py              đọc bí mật từ OpenBao (AppRole tang2) (#10)
+  backend/worker.py             dịch vụ mot-cua-worker: phát outbox lên RabbitMQ, quét sắp trễ hạn, consumer mẫu (#9)
   backend/su_kien.py, hop_thu.py, stomp.py   định dạng sự kiện, outbox qua PostgREST, client STOMP (#9)
-  tests/smoke.sh, smoke-tep.sh, smoke-su-kien.sh   kiểm tra riêng của ứng dụng (make smoke gọi)
+  tests/smoke*.sh               kiểm tra bộ máy và gói thủ tục (make smoke gọi)
+thu-tuc/<ma>/                   mỗi thủ tục hành chính một gói (docs/thu-tuc.md)
+  thu-tuc.yaml                  mã, tên, lĩnh vực, thời hạn (ngày làm việc), lệ phí, căn cứ pháp lý, process id
+  quy-trinh.bpmn20.xml          BPMN 2.0 viết tay; biến từng bước = flowable:formProperty
+  thanh-phan-ho-so.schema.json  JSON Schema 2020-12 thành phần hồ sơ (Poka-yoke tuần 3)
+  du-lieu-mau.json              hồ sơ mẫu GIẢ khớp schema, biến xử lý mẫu từng bước
+  README.md                     mô tả, sơ đồ quy trình
+thu-tuc/khai-sinh/              KS01 – Đăng ký khai sinh (1 ngày làm việc)
+thu-tuc/chung-thuc-ban-sao/     CT01 – Chứng thực bản sao từ bản chính (trong ngày)
 ```
 
-| Thứ | Lõi `core/` | Ứng dụng `apps/mot-cua/` |
-|---|---|---|
-| Role PostgreSQL | `authenticator` (PostgREST đăng nhập), `anon` | `cong_dan`, `can_bo`, `lanh_dao` + `GRANT … TO authenticator` |
-| Schema | `dxos` (hàm đọc claim, sổ migration; không phơi ra API) | `mot_cua` (phơi ra API qua `app.env`) |
-| RLS | hàm `dxos.jwt_sub()`, `dxos.jwt_claim()` dùng trong policy | policy trên mọi bảng `mot_cua`, theo vai trò và lĩnh vực cán bộ phụ trách (§2.7) |
-| Keycloak | realm `dxos`, khóa, OTP, client `dxos_api`, `dxos_cli` | client role của `dxos_api`, nhóm, client web, người dùng mẫu, required action OTP |
-| APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*`, `/files/s3/*` (không nêu tên tài nguyên); upstream `app-backend`, `garage-s3` là tên dịch vụ chung | không cần route riêng: tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow`, `/files` do `backend/main.py` của ứng dụng quyết định |
-| Object storage | Garage một nút, ClamAV; tạo bucket và **một khóa S3 riêng cho mỗi ứng dụng** chỉ có quyền trên bucket ứng dụng khai báo; không biết tên bucket nghiệp vụ nào | `s3/buckets.conf`; cấu trúc khóa object, loại tệp nhận, quyền xem do backend + RLS của ứng dụng quyết định |
-| Bí mật | OpenBao, policy theo danh tính; nhánh `dxos/apps/<DXOS_APP>/` cho ứng dụng (khóa S3, client secret) | đọc bí mật của mình qua AppRole `app` (`backend/bimat.py`) |
-| Hàng đợi | RabbitMQ một nút; **vhost + user riêng cho mỗi ứng dụng** (không tag quản trị, không quyền configure); không biết tên exchange/queue nghiệp vụ nào | `rabbitmq/definitions.json` (exchange, queue, binding); loại sự kiện, định dạng, consumer do ứng dụng quyết định (§4.5) |
+| Thứ | Nền tảng `nen-tang/` | Bộ máy `mot-cua/` | Gói `thu-tuc/<ma>/` |
+|---|---|---|---|
+| Role PostgreSQL | `authenticator` (PostgREST đăng nhập), `anon` | `cong_dan`, `can_bo`, `lanh_dao`, role dịch vụ + `GRANT … TO authenticator` | – |
+| Schema | `dxos` (hàm đọc claim, sổ migration; không phơi ra API) | `mot_cua` (phơi ra API qua `postgrest.env`) | một dòng `mot_cua.thu_tuc` + các dòng `thanh_phan_yeu_cau` do bộ nạp ghi |
+| RLS | hàm `dxos.jwt_sub()`, `dxos.jwt_claim()` dùng trong policy | policy trên mọi bảng `mot_cua`, theo vai trò và lĩnh vực cán bộ phụ trách (§2.7) | lĩnh vực của thủ tục quyết định cán bộ nào thấy hồ sơ |
+| Keycloak | realm `dxos`, khóa, OTP, client `dxos_api`, `dxos_cli` | client role của `dxos_api`, nhóm, client web, client dịch vụ, người dùng mẫu, OTP bắt buộc | – |
+| Workflow | Flowable REST, CSDL riêng; không tự quét thư mục nào | API `/workflow` khởi tạo quy trình theo `thu_tuc.quy_trinh`, kiểm biến theo `thu_tuc.bien_theo_buoc`; bộ nạp deploy BPMN | `quy-trinh.bpmn20.xml`: các bước, nhóm xử lý (mã lĩnh vực hoặc `lanh_dao`), biến từng bước |
+| APISIX | `/public/*`, `/api/*`, `/workflow/*`, `/files/*`, `/files/s3/*` (không nêu tên tài nguyên); upstream `mot-cua-api`, `garage-s3` | tài nguyên công khai = bảng đã `GRANT SELECT … TO anon`; endpoint dưới `/workflow`, `/files` do `backend/main.py` quyết định | không cần route: danh mục có ở `/public/thu_tuc` ngay khi nạp |
+| Object storage | Garage, ClamAV; tạo bucket và **một khóa S3 riêng** cho Tầng 2, chỉ có quyền trên bucket đã khai báo | `s3/buckets.conf`; khóa object, loại tệp nhận, quyền xem do backend + RLS quyết định | thành phần hồ sơ nào bắt buộc: `thanh-phan-ho-so.schema.json` |
+| Bí mật | OpenBao, policy theo danh tính; nhánh `dxos/tang2/mot-cua/` cho Tầng 2 (khóa S3, client secret, RabbitMQ) | đọc bí mật qua AppRole `tang2` (`backend/bimat.py`) | không có bí mật |
+| Hàng đợi | RabbitMQ một nút; **vhost + user riêng** cho Tầng 2 (không tag quản trị, không quyền configure) | `rabbitmq/definitions.json`; loại sự kiện, định dạng, consumer (§4.5) | sự kiện mang mã thủ tục (`thuTuc`) và lĩnh vực của gói |
 
 ### 2.3 Khởi động
 
 ```mermaid
 flowchart LR
-  ENV[".env<br/>DXOS_APP=mot-cua"] -.-> MIG & REALM & PGR
   BAO[("openbao")] --> BI["bao-init (một lần)<br/>unseal, policy, AppRole"]
   BI -->|exit 0| AG["agent *-secrets (một lần)<br/>render tệp bí mật"]
   AG -->|exit 0| PG & KC & PGR & FL & S3
-  PG[("postgres<br/>initdb: core/postgres")] -->|healthy| MIG["app-migrate (một lần)<br/>apps/mot-cua/db/*.sql"]
+  PG[("postgres<br/>initdb: nen-tang/postgres")] -->|healthy| MIG["tang2-migrate (một lần)<br/>mot-cua/db/*.sql"]
   PG -->|healthy| DBI["db-init (một lần)<br/>role + CSDL dịch vụ"]
   DBI -->|exit 0| KC & PGR & FL
-  KC["keycloak<br/>import core/keycloak/realm-dxos.json"] -->|healthy| REALM["app-realm (một lần)<br/>apps/mot-cua/keycloak/realm.json"]
+  KC["keycloak<br/>import nen-tang/keycloak/realm-dxos.json"] -->|healthy| REALM["tang2-realm (một lần)<br/>mot-cua/keycloak/realm.json"]
   KC -->|healthy| JWKS["jwks-init (một lần)"]
-  MIG -->|exit 0| PGR["postgrest<br/>env_file apps/mot-cua/app.env"]
+  MIG -->|exit 0| PGR["postgrest<br/>env_file mot-cua/postgrest.env"]
   JWKS -->|exit 0| PGR
-  PGR --> GW["apisix<br/>core/apisix"]
+  PGR --> GW["apisix<br/>nen-tang/apisix"]
   REALM -->|exit 0| GW
-  FL["flowable<br/>apps/mot-cua/processes"] -->|healthy| BE["app-backend<br/>apps/mot-cua/backend/main.py"]
+  FL["flowable<br/>(không tự quét BPMN)"] -->|healthy| NAP["nap-thu-tuc (một lần)<br/>thu-tuc/*/ → Flowable + danh mục"]
+  MIG -->|exit 0| NAP
+  REALM -->|exit 0, secret mot_cua_danh_muc → OpenBao| NAP
+  NAP -->|exit 0| BE["mot-cua-api<br/>mot-cua/backend/main.py"]
   PGR --> BE
-  S3["garage"] -->|healthy| GI["garage-init (một lần)<br/>apps/mot-cua/s3/buckets.conf"]
+  S3["garage"] -->|healthy| GI["garage-init (một lần)<br/>mot-cua/s3/buckets.conf"]
   GI -->|exit 0, khóa S3 → OpenBao| BE
-  REALM -->|exit 0, secret client dịch vụ → OpenBao| BE
   AV["clamav"] -.->|started| BE
   BE -->|healthy| GW
   S3 -->|healthy| GW
-  AG -->|exit 0| MQ["rabbitmq<br/>core/rabbitmq"]
-  MQ -->|healthy| RI["rabbitmq-init (một lần)<br/>apps/mot-cua/rabbitmq/definitions.json"]
-  RI -->|exit 0, user ứng dụng → OpenBao| WK["app-worker<br/>apps/mot-cua/backend/worker.py"]
+  AG -->|exit 0| MQ["rabbitmq<br/>nen-tang/rabbitmq"]
+  MQ -->|healthy| RI["rabbitmq-init (một lần)<br/>mot-cua/rabbitmq/definitions.json"]
+  RI -->|exit 0, user Tầng 2 → OpenBao| WK["mot-cua-worker<br/>mot-cua/backend/worker.py"]
   FL -->|healthy| WK
   REALM -->|exit 0| WK
 ```
 
-- `app-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
-- `app-realm` (image `keycloak`, đã có sẵn, dùng `kcadm.sh`): gọi **Partial Import** của Keycloak vào realm `dxos` với `ifResourceExists=SKIP`: đối tượng đã có thì giữ nguyên, nên chạy lại không lỗi và không ghi đè người dùng đã cài OTP (ghi đè sẽ đổi `sub`, làm hồ sơ cũ mất chủ).
-- `garage-init` (image `python` đã dùng cho `app-backend`): §4.3. Chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
+- `tang2-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
+- `tang2-realm` (image `keycloak`, đã có sẵn, dùng `kcadm.sh`): gọi **Partial Import** của Keycloak vào realm `dxos` với `ifResourceExists=SKIP`: đối tượng đã có thì giữ nguyên, nên chạy lại không lỗi và không ghi đè người dùng đã cài OTP (ghi đè sẽ đổi `sub`, làm hồ sơ cũ mất chủ).
+- `nap-thu-tuc` (image `python`): §2.4. Chạy ở mỗi `up`; `mot-cua-api` chỉ khởi động khi bộ nạp xong. Gói lỗi không làm bộ nạp thoát mã khác 0.
+- `garage-init` (image `python` đã dùng cho `mot-cua-api`): §4.3. Chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
 - `rabbitmq-init` (image `python`): §4.5. Chạy lại an toàn (vhost, user đã có thì giữ, mật khẩu đặt lại theo OpenBao; topology khai báo lại không đổi gì).
 - `bao-init`, agent `db-secrets`, `postgrest-secrets`, `keycloak-secrets`, `flowable-secrets`, `garage-secrets` (image `openbao`), `db-init` (image `postgres`): §4.4. Đều chạy lại ở mỗi `up`.
-- Chạy lại tay: `make migrate`; nạp dữ liệu mẫu khi đã tắt seed: `make seed`.
+- Chạy lại tay: `make migrate`; nạp dữ liệu mẫu khi đã tắt seed: `make seed`; nạp lại gói thủ tục: `make nap-thu-tuc`.
 
-### 2.4 Hợp đồng giữa lõi và ứng dụng
+### 2.4 Hợp đồng giữa các lớp
 
-Lõi chỉ biết các quy ước sau trong `apps/<DXOS_APP>/` (thiếu thư mục nào thì bước tương ứng được bỏ qua, riêng `app.env` là bắt buộc):
+**Nền tảng ↔ dịch vụ Tầng 2.** Dịch vụ một lần của nền tảng chỉ biết quy ước thư mục của dịch vụ Tầng 2 được mount vào `/tang2` và tên của nó (`DXOS_TANG2`, cố định `mot-cua` trong `docker-compose.yml`, khóa `x-tang2`; không còn biến chọn ứng dụng trong `.env`). Thiếu thư mục nào thì bước tương ứng được bỏ qua:
 
-1. `app.env`: ít nhất `PGRST_DB_SCHEMAS=<schema>` – các schema PostgREST phơi ra.
+1. `postgrest.env`: ít nhất `PGRST_DB_SCHEMAS=<schema>` – các schema PostgREST phơi ra.
 2. `db/migrations/NNN_<mo-ta>.sql`: chạy bằng superuser, một lần. Phải tạo role nghiệp vụ `NOLOGIN` và `GRANT <role> TO authenticator`; cấp quyền cho `anon` với những gì công khai.
 3. `db/seed/NNN_<mo-ta>.sql`: dữ liệu giả, viết để chạy lại không trùng (`ON CONFLICT DO NOTHING`).
-4. `keycloak/realm.json`: định dạng `PartialImportRepresentation` (`roles.client.dxos_api`, `groups`, `clients`, `users`). Mỗi người dùng có **đúng một** client role của `dxos_api`, trùng tên role PostgreSQL (PostgREST đọc `resource_access.dxos_api.roles[0]`).
-5. `tests/smoke.sh`: đoạn bash được `scripts/smoke.sh` `source`, dùng các hàm `kiem`, `ma_http`, `sql`, `kc`, `lay_token` trong `scripts/lib-smoke.sh`.
-6. `processes/*.bpmn20.xml` (#8): Flowable đọc thư mục này (mount chỉ đọc vào `/dxos/processes`, thuộc tính `flowable.process-definition-location-prefix`) và tự triển khai khi khởi động; tệp không đổi thì không tạo phiên bản mới. Cú pháp được `scripts/check-bpmn.py` kiểm trong `make check`/CI.
-7. `backend/main.py` (#6, D-008 mục 4): backend riêng của ứng dụng, dịch vụ `app-backend` chạy bằng image `python` gốc (chỉ thư viện chuẩn), nhận `/workflow/*` từ APISIX (đã bỏ tiền tố). Lõi truyền vào địa chỉ PostgREST, Flowable, JWKS, issuer, audience, OpenBao qua biến môi trường, và role_id/secret_id của AppRole `app` trong `/run/dxos-secrets/approle/` (volume `app-secrets`, chỉ đọc); mật khẩu tài khoản kỹ thuật Flowable và bí mật của ứng dụng đọc từ OpenBao (§4.4). Thiếu tệp này thì dịch vụ chỉ chạy chỗ giữ, `/workflow` trả 502.
-8. `s3/buckets.conf` (#7): mỗi dòng một tên bucket. `garage-init` tạo bucket và khóa `dxos-app-<DXOS_APP>` chỉ đọc/ghi trên các bucket này (không tạo được bucket, không phải owner; bucket bỏ khỏi danh sách thì bị thu hồi quyền), ghi thông tin kết nối vào OpenBao `dxos/apps/<DXOS_APP>/s3`, `app-backend` đọc bằng AppRole `app` (§4.4).
-9. Client có service account trong `keycloak/realm.json` (confidential, `serviceAccountsEnabled`): Keycloak tự sinh client secret khi nạp, `app-realm` ghi vào `/run/dxos-secrets/keycloak-<clientId>.secret` cho backend lấy token Client Credentials. Service account mang client role của `dxos_api` trùng role PostgreSQL như người dùng.
-10. `rabbitmq/definitions.json` (#9): định dạng definitions của RabbitMQ, **chỉ** `exchanges`, `queues`, `bindings` (không có `vhost`, hoặc `vhost` = tên ứng dụng). `rabbitmq-init` tạo vhost `<DXOS_APP>`, user `app-<DXOS_APP>` (không tag, configure `^$`, read/write `.*` trong vhost của mình), nạp topology bằng HTTP API quản trị, ghi thông tin kết nối (`username`, `password`, `vhost`, `host`, `stomp_port`) vào OpenBao `dxos/apps/<DXOS_APP>/rabbitmq`. Khai thêm `users`, `permissions`, `policies`… thì `rabbitmq-init` dừng.
-11. `backend/worker.py` (#9): tác vụ nền của ứng dụng, dịch vụ `app-worker` (cùng image, cùng AppRole `app` với `app-backend`, không có cổng). Healthcheck: tiến trình phải chạm `/tmp/song` ít nhất mỗi 60 giây. Thiếu tệp thì chỉ chạy chỗ giữ.
-12. Sau này (tuần 3): `web/` cho giao diện – cùng nguyên tắc: lõi triển khai theo quy ước thư mục, không đọc nội dung.
+4. `keycloak/realm.json`: định dạng `PartialImportRepresentation` (`roles.client.dxos_api`, `groups`, `clients`, `users`). Mỗi người dùng có **đúng một** client role của `dxos_api`, trùng tên role PostgreSQL (PostgREST đọc `resource_access.dxos_api.roles[0]`). Client có service account (confidential): Keycloak tự sinh client secret, `tang2-realm` ghi vào OpenBao `dxos/tang2/<DXOS_TANG2>/keycloak/<clientId>`.
+5. `s3/buckets.conf` (#7): mỗi dòng một tên bucket. `garage-init` tạo bucket và khóa `dxos-tang2-<DXOS_TANG2>` chỉ đọc/ghi trên các bucket này (không tạo được bucket, không phải owner; bucket bỏ khỏi danh sách thì bị thu hồi quyền), ghi thông tin kết nối vào OpenBao `dxos/tang2/<DXOS_TANG2>/s3`.
+6. `rabbitmq/definitions.json` (#9): định dạng definitions của RabbitMQ, **chỉ** `exchanges`, `queues`, `bindings`. `rabbitmq-init` tạo vhost `<DXOS_TANG2>`, user `tang2-<DXOS_TANG2>` (không tag, configure `^$`, read/write `.*` trong vhost của mình), nạp topology, ghi thông tin kết nối vào OpenBao `dxos/tang2/<DXOS_TANG2>/rabbitmq`. Khai thêm `users`, `permissions`, `policies`… thì `rabbitmq-init` dừng.
+7. Dịch vụ chạy mã của bộ máy (`mot-cua-api`, `mot-cua-worker`, `nap-thu-tuc`) dùng image `python` gốc (chỉ thư viện chuẩn), mount `./mot-cua` vào `/mot-cua`, nhận role_id/secret_id của AppRole `tang2` trong `/run/dxos-secrets/approle/` (volume `tang2-secrets`, chỉ đọc) và đọc bí mật từ OpenBao lúc cần (§4.4).
 
-### 2.5 Cắm một ứng dụng khác (cho lập trình viên)
+**Bộ máy ↔ gói thủ tục.** Bộ máy không biết thủ tục nào; gói không chứa mã. Bộ nạp `nap-thu-tuc` (`mot-cua/backend/nap_thu_tuc.py`) quét `thu-tuc/*/` khi `make up` và khi `make nap-thu-tuc`:
 
-Ví dụ ứng dụng đặt phòng họp `apps/dat-phong-hop/` (module mẫu thứ hai, tuần 6):
+1. **Kiểm gói** (`goi_thu_tuc.py`, không gọi mạng; `make check` chạy cùng bước này với `--chi-kiem`, CI chặn PR có gói lỗi): đủ 5 tệp; `thu-tuc.yaml` đúng tập con YAML, đủ khóa, đúng kiểu, không khóa lạ; JSON Schema là 2020-12, đúng dạng `{"thanh_phan": {"<mã>": [<id tệp>]}}`; BPMN qua luật của `kiem_bpmn.py` (giống job CI `bpmn`), đúng một process có id bằng `quy_trinh`, nhóm xử lý chỉ là mã lĩnh vực của gói hoặc `lanh_dao`, assignee chỉ là `${nguoiNopSub}`, biến từng bước khai bằng `flowable:formProperty` kiểu `boolean`/`string`/`long`; `du-lieu-mau.json` khớp schema, không có dãy số giống CMND/CCCD, biến xử lý mẫu khớp BPMN.
+2. **Deploy BPMN** lên Flowable qua REST bằng tài khoản `rest-admin`, tên deployment `thu-tuc/<goi>@<12 ký tự SHA-256>`: BPMN không đổi thì không deploy lại (không sinh phiên bản quy trình thừa). Flowable từ chối BPMN thì gói bị bỏ qua.
+3. **Ghi danh mục** qua PostgREST: RPC `mot_cua.nap_thu_tuc` bằng token của client dịch vụ `mot_cua_danh_muc` (role `dich_vu_danh_muc`, chỉ có quyền gọi hai RPC nạp/rút). Upsert thủ tục theo mã: tên, lĩnh vực (tạo nếu chưa có), thời hạn, lệ phí, căn cứ pháp lý, `quy_trinh`, `bien_theo_buoc`, `json_schema`; upsert thành phần yêu cầu theo mã, thành phần bỏ khỏi gói thì thôi bắt buộc (không xóa vì hồ sơ cũ còn tham chiếu).
+4. **Rút gói**: thủ tục có gói mà thư mục không còn thì thôi có quy trình (hồ sơ mới → 422; quy trình đang chạy trong Flowable chạy tiếp tới khi xong). Gói còn thư mục nhưng lỗi **không** bị rút: bản nạp tốt gần nhất được giữ.
 
-```bash
-mkdir -p apps/dat-phong-hop/{db/migrations,db/seed,keycloak,tests}
-echo 'PGRST_DB_SCHEMAS=dat_phong' > apps/dat-phong-hop/app.env      # thêm dòng SPDX ở đầu
-# db/migrations/001_schema.sql : CREATE ROLE nhan_vien NOLOGIN; GRANT nhan_vien TO authenticator;
-#   CREATE SCHEMA dat_phong; CREATE TABLE dat_phong.lich (..., nguoi_dat text DEFAULT dxos.jwt_sub());
-#   policy RLS: USING (nguoi_dat = dxos.jwt_sub())
-# keycloak/realm.json : {"roles":{"client":{"dxos_api":[{"name":"nhan_vien"}]}}, "groups":[...], "users":[...]}
-sed -i '' 's/^DXOS_APP=.*/DXOS_APP=dat-phong-hop/' .env                     # Linux: sed -i
-docker compose --profile core down -v && make up && make smoke              # CSDL mới cho ứng dụng mới
-```
+Gói lỗi ở bất kỳ bước nào: in lý do từng dòng, bỏ qua gói, các gói khác vẫn nạp, mã thoát 0 (không làm sập hệ thống). Mã 1 chỉ khi Flowable, Keycloak hay PostgREST không gọi được.
 
-Không sửa tệp nào trong `core/`, `docker-compose.yml` hay APISIX. Giới hạn hiện tại: mỗi lần chạy một ứng dụng (`DXOS_APP` là một tên); role PostgreSQL là đối tượng toàn cụm nên các ứng dụng nên đặt tên role không trùng nhau nếu sau này chạy chung một CSDL.
+API một cửa (`backend/main.py`) dùng danh mục thay cho bảng gắn cứng: `POST /workflow/ho-so` khởi tạo quy trình `thu_tuc.quy_trinh` của thủ tục (thủ tục chưa có gói → 422, không lưu hồ sơ); `POST /workflow/tasks/{id}/complete` chỉ nhận biến khai trong `thu_tuc.bien_theo_buoc` của bước đó, đúng kiểu, đủ biến bắt buộc. `GET /public/rpc/json_schema_thu_tuc?ma=…` trả đúng schema của gói.
+
+### 2.5 Thêm một thủ tục (cho lập trình viên)
+
+Hướng dẫn 5 bước, có ví dụ đầy đủ: [`docs/thu-tuc.md`](thu-tuc.md). Tóm tắt: chép một gói có sẵn sang `thu-tuc/<ma-moi>/`, sửa `thu-tuc.yaml`, vẽ lại BPMN, khai thành phần hồ sơ, sửa dữ liệu mẫu; `make check` rồi `make nap-thu-tuc`. Không sửa tệp nào trong `nen-tang/`, `mot-cua/`, `docker-compose.yml` hay APISIX. `make smoke` thử đúng việc này với một gói tạm (cắm rồi rút) ở mỗi lần chạy.
+
+Giới hạn hiện tại: một gói chỉ có một quy trình; nhóm xử lý giới hạn trong lĩnh vực của thủ tục và lãnh đạo; biến từng bước chỉ có kiểu `boolean`, `string`, `long`; thủ tục cần bảng dữ liệu riêng (ngoài hồ sơ chung) phải viết migration trong `mot-cua/`.
 
 ### 2.6 Nâng cấp từ bản tuần 1
 
-Volume `pg-data` tạo trước khi tách vẫn có schema `mot_cua` cũ nhưng thiếu schema `dxos`; `app-migrate` sẽ dừng và hướng dẫn. Dữ liệu tuần 1 là dữ liệu giả, nên xóa volume rồi chạy lại: `docker compose --profile core down -v && make up`. Realm cũ `commune` cũng không còn được dùng (realm mới là `dxos`).
+Lên bản gói thủ tục (D-009, #30): `git pull` rồi `make up`, không cần xóa volume. Migration `005_goi_thu_tuc.sql` thêm cột danh mục; `nap-thu-tuc` deploy BPMN của hai gói (Flowable không còn tự quét thư mục) và ghi danh mục; dịch vụ đổi tên (`app-*` → `tang2-*`, `mot-cua-api`, `mot-cua-worker`), danh tính OpenBao `app`/`app-realm` → `tang2`/`tang2-realm`, nhánh bí mật `dxos/apps/…` → `dxos/tang2/…`: `garage-init`, `rabbitmq-init`, `tang2-realm` tự ghi lại khóa S3, mật khẩu RabbitMQ, client secret vào nhánh mới (user RabbitMQ `tang2-mot-cua`, khóa Garage `dxos-tang2-mot-cua` mới; user, khóa và volume `app-*` cũ còn sót có thể xóa tay). Biến `DXOS_APP` trong `.env` cũ không còn được đọc, có thể xóa.
+
+Volume `pg-data` tạo trước khi tách vẫn có schema `mot_cua` cũ nhưng thiếu schema `dxos`; `tang2-migrate` sẽ dừng và hướng dẫn. Dữ liệu tuần 1 là dữ liệu giả, nên xóa volume rồi chạy lại: `docker compose --profile core down -v && make up`. Realm cũ `commune` cũng không còn được dùng (realm mới là `dxos`).
 
 Lên bản có OpenBao (#10): giữ `.env` cũ, `make up` chuyển mật khẩu sang OpenBao, rồi xóa các dòng mật khẩu khỏi `.env` (§4.4.5). Không cần xóa volume.
 
 Từ v0.0.1 lên schema đầy đủ (#5): `make up` (hoặc `make migrate`) áp dụng `002_schema_day_du.sql`, migration này **thay** hai bảng giữ chỗ `thu_tuc`, `ho_so` của 001 (khóa `text`/`bigint`, chỉ có dữ liệu giả) bằng schema mới; seed 001 bị bỏ, seed 002 nạp lại dữ liệu mẫu. Đã chạy thử trên volume tạo từ bản #3: smoke đạt hết. Người dùng mẫu tạo trước đó giữ `sub` ngẫu nhiên (Partial Import bỏ qua người dùng đã có), nên hồ sơ và cán bộ mẫu chỉ khớp người dùng Keycloak khi chạy từ volume trống; muốn khớp thì `docker compose --profile core down -v && make up`.
 
-### 2.7 Tầng dữ liệu của ứng dụng `mot-cua` (#5)
+### 2.7 Tầng dữ liệu của bộ máy `mot-cua` (#5)
 
-Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`apps/mot-cua/README.md`](../apps/mot-cua/README.md). Tóm tắt:
+Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`mot-cua/README.md`](../mot-cua/README.md). Tóm tắt:
 
 - Schema `mot_cua` (phơi ra API): `linh_vuc`, `thu_tuc`, `thanh_phan_yeu_cau`, `ngay_nghi`, `can_bo`, `can_bo_linh_vuc`, `ho_so`, `thanh_phan_ho_so`; khóa chính UUID, `created_at`/`updated_at`. Hàm RPC công khai `json_schema_thu_tuc(ma)` sinh JSON Schema thành phần hồ sơ (nguồn cho Poka-yoke tuần 3).
 - Schema `mot_cua_noi_bo` (không phơi ra API): hàm tính hạn theo ngày làm việc, hàm kiểm "cán bộ đang gọi có phụ trách lĩnh vực này", trigger.
 - RLS bật và ép (`FORCE`) trên mọi bảng. Công dân: hồ sơ của mình (`nguoi_nop_sub = dxos.jwt_sub()`). Cán bộ: hồ sơ thuộc lĩnh vực mình phụ trách, tra theo `sub` trong `can_bo` + `can_bo_linh_vuc` (không cần claim riêng trong JWT; đổi phân công có hiệu lực ngay, không phải chờ token mới). Lãnh đạo: đọc tất cả. `anon`: chỉ danh mục công khai.
 - Dữ liệu cá nhân tối thiểu: `sub`, họ tên, số điện thoại (không bắt buộc); không lưu CCCD, ngày sinh, địa chỉ. Giấy tờ chỉ lưu metadata, tệp ở Garage (#7).
-- Kiểm tra: `apps/mot-cua/db/tests/rls.sql` (63 kiểm tra, một transaction rồi ROLLBACK, không phụ thuộc seed) + smoke qua APISIX bằng token thật từng vai trò (§8.3).
+- Kiểm tra: `mot-cua/db/tests/rls.sql` (63 kiểm tra, một transaction rồi ROLLBACK, không phụ thuộc seed) + smoke qua APISIX bằng token thật từng vai trò (§8.3).
 
 ## 3. Ánh xạ 4 dịch vụ bắt buộc của đề
 
 | Yêu cầu của đề (Tầng 1) | Thành phần | Bằng chứng trong repo |
 |---|---|---|
-| Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do ứng dụng nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `core/keycloak/realm-dxos.json`, `apps/mot-cua/keycloak/realm.json` |
-| API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `core/apisix/config.yaml`, `core/apisix/apisix.yaml`, §4.1, §8.5 |
-| Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của ứng dụng; migration theo ứng dụng; pgAudit (tuần 2) | `core/postgres/initdb/10-core.sql`, `core/scripts/app-migrate.sh`, `apps/mot-cua/db/` |
-| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `core/garage/`, `core/scripts/garage-init.py`, `apps/mot-cua/backend/`, §4.3, §8.6 |
-| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong `apps/<tên>/processes/*.bpmn20.xml`, tự triển khai khi khởi động; Tầng 2 dùng qua `/workflow` (API quy trình của ứng dụng) | `docker-compose.yml` (`flowable`, `db-init`, `app-backend`), `apps/mot-cua/processes/`, `apps/mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
+| Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do bộ máy một cửa nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `nen-tang/keycloak/realm-dxos.json`, `mot-cua/keycloak/realm.json` |
+| API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `nen-tang/apisix/config.yaml`, `nen-tang/apisix/apisix.yaml`, §4.1, §8.5 |
+| Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của bộ máy; migration theo dịch vụ Tầng 2; pgAudit (tuần 2) | `nen-tang/postgres/initdb/10-core.sql`, `nen-tang/scripts/tang2-migrate.sh`, `mot-cua/db/` |
+| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `nen-tang/garage/`, `nen-tang/scripts/garage-init.py`, `mot-cua/backend/`, §4.3, §8.6 |
+| Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong gói `thu-tuc/<ma>/quy-trinh.bpmn20.xml`, bộ nạp `nap-thu-tuc` kiểm và deploy qua REST; Tầng 2 dùng qua `/workflow` (API một cửa) | `docker-compose.yml` (`flowable`, `db-init`, `nap-thu-tuc`, `mot-cua-api`), `thu-tuc/`, `mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
 ## 4. Luồng xác thực: JWT Keycloak → APISIX → PostgREST → RLS
 
@@ -276,11 +286,11 @@ sequenceDiagram
 
 Chi tiết cách claim vai trò thành role PostgreSQL:
 
-1. Lõi: realm `dxos` có client `dxos_api` **không có role nào**. Ứng dụng `mot-cua` thêm 3 client role `cong_dan`, `can_bo`, `lanh_dao` của `dxos_api` và gán cho nhóm `/cong-dan`, `/can-bo`, `/lanh-dao` (tệp `apps/mot-cua/keycloak/realm.json`).
+1. Lõi: realm `dxos` có client `dxos_api` **không có role nào**. Ứng dụng `mot-cua` thêm 3 client role `cong_dan`, `can_bo`, `lanh_dao` của `dxos_api` và gán cho nhóm `/cong-dan`, `/can-bo`, `/lanh-dao` (tệp `mot-cua/keycloak/realm.json`).
 2. Vì token có client role của `dxos_api`, Keycloak thêm `dxos_api` vào `aud`. PostgREST đặt `PGRST_JWT_AUD=dxos_api` nên token cấp cho mục đích khác bị từ chối.
-3. PostgREST đọc role từ `PGRST_JWT_ROLE_CLAIM_KEY=.resource_access.dxos_api.roles[0]` rồi `SET ROLE` sang role PostgreSQL trùng tên (role này do migration của ứng dụng tạo). Không có token (route `/public/*`) → role `anon` của lõi.
+3. PostgREST đọc role từ `PGRST_JWT_ROLE_CLAIM_KEY=.resource_access.dxos_api.roles[0]` rồi `SET ROLE` sang role PostgreSQL trùng tên (role này do migration của bộ máy tạo). Không có token (route `/public/*`) → role `anon` của lõi.
 4. Ràng buộc: mỗi người dùng chỉ có **đúng một** client role của `dxos_api`. Nếu sau này một người kiêm nhiệm, chuyển sang cách dùng `db-pre-request` để chọn role.
-5. Trong PostgreSQL, policy RLS của ứng dụng dùng hàm lõi `dxos.jwt_sub()` (claim `sub`): công dân chỉ thấy và chỉ nộp hồ sơ của chính mình; cán bộ được tra `sub` trong bảng `can_bo` để biết lĩnh vực phụ trách. Quyền theo cột chặn công dân tự đặt trạng thái, người nộp, hạn xử lý hay cán bộ xử lý.
+5. Trong PostgreSQL, policy RLS của bộ máy dùng hàm lõi `dxos.jwt_sub()` (claim `sub`): công dân chỉ thấy và chỉ nộp hồ sơ của chính mình; cán bộ được tra `sub` trong bảng `can_bo` để biết lĩnh vực phụ trách. Quyền theo cột chặn công dân tự đặt trạng thái, người nộp, hạn xử lý hay cán bộ xử lý.
 
 | Role PostgreSQL | Đăng nhập | Danh mục (`thu_tuc`…) | `ho_so`, `thanh_phan_ho_so` |
 |---|---|---|---|
@@ -290,7 +300,7 @@ Chi tiết cách claim vai trò thành role PostgreSQL:
 | `can_bo` | không | đọc tất cả | đọc và xử lý hồ sơ thuộc **lĩnh vực phụ trách**, khi hồ sơ chưa đóng |
 | `lanh_dao` | không | đọc tất cả | chỉ đọc tất cả |
 
-Bảng đầy đủ theo từng bảng và cột: `apps/mot-cua/README.md`.
+Bảng đầy đủ theo từng bảng và cột: `mot-cua/README.md`.
 
 Vì sao kiểm JWT hai lần: APISIX chặn sớm request không hợp lệ và giới hạn tần suất; PostgREST vẫn tự kiểm để CSDL không tin bất kỳ thứ gì đứng trước nó (Zero-Trust, nguyên lý B4).
 
@@ -298,22 +308,22 @@ OpenAPI: `GET /api/` (có token) hoặc `GET /public/` trả đặc tả OpenAPI
 
 JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ một lần `jwks-init` tải `.../realms/dxos/protocol/openid-connect/certs` vào volume `jwks`, PostgREST đọc qua `PGRST_JWT_SECRET=@/jwks/jwks.json`. Realm chỉ khai báo một khóa RSA dùng để ký (RS256), không có khóa mã hóa, để JWKS gọn. Khi xoay khóa Keycloak: `docker compose --profile core up -d --force-recreate jwks-init postgrest`.
 
-### 4.1 Bảng route của gateway (`core/apisix/apisix.yaml`)
+### 4.1 Bảng route của gateway (`nen-tang/apisix/apisix.yaml`)
 
 | Route | Phương thức | Xác thực | Đích | Giới hạn / ghi chú |
 |---|---|---|---|---|
-| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì ứng dụng `GRANT … TO anon` |
+| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì bộ máy `GRANT … TO anon` (gồm danh mục thủ tục nạp từ gói) |
 | `/api/*` | mọi | JWT Keycloak (APISIX + PostgREST kiểm) | PostgREST, `SET ROLE` theo `resource_access.dxos_api.roles[0]` → RLS | 600 req/phút/IP |
-| `/workflow/*` | mọi (backend chỉ nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `app-backend:8000` (backend của ứng dụng), bỏ tiền tố `/workflow` | 300 req/phút/IP; endpoint: `apps/<DXOS_APP>/README.md` |
+| `/workflow/*` | mọi (backend chỉ nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000` (API một cửa), bỏ tiền tố `/workflow` | 300 req/phút/IP; endpoint: `mot-cua/README.md` |
 | `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
-| `/files/*` | mọi (backend nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `app-backend:8000`, giữ nguyên đường dẫn | 120 req/phút/IP; body ≤ 10 MiB (`client-control`, vượt → 413); endpoint: `apps/<DXOS_APP>/README.md` |
+| `/files/*` | mọi (backend nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000`, giữ nguyên đường dẫn | 120 req/phút/IP; body ≤ 10 MiB (`client-control`, vượt → 413); endpoint: `mot-cua/README.md` |
 | `/files/s3/*` | GET, HEAD | chữ ký SigV4 trong URL (Garage kiểm chữ ký và hạn) | Garage S3 `garage:3900`, bỏ tiền tố, Host viết lại `garage:3900` | 120 req/phút/IP; bỏ header `Authorization`, `Cookie`; thêm `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store` |
 
 - Toàn cục: plugin `cors` với `allow_origins` lấy từ biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
 - Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
-- Không mở cổng ra host: PostgREST, `app-backend`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+- Không mở cổng ra host: PostgREST, `mot-cua-api`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
-### 4.2 Luồng `/workflow`: API quy trình mỏng của ứng dụng
+### 4.2 Luồng `/workflow`: API quy trình mỏng của bộ máy một cửa
 
 Luồng hồ sơ đăng ký khai sinh theo BPMN `dang_ky_khai_sinh` (làn công dân, cán bộ hộ tịch, lãnh đạo; hẹn giờ quá hạn), kèm lời gọi API và sự kiện phát ra ở từng bước:
 
@@ -326,14 +336,14 @@ Flowable REST chỉ có Basic auth bằng tài khoản của chính nó, không 
 | Cách | Vì sao không/có chọn |
 |---|---|
 | APISIX proxy thẳng `/workflow/*` → Flowable, lọc đường dẫn, gateway gắn Basic auth | **Không chọn**: mọi người dùng thành `rest-admin` trong mắt Flowable; lọc đường dẫn không ngăn công dân liệt kê task của người khác, hoàn thành task tiếp nhận hay khởi tạo quy trình với biến tùy ý |
-| API mỏng `apps/mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; ~300 dòng Python thư viện chuẩn, không build image |
+| API mỏng `mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; ~300 dòng Python thư viện chuẩn, không build image |
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant App as Web Tầng 2
   participant GW as APISIX
-  participant BE as app-backend (mot-cua)
+  participant BE as mot-cua-api (mot-cua)
   participant API as PostgREST
   participant FL as Flowable REST
 
@@ -341,7 +351,7 @@ sequenceDiagram
   GW->>GW: openid-connect (JWKS). Sai → 401
   GW->>BE: POST /ho-so (giữ Authorization)
   BE->>BE: kiểm lại RS256, exp, iss, aud = dxos_api
-  BE->>API: GET /thu_tuc?id=… (token người dùng)<br/>thủ tục có quy trình?
+  BE->>API: GET /thu_tuc?id=… (token người dùng)<br/>quy_trinh của gói thủ tục?
   BE->>API: POST /ho_so (token người dùng) → RLS: người nộp = sub
   API-->>BE: hồ sơ (mã, hạn xử lý do CSDL tính)
   BE->>FL: POST runtime/process-instances (Basic rest-admin)<br/>businessKey = mã hồ sơ, biến lấy từ CSDL
@@ -350,23 +360,23 @@ sequenceDiagram
 ```
 
 - **Ai thấy task nào** (`GET /workflow/tasks`): task giao đích danh cho `sub` của người gọi (bước `bo_sung` của công dân) cộng task chưa ai nhận của nhóm người gọi. Nhóm = `candidateGroups` trong BPMN: lãnh đạo → `lanh_dao`; cán bộ → mã các lĩnh vực đang phụ trách, tra trong `mot_cua.can_bo` + `can_bo_linh_vuc` **bằng token của chính cán bộ** (đổi phân công có hiệu lực ngay, giống RLS). Công dân không có nhóm.
-- **Hoàn thành task** (`POST /workflow/tasks/{id}/complete`): chỉ người được giao, hoặc người thuộc nhóm ứng viên khi task chưa ai nhận; backend nhận (`claim`) task cho `sub` rồi hoàn thành, nên lịch sử Flowable ghi đúng người xử lý. Chỉ nhận biến khai báo cho bước đó (`hopLe`, `datYeuCau`, `pheDuyet`, `ghiChu`), đúng kiểu, đủ biến bắt buộc; biến hệ thống (`hoSoId`, `nguoiNopSub`, `hanXuLyLuc`, `quaHan`, `ketQua`) client không đặt được.
-- **Hồ sơ** luôn đọc/ghi qua PostgREST bằng token người dùng: khởi tạo quy trình hay xem tiến độ hồ sơ người khác → 404 vì RLS không trả dòng. Thủ tục chưa có quy trình → 422 trước khi lưu hồ sơ.
-- **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `app-backend` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
+- **Hoàn thành task** (`POST /workflow/tasks/{id}/complete`): chỉ người được giao, hoặc người thuộc nhóm ứng viên khi task chưa ai nhận; backend nhận (`claim`) task cho `sub` rồi hoàn thành, nên lịch sử Flowable ghi đúng người xử lý. Chỉ nhận biến khai báo cho bước đó bằng `flowable:formProperty` trong BPMN của gói (danh mục `thu_tuc.bien_theo_buoc`, ví dụ khai sinh: `hopLe`, `datYeuCau`, `pheDuyet`, `ghiChu`), đúng kiểu, đủ biến bắt buộc; biến hệ thống (`hoSoId`, `nguoiNopSub`, `hanXuLyLuc`, `quaHan`, `ketQua`) client không đặt được.
+- **Hồ sơ** luôn đọc/ghi qua PostgREST bằng token người dùng: khởi tạo quy trình hay xem tiến độ hồ sơ người khác → 404 vì RLS không trả dòng. Thủ tục chưa có gói (`thu_tuc.quy_trinh` rỗng) → 422 trước khi lưu hồ sơ.
+- **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `mot-cua-api` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
 - **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
 - **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện.
 - Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình; Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
 
 ### 4.3 Dữ liệu phi cấu trúc: tải tệp, quét ClamAV, link ký ngắn hạn (#7)
 
-Garage (AGPL-3.0) và ClamAV (GPL-2.0) chạy như **dịch vụ riêng bằng image gốc, không sửa mã**, chỉ nói chuyện qua mạng (S3 HTTP, giao thức TCP của `clamd`) – D-004, `NOTICE`. Backend của ứng dụng tự ký SigV4 và nói giao thức `clamd` bằng thư viện chuẩn Python (`apps/mot-cua/backend/tep.py`), không nhúng thư viện nào của hai dự án.
+Garage (AGPL-3.0) và ClamAV (GPL-2.0) chạy như **dịch vụ riêng bằng image gốc, không sửa mã**, chỉ nói chuyện qua mạng (S3 HTTP, giao thức TCP của `clamd`) – D-004, `NOTICE`. Backend của bộ máy tự ký SigV4 và nói giao thức `clamd` bằng thư viện chuẩn Python (`mot-cua/backend/tep.py`), không nhúng thư viện nào của hai dự án.
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant App as Web Tầng 2
   participant GW as APISIX
-  participant BE as app-backend (mot-cua)
+  participant BE as mot-cua-api (mot-cua)
   participant API as PostgREST
   participant AV as ClamAV (clamd)
   participant S3 as Garage (S3)
@@ -383,7 +393,7 @@ sequenceDiagram
     BE-->>App: 422 + tên mẫu virus. KHÔNG lưu gì
   else sạch
     BE->>BE: magic bytes khớp đuôi? Không → nhật ký tu_choi_loai_tep, 415
-    BE->>S3: PUT mot-cua-ho-so/ho-so/{id}/{uuid}.pdf (khóa S3 của ứng dụng, SigV4)
+    BE->>S3: PUT mot-cua-ho-so/ho-so/{id}/{uuid}.pdf (khóa S3 của bộ máy, SigV4)
     BE->>API: POST /thanh_phan_ho_so (token dịch vụ dich_vu_tep): object_key, sha256,<br/>kích thước, người tải, ket_qua_quet=sach, phiên bản ClamAV
     Note over BE,S3: ghi metadata lỗi → xóa object vừa lưu
     BE->>API: POST /nhat_ky_tep tai_len
@@ -399,7 +409,7 @@ sequenceDiagram
   S3-->>App: tệp (sửa URL → 403; quá hạn → 400 "Date is too old")
 ```
 
-**Thứ tự kiểm.** Kiểm rẻ trước khi đọc body (token, tên, đuôi, Content-Type, kích thước, quyền trên hồ sơ); sau khi nhận body thì **quét mọi tệp trước**, rồi mới kiểm magic bytes: tệp nhiễm luôn được ghi nhật ký kể cả khi sai loại. `clamd` không trả lời → 503, không lưu (fail-closed). Không có đường nào ghi object mà chưa qua quét: chỉ `app-backend` cầm khóa S3, route `/files/s3/*` chỉ cho GET/HEAD.
+**Thứ tự kiểm.** Kiểm rẻ trước khi đọc body (token, tên, đuôi, Content-Type, kích thước, quyền trên hồ sơ); sau khi nhận body thì **quét mọi tệp trước**, rồi mới kiểm magic bytes: tệp nhiễm luôn được ghi nhật ký kể cả khi sai loại. `clamd` không trả lời → 503, không lưu (fail-closed). Không có đường nào ghi object mà chưa qua quét: chỉ `mot-cua-api` cầm khóa S3, route `/files/s3/*` chỉ cho GET/HEAD.
 
 **Ai ghi metadata.** Từ migration 003, công dân không còn quyền `INSERT` vào `thanh_phan_ho_so`: nếu backend ghi bằng token người dùng thì người dùng cũng tự ghi được qua `/api` với `object_key`, `sha256`, kết quả quét giả. Backend kiểm quyền bằng token người dùng, còn dòng metadata và nhật ký ghi bằng token **Client Credentials của client dịch vụ `mot_cua_tep`** (role `dich_vu_tep`). RLS vẫn là lớp thứ hai cho cả dịch vụ: chỉ gắn được tệp có `object_key` dưới tiền tố `ho-so/<ho_so_id>/`, do chính người nộp tải, đã quét sạch, vào hồ sơ đang `moi`/`cho_bo_sung`; dịch vụ không sửa, không xóa được metadata hay hồ sơ.
 
@@ -417,10 +427,10 @@ sequenceDiagram
 | Bí mật | Sinh bởi | Nằm ở (KV `dxos/`) | Ai đọc |
 |---|---|---|---|
 | `rpc_secret`, `admin_token` của Garage | `bao-init` (32 byte ngẫu nhiên) | `core/garage` | `garage` (tệp do agent render), `garage-init` |
-| Khóa S3 `dxos-app-<app>` (access key + secret) | Garage (`CreateKey`), `garage-init` ghi lại khi đổi | `apps/<app>/s3` | `app-backend` (đọc lúc cần, chỉ trong RAM) |
-| Client secret `mot_cua_tep` | Keycloak khi nạp realm, `app-realm` ghi | `apps/<app>/keycloak/mot_cua_tep` | `app-backend` |
+| Khóa S3 `dxos-tang2-mot-cua` (access key + secret) | Garage (`CreateKey`), `garage-init` ghi lại khi đổi | `tang2/mot-cua/s3` | `mot-cua-api` (đọc lúc cần, chỉ trong RAM) |
+| Client secret `mot_cua_tep` | Keycloak khi nạp realm, `tang2-realm` ghi | `tang2/mot-cua/keycloak/mot_cua_tep` | `mot-cua-api` |
 
-Không bí mật nào được in ra log; client chỉ nhận link đã ký (chứa access key ID, không chứa secret). Xoay khóa S3: xóa khóa `dxos-app-<app>` bằng CLI `garage key delete` (`docker compose exec garage /garage …`) rồi `make up` và `docker compose --profile core up -d --no-deps --force-recreate app-backend` (khóa mới được tạo và ghi vào OpenBao; `app-backend` đọc lại ở lần gọi đầu).
+Không bí mật nào được in ra log; client chỉ nhận link đã ký (chứa access key ID, không chứa secret). Xoay khóa S3: xóa khóa `dxos-tang2-mot-cua` bằng CLI `garage key delete` (`docker compose exec garage /garage …`) rồi `make up` và `docker compose --profile core up -d --no-deps --force-recreate mot-cua-api` (khóa mới được tạo và ghi vào OpenBao; `mot-cua-api` đọc lại ở lần gọi đầu).
 
 **Garage một nút.** `replication_factor = 1`, `db_engine = sqlite`, dung lượng khai báo `GARAGE_CAPACITY_BYTES` (mặc định 10 GiB). Đủ cho máy local và chung kết; triển khai thật cần ≥ 3 nút ở các zone khác nhau và `replication_factor = 3`. Link quá hạn Garage trả **400 `InvalidRequest: Date is too old`** (AWS S3 trả 403); sửa đường dẫn hay chữ ký → 403.
 
@@ -428,7 +438,7 @@ Không bí mật nào được in ra log; client chỉ nhận link đã ký (ch�
 
 ### 4.4 Quản lý bí mật: OpenBao (#10)
 
-Không có mật khẩu, khóa hay token nào trong repo hay `.env`. **OpenBao 2.7.1** (MPL-2.0, nhánh mã nguồn mở của Vault do Linux Foundation quản lý; HashiCorp Vault bị loại vì giấy phép BSL) là nguồn duy nhất của mọi bí mật dịch vụ. Chạy như dịch vụ riêng bằng image gốc `openbao/openbao`, không sửa mã. Cấu hình và mã khởi tạo: `core/openbao/`.
+Không có mật khẩu, khóa hay token nào trong repo hay `.env`. **OpenBao 2.7.1** (MPL-2.0, nhánh mã nguồn mở của Vault do Linux Foundation quản lý; HashiCorp Vault bị loại vì giấy phép BSL) là nguồn duy nhất của mọi bí mật dịch vụ. Chạy như dịch vụ riêng bằng image gốc `openbao/openbao`, không sửa mã. Cấu hình và mã khởi tạo: `nen-tang/openbao/`.
 
 #### 4.4.1 Thiết kế và lý do
 
@@ -440,10 +450,10 @@ Không có mật khẩu, khóa hay token nào trong repo hay `.env`. **OpenBao 2
 | Khởi tạo | `bao-init` (Python thư viện chuẩn, HTTP API) chạy ở **mỗi** `make up`, idempotent | Volume trống và volume cũ cùng một lệnh; không có bước tay nào để quên |
 | Unseal | Shamir 1 phần, ngưỡng 1 (`BAO_KEY_SHARES`, `BAO_KEY_THRESHOLD`); `BAO_UNSEAL=file`: `bao-init` tự unseal bằng tệp khóa trên máy — **chỉ cho máy dev** | Thật: 5 phần / ngưỡng 3 chia cho nhiều người (`BAO_UNSEAL=manual`), hoặc auto-unseal bằng KMS/HSM hay một OpenBao khác (transit); thu hồi root token sau khi cấu hình |
 | Danh tính | Mỗi dịch vụ (nhóm dịch vụ cùng vai trò) một **AppRole** + policy `dxos-<tên>` chỉ đọc/ghi đúng đường dẫn của mình; token 15 phút (backend: 1 giờ, đăng nhập lại khi hết hạn) | role_id/secret_id nằm trong volume riêng của danh tính đó, chủ là uid của dịch vụ, quyền 0400. Thật: secret_id có hạn + response wrapping, `secret_id_bound_cidrs` |
-| Cách dịch vụ nhận bí mật | (a) Image không tự gọi HTTP được (PostgreSQL, PostgREST, Keycloak, Flowable, Garage): **`bao agent` một lần** đăng nhập AppRole, render tệp 0400 vào volume riêng `<danh tính>-secrets` rồi thoát; dịch vụ đọc bằng cơ chế sẵn có (`POSTGRES_PASSWORD_FILE`, `PGPASSFILE`, `PGRST_DB_URI=@tệp`, Spring Boot `configtree`, `*_file` của Garage; Keycloak qua `core/scripts/kc-start.sh`). (b) `app-realm` (bash), `garage-init`, `app-backend` (Python): **tự gọi HTTP API**, bí mật chỉ nằm trong bộ nhớ | Agent một lần không tốn RAM khi chạy (laptop 16 GB). Đánh đổi: tệp render nằm trong volume Docker (trong VM của Docker Desktop), mỗi volume chỉ dịch vụ đó mount. Thật: agent chạy lâu dài làm sidecar, tệp trên tmpfs, tự render lại khi bí mật đổi |
-| Bí mật lõi | `bao-init` sinh ngẫu nhiên (32 ký tự `[A-Za-z0-9_-]`, an toàn trong URI; khóa Garage 32 byte hex) khi chưa có; không bao giờ ghi đè | Bí mật do dịch vụ khác sinh (khóa S3 do Garage, client secret do Keycloak) được `garage-init`/`app-realm` ghi vào OpenBao bằng quyền chỉ-ghi của chúng |
+| Cách dịch vụ nhận bí mật | (a) Image không tự gọi HTTP được (PostgreSQL, PostgREST, Keycloak, Flowable, Garage): **`bao agent` một lần** đăng nhập AppRole, render tệp 0400 vào volume riêng `<danh tính>-secrets` rồi thoát; dịch vụ đọc bằng cơ chế sẵn có (`POSTGRES_PASSWORD_FILE`, `PGPASSFILE`, `PGRST_DB_URI=@tệp`, Spring Boot `configtree`, `*_file` của Garage; Keycloak qua `nen-tang/scripts/kc-start.sh`). (b) `tang2-realm` (bash), `garage-init`, `mot-cua-api` (Python): **tự gọi HTTP API**, bí mật chỉ nằm trong bộ nhớ | Agent một lần không tốn RAM khi chạy (laptop 16 GB). Đánh đổi: tệp render nằm trong volume Docker (trong VM của Docker Desktop), mỗi volume chỉ dịch vụ đó mount. Thật: agent chạy lâu dài làm sidecar, tệp trên tmpfs, tự render lại khi bí mật đổi |
+| Bí mật lõi | `bao-init` sinh ngẫu nhiên (32 ký tự `[A-Za-z0-9_-]`, an toàn trong URI; khóa Garage 32 byte hex) khi chưa có; không bao giờ ghi đè | Bí mật do dịch vụ khác sinh (khóa S3 do Garage, client secret do Keycloak) được `garage-init`/`tang2-realm` ghi vào OpenBao bằng quyền chỉ-ghi của chúng |
 | Kiểm toán | Audit device `file` ra stdout (`docker compose logs openbao`), giá trị bí mật và token được băm HMAC | Khai báo trong `config.hcl` (OpenBao không cho bật audit qua API). Thật: chuyển log về kho log tập trung |
-| Xoay vòng | Đổi giá trị trong KV rồi `make up`: `db-init` đặt lại mật khẩu role PostgreSQL, agent render lại; khởi động lại dịch vụ dùng nó (`docker compose up -d --force-recreate <dịch vụ>`) | Khóa S3: xóa khóa `dxos-app-<app>` bằng `docker compose exec garage /garage key delete …` rồi `make up` (`garage-init` tạo và ghi khóa mới) |
+| Xoay vòng | Đổi giá trị trong KV rồi `make up`: `db-init` đặt lại mật khẩu role PostgreSQL, agent render lại; khởi động lại dịch vụ dùng nó (`docker compose up -d --force-recreate <dịch vụ>`) | Khóa S3: xóa khóa `dxos-tang2-<app>` bằng `docker compose exec garage /garage key delete …` rồi `make up` (`garage-init` tạo và ghi khóa mới) |
 
 #### 4.4.2 Sơ đồ
 
@@ -454,38 +464,38 @@ flowchart LR
   end
   BI["bao-init (một lần)<br/>init · unseal · KV · policy · AppRole"] <-->|root token| BAO[("openbao<br/>KV v2 dxos/ · raft · audit")]
   INIT <--> BI
-  BI -->|role_id + secret_id| V1["volume db-secrets"] & V2["postgrest-secrets"] & V3["keycloak-secrets"] & V4["flowable-secrets"] & V5["garage-secrets"] & V6["app-realm-secrets"] & V7["garage-init-secrets"] & V8["app-secrets"]
+  BI -->|role_id + secret_id| V1["volume db-secrets"] & V2["postgrest-secrets"] & V3["keycloak-secrets"] & V4["flowable-secrets"] & V5["garage-secrets"] & V6["tang2-realm-secrets"] & V7["garage-init-secrets"] & V8["tang2-secrets"]
   BAO -->|"bao agent một lần<br/>(AppRole riêng)"| V1 & V2 & V3 & V4 & V5
-  V1 --> PG["postgres · db-init · app-migrate"]
+  V1 --> PG["postgres · db-init · tang2-migrate"]
   V2 --> PGR["postgrest"]
   V3 --> KC["keycloak"]
   V4 --> FL["flowable"]
   V5 --> GA["garage"]
-  V6 --> AR["app-realm"] <-->|"đọc admin Keycloak<br/>ghi client secret"| BAO
+  V6 --> AR["tang2-realm"] <-->|"đọc admin Keycloak<br/>ghi client secret"| BAO
   V7 --> GI["garage-init"] <-->|"đọc admin_token<br/>ghi khóa S3"| BAO
-  V8 --> BE["app-backend"] <-->|"đọc lúc cần, giữ trong RAM"| BAO
+  V8 --> BE["mot-cua-api"] <-->|"đọc lúc cần, giữ trong RAM"| BAO
 ```
 
-Thứ tự khởi động: `openbao` → `bao-init` (exit 0) → agent `*-secrets` (exit 0) → `postgres` → `db-init` → `keycloak`, `postgrest`, `flowable` → `app-realm`, `garage-init` → `app-backend` (xem §2.3).
+Thứ tự khởi động: `openbao` → `bao-init` (exit 0) → agent `*-secrets` (exit 0) → `postgres` → `db-init` → `keycloak`, `postgrest`, `flowable` → `tang2-realm`, `garage-init` → `mot-cua-api` (xem §2.3).
 
 #### 4.4.3 Dịch vụ ↔ đường dẫn KV ↔ policy
 
-KV v2 gắn ở `dxos/`; policy viết theo đường dẫn API `dxos/data/<đường dẫn>`. `${DXOS_APP}` trong policy được `bao-init` thay bằng ứng dụng đang chọn, nên ứng dụng chỉ chạm nhánh của chính mình.
+KV v2 gắn ở `dxos/`; policy viết theo đường dẫn API `dxos/data/<đường dẫn>`. `${DXOS_TANG2}` trong policy được `bao-init` thay bằng tên dịch vụ Tầng 2 (`mot-cua`), nên Tầng 2 chỉ chạm nhánh của chính mình.
 
 | Danh tính (AppRole, policy `dxos-…`) | Dịch vụ dùng | Đọc | Ghi | Nhận bằng |
 |---|---|---|---|---|
-| `db` | `postgres` (initdb), `db-init`, `app-migrate` | `core/db/*` (`postgres`, `authenticator`, `keycloak`, `flowable`) | – | agent `db-secrets` (uid 70): `postgres_password`, `pgpass`, mật khẩu từng role |
+| `db` | `postgres` (initdb), `db-init`, `tang2-migrate` | `core/db/*` (`postgres`, `authenticator`, `keycloak`, `flowable`) | – | agent `db-secrets` (uid 70): `postgres_password`, `pgpass`, mật khẩu từng role |
 | `postgrest` | `postgrest` | `core/db/authenticator` | – | agent `postgrest-secrets` (uid 1000): `db-uri` |
 | `keycloak` | `keycloak` | `core/db/keycloak`, `core/keycloak/admin` | – | agent `keycloak-secrets` (uid 1000): `db_password`, `admin_password` |
 | `flowable` | `flowable` | `core/db/flowable`, `core/flowable/rest-admin` | – | agent `flowable-secrets` (uid 100): `flowable/spring.datasource.password`, `flowable/flowable.rest.app.admin.password` |
 | `garage` | `garage` | `core/garage` (`rpc_secret`, `admin_token`) | – | agent `garage-secrets` (root): `rpc_secret`, `admin_token` |
-| `garage-init` | `garage-init` | `core/garage`, `apps/${DXOS_APP}/s3` | `apps/${DXOS_APP}/s3` | HTTP API (Python) |
-| `app-realm` | `app-realm` | `core/keycloak/admin` | `apps/${DXOS_APP}/keycloak/*` (chỉ ghi, không đọc lại) | HTTP/1.0 qua `/dev/tcp` (image Keycloak không có curl) |
-| `app` | `app-backend`, `app-worker` | `apps/${DXOS_APP}/*` (gồm `rabbitmq`), `core/flowable/rest-admin` | – | HTTP API (`apps/mot-cua/backend/bimat.py`), chỉ trong RAM |
+| `garage-init` | `garage-init` | `core/garage`, `tang2/${DXOS_TANG2}/s3` | `tang2/${DXOS_TANG2}/s3` | HTTP API (Python) |
+| `tang2-realm` | `tang2-realm` | `core/keycloak/admin` | `tang2/${DXOS_TANG2}/keycloak/*` (chỉ ghi, không đọc lại) | HTTP/1.0 qua `/dev/tcp` (image Keycloak không có curl) |
+| `tang2` | `mot-cua-api`, `mot-cua-worker`, `nap-thu-tuc` | `tang2/${DXOS_TANG2}/*` (gồm `rabbitmq`), `core/flowable/rest-admin` | – | HTTP API (`mot-cua/backend/bimat.py`), chỉ trong RAM |
 | `rabbitmq` (#9) | `rabbitmq` | `core/rabbitmq/admin` | – | agent `rabbitmq-secrets` (uid 100): `conf.d/20-admin.conf` (`default_user`/`default_pass`, chỉ áp dụng khi volume `rabbitmq-data` trống) |
-| `rabbitmq-init` (#9) | `rabbitmq-init` | `core/rabbitmq/admin`, `apps/${DXOS_APP}/rabbitmq` | `apps/${DXOS_APP}/rabbitmq` | HTTP API (Python) |
+| `rabbitmq-init` (#9) | `rabbitmq-init` | `core/rabbitmq/admin`, `tang2/${DXOS_TANG2}/rabbitmq` | `tang2/${DXOS_TANG2}/rabbitmq` | HTTP API (Python) |
 
-`make smoke` kiểm ma trận này bằng chính AppRole của từng dịch vụ (`core/openbao/kiem-quyen.py`, `scripts/smoke-openbao.sh`): 38 cặp (27 từ #10, 11 thêm ở #9) danh tính × đường dẫn, gồm cả `app` không đọc được `apps/<ứng dụng khác>/…`, `garage-init` không ghi được `core/garage`, `keycloak` không ghi được bí mật của chính mình. Phép thử ghi dùng check-and-set `cas=0` lên đường dẫn đã có nên không bao giờ đổi bí mật thật.
+`make smoke` kiểm ma trận này bằng chính AppRole của từng dịch vụ (`nen-tang/openbao/kiem-quyen.py`, `scripts/smoke-openbao.sh`): 38 cặp (27 từ #10, 11 thêm ở #9) danh tính × đường dẫn, gồm cả `tang2` không đọc được `tang2/<dịch vụ khác>/…`, `garage-init` không ghi được `core/garage`, `keycloak` không ghi được bí mật của chính mình. Phép thử ghi dùng check-and-set `cas=0` lên đường dẫn đã có nên không bao giờ đổi bí mật thật.
 
 #### 4.4.4 Khởi tạo, unseal, khởi động lại
 
@@ -504,7 +514,7 @@ make bao-status    # initialized / sealed
 
 Volume cũ có mật khẩu role PostgreSQL, quản trị Keycloak, `rest-admin` của Flowable đã đặt theo `.env`. Không cần xóa volume:
 
-1. Giữ nguyên `.env` cũ (còn `POSTGRES_PASSWORD`, `PGRST_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `FLOWABLE_DB_PASSWORD`, `FLOWABLE_ADMIN_PASSWORD`), chạy `make up`. Bí mật nào **chưa có** trong OpenBao thì `bao-init` lấy từ biến `.env` tương ứng (truyền vào dưới tên `LEGACY_*`); `rpc_secret`/`admin_token` của Garage lấy từ volume `garage-secrets` cũ. Log ghi rõ `ĐÃ CHUYỂN từ .env sang OpenBao: …` (chỉ tên biến). Tệp rõ cũ `s3.json`, `keycloak-*.secret` trong volume `app-secrets` bị xóa (khóa S3 và client secret được `garage-init`/`app-realm` ghi lại vào OpenBao ngay lần chạy đó).
+1. Giữ nguyên `.env` cũ (còn `POSTGRES_PASSWORD`, `PGRST_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `FLOWABLE_DB_PASSWORD`, `FLOWABLE_ADMIN_PASSWORD`), chạy `make up`. Bí mật nào **chưa có** trong OpenBao thì `bao-init` lấy từ biến `.env` tương ứng (truyền vào dưới tên `LEGACY_*`); `rpc_secret`/`admin_token` của Garage lấy từ volume `garage-secrets` cũ. Log ghi rõ `ĐÃ CHUYỂN từ .env sang OpenBao: …` (chỉ tên biến). Tệp rõ cũ `s3.json`, `keycloak-*.secret` trong volume `tang2-secrets` bị xóa (khóa S3 và client secret được `garage-init`/`tang2-realm` ghi lại vào OpenBao ngay lần chạy đó).
 2. Xóa 6 dòng mật khẩu khỏi `.env`, chạy lại `make up` và `make smoke`.
 3. Lỡ chạy `make up` bản mới với `.env` đã xóa mật khẩu trên volume cũ (bí mật mới sinh ngẫu nhiên, Keycloak/Flowable không đăng nhập được CSDL): đưa lại các dòng cũ vào `.env` rồi `make bao-import-env` (ghi đè bằng giá trị `.env`), sau đó `make up`.
 
@@ -526,17 +536,17 @@ Quy trình xoay vòng này mới kiểm bằng tay từng bước (chưa có tro
 
 ### 4.5 Sự kiện hồ sơ qua RabbitMQ (#9)
 
-RabbitMQ (MPL-2.0) chạy như **dịch vụ riêng bằng image gốc** `rabbitmq:4.3.6-alpine`, một nút, cấu hình `core/rabbitmq/` (D-004, `NOTICE`). Plugin bật: `rabbitmq_stomp` (cổng 61613, ứng dụng phát/nhận) và `rabbitmq_management` (HTTP API quản trị 15672). **Không cổng nào mở ra host, không có route APISIX**: chỉ dịch vụ trong mạng nội bộ Docker gọi được. Danh mục sự kiện và payload: [`apps/mot-cua/README.md`](../apps/mot-cua/README.md#sự-kiện-hồ-sơ-rabbitmq-9).
+RabbitMQ (MPL-2.0) chạy như **dịch vụ riêng bằng image gốc** `rabbitmq:4.3.6-alpine`, một nút, cấu hình `nen-tang/rabbitmq/` (D-004, `NOTICE`). Plugin bật: `rabbitmq_stomp` (cổng 61613, Tầng 2 phát/nhận) và `rabbitmq_management` (HTTP API quản trị 15672). **Không cổng nào mở ra host, không có route APISIX**: chỉ dịch vụ trong mạng nội bộ Docker gọi được. Danh mục sự kiện và payload: [`mot-cua/README.md`](../mot-cua/README.md#sự-kiện-hồ-sơ-rabbitmq-9).
 
 #### 4.5.1 Thiết kế và lý do
 
 | Quyết định | Lý do |
 |---|---|
-| **Ứng dụng phát sau khi gọi Flowable thành công**, qua **hộp thư đi (transactional outbox) trong PostgreSQL**, không dùng listener trong BPMN | Listener HTTP của Flowable phải cầm thông tin đăng nhập vào backend, chạy trong transaction của engine (lỗi mạng làm hỏng bước quy trình hoặc phát sự kiện cho bước đã rollback) và phải lặp lại trong mọi tệp BPMN. Backend đã đứng giữa người dùng và Flowable (§4.2) nên biết chắc bước nào vừa xong. Ghi vào bảng rồi `app-worker` mới phát nên request không phụ thuộc broker: RabbitMQ dừng → request vẫn 200, sự kiện chờ trong bảng |
+| **Ứng dụng phát sau khi gọi Flowable thành công**, qua **hộp thư đi (transactional outbox) trong PostgreSQL**, không dùng listener trong BPMN | Listener HTTP của Flowable phải cầm thông tin đăng nhập vào backend, chạy trong transaction của engine (lỗi mạng làm hỏng bước quy trình hoặc phát sự kiện cho bước đã rollback) và phải lặp lại trong mọi tệp BPMN. Backend đã đứng giữa người dùng và Flowable (§4.2) nên biết chắc bước nào vừa xong. Ghi vào bảng rồi `mot-cua-worker` mới phát nên request không phụ thuộc broker: RabbitMQ dừng → request vẫn 200, sự kiện chờ trong bảng |
 | Phát **at-least-once**, consumer **chống trùng theo id** | Publisher chỉ đánh dấu `da_phat_luc` sau khi RabbitMQ trả RECEIPT (publisher confirm). Mất kết nối giữa RECEIPT và lúc đánh dấu → phát lại cùng id; consumer ghi `nhat_ky_su_kien` với khóa chính = id (`ON CONFLICT DO NOTHING`) |
-| **Sắp trễ hạn** = tác vụ định kỳ trong `app-worker`, chống trùng bằng ràng buộc `UNIQUE` | Hạn xử lý đúng nằm trong CSDL (`ho_so.han_xu_ly`, tính theo ngày làm việc, có thể gia hạn), không phải trong biến Flowable. Mỗi `DXOS_SU_KIEN_QUET_GIAY` (300) giây: hồ sơ chưa xong (trạng thái không phải `hoan_tat`/`tu_choi` **và** còn quy trình đang chạy trong Flowable), chưa quá 17:00 ngày hạn, còn ≤ `DXOS_SU_KIEN_SAP_TRE_NGAY` (1) ngày làm việc (bỏ thứ Bảy, Chủ nhật, `ngay_nghi`) → ghi `ho_so.sap_tre_han` với `khoa_chong_trung = ho_so.sap_tre_han:<hồ sơ>:<hạn>`. Quét lại, chạy nhiều worker hay khởi động lại đều không phát trùng; gia hạn sang ngày khác thì được cảnh báo lại. Quá hạn đã có hẹn giờ trong BPMN (`quaHan`, #8) |
-| **STOMP** thay vì AMQP 0-9-1 | Backend chỉ dùng thư viện chuẩn Python (không cài `pika`). STOMP là giao thức văn bản (`apps/mot-cua/backend/stomp.py`, ~150 dòng) và RabbitMQ hỗ trợ đủ: SEND có `receipt` (sau publisher confirm), `ack: client-individual` + `prefetch-count`, NACK `requeue: false` → dead-letter |
-| Lõi không biết tên exchange/queue nghiệp vụ | Ứng dụng khai `rabbitmq/definitions.json`; `rabbitmq-init` tạo **vhost riêng** `<DXOS_APP>` và user `app-<DXOS_APP>`: không tag (bị HTTP API quản trị từ chối), configure `^$` (không tự khai báo/xóa exchange, queue), read/write trong vhost của mình |
+| **Sắp trễ hạn** = tác vụ định kỳ trong `mot-cua-worker`, chống trùng bằng ràng buộc `UNIQUE` | Hạn xử lý đúng nằm trong CSDL (`ho_so.han_xu_ly`, tính theo ngày làm việc, có thể gia hạn), không phải trong biến Flowable. Mỗi `DXOS_SU_KIEN_QUET_GIAY` (300) giây: hồ sơ chưa xong (trạng thái không phải `hoan_tat`/`tu_choi` **và** còn quy trình đang chạy trong Flowable), chưa quá 17:00 ngày hạn, còn ≤ `DXOS_SU_KIEN_SAP_TRE_NGAY` (1) ngày làm việc (bỏ thứ Bảy, Chủ nhật, `ngay_nghi`) → ghi `ho_so.sap_tre_han` với `khoa_chong_trung = ho_so.sap_tre_han:<hồ sơ>:<hạn>`. Quét lại, chạy nhiều worker hay khởi động lại đều không phát trùng; gia hạn sang ngày khác thì được cảnh báo lại. Quá hạn đã có hẹn giờ trong BPMN (`quaHan`, #8) |
+| **STOMP** thay vì AMQP 0-9-1 | Backend chỉ dùng thư viện chuẩn Python (không cài `pika`). STOMP là giao thức văn bản (`mot-cua/backend/stomp.py`, ~150 dòng) và RabbitMQ hỗ trợ đủ: SEND có `receipt` (sau publisher confirm), `ack: client-individual` + `prefetch-count`, NACK `requeue: false` → dead-letter |
+| Lõi không biết tên exchange/queue nghiệp vụ | Bộ máy khai `rabbitmq/definitions.json`; `rabbitmq-init` tạo **vhost riêng** `mot-cua` và user `tang2-mot-cua`: không tag (bị HTTP API quản trị từ chối), configure `^$` (không tự khai báo/xóa exchange, queue), read/write trong vhost của mình |
 | Sự kiện **không chứa dữ liệu cá nhân** | Chỉ id nội bộ + mã hồ sơ, mã lĩnh vực, mã thủ tục. Role `dich_vu_su_kien` chỉ được `SELECT` các cột `id, ma_ho_so, thu_tuc_id, trang_thai, han_xu_ly` của `ho_so` (quyền cột: đọc họ tên, số điện thoại, sub người nộp → 42501); `su_kien.kiem()` từ chối sự kiện có khóa như `hoTen`, `soDienThoai`, `nguoiNopSub` |
 
 #### 4.5.2 Sơ đồ
@@ -545,10 +555,10 @@ RabbitMQ (MPL-2.0) chạy như **dịch vụ riêng bằng image gốc** `rabbit
 sequenceDiagram
   autonumber
   participant App as Tầng 2 (JWT)
-  participant BE as app-backend
+  participant BE as mot-cua-api
   participant FL as Flowable
   participant PG as PostgreSQL<br/>mot_cua.hop_thu_su_kien
-  participant WK as app-worker
+  participant WK as mot-cua-worker
   participant MQ as RabbitMQ<br/>vhost mot-cua
   App->>BE: POST /workflow/tasks/{id}/complete
   BE->>FL: complete task (rest-admin)
@@ -571,11 +581,11 @@ sequenceDiagram
   end
 ```
 
-Topology của `mot-cua` (`apps/mot-cua/rabbitmq/definitions.json`):
+Topology của `mot-cua` (`mot-cua/rabbitmq/definitions.json`):
 
 ```mermaid
 flowchart LR
-  P["app-worker<br/>(publisher)"] -->|"routing key = loại sự kiện"| EX{{"mot_cua.su_kien<br/>topic"}}
+  P["mot-cua-worker<br/>(publisher)"] -->|"routing key = loại sự kiện"| EX{{"mot_cua.su_kien<br/>topic"}}
   EX -->|"ho_so.#"| Q[["mot_cua.nhat_ky<br/>quorum, delivery-limit 5"]]
   Q --> C["consumer mẫu<br/>→ nhat_ky_su_kien"]
   Q -. "NACK / quá 5 lần giao" .-> DLX{{"mot_cua.su_kien.loi<br/>fanout"}}
@@ -586,14 +596,14 @@ Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `h
 
 #### 4.5.3 Bí mật và quản trị
 
-- Tài khoản quản trị khởi tạo `RABBITMQ_ADMIN` (mặc định `admin`), mật khẩu sinh ngẫu nhiên trong OpenBao `dxos/core/rabbitmq/admin`; agent `rabbitmq-secrets` render `default_user`/`default_pass` vào `/run/dxos-secrets/conf.d/20-admin.conf` (quyền 0400), RabbitMQ nạp cùng `core/rabbitmq/rabbitmq.conf` (`RABBITMQ_CONFIG_FILE` + `RABBITMQ_CONFIG_FILES`). Giống `POSTGRES_PASSWORD`, giá trị này **chỉ áp dụng khi volume `rabbitmq-data` còn trống**; đổi sau đó: `docker compose exec rabbitmq rabbitmqctl change_password admin '<mật khẩu mới>'` rồi đặt cùng giá trị vào OpenBao (§4.4.6).
-- User ứng dụng: mật khẩu ở `dxos/apps/<DXOS_APP>/rabbitmq`; đổi trong OpenBao rồi `make up` (rabbitmq-init đặt lại, worker đọc lại khi kết nối lại).
+- Tài khoản quản trị khởi tạo `RABBITMQ_ADMIN` (mặc định `admin`), mật khẩu sinh ngẫu nhiên trong OpenBao `dxos/core/rabbitmq/admin`; agent `rabbitmq-secrets` render `default_user`/`default_pass` vào `/run/dxos-secrets/conf.d/20-admin.conf` (quyền 0400), RabbitMQ nạp cùng `nen-tang/rabbitmq/rabbitmq.conf` (`RABBITMQ_CONFIG_FILE` + `RABBITMQ_CONFIG_FILES`). Giống `POSTGRES_PASSWORD`, giá trị này **chỉ áp dụng khi volume `rabbitmq-data` còn trống**; đổi sau đó: `docker compose exec rabbitmq rabbitmqctl change_password admin '<mật khẩu mới>'` rồi đặt cùng giá trị vào OpenBao (§4.4.6).
+- User Tầng 2: mật khẩu ở `dxos/tang2/mot-cua/rabbitmq`; đổi trong OpenBao rồi `make up` (rabbitmq-init đặt lại, worker đọc lại khi kết nối lại).
 - `hostname: rabbitmq` cố định trong compose: tên nút `rabbit@rabbitmq` quyết định thư mục dữ liệu, tạo lại container không mất queue và tin bền vững.
 - Xem nhanh: `docker compose exec rabbitmq rabbitmqctl -q list_queues -p mot-cua name type messages`.
 
 ## 5. MFA cho cán bộ
 
-- Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; ứng dụng quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
+- Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
 - Tuần 2: thay bằng luồng xác thực riêng có "Condition – user role": mọi người có role `can_bo`/`lanh_dao` đều bị hỏi OTP, kể cả tài khoản tạo mới chưa có required action. Cần cấu hình tương tự cho luồng direct grant.
 - Client lõi `dxos_cli` bật password grant chỉ để thử bằng curl và `make smoke` trong môi trường dev; tắt khi triển khai thật.
 - `make smoke` kiểm luồng có OTP thật (#5): tạo người dùng tạm role `can_bo`/`lanh_dao` có sẵn credential OTP (Partial Import qua stdin), chỉ mật khẩu → không có token, mật khẩu + mã TOTP sinh trong script → có token, gọi API qua APISIX, rồi xóa người dùng tạm.
@@ -602,12 +612,12 @@ Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `h
 
 | Profile | Dịch vụ | Trạng thái | Ghi chú tài nguyên |
 |---|---|---|---|
-| `core` | PostgreSQL, Keycloak, PostgREST, APISIX (+ dịch vụ một lần `jwks-init`, `app-migrate`, `app-realm`) | chạy thử 17/10 và 20/10/2026 | mục tiêu laptop 16 GB |
+| `core` | PostgreSQL, Keycloak, PostgREST, APISIX (+ dịch vụ một lần `jwks-init`, `tang2-migrate`, `tang2-realm`) | chạy thử 17/10 và 20/10/2026 | mục tiêu laptop 16 GB |
 | `core` | Flowable REST (+ dịch vụ một lần `db-init`, trước #10 là `flowable-db-init`) | chạy thử 20/10/2026 (#8) | JVM `-Xmx512M` |
-| `core` | `app-backend` (backend của ứng dụng, image `python` gốc) | chạy thử 21/10/2026 (#6) | ~20 MB RAM |
+| `core` | `mot-cua-api`, `mot-cua-worker`, `nap-thu-tuc` (bộ máy một cửa, image `python` gốc) | chạy thử 21/10/2026 (#6) | ~20 MB RAM |
 | `core` | Garage (+ dịch vụ một lần `garage-secrets`, `garage-init`), ClamAV | chạy thử 21/10/2026 (#7) | Garage ~30 MB RAM; ClamAV ~1–1,5 GB RAM cho CSDL virus |
 | `core` | OpenBao (+ dịch vụ một lần `bao-init`, 5 agent `*-secrets`) | chạy thử 21/10/2026 (#10) | agent chạy khoảng 1 giây rồi thoát, không giữ RAM |
-| `core` | RabbitMQ (+ dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`), `app-worker` | chạy thử 21/10/2026 (#9) | RabbitMQ ~150 MB RAM, chặn publisher ở 40% RAM; `app-worker` ~20 MB |
+| `core` | RabbitMQ (+ dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`), `mot-cua-worker` | chạy thử 21/10/2026 (#9) | RabbitMQ ~150 MB RAM, chặn publisher ở 40% RAM; `mot-cua-worker` ~20 MB |
 | `docs` | Gotenberg, step-ca, Meilisearch CE | TODO tuần 2–5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | Apache Superset | TODO tuần 4 | |
@@ -619,21 +629,21 @@ Mọi image ghim phiên bản cụ thể, lấy từ dự án gốc (bảng ở 
 
 D-004: image `flowable-ui` (có modeler) dừng ở 6.8.0 (2022), bpmn-js bị cấm vì giấy phép bpmn.io không phải OSI. Cách làm:
 
-1. Viết tay tệp `apps/<tên>/processes/<ma-thu-tuc>.bpmn20.xml` theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2 là `<!-- SPDX-License-Identifier: Apache-2.0 -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
-2. Chỉ dùng tập phần tử nhỏ: `startEvent`, `userTask` (có `flowable:candidateGroups` trùng nhóm Keycloak), `serviceTask`, `exclusiveGateway`, `boundaryEvent` + `timerEventDefinition` cho cảnh báo trễ hạn, `endEvent`.
+1. Viết tay tệp `thu-tuc/<ma>/quy-trinh.bpmn20.xml` của gói thủ tục ([`docs/thu-tuc.md`](thu-tuc.md)) theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2 là `<!-- SPDX-License-Identifier: Apache-2.0 -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
+2. Chỉ dùng tập phần tử nhỏ: `startEvent`, `userTask` (có `flowable:candidateGroups` = mã lĩnh vực của thủ tục hoặc `lanh_dao`, biến người xử lý đặt khai bằng `flowable:formProperty`), `serviceTask`, `exclusiveGateway`, `boundaryEvent` + `timerEventDefinition` cho cảnh báo trễ hạn, `endEvent`.
 3. Không cần phần `bpmndi` (tọa độ vẽ): Flowable chạy được khi thiếu phần này. Sơ đồ cho tài liệu và slide vẽ bằng Mermaid `flowchart` đặt cạnh tệp XML.
-4. Kiểm tra hai lớp: `make check` (và CI) chạy `scripts/check-bpmn.py` – XML hợp lệ, id không trùng, mũi tên trỏ đúng phần tử, nút nào cũng có đường vào/ra, gateway có `default` và điều kiện, userTask có người nhận; khi khởi động, Flowable tự triển khai và từ chối tệp sai ngữ nghĩa (`make smoke` kiểm quy trình đã lên và chạy được).
-5. Triển khai: đặt tệp vào `apps/<DXOS_APP>/processes/` rồi `docker compose --profile core up -d --force-recreate flowable`. Không gọi REST `repository/deployments` tay để tránh hai nguồn sự thật.
-6. Khi số quy trình tăng: sinh XML từ mô tả YAML/JSON bằng script Python của đội (mỗi thủ tục một tệp cấu hình), giữ đúng tinh thần module cắm–rút.
+4. Kiểm tra hai lớp: `make check` (và CI) chạy `scripts/check-bpmn.py` và bộ nạp ở chế độ `--chi-kiem` (cùng luật `mot-cua/backend/kiem_bpmn.py`) – XML hợp lệ, id không trùng, mũi tên trỏ đúng phần tử, nút nào cũng có đường vào/ra, gateway có `default` và điều kiện, userTask có người nhận, biến có kiểu hợp lệ; khi deploy, Flowable từ chối tệp sai ngữ nghĩa và bộ nạp bỏ qua gói đó (`make smoke` kiểm quy trình đã lên và chạy được).
+5. Triển khai: `make nap-thu-tuc` (không cần khởi động lại Flowable; BPMN không đổi thì không deploy lại). Không gọi REST `repository/deployments` tay để tránh hai nguồn sự thật.
+6. Khi số quy trình tăng: nhiều thủ tục dùng chung một mẫu quy trình (tiếp nhận → thẩm định → phê duyệt) có thể sinh `quy-trinh.bpmn20.xml` từ `thu-tuc.yaml` bằng script Python của đội; gói vẫn là đơn vị cắm–rút.
 
 ## 8. Chạy thử
 
-Cách nhanh nhất: `make up` rồi `make smoke` (`scripts/smoke.sh` + `apps/<DXOS_APP>/tests/smoke.sh`). Smoke đặt mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu), không in mật khẩu hay token, không xóa dữ liệu có sẵn (chỉ xóa người dùng và cán bộ tạm do chính smoke tạo); mỗi lần chạy thêm một hồ sơ thử của `congdan01`. Kết quả gần nhất ở mục 8.3. Thử tay từng bước:
+Cách nhanh nhất: `make up` rồi `make smoke` (`scripts/smoke.sh` + `mot-cua/tests/smoke*.sh`). Smoke đặt mật khẩu ngẫu nhiên cho người dùng mẫu (realm không chứa mật khẩu), không in mật khẩu hay token, không xóa dữ liệu có sẵn (chỉ xóa người dùng và cán bộ tạm do chính smoke tạo); mỗi lần chạy thêm một hồ sơ thử của `congdan01`. Kết quả gần nhất ở mục 8.3. Thử tay từng bước:
 
 ```bash
-cp .env.example .env            # không có mật khẩu nào cần điền; DXOS_APP=mot-cua
+cp .env.example .env            # không có mật khẩu nào cần điền
 make up
-docker compose ps -a            # postgres, keycloak, apisix "healthy"; jwks-init, app-migrate, app-realm "Exited (0)"
+docker compose ps -a            # postgres, keycloak, apisix "healthy"; jwks-init, tang2-migrate, tang2-realm "Exited (0)"
 
 # 1. Không token → 401 từ APISIX
 curl -i http://localhost:9080/api/ho_so
@@ -855,9 +865,9 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 - pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
-- Quy ước thêm cho `apps/<tên>/`: `processes/` (Flowable), route APISIX riêng khi ứng dụng có backend riêng.
+- Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.
 - Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình (có thể làm bằng một consumer của sự kiện `ho_so.*`, §4.5); khởi tạo quy trình sau Poka-yoke (tuần 3).
-- Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `apps/mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
+- Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
 - Tệp: giao diện tải/xem (tuần 3); Poka-yoke kiểm đủ thành phần theo JSON Schema dựa trên `thanh_phan_ho_so` đã quét (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

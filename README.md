@@ -16,7 +16,7 @@ OLP PMNM 2026 · Đề tài DX-OS Open-Core · Đội DTU_DZ_2
 
 Cấp xã là nơi người dân làm thủ tục hành chính nhiều nhất: đăng ký khai sinh, chứng thực bản sao, xác nhận đất đai… Mỗi ngày bộ phận một cửa nhận hàng chục hồ sơ, phần lớn vẫn là giấy, mỗi hồ sơ phải qua tay nhiều cán bộ và có thời hạn giải quyết theo luật.
 
-Commune DX-OS đưa toàn bộ vòng đời hồ sơ lên mạng: từ lúc người dân nộp, qua tiếp nhận, thẩm định, phê duyệt, đến khi trả kết quả. Hệ thống gồm một lõi dùng chung (đăng nhập, cổng API, dữ liệu, quy trình) và các ứng dụng nghiệp vụ cắm vào lõi; ứng dụng đầu tiên là **một cửa cấp xã**.
+Commune DX-OS đưa toàn bộ vòng đời hồ sơ lên mạng: từ lúc người dân nộp, qua tiếp nhận, thẩm định, phê duyệt, đến khi trả kết quả. Hệ thống gồm một nền tảng dùng chung (đăng nhập, cổng API, dữ liệu, quy trình), một bộ máy **một cửa cấp xã** chạy mọi thủ tục, và các **gói thủ tục** cắm vào bộ máy (đầu tiên: đăng ký khai sinh, chứng thực bản sao).
 
 ## ⚠️ Thách thức
 
@@ -37,7 +37,7 @@ Commune DX-OS đưa toàn bộ vòng đời hồ sơ lên mạng: từ lúc ngư
 - **Quy trình rõ ràng:** mỗi thủ tục là một quy trình BPMN; mỗi cán bộ chỉ thấy hồ sơ thuộc lĩnh vực mình phụ trách.
 - **Hạn xử lý tự tính:** theo ngày làm việc (bỏ cuối tuần, ngày lễ); hồ sơ sắp trễ hạn tự phát cảnh báo.
 - **An toàn mặc định:** đăng nhập một lần có xác thực hai lớp cho cán bộ, tệp được quét mã độc trước khi lưu, bí mật hệ thống nằm trong két riêng.
-- **Mở để mở rộng:** lõi không chứa nghiệp vụ; ứng dụng mới cắm vào thư mục `apps/` mà không sửa lõi.
+- **Mở để mở rộng:** nền tảng không chứa nghiệp vụ; thêm một thủ tục là thêm một thư mục `thu-tuc/<ma>/`, không sửa mã ([`docs/thu-tuc.md`](docs/thu-tuc.md)).
 
 ## 👥 Đối tượng
 
@@ -48,7 +48,7 @@ Commune DX-OS đưa toàn bộ vòng đời hồ sơ lên mạng: từ lúc ngư
 | Cán bộ chuyên môn | Thẩm định hồ sơ thuộc lĩnh vực phụ trách (hộ tịch, chứng thực, đất đai…) |
 | Lãnh đạo xã | Phê duyệt, theo dõi hồ sơ sắp trễ hạn và thời gian giải quyết |
 | Quản trị hệ thống | Cài đặt, quản lý người dùng, bí mật, sao lưu |
-| Lập trình viên | Viết ứng dụng mới cắm vào lõi qua API, không sửa `core/` |
+| Lập trình viên | Viết gói thủ tục mới trong `thu-tuc/` (mô tả, BPMN, JSON Schema, dữ liệu mẫu), không sửa `nen-tang/` hay `mot-cua/` |
 
 ## 📱 Chức năng
 
@@ -73,9 +73,9 @@ Bản v0.1.0 là lõi và API của ứng dụng một cửa, kiểm chứng đ�
   <img src="docs/images/kien-truc-tong-quan.webp" alt="Kiến trúc tổng quan: công dân và cán bộ xã gọi qua APISIX bằng HTTPS và JWT; Keycloak lo đăng nhập và xác thực hai lớp; APISIX chuyển tới PostgREST và PostgreSQL có RLS, Flowable BPMN phát sự kiện qua RabbitMQ để cảnh báo trễ hạn, dịch vụ tệp quét ClamAV rồi lưu Garage S3; OpenBao cấp bí mật cho các dịch vụ" width="100%">
 </p>
 
-Hệ thống chia hai tầng. **Tầng 1 – [`core/`](core/)** là lõi headless: chỉ có API, không có giao diện cho người dùng cuối và không chứa nghiệp vụ. **Tầng 2 – [`apps/mot-cua/`](apps/mot-cua/)** là ứng dụng một cửa: schema và phân quyền dữ liệu, vai trò, quy trình BPMN, backend mỏng; ứng dụng chỉ gọi lõi qua API Gateway và được chọn bằng biến `DXOS_APP`. Lõi có đủ 4 dịch vụ bắt buộc của đề: **SSO** (Keycloak, MFA cho cán bộ), **API Gateway** (APISIX), **dữ liệu có cấu trúc và phi cấu trúc** (PostgreSQL + RLS + PostgREST; Garage S3 + ClamAV), **workflow engine** (Flowable BPMN 2.0). Mọi thành phần chạy bằng image gốc của dự án upstream.
+Hệ thống chia hai tầng. **Tầng 1 – [`nen-tang/`](nen-tang/)** là lõi headless: chỉ có API, không có giao diện cho người dùng cuối và không chứa nghiệp vụ. **Tầng 2 – [`mot-cua/`](mot-cua/)** là bộ máy một cửa dùng chung cho mọi thủ tục: schema và phân quyền dữ liệu, vai trò, backend mỏng, chỉ gọi lõi qua API Gateway. Mỗi thủ tục là một gói **[`thu-tuc/<ma>/`](thu-tuc/)** (mô tả, quy trình BPMN, JSON Schema thành phần hồ sơ, dữ liệu mẫu) mà bộ nạp tự kiểm và nạp khi khởi động. Lõi có đủ 4 dịch vụ bắt buộc của đề: **SSO** (Keycloak, MFA cho cán bộ), **API Gateway** (APISIX), **dữ liệu có cấu trúc và phi cấu trúc** (PostgreSQL + RLS + PostgREST; Garage S3 + ClamAV), **workflow engine** (Flowable BPMN 2.0). Mọi thành phần chạy bằng image gốc của dự án upstream.
 
-Sơ đồ chi tiết (route gateway, luồng JWT, luồng tệp, bí mật, sự kiện, hợp đồng lõi–ứng dụng): [`docs/architecture.md`](docs/architecture.md).
+Sơ đồ chi tiết (route gateway, luồng JWT, luồng tệp, bí mật, sự kiện, hợp đồng nền tảng – bộ máy – gói thủ tục): [`docs/architecture.md`](docs/architecture.md).
 
 ## ⚙️ Công nghệ
 
@@ -89,7 +89,7 @@ Sơ đồ chi tiết (route gateway, luồng JWT, luồng tệp, bí mật, sự
 | Workflow | Flowable REST 8.0 (BPMN 2.0) | Apache-2.0 |
 | Hàng đợi sự kiện | RabbitMQ 4.3 | MPL-2.0 |
 | Két bí mật | OpenBao 2.7 | MPL-2.0 |
-| Backend ứng dụng | Python 3.13 (thư viện chuẩn) | PSF-2.0 |
+| Backend bộ máy một cửa, bộ nạp gói | Python 3.13 (thư viện chuẩn) | PSF-2.0 |
 | Sắp dùng | React + Vite, Superset, step-ca + pyHanko, Gotenberg, Meilisearch CE, PaddleOCR, Ollama + Qwen2.5 | xem [`DEPENDENCIES.md`](DEPENDENCIES.md) |
 
 Thành phần AGPL/GPL chỉ chạy như dịch vụ riêng bằng image gốc, không sửa, không liên kết vào mã của dự án.
@@ -128,7 +128,7 @@ Chi tiết theo tuần: [`docs/PLAN.md`](docs/PLAN.md); đối chiếu yêu cầ
 git clone https://github.com/commune-dxos/commune-dxos.git
 cd commune-dxos
 cp .env.example .env      # không có mật khẩu nào cần điền
-make up                   # lõi + ứng dụng DXOS_APP; tự init + unseal OpenBao
+make up                   # nền tảng + bộ máy mot-cua + nạp gói thu-tuc/; tự init + unseal OpenBao
 make bao-init             # (tùy chọn) init/unseal OpenBao lại, chạy lại an toàn; make up đã tự gọi
 make ps                   # dịch vụ chạy nền "healthy", dịch vụ một lần "Exited (0)"
 make smoke                # kiểm tra đầu-cuối: "== Kết quả: 405 đạt, 0 trượt"
@@ -145,7 +145,7 @@ Lần đầu `make up` mất khoảng 2–10 phút tùy mạng (đo trên bản 
 
 **Tài khoản mẫu** (dữ liệu giả, mật khẩu do `make demo-users` đặt): `congdan01`, `congdan02` (công dân); `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) (cán bộ, bắt buộc OTP); `lanhdao01` (lãnh đạo, bắt buộc OTP).
 
-Hướng dẫn đầy đủ (yêu cầu máy chi tiết, bí mật OpenBao, cổng và tài khoản, gọi API thử bằng `curl`, biến cấu hình `.env`, thêm ứng dụng vào `apps/`, kiểm thử, **xử lý lỗi thường gặp**): [`docs/cai-dat.md`](docs/cai-dat.md).
+Hướng dẫn đầy đủ (yêu cầu máy chi tiết, bí mật OpenBao, cổng và tài khoản, gọi API thử bằng `curl`, biến cấu hình `.env`, thêm thủ tục vào `thu-tuc/`, kiểm thử, **xử lý lỗi thường gặp**): [`docs/cai-dat.md`](docs/cai-dat.md).
 
 ## 🤝 Đóng góp
 

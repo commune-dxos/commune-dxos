@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# bao agent một lần cho danh tính `keycloak` (dịch vụ keycloak-secrets trong
+# docker-compose.yml): đăng nhập AppRole bằng role_id/secret_id do bao-init đặt trong volume
+# keycloak-secrets, render bí mật ra tệp quyền 0400 trong chính volume đó rồi thoát. Chạy bằng
+# uid 1000 như Keycloak; nen-tang/scripts/kc-start.sh đọc tệp rồi chạy kc.sh. Policy:
+# nen-tang/openbao/policies/keycloak.hcl. Đọc sai đường dẫn (policy chặn) → thoát mã 1 ngay.
+
+vault {
+  address = "http://openbao:8200"
+  retry {
+    num_retries = 2
+  }
+}
+
+auto_auth {
+  method "approle" {
+    exit_on_err = true
+    config = {
+      role_id_file_path                   = "/run/dxos-secrets/approle/role_id"
+      secret_id_file_path                 = "/run/dxos-secrets/approle/secret_id"
+      remove_secret_id_file_after_reading = false
+    }
+  }
+}
+
+exit_after_auth = true
+
+template_config {
+  exit_on_retry_failure = true
+}
+
+template {
+  destination          = "/run/dxos-secrets/db_password"
+  perms                = "0400"
+  error_on_missing_key = true
+  contents             = "{{ with secret \"dxos/data/core/db/keycloak\" }}{{ .Data.data.password }}{{ end }}"
+}
+
+template {
+  destination          = "/run/dxos-secrets/admin_password"
+  perms                = "0400"
+  error_on_missing_key = true
+  contents             = "{{ with secret \"dxos/data/core/keycloak/admin\" }}{{ .Data.data.password }}{{ end }}"
+}

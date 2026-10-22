@@ -3,7 +3,7 @@
 # Smoke OpenBao (#10), được scripts/smoke.sh `source` (dùng kiem, cong_host, FLOWABLE_ADMIN_PASSWORD).
 #   - két đã khởi tạo, đã unseal; tệp unseal key trên máy quyền 600 và bị git bỏ qua;
 #   - policy: mỗi danh tính chỉ đọc/ghi đúng phần của mình (đăng nhập bằng AppRole thật của
-#     dịch vụ, core/openbao/kiem-quyen.py), ứng dụng không đọc được nhánh của ứng dụng khác;
+#     dịch vụ, nen-tang/openbao/kiem-quyen.py), Tầng 2 không đọc được nhánh của dịch vụ Tầng 2 khác;
 #   - không còn mật khẩu nào trong cấu hình container (docker inspect) hay .env.example;
 #   - nhật ký kiểm toán có ghi, không chứa bí mật dạng rõ; bao-init chạy lại không đổi gì.
 # Không in giá trị bí mật.
@@ -18,7 +18,7 @@ kiem "tệp unseal key bị git bỏ qua (.gitignore)" "có" "$(git check-ignore
 
 # Ma trận quyền: <danh tính>:<read|write>:<đường dẫn KV> → mã mong đợi.
 # read 200 = đọc được, 403 = bị chặn; write 400 = policy cho ghi (cas chặn), 403 = bị chặn.
-A="apps/$DXOS_APP"
+A="tang2/$DXOS_TANG2"
 MA_TRAN=(
   "db:read:core/db/postgres 200"
   "db:read:core/keycloak/admin 403"
@@ -37,19 +37,19 @@ MA_TRAN=(
   "garage-init:write:$A/s3 400"
   "garage-init:read:core/db/postgres 403"
   "garage-init:write:core/garage 403"
-  "app-realm:read:core/keycloak/admin 200"
-  "app-realm:read:$A/s3 403"
-  "app-realm:write:core/keycloak/admin 403"
-  "app:read:$A/s3 200"
-  "app:read:core/flowable/rest-admin 200"
-  "app:read:core/db/postgres 403"
-  "app:read:core/keycloak/admin 403"
-  "app:read:core/garage 403"
-  "app:write:$A/s3 403"
-  "app:read:apps/ung-dung-khac/s3 403"
-  "app:read:$A/rabbitmq 200"
-  "app:read:core/rabbitmq/admin 403"
-  "app:write:$A/rabbitmq 403"
+  "tang2-realm:read:core/keycloak/admin 200"
+  "tang2-realm:read:$A/s3 403"
+  "tang2-realm:write:core/keycloak/admin 403"
+  "tang2:read:$A/s3 200"
+  "tang2:read:core/flowable/rest-admin 200"
+  "tang2:read:core/db/postgres 403"
+  "tang2:read:core/keycloak/admin 403"
+  "tang2:read:core/garage 403"
+  "tang2:write:$A/s3 403"
+  "tang2:read:tang2/dich-vu-khac/s3 403"
+  "tang2:read:$A/rabbitmq 200"
+  "tang2:read:core/rabbitmq/admin 403"
+  "tang2:write:$A/rabbitmq 403"
   "rabbitmq:read:core/rabbitmq/admin 200"
   "rabbitmq:read:core/garage 403"
   "rabbitmq:read:$A/rabbitmq 403"
@@ -60,7 +60,7 @@ MA_TRAN=(
   "rabbitmq-init:read:$A/s3 403"
 )
 muc=(); for m in "${MA_TRAN[@]}"; do muc+=("${m% *}"); done
-kq="$(docker compose run --rm --no-deps --entrypoint python bao-init /core/openbao/kiem-quyen.py "${muc[@]}" 2>&1)"
+kq="$(docker compose run --rm --no-deps --entrypoint python bao-init /nen-tang/openbao/kiem-quyen.py "${muc[@]}" 2>&1)"
 for m in "${MA_TRAN[@]}"; do
   kiem "policy ${m% *} → ${m##* }" "${m##* }" "$(awk -v k="${m% *}" '$1 == k {print $2}' <<<"$kq")"
 done
@@ -68,8 +68,8 @@ done
 # Không còn mật khẩu/secret/token dạng giá trị trong biến môi trường của container
 # (cho phép *_FILE, *_URL và giá trị "@/đường dẫn tệp" như PGRST_JWT_SECRET=@/jwks/jwks.json là
 # khóa CÔNG KHAI). bao-init chỉ nhận biến LEGACY_* khi .env cũ còn mật khẩu.
-for svc in postgres keycloak postgrest flowable app-backend app-realm garage-init db-init app-migrate \
-           rabbitmq rabbitmq-init app-worker; do
+for svc in postgres keycloak postgrest flowable mot-cua-api tang2-realm garage-init db-init tang2-migrate \
+           rabbitmq rabbitmq-init mot-cua-worker; do
   id="$(docker compose ps -aq "$svc" | head -1)"
   kiem "$svc: không có mật khẩu/secret trong biến môi trường" "0" \
     "$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$id" \

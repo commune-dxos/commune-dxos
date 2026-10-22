@@ -5,7 +5,7 @@
 # ngẫu nhiên, nên chạy lệnh này SAU smoke.
 # Mật khẩu: biến DXOS_DEMO_PASSWORD (đặt khi gọi lệnh, không ghi vào .env), không có thì sinh
 # ngẫu nhiên và in ra MỘT lần. Chỉ dùng trên máy dev với dữ liệu mẫu.
-# Dùng: scripts/demo-users.sh [username…]   (mặc định: người dùng mẫu của apps/mot-cua)
+# Dùng: scripts/demo-users.sh [username…]   (mặc định: người dùng mẫu của mot-cua)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }

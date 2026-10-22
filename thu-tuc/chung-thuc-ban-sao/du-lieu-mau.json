@@ -1,0 +1,17 @@
+{
+  "mo_ta": "Yêu cầu mẫu GIẢ cho thủ tục CT01: người nộp, số điện thoại và id tệp đều không có thật. Smoke dùng để nộp hồ sơ chứng thực và chạy hết quy trình; bộ nạp kiểm tệp này khớp thanh-phan-ho-so.schema.json.",
+  "ho_so": {
+    "ho_ten_nguoi_nop": "Lê Thị Thử",
+    "so_dien_thoai": "0900000002"
+  },
+  "thanh_phan": {
+    "ban_chinh": ["c7e10000-0000-4000-8000-000000000001"],
+    "ban_sao": ["c7e10000-0000-4000-8000-000000000002", "c7e10000-0000-4000-8000-000000000003"]
+  },
+  "xu_ly": {
+    "tiep_nhan": {"hopLe": true},
+    "kiem_tra_ban_chinh": {"khopBanChinh": true, "soTrang": 1},
+    "ky_chung_thuc": {"daKy": true},
+    "tra_ket_qua": {"soBan": 2, "ghiChu": "Đã thu lệ phí 4.000 đồng"}
+  }
+}

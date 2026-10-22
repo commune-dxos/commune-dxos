@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!--
+  Gói thủ tục chung-thuc-ban-sao – quy trình "Chứng thực bản sao từ bản chính" (CT01, lĩnh vực
+  chung_thuc), BPMN 2.0 viết tay (D-009). Hạn trong ngày tiếp nhận. Sơ đồ: README.md cùng thư mục.
+
+  Biến khi khởi tạo (API một cửa đặt, giống mọi gói):
+    hoSoId, maHoSo (businessKey), nguoiNopSub, hanXuLyLuc (ISO 8601, 17:00 ngày hạn)
+  Biến người xử lý đặt khi hoàn thành bước: khai bằng flowable:formProperty trong từng userTask
+  (API một cửa chỉ nhận đúng các biến này; required="true" = bắt buộc).
+  Biến quy trình tự đặt: ketQua (hoan_tat | tu_choi), quaHan (true khi quá hạn chưa xong).
+
+  Người xử lý: candidateGroups = mã lĩnh vực chung_thuc (cán bộ tư pháp – hộ tịch phụ trách chứng
+  thực) và lanh_dao (Chủ tịch/Phó Chủ tịch UBND xã ký chứng thực).
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="urn:dxos:mot-cua"
+             id="def_chung_thuc_ban_sao">
+
+  <process id="chung_thuc_ban_sao" name="Chứng thực bản sao từ bản chính" isExecutable="true">
+    <documentation>Một cửa cấp xã – thủ tục CT01: tiếp nhận → kiểm tra bản chính → ký chứng thực → trả kết quả.</documentation>
+
+    <startEvent id="bat_dau" name="Yêu cầu đã nộp"/>
+    <sequenceFlow id="f_bat_dau" sourceRef="bat_dau" targetRef="tiep_nhan"/>
+
+    <!-- 1. Tiếp nhận: giấy tờ có thuộc diện được chứng thực bản sao không -->
+    <userTask id="tiep_nhan" name="Tiếp nhận yêu cầu chứng thực" flowable:candidateGroups="chung_thuc">
+      <documentation>hopLe = true nếu giấy tờ được phép chứng thực bản sao; false (kèm ghiChu) để từ chối.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="hopLe" name="Thuộc diện được chứng thực?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_tiep_nhan" sourceRef="tiep_nhan" targetRef="gw_tiep_nhan"/>
+    <exclusiveGateway id="gw_tiep_nhan" name="Được chứng thực?" default="f_khong_thuoc_dien"/>
+    <sequenceFlow id="f_thuoc_dien" name="được" sourceRef="gw_tiep_nhan" targetRef="kiem_tra_ban_chinh">
+      <conditionExpression xsi:type="tFormalExpression">${hopLe == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_khong_thuoc_dien" name="không" sourceRef="gw_tiep_nhan" targetRef="ket_thuc_tu_choi"/>
+
+    <!-- 2. Kiểm tra bản chính: đối chiếu bản sao với bản chính người yêu cầu xuất trình -->
+    <userTask id="kiem_tra_ban_chinh" name="Kiểm tra bản chính, đối chiếu bản sao" flowable:candidateGroups="chung_thuc">
+      <documentation>khopBanChinh = true nếu bản sao đúng với bản chính; false (kèm ghiChu) để từ chối.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="khopBanChinh" name="Bản sao khớp bản chính?" type="boolean" required="true"/>
+        <flowable:formProperty id="soTrang" name="Số trang của một bản" type="long"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_kiem_tra" sourceRef="kiem_tra_ban_chinh" targetRef="gw_kiem_tra"/>
+    <exclusiveGateway id="gw_kiem_tra" name="Khớp bản chính?" default="f_khong_khop"/>
+    <sequenceFlow id="f_khop" name="khớp" sourceRef="gw_kiem_tra" targetRef="ky_chung_thuc">
+      <conditionExpression xsi:type="tFormalExpression">${khopBanChinh == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_khong_khop" name="không khớp" sourceRef="gw_kiem_tra" targetRef="ket_thuc_tu_choi"/>
+
+    <!-- 3. Ký chứng thực: người có thẩm quyền của UBND xã -->
+    <userTask id="ky_chung_thuc" name="Ký chứng thực, đóng dấu" flowable:candidateGroups="lanh_dao">
+      <documentation>daKy = true sau khi ký; false (kèm ghiChu) để trả lại bước kiểm tra.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="daKy" name="Đã ký chứng thực?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_ky" sourceRef="ky_chung_thuc" targetRef="gw_ky"/>
+    <exclusiveGateway id="gw_ky" name="Đã ký?" default="f_tra_lai"/>
+    <sequenceFlow id="f_da_ky" name="đã ký" sourceRef="gw_ky" targetRef="tra_ket_qua">
+      <conditionExpression xsi:type="tFormalExpression">${daKy == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_tra_lai" name="trả lại" sourceRef="gw_ky" targetRef="kiem_tra_ban_chinh"/>
+
+    <!-- 4. Trả kết quả: giao bản sao đã chứng thực, thu lệ phí, ghi sổ chứng thực -->
+    <userTask id="tra_ket_qua" name="Trả kết quả, ghi sổ chứng thực" flowable:candidateGroups="chung_thuc">
+      <documentation>soBan = số bản sao đã chứng thực giao cho người yêu cầu.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="soBan" name="Số bản đã chứng thực" type="long" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_tra" sourceRef="tra_ket_qua" targetRef="ket_thuc_hoan_tat"/>
+
+    <endEvent id="ket_thuc_hoan_tat" name="Hoàn tất – đã trả bản sao chứng thực">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'hoan_tat')}"/>
+      </extensionElements>
+    </endEvent>
+    <endEvent id="ket_thuc_tu_choi" name="Từ chối chứng thực">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'tu_choi')}"/>
+      </extensionElements>
+    </endEvent>
+
+    <!-- Quá hạn (17:00 ngày hạn): hẹn giờ không ngắt quy trình, đánh dấu quaHan = true -->
+    <subProcess id="qua_han" name="Quá hạn xử lý" triggeredByEvent="true">
+      <startEvent id="den_han" name="Đến hạn xử lý" isInterrupting="false">
+        <timerEventDefinition>
+          <timeDate>${hanXuLyLuc}</timeDate>
+        </timerEventDefinition>
+      </startEvent>
+      <sequenceFlow id="f_den_han" sourceRef="den_han" targetRef="danh_dau_qua_han"/>
+      <serviceTask id="danh_dau_qua_han" name="Đánh dấu quá hạn"
+                   flowable:expression="${execution.setVariable('quaHan', true)}"/>
+      <sequenceFlow id="f_danh_dau" sourceRef="danh_dau_qua_han" targetRef="ket_thuc_qua_han"/>
+      <endEvent id="ket_thuc_qua_han"/>
+    </subProcess>
+  </process>
+</definitions>

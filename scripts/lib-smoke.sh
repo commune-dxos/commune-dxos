@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# Hàm dùng chung cho scripts/smoke.sh và apps/<DXOS_APP>/tests/smoke.sh.
+# Hàm dùng chung cho scripts/smoke.sh và mot-cua/tests/smoke.sh.
 # Không in mật khẩu hay token ra màn hình.
 
-# Dùng trong các tệp `source` thư viện này (smoke của lõi và ứng dụng).
+# Dùng trong các tệp `source` thư viện này (smoke của nền tảng và bộ máy một cửa).
 # shellcheck disable=SC2034
 GW="http://localhost:${APISIX_PORT:-9080}"
 KC="http://localhost:${KEYCLOAK_PORT:-8080}"

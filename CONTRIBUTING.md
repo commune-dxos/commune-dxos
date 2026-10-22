@@ -24,7 +24,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
    Tên nhánh: số issue + vài từ không dấu, nối bằng gạch ngang. Một nhánh chỉ làm một issue.
 3. **Commit** nhỏ, mỗi commit một ý (xem mục 3). Trước khi đẩy chạy `make check`, `make lint`, `make test` (mục 6).
 4. **PR về `develop`.** Điền mẫu PR (mô tả, `Closes #<số>`, checklist). Gắn nhãn như issue.
-5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử (`make up` + `make smoke`) khi PR đụng tới `docker-compose.yml`, `core/`, `apps/` hay quy trình BPMN.
+5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử (`make up` + `make smoke`) khi PR đụng tới `docker-compose.yml`, `nen-tang/`, `mot-cua/` hay gói `thu-tuc/`.
 6. **Merge bằng squash.** Tiêu đề squash giữ đúng định dạng Conventional Commits và số issue, ví dụ `feat(storage): Garage S3 + quét ClamAV (#12)`. Xóa nhánh sau khi merge.
 7. **Phát hành.** Từ `develop` mở PR về `main`, đánh tag `vX.Y.Z` trên `main`, ghi chú phát hành lấy từ `CHANGELOG.md`, đính kèm `.tar.gz` tạo bằng `git archive`.
 
@@ -35,7 +35,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 ```
 
 - Loại: `feat` (tính năng), `fix` (sửa lỗi), `docs` (tài liệu), `chore` (việc vặt, cấu hình), `refactor`, `test`, `ci`.
-- Phạm vi gợi ý: `core`, `keycloak`, `apisix`, `postgres`, `postgrest`, `flowable`, `storage`, `mot-cua`, `web`, `ocr`, `rag`, `bi`.
+- Phạm vi gợi ý: `nen-tang`, `thu-tuc`, `keycloak`, `apisix`, `postgres`, `postgrest`, `flowable`, `storage`, `mot-cua`, `web`, `ocr`, `rag`, `bi`.
 - Commit đóng issue thì thêm dòng `Closes #<số>` ở thân commit hoặc trong PR.
 - Ví dụ: `fix(apisix): giới hạn tần suất cổng công dân theo IP (#18)`.
 
@@ -61,9 +61,9 @@ Chạy trên máy đúng những lệnh CI chạy, mỗi lệnh ứng với mộ
 
 | Lệnh | Job CI | Kiểm gì | Cần |
 |---|---|---|---|
-| `make check` | `make-check` | SPDX từng tệp, cấu trúc BPMN, test đơn vị, compose hợp lệ mọi profile | Docker Compose, Python 3 |
-| `make lint` | `shellcheck`, `yamllint`, `bpmn` | mọi `*.sh`; YAML theo `.yamllint.yml`; BPMN + test của bộ kiểm | `pip install -r scripts/requirements-lint.txt` (nên dùng `.venv`) |
-| `make test` | `test-backend`, `test-sql` | unittest `apps/*/backend/tests`; migration lõi + ứng dụng trên PostgreSQL trống rồi `apps/*/db/tests/*.sql` (RLS) | Python 3; Docker (tự dựng container tạm) hoặc `PGHOST` tới một PostgreSQL trống |
+| `make check` | `make-check` | SPDX từng tệp, cấu trúc BPMN, kiểm gói `thu-tuc/*` (bộ nạp `--chi-kiem`), test đơn vị, compose hợp lệ mọi profile | Docker Compose, Python 3 |
+| `make lint` | `shellcheck`, `yamllint`, `bpmn` | mọi `*.sh`; YAML theo `.yamllint.yml` (kể cả `thu-tuc.yaml`); BPMN `thu-tuc/*/quy-trinh.bpmn20.xml` + test của bộ kiểm | `pip install -r scripts/requirements-lint.txt` (nên dùng `.venv`) |
+| `make test` | `test-backend`, `test-sql` | unittest `mot-cua/backend/tests` (kể cả bộ nạp gói); migration nền tảng + `mot-cua` trên PostgreSQL trống rồi `mot-cua/db/tests/*.sql` (RLS, danh mục gói) | Python 3; Docker (tự dựng container tạm) hoặc `PGHOST` tới một PostgreSQL trống |
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-lint.txt   # một lần
@@ -71,10 +71,10 @@ PATH="$PWD/.venv/bin:$PATH" make lint
 make test
 ```
 
-Viết test SQL mới: thêm `apps/<ứng dụng>/db/tests/<tên>.sql`, in mỗi kiểm tra một dòng `ĐẠT|…` hoặc `TRƯỢT|…`, chạy trong một transaction rồi `ROLLBACK` (xem `apps/mot-cua/db/tests/rls.sql`).
+Viết test SQL mới: thêm `mot-cua/db/tests/<tên>.sql`, in mỗi kiểm tra một dòng `ĐẠT|…` hoặc `TRƯỢT|…`, chạy trong một transaction rồi `ROLLBACK` (xem `mot-cua/db/tests/rls.sql`).
 
 - [ ] `make check`, `make lint`, `make test` đạt
-- [ ] `make up` + `make smoke` vẫn đạt từ máy sạch nếu PR đổi `docker-compose.yml`, `core/` hoặc `apps/`
+- [ ] `make up` + `make smoke` vẫn đạt từ máy sạch nếu PR đổi `docker-compose.yml`, `nen-tang/`, `mot-cua/` hoặc `thu-tuc/`
 - [ ] `CHANGELOG.md` mục `[Unreleased]` có dòng cho thay đổi, kèm `(#số-issue)`
 - [ ] Tài liệu liên quan đã cập nhật
 

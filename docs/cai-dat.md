@@ -1,8 +1,8 @@
 # Cài đặt và chạy Commune DX-OS từ máy sạch
 
-Hướng dẫn đầy đủ cho phần Cài đặt của [README](../README.md): yêu cầu máy, các bước chạy, bí mật OpenBao, địa chỉ và tài khoản mẫu, cấu hình, thêm ứng dụng, kiểm thử, xử lý lỗi. Mọi số đo (thời gian, dung lượng, số kiểm tra) lấy từ lần chạy trên bản clone sạch ghi ở [`architecture.md` §8.9](architecture.md#89-kết-quả-chạy-từ-máy-sạch-theo-readme-21102026-12).
+Hướng dẫn đầy đủ cho phần Cài đặt của [README](../README.md): yêu cầu máy, các bước chạy, bí mật OpenBao, địa chỉ và tài khoản mẫu, cấu hình, thêm thủ tục, kiểm thử, xử lý lỗi. Mọi số đo (thời gian, dung lượng, số kiểm tra) lấy từ lần chạy trên bản clone sạch ghi ở [`architecture.md` §8.9](architecture.md#89-kết-quả-chạy-từ-máy-sạch-theo-readme-21102026-12).
 
-Mục lục: [Yêu cầu máy](#1-yêu-cầu-máy) · [Chạy từ máy sạch](#2-chạy-từ-máy-sạch) · [Địa chỉ và tài khoản mẫu](#3-địa-chỉ-cổng-và-tài-khoản-mẫu) · [Cấu hình](#4-cấu-hình-trước-khi-chạy) · [Thêm ứng dụng](#5-thêm-một-ứng-dụng-vào-apps) · [Kiểm thử](#6-kiểm-thử) · [Xử lý lỗi](#7-xử-lý-lỗi-thường-gặp)
+Mục lục: [Yêu cầu máy](#1-yêu-cầu-máy) · [Chạy từ máy sạch](#2-chạy-từ-máy-sạch) · [Địa chỉ và tài khoản mẫu](#3-địa-chỉ-cổng-và-tài-khoản-mẫu) · [Cấu hình](#4-cấu-hình-trước-khi-chạy) · [Thêm thủ tục](#5-thêm-một-thủ-tục-vào-thu-tuc) · [Kiểm thử](#6-kiểm-thử) · [Xử lý lỗi](#7-xử-lý-lỗi-thường-gặp)
 
 ## 1. Yêu cầu máy
 
@@ -26,7 +26,7 @@ Clone vào thư mục nào cũng chạy được (không có đường dẫn tuy
 git clone https://github.com/commune-dxos/commune-dxos.git
 cd commune-dxos
 cp .env.example .env      # không có mật khẩu nào cần điền
-make up                   # lõi + ứng dụng DXOS_APP; tự init + unseal OpenBao
+make up                   # nền tảng + bộ máy mot-cua + nạp gói thu-tuc/; tự init + unseal OpenBao
 make ps                   # dịch vụ chạy nền "healthy", dịch vụ một lần "Exited (0)"
 make smoke                # kiểm tra đầu-cuối: "== Kết quả: 405 đạt, 0 trượt"
 make demo-users           # đặt mật khẩu cho người dùng mẫu và in ra
@@ -89,7 +89,6 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `DXOS_APP` | `mot-cua` | ứng dụng Tầng 2 trong `apps/` được nạp |
 | `DXOS_SEED` | `true` | nạp dữ liệu mẫu giả; `false` khi triển khai thật |
 | `APISIX_PORT`, `KEYCLOAK_PORT` | `9080`, `8080` | cổng gateway, SSO trên máy host |
 | `POSTGRES_PORT`, `FLOWABLE_PORT` | `55432`, `8090` | cổng debug, chỉ 127.0.0.1 |
@@ -99,35 +98,33 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 | `BAO_UNSEAL` | `file` | `file` (máy dev) hoặc `manual` (triển khai thật) |
 | `DXOS_SU_KIEN_QUET_GIAY`, `DXOS_SU_KIEN_SAP_TRE_NGAY` | `300`, `1` | chu kỳ quét và ngưỡng cảnh báo sắp trễ hạn |
 
-Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng). Đổi `DXOS_APP` sang ứng dụng khác cần CSDL mới (mục 5).
+Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng).
 
-## 5. Thêm một ứng dụng vào `apps/`
+## 5. Thêm một thủ tục vào `thu-tuc/`
 
-Lõi chỉ biết **quy ước thư mục** `apps/<DXOS_APP>/`, không đọc nghiệp vụ. Một ứng dụng mới không sửa tệp nào trong `core/`, `docker-compose.yml` hay APISIX:
+Mỗi thủ tục hành chính là một gói `thu-tuc/<ma>/` (D-009); bộ máy một cửa `mot-cua/` chạy mọi thủ tục, nền tảng `nen-tang/` không biết thủ tục nào. Thêm thủ tục **không sửa tệp nào** trong `nen-tang/`, `mot-cua/`, `docker-compose.yml` hay APISIX:
 
-| Tệp | Lõi dùng để |
+| Tệp trong gói | Dùng để |
 |---|---|
-| `app.env` | schema PostgREST phơi ra API (`PGRST_DB_SCHEMAS=…`) |
-| `db/migrations/*.sql`, `db/seed/*.sql` | role, schema, RLS; dữ liệu giả khi `DXOS_SEED=true` (`app-migrate`) |
-| `keycloak/realm.json` | vai trò, nhóm, client, người dùng mẫu (`app-realm`) |
-| `processes/*.bpmn20.xml` | quy trình BPMN, Flowable tự triển khai |
-| `backend/main.py`, `backend/worker.py` | backend riêng (`/workflow`, `/files`) và tác vụ nền |
-| `s3/buckets.conf`, `rabbitmq/definitions.json` | bucket S3 và exchange/queue riêng của ứng dụng |
+| `thu-tuc.yaml` | mã, tên, lĩnh vực, thời hạn (ngày làm việc, `0` = trong ngày), lệ phí, căn cứ pháp lý, process id |
+| `quy-trinh.bpmn20.xml` | quy trình BPMN viết tay; biến từng bước khai bằng `flowable:formProperty` |
+| `thanh-phan-ho-so.schema.json` | JSON Schema thành phần hồ sơ (Poka-yoke) |
+| `du-lieu-mau.json` | hồ sơ mẫu giả khớp schema |
+| `README.md` | mô tả, sơ đồ |
 
 ```bash
-mkdir -p apps/dat-phong-hop/{db/migrations,db/seed,keycloak,tests}
-# viết app.env, db/migrations/001_schema.sql, keycloak/realm.json theo mẫu apps/mot-cua/ (nhớ dòng SPDX: make license)
-sed -i.bak 's/^DXOS_APP=.*/DXOS_APP=dat-phong-hop/' .env && rm .env.bak
-docker compose --profile '*' down -v && rm -f .data/openbao/commune.json   # CSDL mới
-make up && make smoke
+cp -R thu-tuc/chung-thuc-ban-sao thu-tuc/xac-nhan-cu-tru   # chép một gói có sẵn rồi sửa 5 tệp
+make check                # kiểm gói (không cần Docker)
+make nap-thu-tuc          # nạp vào hệ thống đang chạy: deploy BPMN + ghi danh mục
+curl -s 'http://localhost:9080/public/thu_tuc?goi=not.is.null&select=ma,ten,goi'
 ```
 
-Hướng dẫn đầy đủ, hợp đồng giữa lõi và ứng dụng: [`docs/architecture.md` §2](architecture.md#2-lõi-độc-lập-nghiệp-vụ-core-và-appstên); ứng dụng mẫu: [`apps/mot-cua/README.md`](../apps/mot-cua/README.md).
+Rút thủ tục: xóa thư mục rồi `make nap-thu-tuc`. Gói lỗi bị báo rõ từng lỗi và bỏ qua, các gói khác vẫn nạp. Hướng dẫn 5 bước đầy đủ: [`docs/thu-tuc.md`](thu-tuc.md); hợp đồng giữa các lớp: [`docs/architecture.md` §2](architecture.md#2-ba-lớp-nen-tang-bộ-máy-mot-cua-gói-thu-tucma-d-009); bộ máy: [`mot-cua/README.md`](../mot-cua/README.md).
 
 ## 6. Kiểm thử
 
 ```bash
-make check                # SPDX + BPMN + test đơn vị + compose hợp lệ (mọi profile)
+make check                # SPDX + BPMN + kiểm gói thu-tuc/ + test đơn vị + compose hợp lệ (mọi profile)
 make lint                 # shellcheck, yamllint, BPMN (như CI); cài: pip install -r scripts/requirements-lint.txt
 make test                 # test đơn vị + SQL/RLS trên PostgreSQL tạm
 make smoke                # kiểm tra đầu-cuối trên hệ thống đang chạy
