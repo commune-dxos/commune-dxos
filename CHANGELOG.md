@@ -4,6 +4,39 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-22
+
+> **Giấy phép:** đây là bản đầu tiên phát hành theo GPL-3.0-or-later (D-010, [#47](https://github.com/commune-dxos/commune-dxos/issues/47)). Các bản v0.0.1–v0.2.0 vẫn theo Apache-2.0.
+
+### Tài liệu
+
+- **kien-truc:** Sơ đồ kiến trúc SVG động 2 tầng có gói thủ tục ([#43](https://github.com/commune-dxos/commune-dxos/issues/43)) ([#44](https://github.com/commune-dxos/commune-dxos/issues/44))
+    - docs/images/kien-truc-dong.svg: vẽ tay, không JS; Tầng 2 mot-cua/ với gói thủ tục
+      KS01, CT01 cắm vào bộ máy, Tầng 1 nen-tang/ headless, đánh số 4 dịch vụ bắt buộc.
+      Một hồ sơ KS01 chạy qua 6 bước (SMIL, vòng 14 giây), tắt khi giảm chuyển động.
+    - README dùng sơ đồ mới thay kien-truc-tong-quan.webp (giữ tệp cũ).
+    - scripts/xuat_kien_truc.py + make xuat-kien-truc: Playwright chụp khung, ffmpeg ghép
+      GIF (README, 0,46 MB) và MP4 1920x1080 (slide, 0,68 MB).
+    - docs/images/kien-truc-2-tang.webp: ảnh tĩnh do đội tạo bằng công cụ AI theo bản SVG,
+      dùng cho slide và docs/architecture.md; ghi nguồn trong docs/images/README.md.
+    - README giữ sơ đồ động, thêm link ảnh tĩnh ngay dưới.
+- **kien-truc:** Ảnh tĩnh kiến trúc 2 tầng bản v2 ([#45](https://github.com/commune-dxos/commune-dxos/issues/45)) ([#46](https://github.com/commune-dxos/commune-dxos/issues/46))
+
+### Hạ tầng và CI
+
+- **giay-phep:** Chuyển sang GPL-3.0-or-later ([#47](https://github.com/commune-dxos/commune-dxos/issues/47)) ([#48](https://github.com/commune-dxos/commune-dxos/issues/48))
+    - LICENSE: toàn văn GPL-3.0 bản gnu.org (sha256 3972dc97…, 674 dòng), không sửa chữ nào
+    - LICENSES/GPL-3.0-or-later.txt: bản sao cho đặc tả REUSE
+    - NOTICE: bản quyền DTU_DZ_2, thông báo GPL (bản gốc + dịch), mốc chuyển sau v0.2.0, Garage/ClamAV là dịch vụ riêng
+    - REUSE.toml: khai GPL-3.0-or-later cho tệp không chú thích được (JSON, ảnh, video, .md)
+    - 101 tệp mã/cấu hình: header 2 dòng SPDX-FileCopyrightText + SPDX-License-Identifier: GPL-3.0-or-later
+    - tang2-migrate: CSDL cài từ v0.2.0 trở về trước chỉ cập nhật sổ khi tệp chỉ khác header giấy phép
+    - test-sql: thêm bước giả lập sổ ghi SHA-256 trước D-010
+    - make license/make check: thêm header GPL-3.0-or-later, báo lỗi tệp thiếu header, còn Apache-2.0 hoặc thiếu dòng bản quyền; test scripts/tests/test_check_license.py
+    - README: huy hiệu và mục Giấy phép; CONTRIBUTING: inbound = outbound
+    - DEPENDENCIES: cột Tương thích GPL-3.0, rà gói Python
+    - MkDocs chân trang, docs/, mẫu PR; xuất lại sơ đồ động GIF/MP4
+
 ## [0.2.0] - 2026-10-22
 
 ### Tái cấu trúc
@@ -177,7 +210,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/commune-dxos/commune-dxos/releases/tag/v0.0.1
