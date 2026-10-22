@@ -3,37 +3,59 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
 ## [Unreleased]
-### Changed
-- Theo dõi tiến độ bằng milestone `Tuần 1` … `Tuần 7` và nhãn thành phần thay cho nhãn `tuan-N`; `CONTRIBUTING.md`, `docs/PLAN.md` và mẫu issue "Việc cần làm" cập nhật theo (D-009 hướng 3, #34).
-- `README.md` thêm một dòng link tới trang tài liệu https://commune-dxos.github.io/commune-dxos/ (#32).
-- Cấu trúc gói thủ tục (D-009, #30): `core/` → `nen-tang/` (Tầng 1, không nghiệp vụ), `apps/mot-cua/` → `mot-cua/` (bộ máy một cửa dùng chung cho mọi thủ tục), mỗi thủ tục một gói `thu-tuc/<ma>/` (`thu-tuc.yaml`, `quy-trinh.bpmn20.xml`, `thanh-phan-ho-so.schema.json`, `du-lieu-mau.json`, `README.md`); chuyển bằng `git mv`, giữ lịch sử.
-- Bỏ biến `DXOS_APP`: dịch vụ Tầng 2 cố định `mot-cua` trong `docker-compose.yml` (`x-tang2`). Dịch vụ đổi tên: `app-migrate` → `tang2-migrate`, `app-realm` → `tang2-realm`, `app-backend` → `mot-cua-api`, `app-worker` → `mot-cua-worker`; `apps/mot-cua/app.env` → `mot-cua/postgrest.env`; danh tính OpenBao `app`, `app-realm` → `tang2`, `tang2-realm`, nhánh bí mật `dxos/apps/<tên>/` → `dxos/tang2/<tên>/`; user RabbitMQ `tang2-mot-cua`, khóa Garage `dxos-tang2-mot-cua` (#30).
-- Flowable không tự quét thư mục BPMN nữa (`FLOWABLE_CHECK-PROCESS-DEFINITIONS=false`): BPMN của từng gói do bộ nạp deploy qua REST (#30).
-- API một cửa `/workflow` đọc quy trình (`thu_tuc.quy_trinh`) và biến được phép từng bước (`thu_tuc.bien_theo_buoc`, từ `flowable:formProperty` trong BPMN) từ danh mục; bỏ bảng `QUY_TRINH_THEO_THU_TUC`, `BIEN_THEO_BUOC` gắn cứng trong `main.py` (#30).
-- Quy trình khai sinh chuyển vào gói `thu-tuc/khai-sinh/`, khai biến từng bước bằng `flowable:formProperty`; luật kiểm BPMN chuyển từ `scripts/check-bpmn.py` sang `mot-cua/backend/kiem_bpmn.py` (dùng chung với bộ nạp), job CI `bpmn` kiểm mọi `thu-tuc/*/quy-trinh.bpmn20.xml` (#30).
-- `make check` kiểm thêm mọi gói thủ tục (bộ nạp `--chi-kiem`, không cần Docker); `make test-sql`, `make smoke` chạy mọi tệp `mot-cua/db/tests/*.sql` (#30).
-- `README.md` viết lại thuần tiếng Việt, giữ đủ nội dung đã kiểm chứng từ máy sạch (#12); thêm banner, ảnh minh họa bài toán, huy hiệu giấy phép/phiên bản/CI, mục "Bài toán" và bảng 4 dịch vụ bắt buộc của đề (#26).
-- `README.md` viết lại theo trình tự kể chuyện sản phẩm: Giới thiệu → Thách thức → Giải pháp → Đối tượng → Chức năng (đã có ở v0.1.0 / sắp có) → Kiến trúc → Công nghệ → Luồng hồ sơ → Hướng phát triển → Cài đặt từ máy sạch → Đóng góp, Báo lỗi, Giấy phép, CHANGELOG; ảnh mới ít chữ, nhãn tiếng Việt; bỏ `README.en.md` (#28).
-- Hướng dẫn cài đặt chi tiết (yêu cầu máy, OpenBao, cổng và tài khoản mẫu, cấu hình, thêm ứng dụng, kiểm thử, xử lý lỗi) chuyển sang `docs/cai-dat.md`; README giữ các lệnh chính (#28).
-- Sơ đồ SVG chi tiết `kien-truc.svg`, `luong-ho-so.svg` chuyển sang `docs/architecture.md` §1 và §4.2 (#28).
 
-### Added
-- Tự gắn nhãn thành phần (`nen-tang`, `mot-cua`, `thu-tuc`, `docs`, `ci`) cho PR theo tệp sửa: `.github/labeler.yml` + workflow `.github/workflows/gan-nhan.yml` (`actions/labeler`, `pull_request_target`, không checkout mã PR, không phải check bắt buộc) (#34).
-- Mẫu issue "Thủ tục mới" (mã, tên, lĩnh vực, thời hạn, căn cứ pháp lý; tự gắn nhãn `thu-tuc`) và "Việc trong tuần" (chọn thành phần) dạng issue form (#34).
-- Trang `docs/quy-trinh-lam-viec.md` (mục "Đóng góp" trên site): milestone theo tuần, nhãn thành phần, bảng Project "Commune DX-OS – Lộ trình", luồng issue → nhánh → PR → `develop` (#34).
-- Trang tài liệu MkDocs + Material for MkDocs bản community (D-009 hướng 2, #32): `mkdocs.yml`, giao diện tiếng Việt, tìm kiếm tiếng Việt, điều hướng theo vai người đọc (Người dân / cán bộ, Lập trình viên thêm thủ tục, Vận hành, Kiến trúc, Đóng góp), dựng từ các tệp có sẵn trong `docs/`; trang chủ `docs/index.md`; phiên bản ghim ở `docs/requirements.txt`.
-- Trang **Danh mục thủ tục** sinh lúc build từ mọi gói `thu-tuc/*/` bằng bộ kiểm của bộ nạp (mã, tên, lĩnh vực, thời hạn, lệ phí, căn cứ pháp lý, các bước xử lý, thành phần hồ sơ, link BPMN và JSON Schema); mỗi gói một trang từ `README.md` của gói, kèm sơ đồ Mermaid; thêm gói là site tự có trang mới. Hook `scripts/tai_lieu_hooks.py` còn đưa `mot-cua/README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` lên site, tính neo tiêu đề như GitHub và đổi link ra ngoài `docs/` sang GitHub (#32).
-- Lệnh `make tai-lieu` (build `--strict`: link gãy, neo sai, gói lỗi là lỗi) và `make xem-tai-lieu` (`mkdocs serve`), không cần Docker; `site/` vào `.gitignore` (#32).
-- Workflow `.github/workflows/tai-lieu.yml`: build `--strict` trên PR đổi tài liệu hoặc gói thủ tục; push vào `main` hoặc chạy tay trên `main` thì deploy GitHub Pages. Không phải check bắt buộc (#32).
-- Bộ nạp gói thủ tục `mot-cua/backend/nap_thu_tuc.py` (dịch vụ một lần `nap-thu-tuc` ở mỗi `make up`, lệnh `make nap-thu-tuc`): kiểm gói (đủ tệp, tập con YAML, JSON Schema 2020-12, BPMN, dữ liệu mẫu khớp schema, không có dãy số giống CMND/CCCD), deploy BPMN lên Flowable (bỏ qua nếu không đổi), ghi danh mục qua RPC; gói lỗi được báo rõ và bỏ qua, xóa thư mục là rút thủ tục (#30).
-- Migration `005_goi_thu_tuc.sql`: cột `goi`, `quy_trinh`, `bien_theo_buoc`, `json_schema`, `goi_sha256`, `nap_luc` của `mot_cua.thu_tuc`; thời hạn 0 ngày làm việc (trong ngày); role `dich_vu_danh_muc` + client Keycloak `mot_cua_danh_muc`; RPC `nap_thu_tuc`, `rut_goi_vang`; `json_schema_thu_tuc` trả schema của gói (#30).
-- Gói mới `thu-tuc/chung-thuc-ban-sao/` (CT01): tiếp nhận → kiểm tra bản chính → ký chứng thực → trả kết quả, hạn trong ngày (#30).
-- Test: `mot-cua/backend/tests/test_goi_thu_tuc.py` (gói hợp lệ, thiếu tệp, YAML/schema/BPMN/dữ liệu mẫu sai, bộ nạp bỏ qua gói lỗi), `mot-cua/db/tests/goi_thu_tuc.sql` (23 kiểm tra RPC nạp/rút và quyền), `mot-cua/tests/smoke-goi-thu-tuc.sh` (danh mục khớp `thu-tuc/`, cắm–rút gói tạm, hồ sơ chứng thực bản sao chạy hết quy trình qua `/workflow`) (#30).
-- `docs/thu-tuc.md`: thêm một thủ tục mới trong 5 bước (#30).
-- `docs/images/kien-truc.svg`: sơ đồ kiến trúc vẽ tay bằng SVG theo `docker-compose.yml`, `core/`, `apps/mot-cua/` – Tầng 2 và Tầng 1, route gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao, đánh số 4 dịch vụ bắt buộc (#26).
-- `docs/images/luong-ho-so.svg`: luồng hồ sơ đăng ký khai sinh theo BPMN `dang_ky_khai_sinh` (làn công dân, cán bộ hộ tịch, lãnh đạo; hẹn giờ quá hạn; API và sự kiện từng bước) (#26).
-- `docs/images/banner.webp`, `docs/images/mot-cua-so.webp`: ảnh minh họa do đội tạo bằng công cụ AI, không chữ; nguồn và giấy phép ghi ở `docs/images/README.md` (#26).
-- `docs/images/banner.webp` thay bằng ảnh có tiêu đề; `vong-chuc-nang.webp` (6 chức năng), `kien-truc-tong-quan.webp` (kiến trúc dạng biểu tượng), `luong-ho-so.webp` (5 bước + cảnh báo trễ hạn), nhãn tiếng Việt; `docs/images/README.md` ghi nguồn, giấy phép và lưu ý biểu tượng trong ảnh kiến trúc không phải logo chính thức (#28).
+### Tái cấu trúc
+
+- **thu-tuc:** Mô hình gói thủ tục nen-tang/ + mot-cua/ + thu-tuc/ ([#30](https://github.com/commune-dxos/commune-dxos/issues/30)) ([#31](https://github.com/commune-dxos/commune-dxos/issues/31))
+    - core/ → nen-tang/, apps/mot-cua/ → mot-cua/ (git mv); bỏ DXOS_APP, dịch vụ
+      tang2-migrate, tang2-realm, mot-cua-api, mot-cua-worker; nhánh OpenBao dxos/tang2/.
+    - thu-tuc/khai-sinh (chuyển BPMN và danh mục KS01) và thu-tuc/chung-thuc-ban-sao (CT01,
+      hạn trong ngày): thu-tuc.yaml, quy-trinh.bpmn20.xml, thanh-phan-ho-so.schema.json,
+      du-lieu-mau.json, README.md.
+    - Bộ nạp nap-thu-tuc (make up, make nap-thu-tuc): kiểm gói, deploy BPMN qua REST, ghi danh
+      mục qua RPC mot_cua.nap_thu_tuc (migration 005, client mot_cua_danh_muc); gói lỗi bị bỏ qua.
+    - API /workflow đọc quy trình và biến từng bước từ danh mục (flowable:formProperty).
+    - make check kiểm gói; CI bpmn kiểm thu-tuc/*/quy-trinh.bpmn20.xml; test bộ nạp, test SQL
+      danh mục, smoke cắm–rút và hồ sơ chứng thực qua /workflow; docs/thu-tuc.md.
+
+### Tài liệu
+
+- **readme:** README tiếng Việt có ảnh minh họa, README.en.md, sơ đồ kiến trúc SVG ([#26](https://github.com/commune-dxos/commune-dxos/issues/26)) ([#27](https://github.com/commune-dxos/commune-dxos/issues/27))
+    - README.md viết lại thuần tiếng Việt, giữ đủ nội dung đã kiểm chứng ở #12;
+      thêm banner, ảnh minh họa bài toán, huy hiệu, mục Bài toán, bảng 4 dịch vụ bắt buộc
+    - README.en.md ngắn: mô tả, kiến trúc, chạy từ máy sạch, giấy phép
+    - docs/images/kien-truc.svg: sơ đồ kiến trúc vẽ tay theo docker-compose.yml, core/, apps/mot-cua/
+    - docs/images/luong-ho-so.svg: luồng hồ sơ khai sinh theo BPMN dang_ky_khai_sinh
+    - docs/images/*.webp: ảnh minh họa do đội tạo bằng công cụ AI; nguồn ghi ở docs/images/README.md
+- **readme:** README kể chuyện sản phẩm với ảnh minh họa, bỏ README.en.md ([#28](https://github.com/commune-dxos/commune-dxos/issues/28)) ([#29](https://github.com/commune-dxos/commune-dxos/issues/29))
+    - README.md thuần tiếng Việt theo trình tự: Giới thiệu, Thách thức, Giải pháp,
+      Đối tượng, Chức năng (đã có ở v0.1.0 / sắp có), Kiến trúc, Công nghệ,
+      Luồng hồ sơ, Hướng phát triển, Cài đặt từ máy sạch, Đóng góp, Báo lỗi,
+      Giấy phép, CHANGELOG.
+    - Ảnh mới trong docs/images/: banner có tiêu đề, vòng 6 chức năng, kiến trúc
+      tổng quan dạng biểu tượng, luồng hồ sơ 5 bước; nhãn tiếng Việt.
+    - Hướng dẫn cài đặt chi tiết chuyển sang docs/cai-dat.md, README giữ các lệnh chính.
+    - Sơ đồ SVG chi tiết chỉ dùng trong docs/architecture.md (§1, §4.2).
+    - Xóa README.en.md; cập nhật docs/images/README.md, CHANGELOG, de-thi-mapping.
+- **tai-lieu:** Trang tài liệu MkDocs trên GitHub Pages, danh mục thủ tục tự sinh ([#32](https://github.com/commune-dxos/commune-dxos/issues/32)) ([#33](https://github.com/commune-dxos/commune-dxos/issues/33))
+    - mkdocs.yml: MkDocs 1.6.1 + Material for MkDocs 9.7.7 bản community, giao diện và tìm kiếm
+      tiếng Việt, điều hướng theo vai người đọc, dùng lại các tệp trong docs/, loại docs/contest/.
+    - scripts/tai_lieu_hooks.py: trang Danh mục thủ tục sinh từ thu-tuc/*/ bằng bộ kiểm của bộ nạp,
+      mỗi gói một trang từ README của gói; đưa mot-cua/README.md, CONTRIBUTING.md, CHANGELOG.md lên
+      site; neo tiêu đề như GitHub; link ra ngoài docs/ trỏ về GitHub.
+    - make tai-lieu (--strict), make xem-tai-lieu; workflow tai-lieu.yml build trên PR, deploy Pages
+      khi push main hoặc chạy tay.
+    - DEPENDENCIES.md, NOTICE, CHANGELOG, một dòng link trong README; site/ vào .gitignore.
+
+### Hạ tầng và CI
+
+- **tien-do:** Milestone theo tuần, nhãn thành phần tự gắn, mẫu issue ([#34](https://github.com/commune-dxos/commune-dxos/issues/34)) ([#35](https://github.com/commune-dxos/commune-dxos/issues/35))
+    - .github/labeler.yml + workflow gan-nhan (actions/labeler, pull_request_target,
+      không checkout mã PR): tự gắn nen-tang, mot-cua, thu-tuc, docs, ci theo tệp sửa
+    - Mẫu issue "Thủ tục mới" (tự gắn thu-tuc) và "Việc trong tuần" (chọn thành phần)
+    - docs/quy-trinh-lam-viec.md: milestone Tuần 1–7, nhãn, bảng Project, luồng
+      issue → nhánh → PR → develop; thêm vào mục "Đóng góp" của site
+    - CONTRIBUTING.md, docs/PLAN.md, CHANGELOG cập nhật theo
 
 ## [0.1.0] - 2026-10-21
 ### Added

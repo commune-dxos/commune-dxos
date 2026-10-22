@@ -12,14 +12,15 @@ Closes #
 - [ ] `feat` – tính năng mới
 - [ ] `fix` – sửa lỗi
 - [ ] `docs` – tài liệu
-- [ ] `chore` / `refactor` / `test`
+- [ ] `refactor` – tái cấu trúc
+- [ ] `ci` / `chore` / `test`
 
 ## Kiểm tra trước khi xin duyệt
 
 - [ ] `make check` đạt trên máy (SPDX + compose hợp lệ mọi profile)
 - [ ] `make lint` và `make test` đạt trên máy (cùng lệnh với các job CI, xem `CONTRIBUTING.md` mục 6)
 - [ ] Mọi tệp mã/cấu hình mới có header `SPDX-License-Identifier: Apache-2.0` (`make license`)
-- [ ] `CHANGELOG.md` mục `[Unreleased]` có dòng cho thay đổi này, kèm `(#số-issue)`
+- [ ] Tiêu đề PR dạng `loai(pham-vi): mô tả (#số-issue)` (CHANGELOG sinh từ đó bằng git-cliff, không sửa tay)
 - [ ] Tài liệu liên quan đã cập nhật (README, `docs/`, `DEPENDENCIES.md`, `NOTICE` nếu thêm thành phần)
 - [ ] Biến môi trường mới đã thêm vào `.env.example`
 - [ ] Không có bí mật (mật khẩu, token, khóa riêng, `.env`) và không có dữ liệu cá nhân thật trong diff

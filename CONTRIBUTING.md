@@ -26,7 +26,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 4. **PR về `develop`.** Điền mẫu PR (mô tả, `Closes #<số>`, checklist), chọn cùng milestone với issue. Nhãn thành phần do workflow `gan-nhan` tự gắn theo tệp sửa; nhãn vai gắn như issue.
 5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử (`make up` + `make smoke`) khi PR đụng tới `docker-compose.yml`, `nen-tang/`, `mot-cua/` hay gói `thu-tuc/`.
 6. **Merge bằng squash.** Tiêu đề squash giữ đúng định dạng Conventional Commits và số issue, ví dụ `feat(storage): Garage S3 + quét ClamAV (#12)`. Xóa nhánh sau khi merge.
-7. **Phát hành.** Từ `develop` mở PR về `main`, đánh tag `vX.Y.Z` trên `main`, ghi chú phát hành lấy từ `CHANGELOG.md`, đính kèm `.tar.gz` tạo bằng `git archive`.
+7. **Phát hành.** CHANGELOG và ghi chú phát hành sinh bằng git-cliff từ commit; workflow `phat-hanh` tự tạo Release khi đẩy tag. Các bước: [`docs/quy-trinh-lam-viec.md`](docs/quy-trinh-lam-viec.md) mục 6.
 
 ## 3. Commit theo Conventional Commits
 
@@ -38,6 +38,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 - Phạm vi gợi ý: `nen-tang`, `thu-tuc`, `keycloak`, `apisix`, `postgres`, `postgrest`, `flowable`, `storage`, `mot-cua`, `web`, `ocr`, `rag`, `bi`.
 - Commit đóng issue thì thêm dòng `Closes #<số>` ở thân commit hoặc trong PR.
 - Ví dụ: `fix(apisix): giới hạn tần suất cổng công dân theo IP (#18)`.
+- Commit sinh ra CHANGELOG, nên loại và phạm vi quyết định commit nằm ở mục nào: [`docs/quy-trinh-lam-viec.md`](docs/quy-trinh-lam-viec.md) mục 5.
 
 **Ai làm thì người đó commit, bằng tài khoản GitHub của mình.** Lịch sử commit là bằng chứng đóng góp của từng thành viên.
 
@@ -75,7 +76,7 @@ Viết test SQL mới: thêm `mot-cua/db/tests/<tên>.sql`, in mỗi kiểm tra 
 
 - [ ] `make check`, `make lint`, `make test` đạt
 - [ ] `make up` + `make smoke` vẫn đạt từ máy sạch nếu PR đổi `docker-compose.yml`, `nen-tang/`, `mot-cua/` hoặc `thu-tuc/`
-- [ ] `CHANGELOG.md` mục `[Unreleased]` có dòng cho thay đổi, kèm `(#số-issue)`
+- [ ] Tiêu đề PR theo quy ước commit, kèm `(#số-issue)`; không sửa tay `CHANGELOG.md` ([quy trình](docs/quy-trinh-lam-viec.md) mục 5)
 - [ ] Tài liệu liên quan đã cập nhật
 
 Hành vi trong cộng đồng: xem [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).

@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kiểm quy ước commit trên PR (D-009 hướng 4, #36), vì CHANGELOG và ghi chú phát hành sinh từ commit:
+#   - tiêu đề PR (thành tiêu đề commit squash vào develop) đúng dạng `loai(pham-vi): mô tả (#issue)`;
+#   - git-cliff (cliff.toml) đọc được mọi commit của PR, in thử phần CHANGELOG mà PR sẽ thêm.
+# Job nhẹ, KHÔNG phải check bắt buộc của bảo vệ nhánh (6 check bắt buộc nằm ở check.yml).
+# Quy ước: docs/quy-trinh-lam-viec.md mục 5.
+name: quy-uoc-commit
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  quy-uoc-commit:
+    name: quy-uoc-commit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Tiêu đề PR theo quy ước
+        env:
+          # Qua biến môi trường, không chèn thẳng vào lệnh shell.
+          TIEU_DE: ${{ github.event.pull_request.title }}
+        run: |
+          mau='^(feat|fix|docs|refactor|test|ci|chore|build|perf)(\([a-z0-9-]+\))?!?: .+ \(#[0-9]+\)$'
+          if printf '%s\n' "$TIEU_DE" | grep -Eq "$mau"; then
+            echo "OK: $TIEU_DE"
+          else
+            echo "::error::Tiêu đề PR cần dạng 'loai(pham-vi): mô tả (#số-issue)', loai là feat|fix|docs|refactor|test|ci|chore|build|perf. Hiện tại: $TIEU_DE"
+            exit 1
+          fi
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Cài git-cliff (phiên bản ghim)
+        run: pip install -r scripts/requirements-phat-hanh.txt
+      - name: Commit của PR theo quy ước, git-cliff đọc được
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          khac=$(git log --no-merges --format='%s' "$BASE..$HEAD" \
+            | grep -Ev '^(feat|fix|docs|refactor|test|ci|chore|build|perf)(\([a-z0-9-]+\))?!?: .+' || true)
+          if [ -n "$khac" ]; then
+            # Chỉ cảnh báo: khi squash, tiêu đề PR (đã kiểm ở bước trên) mới là commit vào develop.
+            printf '%s\n' "$khac" | while IFS= read -r dong; do
+              echo "::warning::Commit chưa theo quy ước (sẽ vào nhóm \"Khác\" nếu merge không squash): $dong"
+            done
+          fi
+          git-cliff --config cliff.toml --unreleased "$BASE..$HEAD"
