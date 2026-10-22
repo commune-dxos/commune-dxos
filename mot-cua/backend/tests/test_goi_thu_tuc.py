@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Test bộ nạp gói thủ tục (D-009): goi_thu_tuc.py (kiểm gói) và nap_thu_tuc.py (nạp, bỏ qua
 gói lỗi). Không cần Docker: Flowable/PostgREST được thay bằng đối tượng giả. Chạy: make test-backend.
 

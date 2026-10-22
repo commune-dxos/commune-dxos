@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Hộp thư đi sự kiện (transactional outbox, #9) và nhật ký sự kiện qua PostgREST, bằng tài
 khoản dịch vụ Keycloak `mot_cua_su_kien` (role PostgreSQL dich_vu_su_kien,
 db/migrations/004_su_kien.sql). Dùng chung cho mot-cua-api (ghi sự kiện sau khi gọi Flowable

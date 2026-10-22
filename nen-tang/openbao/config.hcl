@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # OpenBao (MPL-2.0) – két sắt bí mật của lõi Tầng 1 (#10). Dịch vụ riêng, image gốc
 # openbao/openbao, không sửa mã (D-004, NOTICE). Chế độ server thường, KHÔNG dùng -dev.
 # Khởi tạo, unseal, policy, AppRole: nen-tang/openbao/bao-init.py (make bao-init).

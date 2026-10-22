@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu nhat-ky ghi-chu-phat-hanh
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -67,6 +68,14 @@ tai-lieu:      ## Build trang tài liệu vào site/ (--strict: link gãy, neo s
 xem-tai-lieu:  ## Xem trang tài liệu trên máy ở http://127.0.0.1:8000, tự build lại khi sửa docs/, thu-tuc/
 	$(TAI_LIEU_ENV) $(MKDOCS) serve
 
+# Sơ đồ kiến trúc động (#43): docs/images/kien-truc-dong.svg → GIF cho README, MP4 cho slide. Không cần Docker.
+# Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-xuat.txt && .venv/bin/playwright install chromium
+# (hoặc KENH=chrome để dùng Google Chrome có sẵn), cần ffmpeg. Chạy với XUAT_PY=.venv/bin/python.
+XUAT_PY ?= python3
+
+xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-truc-dong.gif và docs/media/kien-truc-dong.mp4
+	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/xuat_kien_truc.py
+
 # CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
 # Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
 # rồi chạy với PATH="$$PWD/.venv/bin:$$PATH" hoặc GIT_CLIFF=.venv/bin/git-cliff. Quy trình: docs/quy-trinh-lam-viec.md.
@@ -80,11 +89,12 @@ ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có th
 	@test -n "$(PHIEN_BAN)" || { echo "Thiếu PHIEN_BAN — ví dụ: make ghi-chu-phat-hanh PHIEN_BAN=0.1.0"; exit 1; }
 	@$(NHAT_KY) ghi-chu $(PHIEN_BAN)
 
-license:       ## Thêm header SPDX cho tệp mới
+license:       ## Thêm header SPDX (bản quyền + GPL-3.0-or-later, D-010) cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX + BPMN thu-tuc/*/ + test đơn vị + compose hợp lệ (mọi profile)
+check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/tests/test_check_license.py
 	python3 scripts/check-bpmn.py
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_thu_tuc.py thu-tuc --chi-kiem
 	$(MAKE) --no-print-directory test-backend

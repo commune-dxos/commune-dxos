@@ -1,12 +1,18 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.2.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.3.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
 - **Tầng 1 – Lõi headless** (`nen-tang/`): không có giao diện cho người dùng cuối, chỉ có API (và giao diện quản trị của từng dịch vụ cho quản trị viên). Gồm SSO, API Gateway, dữ liệu có cấu trúc và phi cấu trúc, workflow, cùng các dịch vụ hỗ trợ (bí mật, hàng đợi, tìm kiếm, ký số, sinh PDF, quét mã độc, log kiểm toán). **Không chứa nghiệp vụ** (mục 2).
 - **Tầng 2 – Bộ máy một cửa** (`mot-cua/`) và **gói thủ tục** (`thu-tuc/<ma>/`): bộ máy giữ schema, vai trò, API dùng chung cho mọi thủ tục; mỗi gói mang mô tả, quy trình BPMN, JSON Schema thành phần hồ sơ, dữ liệu mẫu của một thủ tục (§2); sau này cổng cán bộ và cổng công dân (React), dashboard Superset. Tầng 2 **chỉ gọi lõi qua APISIX**, không kết nối thẳng CSDL, Flowable hay Garage.
 - **Người dùng:** công dân, cán bộ một cửa, cán bộ chuyên môn, lãnh đạo xã.
+
+Ảnh tổng quan dưới đây (bản tĩnh của sơ đồ động trong README) cho thấy 2 tầng, các gói thủ tục cắm vào bộ máy một cửa và đường đi của một hồ sơ KS01:
+
+<p align="center">
+  <img src="images/kien-truc-2-tang.webp" alt="Kiến trúc 2 tầng: Tầng 2 mot-cua gồm cổng công dân, cổng cán bộ, mot-cua-api, mot-cua-worker và các gói thủ tục KS01, CT01 cắm vào bộ máy chung; Tầng 1 nen-tang gồm Keycloak, APISIX, PostgREST, PostgreSQL, ClamAV, Garage, Flowable, RabbitMQ, OpenBao; đường cam là luồng một hồ sơ KS01 qua 6 bước" width="100%">
+</p>
 
 Sơ đồ dưới đây vẽ đúng các dịch vụ đang chạy trong `docker-compose.yml` (profile `core`) và bộ máy `mot-cua/`: route của gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao; 4 dịch vụ bắt buộc của đề được đánh số 1–4. Sơ đồ Mermaid tiếp theo là kiến trúc đích, gồm cả các thành phần của tuần sau.
 
@@ -629,7 +635,7 @@ Mọi image ghim phiên bản cụ thể, lấy từ dự án gốc (bảng ở 
 
 D-004: image `flowable-ui` (có modeler) dừng ở 6.8.0 (2022), bpmn-js bị cấm vì giấy phép bpmn.io không phải OSI. Cách làm:
 
-1. Viết tay tệp `thu-tuc/<ma>/quy-trinh.bpmn20.xml` của gói thủ tục ([`docs/thu-tuc.md`](thu-tuc.md)) theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2 là `<!-- SPDX-License-Identifier: Apache-2.0 -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
+1. Viết tay tệp `thu-tuc/<ma>/quy-trinh.bpmn20.xml` của gói thủ tục ([`docs/thu-tuc.md`](thu-tuc.md)) theo chuẩn BPMN 2.0, namespace `http://www.omg.org/spec/BPMN/20100524/MODEL` và `http://flowable.org/bpmn`. Dòng thứ 2–3 là `<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->` và `<!-- SPDX-License-Identifier: GPL-3.0-or-later -->` (`make license` tự thêm sau khai báo `<?xml ?>`).
 2. Chỉ dùng tập phần tử nhỏ: `startEvent`, `userTask` (có `flowable:candidateGroups` = mã lĩnh vực của thủ tục hoặc `lanh_dao`, biến người xử lý đặt khai bằng `flowable:formProperty`), `serviceTask`, `exclusiveGateway`, `boundaryEvent` + `timerEventDefinition` cho cảnh báo trễ hạn, `endEvent`.
 3. Không cần phần `bpmndi` (tọa độ vẽ): Flowable chạy được khi thiếu phần này. Sơ đồ cho tài liệu và slide vẽ bằng Mermaid `flowchart` đặt cạnh tệp XML.
 4. Kiểm tra hai lớp: `make check` (và CI) chạy `scripts/check-bpmn.py` và bộ nạp ở chế độ `--chi-kiem` (cùng luật `mot-cua/backend/kiem_bpmn.py`) – XML hợp lệ, id không trùng, mũi tên trỏ đúng phần tử, nút nào cũng có đường vào/ra, gateway có `default` và điều kiện, userTask có người nhận, biến có kiểu hợp lệ; khi deploy, Flowable từ chối tệp sai ngữ nghĩa và bộ nạp bỏ qua gói đó (`make smoke` kiểm quy trình đã lên và chạy được).

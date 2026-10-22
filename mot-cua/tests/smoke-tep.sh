@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Smoke API tệp hồ sơ (#7), được mot-cua/tests/smoke.sh `source` sau mục 4d (dùng
 # lại token TOKEN/TK_CB/TK_LD, cán bộ tạm CB_ID, lĩnh vực LV_HT, thủ tục KS_ID). Mọi lời gọi
 # đi qua APISIX như client thật:

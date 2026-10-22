@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Dữ liệu mẫu GIẢ của ứng dụng mot-cua (schema 002, #5). Chỉ nạp khi DXOS_SEED=true
 -- (mặc định trong .env.example); tắt khi triển khai thật. Viết để chạy lại vẫn không trùng.
 --

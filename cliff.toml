@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Cấu hình git-cliff (D-009 hướng 4, #36): sinh CHANGELOG và ghi chú phát hành từ Conventional Commits.
 # Không gọi git-cliff trực tiếp lên CHANGELOG.md; dùng `make nhat-ky` và
 # `make ghi-chu-phat-hanh PHIEN_BAN=x.y.z` (scripts/nhat_ky.py chọn khoảng commit đúng, giữ nguyên
@@ -8,6 +9,8 @@
 # commit; trong nhóm, commit xếp theo phạm vi (`thu-tuc`, `mot-cua`, `nen-tang`…) và phạm vi in đậm
 # ở đầu dòng. Gạch đầu dòng trong thân commit (mô tả squash của PR) in thành mục con, thụt 4 dấu
 # cách để MkDocs (Python-Markdown) cũng hiểu là danh sách lồng.
+# Ghi chú riêng của một phiên bản (ví dụ mốc đổi giấy phép ở v0.3.0, D-010) đặt trong template theo
+# `version`, để cả CHANGELOG lẫn ghi chú GitHub Release đều có mà không phải sửa tay.
 # Biến môi trường GHI_CHU_PHAT_HANH=1: bỏ dòng tiêu đề phiên bản, thêm link so sánh (thân GitHub Release).
 
 [changelog]
@@ -27,6 +30,9 @@ body = """
 {% else -%}
 ## [Unreleased]
 {% endif -%}
+{% endif -%}
+{% if version == "v0.3.0" %}
+> **Giấy phép:** đây là bản đầu tiên phát hành theo GPL-3.0-or-later (D-010, [#47](https://github.com/commune-dxos/commune-dxos/issues/47)). Các bản v0.0.1–v0.2.0 vẫn theo Apache-2.0.
 {% endif -%}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim }}

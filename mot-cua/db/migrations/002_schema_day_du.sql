@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Ứng dụng Tầng 2 "mot-cua": schema đầy đủ tuần 2 (#5) – lĩnh vực, thủ tục, thành phần
 -- yêu cầu, cán bộ và lĩnh vực phụ trách, hồ sơ, thành phần hồ sơ, ngày nghỉ; RLS theo
 -- vai trò JWT và theo lĩnh vực cán bộ phụ trách.

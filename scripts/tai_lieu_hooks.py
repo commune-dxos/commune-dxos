@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Hook MkDocs của trang tài liệu (D-009 hướng 2, #32). Khai trong mkdocs.yml (`hooks:`).
 
 Ba việc:

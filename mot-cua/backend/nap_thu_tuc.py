@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Bộ nạp gói thủ tục (D-009): dịch vụ một lần `nap-thu-tuc` (make nap-thu-tuc).
 
   python nap_thu_tuc.py <thư mục thu-tuc>              nạp mọi gói (chạy trong Docker)

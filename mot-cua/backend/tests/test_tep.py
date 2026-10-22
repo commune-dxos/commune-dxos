@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Test đơn vị của mot-cua/backend/tep.py (thư viện chuẩn unittest, không cần Docker).
 
 Chạy: make test   (hoặc python3 -m unittest discover -s mot-cua/backend/tests)

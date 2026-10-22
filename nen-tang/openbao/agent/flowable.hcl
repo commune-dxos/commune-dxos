@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # bao agent một lần cho danh tính `flowable` (dịch vụ flowable-secrets trong
 # docker-compose.yml): đăng nhập AppRole bằng role_id/secret_id do bao-init đặt trong volume
 # flowable-secrets, render bí mật ra tệp quyền 0400 trong chính volume đó rồi thoát. Chạy bằng

@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Bộ máy một cửa – danh mục thủ tục nạp từ gói thu-tuc/<ma>/ (D-009).
 -- nen-tang/scripts/tang2-migrate.sh áp dụng tệp này đúng một lần, trong một transaction.
 --

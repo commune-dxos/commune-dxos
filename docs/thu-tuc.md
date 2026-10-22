@@ -30,7 +30,8 @@ Tên thư mục là chữ thường không dấu, số và `-` (2–60 ký tự)
 ## Bước 2. Sửa `thu-tuc.yaml`
 
 ```yaml
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 ma: XNCT01
 ten: Xác nhận thông tin cư trú
 linh_vuc: cu_tru

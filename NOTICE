@@ -1,12 +1,51 @@
 Commune DX-OS
-Copyright 2026 DTU_DZ_2 – OLP PMNM 2026
+Copyright (C) 2026 DTU_DZ_2 – OLP PMNM 2026
+SPDX-FileCopyrightText: 2026 DTU_DZ_2
+SPDX-License-Identifier: GPL-3.0-or-later
 
-Sản phẩm được cấp phép theo Apache License 2.0 (xem LICENSE).
-Các thành phần nguồn mở dưới đây được dùng dưới dạng thư viện qua trình quản lý gói
-hoặc image Docker gốc, không sửa đổi mã nguồn. Thành phần AGPL/GPL chạy như dịch vụ
-độc lập, không liên kết vào mã của dự án.
+Commune DX-OS phát hành theo Giấy phép Công cộng GNU (GNU GPL) phiên bản 3 hoặc
+(tùy bạn chọn) bất kỳ phiên bản nào mới hơn. Toàn văn: tệp LICENSE.
+Các bản v0.0.1, v0.1.0, v0.2.0 đã phát hành theo Apache License 2.0 và giữ nguyên
+giấy phép đó; từ bản phát hành sau v0.2.0 là GPL-3.0-or-later (quyết định D-010).
+
+Thông báo GPL (bản gốc tiếng Anh có giá trị pháp lý):
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Bản dịch tham khảo: Chương trình này là phần mềm tự do: bạn có thể phân phối lại
+và/hoặc sửa đổi theo các điều khoản của Giấy phép Công cộng GNU do Quỹ Phần mềm
+Tự do công bố, phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn.
+Chương trình được phân phối với hy vọng hữu ích nhưng KHÔNG CÓ BẢO ĐẢM NÀO, kể cả
+bảo đảm ngầm định về KHẢ NĂNG THƯƠNG MẠI hay PHÙ HỢP VỚI MỘT MỤC ĐÍCH CỤ THỂ.
+Xem Giấy phép Công cộng GNU để biết chi tiết. Bạn đã nhận được bản sao giấy phép
+cùng chương trình (tệp LICENSE); nếu không, xem <https://www.gnu.org/licenses/>.
+
+Thành phần bên thứ ba
+---------------------
+Các thành phần nguồn mở dưới đây giữ giấy phép riêng. Chúng được dùng dưới dạng
+thư viện qua trình quản lý gói hoặc image Docker gốc, không sửa đổi mã nguồn; repo
+không chứa mã của bên thứ ba. Mọi giấy phép trong bảng đều tương thích GPL-3.0
+(Apache-2.0, MIT, BSD, MPL-2.0, PostgreSQL, PSF-2.0) hoặc là dịch vụ riêng.
+
+Thành phần AGPL/GPL chạy như dịch vụ độc lập, không liên kết vào mã của dự án:
+- Garage (AGPL-3.0): image gốc `dxflrs/garage`, không sửa mã; dự án chỉ gọi qua
+  mạng (S3 API, Admin API).
+- ClamAV (GPL-2.0): image gốc `clamav/clamav`, không sửa mã; dự án chỉ gọi qua
+  giao thức TCP của `clamd`.
+
 Trạng thái: Đã xác minh 17/10/2026 (D-004) — đọc file LICENSE ở nhánh chính, tag image, model card.
-Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
+Danh sách thư viện npm/pip, phiên bản cụ thể và cột tương thích GPL-3.0: xem DEPENDENCIES.md.
 
 | Lớp | Thành phần | Giấy phép |
 |---|---|---|
@@ -20,7 +59,7 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 | Backend ứng dụng | Python 3.13 (image gốc `python`, chỉ thư viện chuẩn) | PSF-2.0 |
 | Hàng đợi | RabbitMQ 4.3.6 (dịch vụ riêng, image gốc `rabbitmq`, không sửa mã; plugin có sẵn trong image: STOMP, management). Backend chỉ nói giao thức STOMP bằng thư viện chuẩn Python, không nhúng thư viện của RabbitMQ | MPL-2.0 |
 | Tìm kiếm | Meilisearch Community Edition (MIT). Không dùng bản Enterprise (BUSL-1.1) | MIT |
-| Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | Apache-2.0 |
+| Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | GPL-3.0-or-later |
 | Ký số | step-ca (smallstep/certificates) + pyHanko | Apache-2.0 / MIT |
 | Sinh PDF | Gotenberg | MIT |
 | Quét mã độc | ClamAV 1.5.4 (dịch vụ riêng, image gốc `clamav/clamav`, không sửa mã; chỉ gọi qua giao thức TCP của `clamd`) | GPL-2.0 |
@@ -29,5 +68,6 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 | Dashboard | Apache Superset | Apache-2.0 |
 | Trang tài liệu (công cụ build, không đi vào sản phẩm) | MkDocs 1.6.1 + Material for MkDocs 9.7.7 bản community + PyMdown Extensions; trình duyệt tải Mermaid để vẽ sơ đồ | BSD-2-Clause / MIT |
 | CHANGELOG và ghi chú phát hành (công cụ, không đi vào sản phẩm) | git-cliff 2.14.2 (PyPI) | MIT / Apache-2.0 |
+| Xuất sơ đồ động ra GIF/MP4 (công cụ, không đi vào sản phẩm) | Playwright for Python 1.55.0 (PyPI) + Chromium; FFmpeg cài trên máy, chỉ gọi dòng lệnh | Apache-2.0 / BSD-3-Clause; FFmpeg LGPL-2.1+/GPL-2.0+ |
 | AI | PaddleOCR + VietOCR; Ollama + bge-m3 + pgvector + LlamaIndex | Apache-2.0 / MIT / PostgreSQL |
 | Mô hình ngôn ngữ | Qwen2.5 bản 7B hoặc 14B. Không dùng bản 3B (giấy phép Qwen Research, không OSI) | Apache-2.0 |

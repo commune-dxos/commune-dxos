@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
   Gói thủ tục chung-thuc-ban-sao – quy trình "Chứng thực bản sao từ bản chính" (CT01, lĩnh vực
   chung_thuc), BPMN 2.0 viết tay (D-009). Hạn trong ngày tiếp nhận. Sơ đồ: README.md cùng thư mục.

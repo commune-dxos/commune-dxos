@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Dịch vụ một lần `rabbitmq-init` của lõi (#9): cấu hình RabbitMQ cho Tầng 2 rồi thoát.
 
 Chạy lại bao nhiêu lần cũng được (idempotent), qua HTTP API quản trị (cổng 15672, chỉ trong

@@ -1,6 +1,6 @@
 # Tài liệu Commune DX-OS
 
-**Commune DX-OS** là hệ điều hành chính quyền số cấp xã, nguồn mở (Apache-2.0): lõi headless Tầng 1 (đăng nhập một lần, cổng API, dữ liệu, quy trình) và bộ máy một cửa Tầng 2 chạy mọi thủ tục hành chính. Mỗi thủ tục là một **gói** `thu-tuc/<ma>/`; thêm thủ tục là thêm một thư mục, không sửa mã.
+**Commune DX-OS** là hệ điều hành chính quyền số cấp xã, nguồn mở (GPL-3.0-or-later): lõi headless Tầng 1 (đăng nhập một lần, cổng API, dữ liệu, quy trình) và bộ máy một cửa Tầng 2 chạy mọi thủ tục hành chính. Mỗi thủ tục là một **gói** `thu-tuc/<ma>/`; thêm thủ tục là thêm một thư mục, không sửa mã.
 
 ![Luồng hồ sơ 5 bước: nộp hồ sơ, quét virus, thẩm định, phê duyệt, hoàn tất; cảnh báo trễ hạn gắn vào bước thẩm định](images/luong-ho-so.webp)
 

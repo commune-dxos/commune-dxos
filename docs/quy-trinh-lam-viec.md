@@ -1,4 +1,5 @@
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Quy trình làm việc và theo dõi tiến độ
 
 Đội DTU_DZ_2 theo dõi tiến độ ngay trên GitHub, để ai cũng xem được tuần này đội làm gì, việc nào xong, việc nào đang chờ duyệt (D-009 hướng 3, #34). CHANGELOG và ghi chú phát hành sinh tự động từ commit (D-009 hướng 4, #36), xem mục 5–6.

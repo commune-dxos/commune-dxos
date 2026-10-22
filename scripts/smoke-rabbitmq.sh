@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Smoke RabbitMQ của lõi (#9), được scripts/smoke.sh `source` (dùng kiem, ma_http, GW).
 #   - plugin STOMP + management bật; không có user guest;
 #   - HTTP API quản trị không ra ngoài: không cổng host, không route APISIX; trong mạng nội bộ
