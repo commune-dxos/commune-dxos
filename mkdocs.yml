@@ -55,18 +55,21 @@ theme:
   language: vi
   # Không tải phông từ Google Fonts: dùng phông hệ thống, trang không gọi dịch vụ bên thứ ba.
   font: false
+  # Bộ nhận diện (#61): biểu tượng và favicon ở docs/images/logo/, màu xanh ngọc #0F766E trong stylesheets/nhan-dien.css.
+  logo: images/logo/mark-64.png
+  favicon: images/logo/favicon.ico
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: teal
+      primary: custom
+      accent: indigo
       toggle:
         icon: material/weather-night
         name: Chuyển sang nền tối
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: teal
+      primary: custom
+      accent: indigo
       toggle:
         icon: material/weather-sunny
         name: Chuyển sang nền sáng
@@ -82,6 +85,9 @@ theme:
     - toc.follow
   icon:
     repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/nhan-dien.css
 
 plugins:
   - search:
