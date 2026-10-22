@@ -57,6 +57,8 @@ Người dân nộp hồ sơ; hệ thống cấp mã, tính hạn và khởi t�
   <img src="docs/images/kien-truc-dong.svg" alt="Sơ đồ kiến trúc 2 tầng. Trên cùng là người dân, cán bộ một cửa, lãnh đạo xã. Tầng 2 mot-cua gồm cổng công dân và cổng cán bộ (tuần 3), mot-cua-api, mot-cua-worker và các gói thủ tục KS01 Khai sinh, CT01 Chứng thực bản sao cắm vào thu-tuc. Tầng 2 chỉ gọi Tầng 1 nen-tang qua APISIX. Tầng 1 headless gồm Keycloak, APISIX, PostgREST và PostgreSQL có RLS, ClamAV và Garage, Flowable, RabbitMQ, OpenBao cấp bí mật. Một hồ sơ KS01 chạy qua 6 bước: nộp qua APISIX và kiểm JWT, kiểm đủ thành phần hồ sơ, lưu, quét và lưu tệp, khởi tạo quy trình, cảnh báo sắp trễ hạn tới cán bộ" width="100%">
 </p>
 
+<sub>Ảnh tĩnh cho slide: [docs/images/kien-truc-2-tang.webp](docs/images/kien-truc-2-tang.webp)</sub>
+
 Ba lớp, mỗi lớp một thư mục:
 
 - [`nen-tang/`](nen-tang/): lõi headless Tầng 1. Chỉ có API, không giao diện, không nghiệp vụ.

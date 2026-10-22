@@ -10,6 +10,7 @@
 | `kien-truc.svg` | Sơ đồ kiến trúc 2 tầng chi tiết theo `docker-compose.yml`, `nen-tang/`, `mot-cua/`, `thu-tuc/` | `docs/architecture.md` | Đội DTU_DZ_2 vẽ tay bằng SVG thuần |
 | `luong-ho-so.svg` | Luồng nộp và xử lý hồ sơ đăng ký khai sinh chi tiết theo BPMN | `docs/architecture.md` | Đội DTU_DZ_2 vẽ tay bằng SVG thuần |
 | `kien-truc-dong.svg` | Sơ đồ kiến trúc động: 2 tầng, gói thủ tục cắm vào `thu-tuc/`, 4 dịch vụ bắt buộc đánh số; một hồ sơ KS01 chạy qua 6 bước (vòng 14 giây, SMIL, không JS). Khung tĩnh vẫn đọc được; tắt chuyển động khi người xem bật giảm chuyển động | `README.md` | Đội DTU_DZ_2 vẽ tay bằng SVG thuần |
+| `kien-truc-2-tang.webp` | Ảnh tĩnh kiến trúc 2 tầng: gói thủ tục cắm vào bộ máy, 4 dịch vụ bắt buộc đánh số, luồng hồ sơ KS01 màu cam, nhãn tiếng Việt | `README.md` (link dưới sơ đồ động), `docs/architecture.md`, slide | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh (ChatGPT) theo bản SVG `kien-truc-dong.svg` của đội; biểu tượng là hình minh họa, không phải logo chính thức |
 | `kien-truc-dong.gif` | Bản GIF của `kien-truc-dong.svg` (1200 px, 12 khung/giây) cho nơi không chạy được SVG động | Slide, chỗ cần ảnh GIF | Xuất từ SVG bằng `make xuat-kien-truc` (Playwright + Chromium chụp khung, FFmpeg ghép) |
 | `../media/kien-truc-dong.mp4` | Bản MP4 H.264 1920×1080, 30 khung/giây, đủ một vòng lặp, để chèn slide trình bày chung kết | Slide | Như trên |
 

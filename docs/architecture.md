@@ -8,6 +8,12 @@ Phiên bản tài liệu: v0.2.0 (tuần 2: tách nền tảng khỏi nghiệp v
 - **Tầng 2 – Bộ máy một cửa** (`mot-cua/`) và **gói thủ tục** (`thu-tuc/<ma>/`): bộ máy giữ schema, vai trò, API dùng chung cho mọi thủ tục; mỗi gói mang mô tả, quy trình BPMN, JSON Schema thành phần hồ sơ, dữ liệu mẫu của một thủ tục (§2); sau này cổng cán bộ và cổng công dân (React), dashboard Superset. Tầng 2 **chỉ gọi lõi qua APISIX**, không kết nối thẳng CSDL, Flowable hay Garage.
 - **Người dùng:** công dân, cán bộ một cửa, cán bộ chuyên môn, lãnh đạo xã.
 
+Ảnh tổng quan dưới đây (bản tĩnh của sơ đồ động trong README) cho thấy 2 tầng, các gói thủ tục cắm vào bộ máy một cửa và đường đi của một hồ sơ KS01:
+
+<p align="center">
+  <img src="images/kien-truc-2-tang.webp" alt="Kiến trúc 2 tầng: Tầng 2 mot-cua gồm cổng công dân, cổng cán bộ, mot-cua-api, mot-cua-worker và các gói thủ tục KS01, CT01 cắm vào bộ máy chung; Tầng 1 nen-tang gồm Keycloak, APISIX, PostgREST, PostgreSQL, ClamAV, Garage, Flowable, RabbitMQ, OpenBao; đường cam là luồng một hồ sơ KS01 qua 6 bước" width="100%">
+</p>
+
 Sơ đồ dưới đây vẽ đúng các dịch vụ đang chạy trong `docker-compose.yml` (profile `core`) và bộ máy `mot-cua/`: route của gateway, luồng JWT, quét tệp trước khi lưu, outbox → RabbitMQ, OpenBao; 4 dịch vụ bắt buộc của đề được đánh số 1–4. Sơ đồ Mermaid tiếp theo là kiến trúc đích, gồm cả các thành phần của tuần sau.
 
 <p align="center">
