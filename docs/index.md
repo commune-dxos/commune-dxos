@@ -1,5 +1,7 @@
 # Tài liệu Commune DX-OS
 
+![Logo Commune DX-OS: mái nhà công sở che hồ sơ có dấu tích và hai gói thủ tục cắm vào thanh đế, chữ COMMUNE DX-OS, khẩu hiệu Chính quyền số Cấp xã](images/logo/logo-ngang-nen-trang.png){ width="420" }
+
 **Commune DX-OS** là hệ điều hành chính quyền số cấp xã, nguồn mở (GPL-3.0-or-later): lõi headless Tầng 1 (đăng nhập một lần, cổng API, dữ liệu, quy trình) và bộ máy một cửa Tầng 2 chạy mọi thủ tục hành chính. Mỗi thủ tục là một **gói** `thu-tuc/<ma>/`; thêm thủ tục là thêm một thư mục, không sửa mã.
 
 ![Luồng hồ sơ 5 bước: nộp hồ sơ, quét virus, thẩm định, phê duyệt, hoàn tất; cảnh báo trễ hạn gắn vào bước thẩm định](images/luong-ho-so.webp)

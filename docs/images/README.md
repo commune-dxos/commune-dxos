@@ -13,7 +13,14 @@
 | `kien-truc-2-tang.webp` | Ảnh tĩnh kiến trúc 2 tầng, bản v2 (#45): APISIX nằm trong Tầng 1, có hộp PostgREST, 4 dịch vụ bắt buộc đánh số ①–④, gói thủ tục cắm vào bộ máy, luồng hồ sơ KS01 màu cam, nhãn tiếng Việt | `README.md` (link dưới sơ đồ động), `docs/architecture.md`, slide | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh (ChatGPT) theo bản SVG `kien-truc-dong.svg` của đội; biểu tượng là hình minh họa, không phải logo chính thức |
 | `kien-truc-dong.gif` | Bản GIF của `kien-truc-dong.svg` (1200 px, 12 khung/giây) cho nơi không chạy được SVG động | Slide, chỗ cần ảnh GIF | Xuất từ SVG bằng `make xuat-kien-truc` (Playwright + Chromium chụp khung, FFmpeg ghép) |
 | `../media/kien-truc-dong.mp4` | Bản MP4 H.264 1920×1080, 30 khung/giây, đủ một vòng lặp, để chèn slide trình bày chung kết | Slide | Như trên |
+| `logo/logo-ngang.png` | Logo ngang (1544×482, nền trong suốt): biểu tượng, chữ COMMUNE DX-OS, khẩu hiệu "Chính quyền số Cấp xã" | `README.md` (chế độ sáng), slide | Đội DTU_DZ_2 tạo bằng công cụ AI (ChatGPT) theo prompt của đội; đội đã duyệt (#61) |
+| `logo/logo-ngang-nen-trang.png` | Logo ngang trên nền trắng (1524×462) cho nơi không hỗ trợ nền trong suốt hoặc nền tối | `README.md` (chế độ tối), trang chủ tài liệu, Word | Như trên |
+| `logo/mark.png` | Biểu tượng gốc 1024×1024, nền trong suốt: mái nhà công sở, hồ sơ có dấu tích, 2 gói thủ tục cắm vào thanh đế | Nguồn để xuất các cỡ nhỏ | Như trên; cắt từ logo ngang bằng ImageMagick |
+| `logo/mark-512.png`, `logo/mark-180.png` | Biểu tượng 512 px, 180 px | Ảnh đại diện org GitHub, apple-touch-icon | Như trên |
+| `logo/mark-64.png`, `logo/mark-32.png`, `logo/favicon.ico` | Biểu tượng 64 px, 32 px và favicon | Thanh đầu trang tài liệu MkDocs (`theme.logo`, `theme.favicon`), web | Như trên |
+| `logo/xem-truoc.png` | Ảnh xem trước 1280×640 khi chia sẻ link repo | Settings → Social preview của repo (tải lên bằng tay) | Như trên; ghép bằng ImageMagick |
 
+- **Logo** (`logo/`): màu xanh ngọc `#0F766E` (màu chính), chàm `#4338CA` (màu phụ), đỏ son `#D9480F` (chỉ điểm nhấn). Không đổi màu, kéo méo, thêm bóng hay gradient. Biểu tượng có vùng trong suốt: trên nền tối đặt trong ô nền trắng. Cỡ nhỏ nhất: biểu tượng 32 px, logo ngang rộng 240 px.
 - Ảnh minh họa không chứa người, giấy tờ có thật; không lấy ảnh từ nguồn bên ngoài. Chữ trong ảnh do đội kiểm lại sau khi tạo.
 - `kien-truc-dong.svg` không dùng logo của dự án nào: mỗi thành phần là một hộp chữ. Sửa SVG rồi chạy lại `make xuat-kien-truc` để GIF, MP4 khớp (cài công cụ: xem đầu `scripts/xuat_kien_truc.py`; Playwright và FFmpeg chỉ là công cụ trên máy, không phải phụ thuộc của dự án).
 - Biểu tượng của Keycloak, APISIX, PostgreSQL, Flowable, RabbitMQ, ClamAV, Garage, OpenBao trong `kien-truc-tong-quan.webp` là **hình minh họa** do công cụ AI vẽ, **không phải logo chính thức**. Tên và nhãn hiệu thuộc dự án tương ứng; dùng ở đây chỉ để chỉ thành phần trong hệ thống, không ngụ ý dự án đó bảo trợ Commune DX-OS.

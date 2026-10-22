@@ -1,0 +1,22 @@
+/*
+ * SPDX-FileCopyrightText: 2026 DTU_DZ_2
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+/* Màu nhận diện Commune DX-OS (#61): xanh ngọc #0F766E là màu chủ đạo, chàm #4338CA cho liên kết. */
+:root {
+  --md-primary-fg-color: #0f766e;
+  --md-primary-fg-color--light: #14b8a6;
+  --md-primary-fg-color--dark: #115e59;
+}
+
+[data-md-color-scheme="default"] {
+  --md-typeset-a-color: #4338ca;
+}
+
+/* Biểu tượng có vùng trong suốt: đặt trong ô bo góc nền trắng khi nằm trên thanh màu (quy tắc nhận diện). */
+.md-header__button.md-logo img,
+.md-nav__button.md-logo img {
+  background: #fff;
+  border-radius: 0.3rem;
+  padding: 0.1rem;
+}
