@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 ### Changed
+- Theo dõi tiến độ bằng milestone `Tuần 1` … `Tuần 7` và nhãn thành phần thay cho nhãn `tuan-N`; `CONTRIBUTING.md`, `docs/PLAN.md` và mẫu issue "Việc cần làm" cập nhật theo (D-009 hướng 3, #34).
 - `README.md` thêm một dòng link tới trang tài liệu https://commune-dxos.github.io/commune-dxos/ (#32).
 - Cấu trúc gói thủ tục (D-009, #30): `core/` → `nen-tang/` (Tầng 1, không nghiệp vụ), `apps/mot-cua/` → `mot-cua/` (bộ máy một cửa dùng chung cho mọi thủ tục), mỗi thủ tục một gói `thu-tuc/<ma>/` (`thu-tuc.yaml`, `quy-trinh.bpmn20.xml`, `thanh-phan-ho-so.schema.json`, `du-lieu-mau.json`, `README.md`); chuyển bằng `git mv`, giữ lịch sử.
 - Bỏ biến `DXOS_APP`: dịch vụ Tầng 2 cố định `mot-cua` trong `docker-compose.yml` (`x-tang2`). Dịch vụ đổi tên: `app-migrate` → `tang2-migrate`, `app-realm` → `tang2-realm`, `app-backend` → `mot-cua-api`, `app-worker` → `mot-cua-worker`; `apps/mot-cua/app.env` → `mot-cua/postgrest.env`; danh tính OpenBao `app`, `app-realm` → `tang2`, `tang2-realm`, nhánh bí mật `dxos/apps/<tên>/` → `dxos/tang2/<tên>/`; user RabbitMQ `tang2-mot-cua`, khóa Garage `dxos-tang2-mot-cua` (#30).
@@ -17,6 +18,9 @@
 - Sơ đồ SVG chi tiết `kien-truc.svg`, `luong-ho-so.svg` chuyển sang `docs/architecture.md` §1 và §4.2 (#28).
 
 ### Added
+- Tự gắn nhãn thành phần (`nen-tang`, `mot-cua`, `thu-tuc`, `docs`, `ci`) cho PR theo tệp sửa: `.github/labeler.yml` + workflow `.github/workflows/gan-nhan.yml` (`actions/labeler`, `pull_request_target`, không checkout mã PR, không phải check bắt buộc) (#34).
+- Mẫu issue "Thủ tục mới" (mã, tên, lĩnh vực, thời hạn, căn cứ pháp lý; tự gắn nhãn `thu-tuc`) và "Việc trong tuần" (chọn thành phần) dạng issue form (#34).
+- Trang `docs/quy-trinh-lam-viec.md` (mục "Đóng góp" trên site): milestone theo tuần, nhãn thành phần, bảng Project "Commune DX-OS – Lộ trình", luồng issue → nhánh → PR → `develop` (#34).
 - Trang tài liệu MkDocs + Material for MkDocs bản community (D-009 hướng 2, #32): `mkdocs.yml`, giao diện tiếng Việt, tìm kiếm tiếng Việt, điều hướng theo vai người đọc (Người dân / cán bộ, Lập trình viên thêm thủ tục, Vận hành, Kiến trúc, Đóng góp), dựng từ các tệp có sẵn trong `docs/`; trang chủ `docs/index.md`; phiên bản ghim ở `docs/requirements.txt`.
 - Trang **Danh mục thủ tục** sinh lúc build từ mọi gói `thu-tuc/*/` bằng bộ kiểm của bộ nạp (mã, tên, lĩnh vực, thời hạn, lệ phí, căn cứ pháp lý, các bước xử lý, thành phần hồ sơ, link BPMN và JSON Schema); mỗi gói một trang từ `README.md` của gói, kèm sơ đồ Mermaid; thêm gói là site tự có trang mới. Hook `scripts/tai_lieu_hooks.py` còn đưa `mot-cua/README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` lên site, tính neo tiêu đề như GitHub và đổi link ra ngoài `docs/` sang GitHub (#32).
 - Lệnh `make tai-lieu` (build `--strict`: link gãy, neo sai, gói lỗi là lỗi) và `make xem-tai-lieu` (`mkdocs serve`), không cần Docker; `site/` vào `.gitignore` (#32).

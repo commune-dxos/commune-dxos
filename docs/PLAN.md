@@ -3,7 +3,7 @@
 Đội DTU_DZ_2 · Lịch làm việc: Thứ 5 – Thứ 7 · Hạn nộp: **17:00 Chủ nhật 06/12/2026** · Chung kết: 10/12/2026.
 
 Cách dùng tệp này:
-- Mỗi dòng `[ ]` là **một issue** trên GitHub, gắn nhãn tuần (`tuan-N`) và nhãn vai, giao cho người phụ trách vai đó. Quy trình issue → nhánh → PR: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+- Mỗi dòng `[ ]` là **một issue** trên GitHub, gắn vào milestone `Tuần N`, nhãn thành phần và nhãn vai, giao cho người phụ trách vai đó. Milestone, nhãn, bảng Project: [`quy-trinh-lam-viec.md`](quy-trinh-lam-viec.md); quy trình issue → nhánh → PR: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - Đánh dấu `[x]` khi PR của dòng đó đã merge vào `develop`, ghi số issue/PR ở cuối dòng.
 - Vai phụ trách:
   - **V1** – lõi Tầng 1, DevOps, bảo mật (nhãn `vai-1-core`)
@@ -34,6 +34,7 @@ Cách dùng tệp này:
 - [ ] V2 · D-009 hướng 1 – mô hình gói thủ tục: `nen-tang/` + bộ máy `mot-cua/` + `thu-tuc/<ma>/` (khai sinh, chứng thực bản sao), bộ nạp `make nap-thu-tuc`, `docs/thu-tuc.md` (#30, PR chờ duyệt)
 
 ## Tuần 3 · 29/10–04/11 · Luồng nghiệp vụ chính
+- [ ] V1 · D-009 hướng 3 – Milestones `Tuần 1` … `Tuần 7`, nhãn thành phần tự gắn theo tệp (`gan-nhan`), mẫu issue "Thủ tục mới"/"Việc trong tuần", Project "Commune DX-OS – Lộ trình", `docs/quy-trinh-lam-viec.md` (#34, PR chờ duyệt)
 - [ ] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable
 - [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái
 - [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác

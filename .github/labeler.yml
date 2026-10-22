@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# Nhãn thành phần tự gắn cho PR theo đường dẫn tệp (D-009 hướng 3, #34).
+# Dùng bởi .github/workflows/gan-nhan.yml (actions/labeler). Chỉ thêm nhãn, không gỡ nhãn người đã gắn.
+# Quy ước nhãn: docs/quy-trinh-lam-viec.md.
+nen-tang:
+  - changed-files:
+      - any-glob-to-any-file: "nen-tang/**"
+
+mot-cua:
+  - changed-files:
+      - any-glob-to-any-file: "mot-cua/**"
+
+thu-tuc:
+  - changed-files:
+      - any-glob-to-any-file: "thu-tuc/**"
+
+# Bỏ qua các tệp gần như PR nào cũng sửa (CHANGELOG, kế hoạch, bảng đối chiếu đề thi),
+# để nhãn docs chỉ xuất hiện khi PR thực sự đổi tài liệu.
+docs:
+  - changed-files:
+      - all-globs-to-any-file:
+          - "{docs/**,mkdocs.yml,*.md}"
+          - "!CHANGELOG.md"
+          - "!docs/PLAN.md"
+          - "!docs/de-thi-mapping.md"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "Makefile"
+          - "scripts/**"

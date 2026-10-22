@@ -15,7 +15,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
 
 ## 2. Quy trình một việc: issue → nhánh → PR
 
-1. **Issue.** Mỗi việc trong [`docs/PLAN.md`](docs/PLAN.md) là một issue, tạo bằng mẫu "Việc cần làm". Gắn nhãn tuần (`tuan-2` … `tuan-7`), nhãn vai (`vai-1-core`, `vai-2`, `vai-3`), thêm `pof` nếu việc ảnh hưởng điểm kho mã (giấy phép, release, build, tài liệu). Giao issue cho đúng người phụ trách.
+1. **Issue.** Mỗi việc trong [`docs/PLAN.md`](docs/PLAN.md) là một issue, tạo bằng mẫu "Việc trong tuần" (thêm gói thủ tục thì dùng mẫu "Thủ tục mới"). Chọn milestone `Tuần N`, gắn nhãn thành phần (`nen-tang`, `mot-cua`, `thu-tuc`, `docs`, `ci`), nhãn vai (`vai-1-core`, `vai-2`, `vai-3`), thêm `pof` nếu việc ảnh hưởng điểm kho mã (giấy phép, release, build, tài liệu). Giao issue cho đúng người phụ trách. Milestone, nhãn và bảng Project: [`docs/quy-trinh-lam-viec.md`](docs/quy-trinh-lam-viec.md).
 2. **Nhánh.** Tách từ `develop` mới nhất:
    ```bash
    git switch develop && git pull --ff-only
@@ -23,7 +23,7 @@ Cảm ơn bạn quan tâm tới Commune DX-OS. Tài liệu này mô tả cách �
    ```
    Tên nhánh: số issue + vài từ không dấu, nối bằng gạch ngang. Một nhánh chỉ làm một issue.
 3. **Commit** nhỏ, mỗi commit một ý (xem mục 3). Trước khi đẩy chạy `make check`, `make lint`, `make test` (mục 6).
-4. **PR về `develop`.** Điền mẫu PR (mô tả, `Closes #<số>`, checklist). Gắn nhãn như issue.
+4. **PR về `develop`.** Điền mẫu PR (mô tả, `Closes #<số>`, checklist), chọn cùng milestone với issue. Nhãn thành phần do workflow `gan-nhan` tự gắn theo tệp sửa; nhãn vai gắn như issue.
 5. **Duyệt.** Ít nhất **1 thành viên khác** đọc và duyệt; người viết không tự duyệt. Người duyệt chạy thử (`make up` + `make smoke`) khi PR đụng tới `docker-compose.yml`, `nen-tang/`, `mot-cua/` hay gói `thu-tuc/`.
 6. **Merge bằng squash.** Tiêu đề squash giữ đúng định dạng Conventional Commits và số issue, ví dụ `feat(storage): Garage S3 + quét ClamAV (#12)`. Xóa nhánh sau khi merge.
 7. **Phát hành.** Từ `develop` mở PR về `main`, đánh tag `vX.Y.Z` trên `main`, ghi chú phát hành lấy từ `CHANGELOG.md`, đính kèm `.tar.gz` tạo bằng `git archive`.
