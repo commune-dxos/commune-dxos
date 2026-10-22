@@ -4,169 +4,109 @@
 
 # Commune DX-OS — Hệ điều hành Chính quyền số Cấp xã
 
-Nền tảng nguồn mở giúp xã tiếp nhận, xử lý và theo dõi thủ tục hành chính trực tuyến: người dân nộp hồ sơ từ xa, cán bộ xử lý theo quy trình, lãnh đạo thấy ngay hồ sơ nào sắp trễ hạn.
+**Người dân nộp hồ sơ một lần, cán bộ xã biết hồ sơ đang ở đâu và còn bao lâu tới hạn.**
 
 [![Giấy phép Apache-2.0](https://img.shields.io/badge/gi%E1%BA%A5y%20ph%C3%A9p-Apache--2.0-blue.svg)](LICENSE)
 [![Phiên bản](https://img.shields.io/github/v/release/commune-dxos/commune-dxos?label=phi%C3%AAn%20b%E1%BA%A3n)](https://github.com/commune-dxos/commune-dxos/releases)
 [![CI](https://github.com/commune-dxos/commune-dxos/actions/workflows/check.yml/badge.svg?branch=develop)](https://github.com/commune-dxos/commune-dxos/actions/workflows/check.yml)
+[![Trang tài liệu](https://github.com/commune-dxos/commune-dxos/actions/workflows/tai-lieu.yml/badge.svg?branch=develop)](https://commune-dxos.github.io/commune-dxos/)
 
-OLP PMNM 2026 · Đề tài DX-OS Open-Core · Đội DTU_DZ_2
+Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 · Đề tài DX-OS Open-Core.
 
-📖 Trang tài liệu (có tìm kiếm, danh mục thủ tục tự sinh từ các gói): https://commune-dxos.github.io/commune-dxos/
+## Trước và sau chuyển đổi số
 
-## 🧭 Giới thiệu
+Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-Cấp xã là nơi người dân làm thủ tục hành chính nhiều nhất: đăng ký khai sinh, chứng thực bản sao, xác nhận đất đai… Mỗi ngày bộ phận một cửa nhận hàng chục hồ sơ, phần lớn vẫn là giấy, mỗi hồ sơ phải qua tay nhiều cán bộ và có thời hạn giải quyết theo luật.
+✅ có ở bản **v0.1.0** · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **đang làm**, ghi tuần dự kiến
 
-Commune DX-OS đưa toàn bộ vòng đời hồ sơ lên mạng: từ lúc người dân nộp, qua tiếp nhận, thẩm định, phê duyệt, đến khi trả kết quả. Hệ thống gồm một nền tảng dùng chung (đăng nhập, cổng API, dữ liệu, quy trình), một bộ máy **một cửa cấp xã** chạy mọi thủ tục, và các **gói thủ tục** cắm vào bộ máy (đầu tiên: đăng ký khai sinh, chứng thực bản sao).
-
-## ⚠️ Thách thức
-
-- **Hồ sơ giấy:** khó lưu trữ, khó tra cứu, dễ thất lạc khi chuyển giữa các bàn.
-- **Đi lại nhiều lần:** người dân phải đến xã để nộp, để bổ sung, để hỏi tiến độ.
-- **Thiếu thành phần hồ sơ:** nộp thiếu giấy tờ chỉ phát hiện khi cán bộ xem, hồ sơ bị trả về.
-- **Khó theo dõi trễ hạn:** hạn tính theo ngày làm việc, cán bộ khó biết hồ sơ nào sắp quá hạn.
-- **Tệp tải lên có thể chứa mã độc:** nhận tệp từ người dân mà không quét là rủi ro cho cả hệ thống.
-- **Dữ liệu phân tán:** mỗi bộ phận giữ sổ riêng, lãnh đạo thiếu số liệu về thời gian giải quyết.
-
-## 💡 Giải pháp
-
-<p align="center">
-  <img src="docs/images/mot-cua-so.webp" alt="Minh họa: công dân nộp hồ sơ khai sinh từ điện thoại; hồ sơ được quét an toàn rồi đi qua các bước tiếp nhận, thẩm định, phê duyệt" width="80%">
-</p>
-
-- **Nộp trực tuyến, một lần:** người dân nộp hồ sơ và giấy tờ từ điện thoại, xem tiến độ mà không cần đến xã.
-- **Quy trình rõ ràng:** mỗi thủ tục là một quy trình BPMN; mỗi cán bộ chỉ thấy hồ sơ thuộc lĩnh vực mình phụ trách.
-- **Hạn xử lý tự tính:** theo ngày làm việc (bỏ cuối tuần, ngày lễ); hồ sơ sắp trễ hạn tự phát cảnh báo.
-- **An toàn mặc định:** đăng nhập một lần có xác thực hai lớp cho cán bộ, tệp được quét mã độc trước khi lưu, bí mật hệ thống nằm trong két riêng.
-- **Mở để mở rộng:** nền tảng không chứa nghiệp vụ; thêm một thủ tục là thêm một thư mục `thu-tuc/<ma>/`, không sửa mã ([`docs/thu-tuc.md`](docs/thu-tuc.md)).
-
-## 👥 Đối tượng
-
-| Đối tượng | Dùng để |
+| Trước | Sau |
 |---|---|
-| Công dân | Nộp hồ sơ, tải giấy tờ, theo dõi tiến độ, bổ sung khi được yêu cầu |
-| Cán bộ một cửa | Tiếp nhận, kiểm tra thành phần, yêu cầu bổ sung |
-| Cán bộ chuyên môn | Thẩm định hồ sơ thuộc lĩnh vực phụ trách (hộ tịch, chứng thực, đất đai…) |
-| Lãnh đạo xã | Phê duyệt, theo dõi hồ sơ sắp trễ hạn và thời gian giải quyết |
-| Quản trị hệ thống | Cài đặt, quản lý người dùng, bí mật, sao lưu |
-| Lập trình viên | Viết gói thủ tục mới trong `thu-tuc/` (mô tả, BPMN, JSON Schema, dữ liệu mẫu), không sửa `nen-tang/` hay `mot-cua/` |
+| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân: ⏳ tuần 3 |
+| Thiếu một tờ giấy, cán bộ trả về, người dân đi thêm một chuyến. | Mỗi thủ tục khai thành phần hồ sơ bằng JSON Schema, công khai để xem trước khi nộp. ✅ v0.1.0 · Chặn nộp khi còn thiếu (Poka-yoke): ⏳ tuần 3 |
+| Hồ sơ giấy chuyển qua nhiều bàn, thất lạc, không ai biết đang nằm ở đâu. | Mỗi hồ sơ có mã, trạng thái và lịch sử từng bước của quy trình. Tệp có nhật ký chỉ ghi thêm, không sửa được. ✅ v0.1.0 |
+| Hạn giải quyết tính tay, quá hạn rồi mới biết. | Hạn tự tính theo ngày làm việc, bỏ cuối tuần và ngày lễ. Còn ≤ 1 ngày thì hệ thống phát cảnh báo sắp trễ hạn qua hàng đợi. ✅ v0.1.0 · Gửi thông báo tới cán bộ, người dân: ⏳ tuần 3 |
+| Sổ hồ sơ để chung, ai cũng mở được. Giấy tờ gửi qua tin nhắn, không ai kiểm. | Cán bộ chỉ thấy hồ sơ thuộc lĩnh vực mình, đăng nhập phải có mã OTP. Tệp được quét mã độc trước khi lưu. ✅ v0.1.0 |
+| Thêm một thủ tục mới phải chờ sửa phần mềm. | Thêm một thư mục `thu-tuc/<ma>/` rồi chạy `make nap-thu-tuc`. Không sửa mã. 🆕 `develop` |
+| Lãnh đạo xã cộng sổ cuối tháng mới biết bao nhiêu hồ sơ trễ. | Dashboard thời gian giải quyết, tỷ lệ trễ hạn; nhật ký kiểm toán có chuỗi băm. ⏳ tuần 4 |
+| Cán bộ gõ lại từng dòng trên giấy tờ người dân mang tới. | Chụp giấy tờ, hệ thống đọc chữ và điền sẵn, cán bộ xác nhận lại. ⏳ tuần 5 |
 
-## 📱 Chức năng
+Kế hoạch từng tuần: [`docs/PLAN.md`](docs/PLAN.md). Đối chiếu yêu cầu đề thi: [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md).
 
-<p align="center">
-  <img src="docs/images/vong-chuc-nang.webp" alt="Vòng tròn 6 chức năng quanh Commune DX-OS: Nộp hồ sơ online, Kiểm tra đủ giấy tờ, Quy trình xử lý, Cảnh báo trễ hạn, Ký số, Trợ lý AI" width="80%">
-</p>
+## Thủ tục đang hỗ trợ
 
-| Chức năng | Bản v0.1.0 | Sắp có |
-|---|---|---|
-| Nộp hồ sơ online | ✅ API nộp hồ sơ, tải tệp, xem tiến độ (`/workflow`, `/files`) | Cổng web công dân và cổng cán bộ (React), tuần 3 |
-| Kiểm tra đủ giấy tờ | ✅ JSON Schema thành phần hồ sơ của từng thủ tục, API công khai | Chặn nộp khi thiếu thành phần trước khi khởi tạo quy trình (Poka-yoke), tuần 3 |
-| Quy trình xử lý | ✅ Quy trình đăng ký khai sinh (BPMN): tiếp nhận → bổ sung → thẩm định → phê duyệt | Thêm thủ tục khác |
-| Cảnh báo trễ hạn | ✅ Sự kiện "sắp trễ hạn" qua hàng đợi; hẹn giờ quá hạn trong quy trình | Thông báo tới cán bộ và công dân, tuần 3; dashboard tỷ lệ trễ hạn, tuần 4 |
-| Ký số | — | Ký số biên nhận và kết quả PDF, văn bản đi/đến, tuần 4 |
-| Trợ lý AI | — | OCR giấy tờ tự điền hồ sơ (cán bộ xác nhận), trợ lý tra cứu thủ tục, tuần 5 |
+| Mã | Thủ tục | Lĩnh vực | Thời hạn | Lệ phí | Gói |
+|---|---|---|---|---|---|
+| KS01 | Đăng ký khai sinh | Hộ tịch | 1 ngày làm việc | Miễn khi đăng ký đúng hạn | [`thu-tuc/khai-sinh/`](thu-tuc/khai-sinh/) |
+| CT01 | Chứng thực bản sao từ bản chính | Chứng thực | Trong ngày | 2.000 đ/trang; từ trang thứ ba 1.000 đ/trang, tối đa 200.000 đ/bản | [`thu-tuc/chung-thuc-ban-sao/`](thu-tuc/chung-thuc-ban-sao/) |
 
-Bản v0.1.0 là lõi và API của ứng dụng một cửa, kiểm chứng đầu-cuối bằng `make smoke` (405 kiểm tra).
+Mỗi gói gồm mô tả (`thu-tuc.yaml`), quy trình BPMN, JSON Schema thành phần hồ sơ và dữ liệu mẫu giả. Bảng trên chép từ `thu-tuc/*/thu-tuc.yaml`. Danh mục đầy đủ (thành phần hồ sơ, các bước, căn cứ pháp lý) tự sinh trên [trang tài liệu](https://commune-dxos.github.io/commune-dxos/danh-muc-thu-tuc/), lên mạng từ bản phát hành tới.
 
-## 🗺️ Kiến trúc
+**Thêm thủ tục trong 5 bước:** chép gói có sẵn → sửa `thu-tuc.yaml` → vẽ quy trình → khai thành phần hồ sơ → `make nap-thu-tuc`. Hướng dẫn: [`docs/thu-tuc.md`](docs/thu-tuc.md).
 
-<p align="center">
-  <img src="docs/images/kien-truc-tong-quan.webp" alt="Kiến trúc tổng quan: công dân và cán bộ xã gọi qua APISIX bằng HTTPS và JWT; Keycloak lo đăng nhập và xác thực hai lớp; APISIX chuyển tới PostgREST và PostgreSQL có RLS, Flowable BPMN phát sự kiện qua RabbitMQ để cảnh báo trễ hạn, dịch vụ tệp quét ClamAV rồi lưu Garage S3; OpenBao cấp bí mật cho các dịch vụ" width="100%">
-</p>
-
-Hệ thống chia hai tầng. **Tầng 1 – [`nen-tang/`](nen-tang/)** là lõi headless: chỉ có API, không có giao diện cho người dùng cuối và không chứa nghiệp vụ. **Tầng 2 – [`mot-cua/`](mot-cua/)** là bộ máy một cửa dùng chung cho mọi thủ tục: schema và phân quyền dữ liệu, vai trò, backend mỏng, chỉ gọi lõi qua API Gateway. Mỗi thủ tục là một gói **[`thu-tuc/<ma>/`](thu-tuc/)** (mô tả, quy trình BPMN, JSON Schema thành phần hồ sơ, dữ liệu mẫu) mà bộ nạp tự kiểm và nạp khi khởi động. Lõi có đủ 4 dịch vụ bắt buộc của đề: **SSO** (Keycloak, MFA cho cán bộ), **API Gateway** (APISIX), **dữ liệu có cấu trúc và phi cấu trúc** (PostgreSQL + RLS + PostgREST; Garage S3 + ClamAV), **workflow engine** (Flowable BPMN 2.0). Mọi thành phần chạy bằng image gốc của dự án upstream.
-
-Sơ đồ chi tiết (route gateway, luồng JWT, luồng tệp, bí mật, sự kiện, hợp đồng nền tảng – bộ máy – gói thủ tục): [`docs/architecture.md`](docs/architecture.md).
-
-## ⚙️ Công nghệ
-
-| Lớp | Thành phần | Giấy phép |
-|---|---|---|
-| SSO, MFA | Keycloak 26.3 | Apache-2.0 |
-| API Gateway | Apache APISIX 3.13 | Apache-2.0 |
-| CSDL, API tự sinh | PostgreSQL 17.6 + Row-Level Security, PostgREST 13 | PostgreSQL, MIT |
-| Lưu tệp | Garage 2.4 (S3), dịch vụ riêng | AGPL-3.0 |
-| Quét mã độc | ClamAV 1.5, dịch vụ riêng | GPL-2.0 |
-| Workflow | Flowable REST 8.0 (BPMN 2.0) | Apache-2.0 |
-| Hàng đợi sự kiện | RabbitMQ 4.3 | MPL-2.0 |
-| Két bí mật | OpenBao 2.7 | MPL-2.0 |
-| Backend bộ máy một cửa, bộ nạp gói | Python 3.13 (thư viện chuẩn) | PSF-2.0 |
-| Sắp dùng | React + Vite, Superset, step-ca + pyHanko, Gotenberg, Meilisearch CE, PaddleOCR, Ollama + Qwen2.5 | xem [`DEPENDENCIES.md`](DEPENDENCIES.md) |
-
-Thành phần AGPL/GPL chỉ chạy như dịch vụ riêng bằng image gốc, không sửa, không liên kết vào mã của dự án.
-
-## 🔄 Luồng hồ sơ
+## Hồ sơ đi qua hệ thống thế nào
 
 <p align="center">
   <img src="docs/images/luong-ho-so.webp" alt="Luồng hồ sơ 5 bước: 1 Nộp hồ sơ, 2 Quét virus, 3 Thẩm định, 4 Phê duyệt, 5 Hoàn tất; cảnh báo trễ hạn gắn vào bước thẩm định" width="100%">
 </p>
 
-1. **Nộp hồ sơ:** công dân đăng nhập, chọn thủ tục, nộp hồ sơ; hệ thống tạo mã hồ sơ, tính hạn xử lý và khởi tạo quy trình.
-2. **Quét virus:** mỗi tệp giấy tờ được ClamAV quét trước, sạch mới lưu vào Garage.
-3. **Thẩm định:** cán bộ phụ trách lĩnh vực tiếp nhận, kiểm tra thành phần (thiếu thì công dân bổ sung) rồi thẩm định; không đạt thì từ chối.
-4. **Phê duyệt:** lãnh đạo xã duyệt, hoặc trả lại để thẩm định lại.
-5. **Hoàn tất:** hồ sơ đóng, công dân xem kết quả; mỗi bước đều phát sự kiện lên hàng đợi.
+Người dân nộp hồ sơ; hệ thống cấp mã, tính hạn và khởi tạo quy trình của thủ tục. Giấy tờ tải lên được ClamAV quét, sạch mới lưu. Cán bộ lĩnh vực tiếp nhận, yêu cầu bổ sung nếu thiếu, rồi thẩm định. Lãnh đạo xã phê duyệt hoặc trả lại. Mỗi bước phát một sự kiện; hồ sơ sắp tới hạn sinh cảnh báo `ho_so.sap_tre_han`.
 
-**Cảnh báo trễ hạn:** tác vụ nền quét định kỳ, hồ sơ chưa xong mà còn ≤ 1 ngày làm việc tới hạn sinh sự kiện `ho_so.sap_tre_han`; quá hạn thì hẹn giờ trong quy trình đánh dấu hồ sơ trễ.
+## Kiến trúc
 
-## 🚀 Hướng phát triển
+<p align="center">
+  <img src="docs/images/kien-truc-tong-quan.webp" alt="Kiến trúc tổng quan: công dân và cán bộ xã gọi qua APISIX bằng HTTPS và JWT; Keycloak lo đăng nhập và xác thực hai lớp; APISIX chuyển tới PostgREST và PostgreSQL có RLS, Flowable BPMN phát sự kiện qua RabbitMQ để cảnh báo trễ hạn, dịch vụ tệp quét ClamAV rồi lưu Garage S3; OpenBao cấp bí mật cho các dịch vụ" width="100%">
+</p>
 
-| Giai đoạn | Nội dung |
-|---|---|
-| Tuần 3 | Poka-yoke bằng JSON Schema, cổng công dân và cổng cán bộ (React), thông báo trễ hạn |
-| Tuần 4 → v0.2.0 | Log kiểm toán chuỗi băm, ký số, sinh PDF, dữ liệu lịch sử Parquet + dbt, dashboard Superset, triển khai VPS |
-| Tuần 5 | OCR giấy tờ tự điền hồ sơ (cán bộ xác nhận), trợ lý tra cứu thủ tục (RAG), demo công khai |
-| Tuần 6 → v0.3.0 | Cải thiện theo phản hồi người dùng, module mẫu thứ hai cắm vào lõi, công bố bộ JSON Schema thủ tục dạng dữ liệu mở |
-| Tuần 7 → v1.0.0 | Đóng băng tính năng, phát hành v1.0.0 |
+Ba lớp, mỗi lớp một thư mục:
 
-Chi tiết theo tuần: [`docs/PLAN.md`](docs/PLAN.md); đối chiếu yêu cầu đề thi: [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md).
+- [`nen-tang/`](nen-tang/): lõi headless Tầng 1. Chỉ có API, không giao diện, không nghiệp vụ.
+- [`mot-cua/`](mot-cua/): bộ máy một cửa Tầng 2, chạy mọi thủ tục. Chỉ gọi lõi qua API Gateway.
+- [`thu-tuc/`](thu-tuc/): mỗi thủ tục một gói, bộ nạp tự kiểm và nạp khi khởi động.
 
-## 🛠️ Cài đặt từ máy sạch
+| Dịch vụ bắt buộc của đề | Thành phần | Cấu hình |
+|---|---|---|
+| SSO | Keycloak, OTP bắt buộc cho cán bộ và lãnh đạo | [`nen-tang/keycloak/`](nen-tang/keycloak/), [`mot-cua/keycloak/`](mot-cua/keycloak/) |
+| API Gateway | Apache APISIX, giới hạn tần suất cho API công khai | [`nen-tang/apisix/`](nen-tang/apisix/) |
+| Dữ liệu có cấu trúc và phi cấu trúc | PostgreSQL + RLS + PostgREST; Garage (S3) + ClamAV | [`nen-tang/postgres/`](nen-tang/postgres/), [`nen-tang/garage/`](nen-tang/garage/), [`mot-cua/db/`](mot-cua/db/) |
+| Workflow engine | Flowable (BPMN 2.0), quy trình nằm trong từng gói | [`thu-tuc/<ma>/quy-trinh.bpmn20.xml`](thu-tuc/khai-sinh/quy-trinh.bpmn20.xml) |
 
-**Yêu cầu:** Linux, macOS hoặc Windows (WSL2), CPU amd64/arm64; Docker Engine 24+ hoặc Docker Desktop 4.25+ với Compose v2.20+; RAM cho Docker 4 GB (khuyên 6 GB); ổ trống 6 GB; `git`, `make`, `bash`, `curl`, `jq`, `python3` 3.10+. Không cần cài Java, Node hay PostgreSQL, không có bước build image.
+Hỗ trợ thêm: RabbitMQ (sự kiện hồ sơ), OpenBao (bí mật). Mọi thành phần chạy bằng image gốc; thành phần AGPL/GPL (Garage, ClamAV) chạy như dịch vụ riêng, không sửa. Sơ đồ chi tiết, route gateway, luồng JWT: [`docs/architecture.md`](docs/architecture.md). Danh sách phụ thuộc và giấy phép: [`DEPENDENCIES.md`](DEPENDENCIES.md).
+
+## Chạy thử trong 5 phút
+
+Cần Docker (Compose v2.20+), RAM cho Docker 4 GB, ổ trống 6 GB, `git`, `make`, `curl`, `jq`, `python3`.
 
 ```bash
 git clone https://github.com/commune-dxos/commune-dxos.git
 cd commune-dxos
 cp .env.example .env      # không có mật khẩu nào cần điền
-make up                   # nền tảng + bộ máy mot-cua + nạp gói thu-tuc/; tự init + unseal OpenBao
-make bao-init             # (tùy chọn) init/unseal OpenBao lại, chạy lại an toàn; make up đã tự gọi
-make ps                   # dịch vụ chạy nền "healthy", dịch vụ một lần "Exited (0)"
-make smoke                # kiểm tra đầu-cuối: "== Kết quả: 405 đạt, 0 trượt"
-make demo-users           # đặt mật khẩu cho người dùng mẫu và in ra (chạy SAU smoke)
+make up                   # chạy lõi + bộ máy một cửa + nạp gói thu-tuc/
+make smoke                # kiểm tra đầu-cuối, kết thúc bằng "0 trượt"
+make demo-users           # đặt mật khẩu cho tài khoản mẫu và in ra
 ```
 
-Lần đầu `make up` mất khoảng 2–10 phút tùy mạng (đo trên bản clone sạch: 2 phút 8 giây), `make smoke` khoảng 1,5 phút. Dừng: `make down` (giữ dữ liệu). **Không xóa, không commit `.data/openbao/commune.json`** (unseal key + root token của OpenBao, sinh ở lần `make up` đầu): mất tệp là mất mọi bí mật, hãy sao lưu ra ngoài repo.
+Lần đầu `make up` mất 2–10 phút tùy mạng, `make smoke` khoảng 1,5 phút. Dừng: `make down` (giữ dữ liệu). Không xóa, không commit `.data/openbao/commune.json`: mất tệp này là mất mọi bí mật.
 
-| Địa chỉ | Dùng để |
+Thử ngay: http://localhost:9080/public/thu_tuc (danh mục thủ tục, không cần đăng nhập). Tài khoản mẫu: `congdan01` (người dân), `canbo01` (cán bộ hộ tịch), `lanhdao01` (lãnh đạo).
+
+Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md`](docs/cai-dat.md).
+
+## Demo
+
+Giao diện cổng người dân và cổng cán bộ đang làm ở tuần 3. GIF demo sẽ thêm vào đây ở tuần 3–4.
+
+## Đội và cách đóng góp
+
+Đội **DTU_DZ_2**. Việc chia theo tuần, mỗi việc một issue, một PR về `develop`.
+
+| Muốn xem | Ở đâu |
 |---|---|
-| http://localhost:9080/public/thu_tuc | API công khai (không token, 60 request/phút) |
-| http://localhost:9080/api/ho_so · `/workflow/tasks` · `/files/` | API dữ liệu, quy trình, tệp (cần JWT) |
-| http://localhost:8080/realms/dxos/account | Đăng nhập thử, cài OTP |
+| Việc đang làm | [GitHub Project "Commune DX-OS – Lộ trình"](https://github.com/orgs/commune-dxos/projects/1) |
+| Việc theo tuần | [Milestones](https://github.com/commune-dxos/commune-dxos/milestones) |
+| Cách làm một việc, nhãn, quy ước commit | [`docs/quy-trinh-lam-viec.md`](docs/quy-trinh-lam-viec.md), [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| Đã thay đổi gì | [`CHANGELOG.md`](CHANGELOG.md) (sinh bằng git-cliff), [Releases](https://github.com/commune-dxos/commune-dxos/releases) |
+| Báo lỗi, đề xuất thủ tục mới | [Issues](https://github.com/commune-dxos/commune-dxos/issues) |
 
-**Tài khoản mẫu** (dữ liệu giả, mật khẩu do `make demo-users` đặt): `congdan01`, `congdan02` (công dân); `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) (cán bộ, bắt buộc OTP); `lanhdao01` (lãnh đạo, bắt buộc OTP).
+Trước mỗi commit: `make check`. Cùng lệnh với CI: `make lint`, `make test`.
 
-Hướng dẫn đầy đủ (yêu cầu máy chi tiết, bí mật OpenBao, cổng và tài khoản, gọi API thử bằng `curl`, biến cấu hình `.env`, thêm thủ tục vào `thu-tuc/`, kiểm thử, **xử lý lỗi thường gặp**): [`docs/cai-dat.md`](docs/cai-dat.md).
-
-## 🤝 Đóng góp
-
-```bash
-make check                # SPDX + BPMN + test đơn vị + compose hợp lệ, chạy trước mỗi commit
-make lint                 # shellcheck, yamllint, BPMN như CI
-make test                 # test đơn vị + SQL/RLS trên PostgreSQL tạm
-```
-
-Quy trình issue → nhánh `feature/<số>-<tên>` → PR về `develop`; CI chạy 6 job bắt buộc (`make-check`, `shellcheck`, `yamllint`, `bpmn`, `test-backend`, `test-sql`). Quy ước commit và cách làm: [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
-
-## 🐛 Báo lỗi
-
-Báo lỗi và đề xuất tại [GitHub Issues](https://github.com/commune-dxos/commune-dxos/issues) (có mẫu issue). Hãy ghi lệnh đã chạy, output `make ps` và `docker compose version`.
-
-## 📜 Giấy phép
-
-Mã nguồn phát hành theo [Apache License 2.0](LICENSE); mọi tệp mã và cấu hình có dòng `SPDX-License-Identifier: Apache-2.0`, kiểm bằng `make check` trên mỗi PR. Apache-2.0 cho phép cơ quan nhà nước và doanh nghiệp tự do dùng, sửa, triển khai lại, có điều khoản cấp quyền sáng chế rõ ràng và tương thích với các thành phần lõi. Thành phần bên thứ ba giữ giấy phép riêng: [`NOTICE`](NOTICE), [`DEPENDENCIES.md`](DEPENDENCIES.md). Nguồn và giấy phép hình ảnh: [`docs/images/README.md`](docs/images/README.md).
-
-## 📝 CHANGELOG
-
-Phiên bản theo [SemVer](https://semver.org/lang/vi/); thay đổi ghi trong [`CHANGELOG.md`](CHANGELOG.md) (mục `[Unreleased]` là phần đang làm). Bản phát hành kèm gói mã nguồn `.tar.gz`: [Releases](https://github.com/commune-dxos/commune-dxos/releases).
+**Giấy phép:** [Apache License 2.0](LICENSE). Thành phần bên thứ ba giữ giấy phép riêng: [`NOTICE`](NOTICE). Nguồn hình ảnh: [`docs/images/README.md`](docs/images/README.md). Quy tắc ứng xử: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
