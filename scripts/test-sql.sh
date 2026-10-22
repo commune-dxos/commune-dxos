@@ -1,5 +1,6 @@
 #!/bin/sh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Test SQL/RLS của bộ máy một cửa trên PostgreSQL trống (#11), không cần cả stack `core`.
 # mot-cua/db/ được thử trên một CSDL riêng, đúng thứ tự như khi `make up`:
 #   1. nen-tang/postgres/initdb/10-core.sql (nền tảng: role authenticator/anon, schema dxos);
@@ -78,6 +79,23 @@ for lan in 1 2; do
     echo "test-sql: tang2-migrate lần 2 còn áp dụng lại tệp, migration không idempotent" >&2; exit 1
   fi
 done
+# CSDL cài từ v0.2.0 trở về trước ghi SHA-256 của tệp có header Apache-2.0 (D-010, #47): đặt lại sổ
+# như vậy rồi chạy migrate lần 3, phải chỉ cập nhật sổ chứ không áp dụng lại hay báo tệp bị sửa.
+echo "-- tang2-migrate lần 3 (sổ ghi SHA-256 trước D-010)"
+for tep in "$TANG2_DIR"/db/migrations/*.sql; do
+  cu="$({ echo "-- SPDX-License-Identifier: Apache-2.0"; tail -n +3 "$tep"; } | sha256sum | cut -d' ' -f1)"
+  psql_q -d "$db" -v tep="$(basename "$tep")" -v sha="$cu" > /dev/null <<'SQL'
+UPDATE dxos.app_migration SET sha256 = :'sha' WHERE loai = 'migration' AND tep = :'tep';
+SQL
+done
+if ! PGDATABASE="$db" DXOS_TANG2="$tang2" TANG2_DIR="$TANG2_DIR" DXOS_SEED=false \
+    sh nen-tang/scripts/tang2-migrate.sh > "$LOG" 2>&1; then
+  cat "$LOG"; echo "test-sql: tang2-migrate không nhận sổ ghi trước D-010" >&2; exit 1
+fi
+cat "$LOG"
+if grep -q '^tang2-migrate: đã áp dụng' "$LOG" || ! grep -q 'chỉ đổi header giấy phép' "$LOG"; then
+  echo "test-sql: tang2-migrate lần 3 phải chỉ cập nhật sổ" >&2; exit 1
+fi
 chay_test "$db" "không dữ liệu mẫu"
 echo "-- nạp dữ liệu mẫu"
 PGDATABASE="$db" DXOS_TANG2="$tang2" TANG2_DIR="$TANG2_DIR" DXOS_SEED=true sh nen-tang/scripts/tang2-migrate.sh

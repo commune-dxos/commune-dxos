@@ -2,7 +2,8 @@
 name: Việc cần làm
 about: Một việc trong docs/PLAN.md (mỗi việc một issue)
 ---
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Chọn milestone "Tuần N" và gắn nhãn vai-1-core / vai-2 / vai-3 cùng nhãn thành phần (nen-tang, mot-cua, thu-tuc, docs, ci). Việc ảnh hưởng điểm PoF thì gắn thêm pof. Nên dùng mẫu "Việc trong tuần". -->
 
 **Tuần:** 2 / 3 / 4 / 5 / 6 / 7

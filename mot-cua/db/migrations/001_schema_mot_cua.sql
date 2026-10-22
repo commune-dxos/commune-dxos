@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Ứng dụng Tầng 2 "mot-cua": danh mục thủ tục và hồ sơ hành chính (bản mẫu tuần 1–2).
 -- core/scripts/app-migrate.sh áp dụng tệp này đúng một lần, trong một transaction.
 -- Dùng hàm lõi dxos.jwt_sub() (core/postgres/initdb/10-core.sql) cho RLS.

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Dịch vụ một lần `tang2-realm` của lõi: nạp vai trò, nhóm, client và người dùng mẫu của
 # dịch vụ Tầng 2 vào realm lõi bằng Partial Import của Keycloak (Admin REST API).
 # Quy ước: /tang2/keycloak/realm.json (= mot-cua/keycloak/realm.json) theo định dạng

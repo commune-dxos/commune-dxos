@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Sự kiện hồ sơ của mot-cua (#9): định dạng, kiểm tra, quy tắc "sắp trễ hạn". Hàm thuần,
 không gọi mạng (test đơn vị: tests/test_su_kien.py).
 

@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # bao agent một lần cho danh tính `rabbitmq` (dịch vụ rabbitmq-secrets trong
 # docker-compose.yml, #9): đăng nhập AppRole bằng role_id/secret_id do bao-init đặt trong
 # volume rabbitmq-secrets, render tệp cấu hình chứa tài khoản quản trị khởi tạo (quyền 0400)

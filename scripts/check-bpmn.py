@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Kiểm cấu trúc BPMN của mọi gói thủ tục: thu-tuc/*/quy-trinh.bpmn20.xml (make check, CI `bpmn`).
 
 Luật kiểm nằm ở mot-cua/backend/kiem_bpmn.py, dùng chung với bộ nạp gói (nap-thu-tuc), nên

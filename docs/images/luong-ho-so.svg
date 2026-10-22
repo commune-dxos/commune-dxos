@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Luồng hồ sơ đăng ký khai sinh, vẽ tay theo thu-tuc/khai-sinh/quy-trinh.bpmn20.xml và mot-cua/backend/. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-labelledby="tieu-de mo-ta">
   <title id="tieu-de">Luồng hồ sơ đăng ký khai sinh</title>

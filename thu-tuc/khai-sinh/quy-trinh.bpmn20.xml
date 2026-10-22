@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
   Gói thủ tục khai-sinh – quy trình "Đăng ký khai sinh" (KS01, lĩnh vực ho_tich), BPMN 2.0 viết
   tay (#8, chuyển vào gói ở D-009). Không có phần bpmndi (tọa độ vẽ): Flowable chạy được; sơ đồ

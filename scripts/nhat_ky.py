@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Sinh CHANGELOG và ghi chú phát hành bằng git-cliff (D-009 hướng 4, #36). Chỉ dùng thư viện chuẩn.
 
   nhat_ky.py nhat-ky [x.y.z]   Viết lại mục `## [Unreleased]` của CHANGELOG.md từ commit sau tag mới

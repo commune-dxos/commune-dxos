@@ -1,5 +1,6 @@
 #!/bin/sh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Dịch vụ một lần `db-init` của lõi (thay flowable-db-init, #10): đảm bảo role đăng nhập
 # và CSDL riêng của các dịch vụ lõi, đặt mật khẩu theo OpenBao rồi thoát. Chạy mỗi lần `up`
 # nên đổi mật khẩu trong OpenBao rồi `make up` là PostgreSQL cập nhật theo (xoay vòng bí mật).

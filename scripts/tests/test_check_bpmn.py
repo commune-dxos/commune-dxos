@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Test của scripts/check-bpmn.py (#11): quy trình thật của mọi gói thủ tục đạt, còn mỗi lỗi
 vẽ tay hay gặp phải bị bắt. Chạy: make lint (job CI `bpmn`), chỉ thư viện chuẩn."""
 import glob

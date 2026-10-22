@@ -1,4 +1,5 @@
--- SPDX-License-Identifier: Apache-2.0
+-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Test danh mục nạp từ gói thủ tục (D-009, migration 005): RPC nạp/rút gói chỉ cho tài khoản
 -- dịch vụ dich_vu_danh_muc, upsert theo mã, hạn "trong ngày", ràng buộc gói/quy trình duy nhất.
 -- Cùng khung với rls.sql: một transaction rồi ROLLBACK, không phụ thuộc seed; mỗi dòng in ra
