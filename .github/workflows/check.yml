@@ -1,8 +1,9 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 # CI trên mỗi push vào main/develop và mỗi PR. Mỗi job là một check riêng, tên ngắn và ổn định
 # để đặt làm check bắt buộc trong bảo vệ nhánh; không job nào lọc theo đường dẫn (check bắt
 # buộc bị bỏ qua sẽ chặn PR). Mỗi job gọi đúng lệnh `make` chạy được trên máy (#11):
-#   make-check    SPDX trong từng tệp (PoF tiêu chí 2), gói thu-tuc/* hợp lệ + compose hợp lệ mọi profile (tiêu chí 4)
+#   make-check    SPDX GPL-3.0-or-later trong từng tệp (PoF tiêu chí 2, D-010), gói thu-tuc/* hợp lệ + compose hợp lệ mọi profile (tiêu chí 4)
 #   shellcheck    make lint → scripts/lint.sh shellcheck
 #   yamllint      make lint → scripts/lint.sh yamllint (.yamllint.yml)
 #   bpmn          make lint → scripts/lint.sh bpmn (cấu trúc BPMN thu-tuc/*/quy-trinh.bpmn20.xml + test bộ kiểm)

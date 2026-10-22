@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
 .PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
@@ -88,11 +89,12 @@ ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có th
 	@test -n "$(PHIEN_BAN)" || { echo "Thiếu PHIEN_BAN — ví dụ: make ghi-chu-phat-hanh PHIEN_BAN=0.1.0"; exit 1; }
 	@$(NHAT_KY) ghi-chu $(PHIEN_BAN)
 
-license:       ## Thêm header SPDX cho tệp mới
+license:       ## Thêm header SPDX (bản quyền + GPL-3.0-or-later, D-010) cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX + BPMN thu-tuc/*/ + test đơn vị + compose hợp lệ (mọi profile)
+check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/tests/test_check_license.py
 	python3 scripts/check-bpmn.py
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_thu_tuc.py thu-tuc --chi-kiem
 	$(MAKE) --no-print-directory test-backend

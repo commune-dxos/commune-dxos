@@ -1,4 +1,5 @@
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 ## Mô tả
 
 <!-- PR này làm gì, vì sao cần. Thay đổi lớn thì ghi cách đã chạy thử (lệnh + kết quả). -->
@@ -19,7 +20,7 @@ Closes #
 
 - [ ] `make check` đạt trên máy (SPDX + compose hợp lệ mọi profile)
 - [ ] `make lint` và `make test` đạt trên máy (cùng lệnh với các job CI, xem `CONTRIBUTING.md` mục 6)
-- [ ] Mọi tệp mã/cấu hình mới có header `SPDX-License-Identifier: Apache-2.0` (`make license`)
+- [ ] Mọi tệp mã/cấu hình mới có header `SPDX-FileCopyrightText: 2026 DTU_DZ_2` + `SPDX-License-Identifier: GPL-3.0-or-later` (`make license`)
 - [ ] Tiêu đề PR dạng `loai(pham-vi): mô tả (#số-issue)` (CHANGELOG sinh từ đó bằng git-cliff, không sửa tay)
 - [ ] Tài liệu liên quan đã cập nhật (README, `docs/`, `DEPENDENCIES.md`, `NOTICE` nếu thêm thành phần)
 - [ ] Biến môi trường mới đã thêm vào `.env.example`
