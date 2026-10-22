@@ -14,6 +14,8 @@ path = [
   "**/*.json",
   "docs/images/**",
   "docs/media/**",
+  # Biểu tượng của cổng công dân: bản sao docs/images/logo/ (#61), Vite phục vụ từ public/.
+  "mot-cua/web-cong-dan/public/**",
   ".gitignore",
   "NOTICE",
   "nen-tang/rabbitmq/enabled_plugins",

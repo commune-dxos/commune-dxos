@@ -54,7 +54,7 @@ export function TrangChu({ taiDanhMuc = layDanhMucThuTuc }: { taiDanhMuc?: () =>
         </h1>
         <ol className="grid gap-3 sm:grid-cols-3">
           {CAC_BUOC.map((b) => (
-            <li key={b.so} className="flex gap-3 rounded-xl bg-secondary p-4 text-secondary-foreground">
+            <li key={b.so} className="flex gap-3 rounded-xl bg-tang2 p-4 text-tang2-foreground">
               <span
                 aria-hidden="true"
                 className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground"

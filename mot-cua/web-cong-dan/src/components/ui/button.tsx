@@ -12,8 +12,8 @@ export const nutVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outline: "border-2 border-primary bg-background text-primary hover:bg-secondary",
-        ghost: "text-primary underline-offset-4 hover:bg-secondary hover:underline",
+        outline: "border-2 border-primary bg-background text-primary hover:bg-tang2",
+        ghost: "text-primary underline-offset-4 hover:bg-tang2 hover:underline",
       },
       size: {
         default: "",

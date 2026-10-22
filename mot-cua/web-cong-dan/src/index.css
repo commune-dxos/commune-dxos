@@ -5,6 +5,8 @@
 @import "tailwindcss";
 
 :root {
+  /* Màu nhận diện Team 2 (bộ nhận diện #61): xanh ngọc #0F766E chính, chàm #4338CA phụ,
+     đỏ son #D9480F chỉ cho điểm nhấn (viền focus, cảnh báo). Chữ thường #0F172A, chữ phụ #334155. */
   --radius: 0.75rem;
   --background: #ffffff;
   --foreground: #0f172a;
@@ -12,17 +14,19 @@
   --card-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #334155;
-  --primary: #1e40af;
+  --primary: #0f766e;
   --primary-foreground: #ffffff;
   --secondary: #e0e7ff;
-  --secondary-foreground: #1e1b4b;
-  --accent: #fef3c7;
-  --accent-foreground: #78350f;
+  --secondary-foreground: #3730a3;
+  --tang2: #ccfbf1;
+  --tang2-foreground: #134e4a;
+  --accent: #fff1e6;
+  --accent-foreground: #9a3412;
   --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
   --border: #cbd5e1;
   --input: #64748b;
-  --ring: #f59e0b;
+  --ring: #d9480f;
 }
 
 @theme inline {
@@ -36,6 +40,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-tang2: var(--tang2);
+  --color-tang2-foreground: var(--tang2-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);

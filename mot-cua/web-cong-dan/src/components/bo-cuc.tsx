@@ -39,10 +39,13 @@ export function BoCuc() {
       <header className="bg-primary text-primary-foreground">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <Link to="/" className="flex items-center gap-3 no-underline">
-            <img src="/favicon.svg" alt="" width={40} height={40} className="rounded-md ring-2 ring-white/40" />
+            {/* Biểu tượng có vùng trong suốt: đặt trong ô trắng bo góc trên nền màu (bộ nhận diện #61). */}
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+              <img src="/mark-64.png" alt="" width={40} height={40} />
+            </span>
             <span className="flex flex-col leading-tight">
               <span className="text-xl font-bold">Cổng dịch vụ công xã</span>
-              <span className="text-sm opacity-90">Nộp hồ sơ trực tuyến · Commune DX-OS</span>
+              <span className="text-sm opacity-95">Commune DX-OS · Chính quyền số Cấp xã</span>
             </span>
           </Link>
           <NutTaiKhoan />
