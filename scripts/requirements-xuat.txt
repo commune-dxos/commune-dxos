@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Công cụ xuất sơ đồ kiến trúc động ra GIF/MP4 (make xuat-kien-truc, #43). Ghim phiên bản để
+# máy cá nhân ra cùng kết quả. Chỉ là công cụ trên máy người xuất, không đi vào sản phẩm.
+#   python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-xuat.txt
+#   .venv/bin/playwright install chromium   # Chromium tải vào thư mục cache của Playwright, ngoài repo
+# Cần thêm ffmpeg trên máy (brew install ffmpeg / apt install ffmpeg), chỉ gọi như công cụ dòng lệnh.
+playwright==1.55.0   # Apache-2.0, https://github.com/microsoft/playwright-python
