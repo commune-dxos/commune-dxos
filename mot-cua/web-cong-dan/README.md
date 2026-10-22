@@ -4,6 +4,11 @@
 
 Ứng dụng web Tầng 2 cho người dân (#52): xem danh mục thủ tục, đăng nhập, rồi nộp hồ sơ (#53) và tra cứu tiến độ (#54). React 19 + Vite 7 + TypeScript + Tailwind CSS 4 + thành phần theo mẫu shadcn/ui. Giấy phép từng gói: [`DEPENDENCIES.md`](../../DEPENDENCIES.md) mục 2.
 
+<p>
+  <img src="../../docs/images/cong-cong-dan-may-tinh.webp" alt="Trang chủ cổng công dân trên máy tính: ba bước làm thủ tục, ô tìm thủ tục, thẻ CT01 Chứng thực bản sao và KS01 Đăng ký khai sinh có thời hạn, lệ phí, nút Nộp hồ sơ" width="68%">
+  <img src="../../docs/images/cong-cong-dan-dien-thoai.webp" alt="Cùng trang trên điện thoại, bố cục một cột" width="28%">
+</p>
+
 - **Chỉ gọi lõi qua APISIX** (`VITE_GATEWAY_URL`). Danh mục: `GET /public/thu_tuc?select=…,linh_vuc:linh_vuc_id(ma,ten)&order=ma` (không token, role `anon`, RLS chỉ trả thủ tục công khai, 60 request/phút/IP).
 - **Đăng nhập** Keycloak realm `dxos`, client public `mot_cua_web`, Authorization Code + PKCE S256 ([`../keycloak/realm.json`](../keycloak/realm.json)). Web không có bí mật nào; token nằm trong `sessionStorage` của tab. Xem danh mục không cần đăng nhập.
 - **Dành cho người dân:** chữ gốc 18px, nút cao ≥ 44px, chữ đạt tương phản WCAG AA, bố cục một cột trên điện thoại, có liên kết "Bỏ qua, tới nội dung chính", tìm thủ tục không cần gõ dấu.
