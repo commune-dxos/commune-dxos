@@ -20,6 +20,7 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `mot-cua-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, consumer mẫu |
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền), bộ nạp gói và test đơn vị: `make test` |
 | `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
+| `web-cong-dan/` | cổng công dân (#52): React + Vite + Tailwind + shadcn/ui, danh mục thủ tục qua `/public/thu_tuc`, đăng nhập `mot_cua_web` (PKCE); xem [README](web-cong-dan/README.md) |
 
 Sửa schema: thêm tệp `db/migrations/006_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`tang2-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
 
@@ -323,4 +324,4 @@ docker compose exec -T postgres psql -XqtA -U postgres -d commune < mot-cua/db/t
 
 Bí mật của bộ máy (khóa S3, secret client `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, thông tin kết nối RabbitMQ, mật khẩu `rest-admin` của Flowable) đọc từ OpenBao của lõi bằng AppRole `tang2` (`backend/bimat.py`, chỉ giữ trong bộ nhớ), xem `docs/architecture.md` §4.4.
 
-Sắp tới: cổng công dân và cổng cán bộ (React, tuần 3), thông báo theo sự kiện `ho_so.*` (tuần 3).
+Sắp tới: nộp hồ sơ và tra cứu trên cổng công dân (#53, #54), cổng cán bộ (#55), thông báo sắp trễ hạn cho cán bộ (#56).

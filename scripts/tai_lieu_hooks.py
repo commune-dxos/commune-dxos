@@ -38,6 +38,7 @@ MUC_NAV_DANH_MUC = "Người dân / cán bộ"
 # Tệp ngoài docs/ hiện trên site: đường dẫn trong repo → đường dẫn trên site.
 NGOAI_DOCS = {
     "mot-cua/README.md": "mot-cua.md",
+    "mot-cua/web-cong-dan/README.md": "cong-cong-dan.md",
     "CONTRIBUTING.md": "dong-gop.md",
     "CHANGELOG.md": "thay-doi.md",
 }

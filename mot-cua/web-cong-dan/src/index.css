@@ -1,0 +1,83 @@
+/* SPDX-FileCopyrightText: 2026 DTU_DZ_2 */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Tailwind v4 + biến màu kiểu shadcn/ui. Cổng dành cho người dân: chữ gốc 18px, tương phản cao
+   (chữ chính và nút đều đạt WCAG AA ≥ 4.5:1 trên nền), vùng bấm ≥ 44px. */
+@import "tailwindcss";
+
+:root {
+  /* Màu nhận diện Team 2 (bộ nhận diện #61): xanh ngọc #0F766E chính, chàm #4338CA phụ,
+     đỏ son #D9480F chỉ cho điểm nhấn (viền focus, cảnh báo). Chữ thường #0F172A, chữ phụ #334155. */
+  --radius: 0.75rem;
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #334155;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #e0e7ff;
+  --secondary-foreground: #3730a3;
+  --tang2: #ccfbf1;
+  --tang2-foreground: #134e4a;
+  --accent: #fff1e6;
+  --accent-foreground: #9a3412;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --border: #cbd5e1;
+  --input: #64748b;
+  --ring: #d9480f;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-tang2: var(--tang2);
+  --color-tang2-foreground: var(--tang2-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  html {
+    font-size: 112.5%;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+    line-height: 1.6;
+  }
+  * {
+    @apply border-border;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-0000000000c1",
+    "ma": "CT01",
+    "ten": "Chứng thực bản sao từ bản chính",
+    "so_ngay_xu_ly": 0,
+    "le_phi": 2000,
+    "ghi_chu_le_phi": "2.000 đồng/trang; từ trang thứ ba 1.000 đồng/trang, tối đa 200.000 đồng/bản",
+    "quy_trinh": "chung_thuc_ban_sao",
+    "linh_vuc": { "ma": "chung_thuc", "ten": "Chứng thực" }
+  },
+  {
+    "id": "00000000-0000-4000-8000-0000000000a1",
+    "ma": "KS01",
+    "ten": "Đăng ký khai sinh",
+    "so_ngay_xu_ly": 1,
+    "le_phi": 0,
+    "ghi_chu_le_phi": "Miễn lệ phí khi đăng ký đúng hạn",
+    "quy_trinh": "dang_ky_khai_sinh",
+    "linh_vuc": { "ma": "ho_tich", "ten": "Hộ tịch" }
+  }
+]
