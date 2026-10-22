@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu nhat-ky ghi-chu-phat-hanh
+.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -66,6 +66,14 @@ tai-lieu:      ## Build trang tài liệu vào site/ (--strict: link gãy, neo s
 
 xem-tai-lieu:  ## Xem trang tài liệu trên máy ở http://127.0.0.1:8000, tự build lại khi sửa docs/, thu-tuc/
 	$(TAI_LIEU_ENV) $(MKDOCS) serve
+
+# Sơ đồ kiến trúc động (#43): docs/images/kien-truc-dong.svg → GIF cho README, MP4 cho slide. Không cần Docker.
+# Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-xuat.txt && .venv/bin/playwright install chromium
+# (hoặc KENH=chrome để dùng Google Chrome có sẵn), cần ffmpeg. Chạy với XUAT_PY=.venv/bin/python.
+XUAT_PY ?= python3
+
+xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-truc-dong.gif và docs/media/kien-truc-dong.mp4
+	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/xuat_kien_truc.py
 
 # CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
 # Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt

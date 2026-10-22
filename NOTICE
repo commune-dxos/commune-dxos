@@ -29,5 +29,6 @@ Danh sách thư viện npm/pip và phiên bản cụ thể: xem DEPENDENCIES.md.
 | Dashboard | Apache Superset | Apache-2.0 |
 | Trang tài liệu (công cụ build, không đi vào sản phẩm) | MkDocs 1.6.1 + Material for MkDocs 9.7.7 bản community + PyMdown Extensions; trình duyệt tải Mermaid để vẽ sơ đồ | BSD-2-Clause / MIT |
 | CHANGELOG và ghi chú phát hành (công cụ, không đi vào sản phẩm) | git-cliff 2.14.2 (PyPI) | MIT / Apache-2.0 |
+| Xuất sơ đồ động ra GIF/MP4 (công cụ, không đi vào sản phẩm) | Playwright for Python 1.55.0 (PyPI) + Chromium; FFmpeg cài trên máy, chỉ gọi dòng lệnh | Apache-2.0 / BSD-3-Clause; FFmpeg LGPL-2.1+/GPL-2.0+ |
 | AI | PaddleOCR + VietOCR; Ollama + bge-m3 + pgvector + LlamaIndex | Apache-2.0 / MIT / PostgreSQL |
 | Mô hình ngôn ngữ | Qwen2.5 bản 7B hoặc 14B. Không dùng bản 3B (giấy phép Qwen Research, không OSI) | Apache-2.0 |

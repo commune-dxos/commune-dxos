@@ -5,12 +5,17 @@
 | `banner.webp` | Ảnh đầu README có tiêu đề "DTU_DZ_2 · OLP PMNM 2026 · COMMUNE DX-OS": bộ phận một cửa của xã, hồ sơ giấy chuyển thành hồ sơ điện tử | `README.md` | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `mot-cua-so.webp` | Công dân nộp hồ sơ khai sinh từ điện thoại, hồ sơ được quét an toàn rồi đi qua các bước xử lý | Không còn dùng ở README (từ #38); giữ tệp | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `vong-chuc-nang.webp` | Vòng tròn 6 chức năng, nhãn tiếng Việt | Không còn dùng ở README (từ #38, thay bằng bảng "Trước và sau chuyển đổi số"); giữ tệp | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
-| `kien-truc-tong-quan.webp` | Kiến trúc tổng quan dạng biểu tượng, ít chữ (tên thành phần giữ tiếng Anh) | `README.md` | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
+| `kien-truc-tong-quan.webp` | Kiến trúc tổng quan dạng biểu tượng, ít chữ (tên thành phần giữ tiếng Anh) | Không còn dùng ở README (từ #43, thay bằng `kien-truc-dong.svg`: ảnh này không thể hiện 2 tầng và gói thủ tục); giữ tệp | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `luong-ho-so.webp` | Luồng hồ sơ 5 bước và cảnh báo trễ hạn, nhãn tiếng Việt | `README.md` | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `kien-truc.svg` | Sơ đồ kiến trúc 2 tầng chi tiết theo `docker-compose.yml`, `nen-tang/`, `mot-cua/`, `thu-tuc/` | `docs/architecture.md` | Đội DTU_DZ_2 vẽ tay bằng SVG thuần |
 | `luong-ho-so.svg` | Luồng nộp và xử lý hồ sơ đăng ký khai sinh chi tiết theo BPMN | `docs/architecture.md` | Đội DTU_DZ_2 vẽ tay bằng SVG thuần |
+| `kien-truc-dong.svg` | Sơ đồ kiến trúc động: 2 tầng, gói thủ tục cắm vào `thu-tuc/`, 4 dịch vụ bắt buộc đánh số; một hồ sơ KS01 chạy qua 6 bước (vòng 14 giây, SMIL, không JS). Khung tĩnh vẫn đọc được; tắt chuyển động khi người xem bật giảm chuyển động | `README.md` | Đội DTU_DZ_2 vẽ tay bằng SVG thuần |
+| `kien-truc-2-tang.webp` | Ảnh tĩnh kiến trúc 2 tầng: gói thủ tục cắm vào bộ máy, 4 dịch vụ bắt buộc đánh số, luồng hồ sơ KS01 màu cam, nhãn tiếng Việt | `README.md` (link dưới sơ đồ động), `docs/architecture.md`, slide | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh (ChatGPT) theo bản SVG `kien-truc-dong.svg` của đội; biểu tượng là hình minh họa, không phải logo chính thức |
+| `kien-truc-dong.gif` | Bản GIF của `kien-truc-dong.svg` (1200 px, 12 khung/giây) cho nơi không chạy được SVG động | Slide, chỗ cần ảnh GIF | Xuất từ SVG bằng `make xuat-kien-truc` (Playwright + Chromium chụp khung, FFmpeg ghép) |
+| `../media/kien-truc-dong.mp4` | Bản MP4 H.264 1920×1080, 30 khung/giây, đủ một vòng lặp, để chèn slide trình bày chung kết | Slide | Như trên |
 
 - Ảnh minh họa không chứa người, giấy tờ có thật; không lấy ảnh từ nguồn bên ngoài. Chữ trong ảnh do đội kiểm lại sau khi tạo.
+- `kien-truc-dong.svg` không dùng logo của dự án nào: mỗi thành phần là một hộp chữ. Sửa SVG rồi chạy lại `make xuat-kien-truc` để GIF, MP4 khớp (cài công cụ: xem đầu `scripts/xuat_kien_truc.py`; Playwright và FFmpeg chỉ là công cụ trên máy, không phải phụ thuộc của dự án).
 - Biểu tượng của Keycloak, APISIX, PostgreSQL, Flowable, RabbitMQ, ClamAV, Garage, OpenBao trong `kien-truc-tong-quan.webp` là **hình minh họa** do công cụ AI vẽ, **không phải logo chính thức**. Tên và nhãn hiệu thuộc dự án tương ứng; dùng ở đây chỉ để chỉ thành phần trong hệ thống, không ngụ ý dự án đó bảo trợ Commune DX-OS.
 - Mọi tệp trong thư mục này phát hành cùng giấy phép của dự án: [Apache License 2.0](../../LICENSE).
 - Sơ đồ SVG là văn bản, sửa được bằng trình soạn thảo bất kỳ; khi hệ thống đổi (thêm dịch vụ, đổi route) thì cập nhật sơ đồ cùng PR.
