@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env
+.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -54,6 +54,18 @@ test-backend:  ## Test đơn vị (không cần Docker): mot-cua/backend/tests/t
 
 test-sql:      ## Migration nền tảng + mot-cua và mot-cua/db/tests/*.sql (RLS) trên PostgreSQL tạm (Docker, hoặc PGHOST)
 	sh scripts/test-sql.sh
+
+# Trang tài liệu MkDocs (#32), không cần Docker. Cài: python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
+# rồi chạy với PATH="$$PWD/.venv/bin:$$PATH" hoặc MKDOCS=.venv/bin/mkdocs. Bản 1.6.1 ghim sẵn, nên tắt lời nhắc MkDocs 2.0 của Material.
+MKDOCS ?= mkdocs
+TAI_LIEU_ENV := NO_MKDOCS_2_WARNING=1 PYTHONDONTWRITEBYTECODE=1
+
+tai-lieu:      ## Build trang tài liệu vào site/ (--strict: link gãy, neo sai, gói thu-tuc/ lỗi là lỗi)
+	@command -v $(MKDOCS) > /dev/null 2>&1 || { echo "LỖI: chưa có mkdocs — python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt, rồi MKDOCS=.venv/bin/mkdocs make tai-lieu"; exit 1; }
+	$(TAI_LIEU_ENV) $(MKDOCS) build --strict
+
+xem-tai-lieu:  ## Xem trang tài liệu trên máy ở http://127.0.0.1:8000, tự build lại khi sửa docs/, thu-tuc/
+	$(TAI_LIEU_ENV) $(MKDOCS) serve
 
 license:       ## Thêm header SPDX cho tệp mới
 	bash scripts/add-license-header.sh

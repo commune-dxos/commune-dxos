@@ -3,6 +3,8 @@
 node_modules/
 dist/
 build/
+# Trang tài liệu do make tai-lieu build ra
+site/
 .venv/
 __pycache__/
 *.pyc

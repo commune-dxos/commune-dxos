@@ -12,6 +12,8 @@ Nền tảng nguồn mở giúp xã tiếp nhận, xử lý và theo dõi thủ 
 
 OLP PMNM 2026 · Đề tài DX-OS Open-Core · Đội DTU_DZ_2
 
+📖 Trang tài liệu (có tìm kiếm, danh mục thủ tục tự sinh từ các gói): https://commune-dxos.github.io/commune-dxos/
+
 ## 🧭 Giới thiệu
 
 Cấp xã là nơi người dân làm thủ tục hành chính nhiều nhất: đăng ký khai sinh, chứng thực bản sao, xác nhận đất đai… Mỗi ngày bộ phận một cửa nhận hàng chục hồ sơ, phần lớn vẫn là giấy, mỗi hồ sơ phải qua tay nhiều cán bộ và có thời hạn giải quyết theo luật.
