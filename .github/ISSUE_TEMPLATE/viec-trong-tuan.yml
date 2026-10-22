@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+# Mẫu issue cho một việc trong docs/PLAN.md (D-009 hướng 3, #34).
+# Mẫu không tự gắn được milestone: người tạo chọn milestone "Tuần N" ở cột bên phải.
+name: Việc trong tuần
+description: Một dòng trong docs/PLAN.md – gắn milestone "Tuần N" và nhãn thành phần
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sau khi tạo: chọn **Milestone** `Tuần N`, gắn nhãn thành phần khớp ô bên dưới
+        và nhãn vai (`vai-1-core`, `vai-2`, `vai-3`); việc ảnh hưởng điểm kho mã thì thêm `pof`.
+        Quy trình: [Quy trình làm việc](https://github.com/commune-dxos/commune-dxos/blob/develop/docs/quy-trinh-lam-viec.md).
+  - type: dropdown
+    id: thanh-phan
+    attributes:
+      label: Thành phần
+      description: Thư mục chính mà việc này sửa.
+      multiple: true
+      options:
+        - nen-tang – lõi headless Tầng 1 (nen-tang/)
+        - mot-cua – bộ máy một cửa Tầng 2 (mot-cua/)
+        - thu-tuc – gói thủ tục (thu-tuc/<ma>/)
+        - docs – tài liệu (docs/, mkdocs.yml, *.md)
+        - ci – CI, Makefile, scripts/
+    validations:
+      required: true
+  - type: textarea
+    id: viec
+    attributes:
+      label: Việc cần làm
+    validations:
+      required: true
+  - type: textarea
+    id: xong-khi
+    attributes:
+      label: Xong khi
+      value: |
+        - [ ]
+        - [ ] `make check` đạt, CHANGELOG có dòng `(#số-issue)`
+    validations:
+      required: true
