@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Công cụ build trang tài liệu (make tai-lieu, CI .github/workflows/tai-lieu.yml). Ghim phiên bản
+# để máy cá nhân và CI ra cùng kết quả. Chỉ dùng bản community, không plugin trả phí.
+# Chỉ là công cụ build tài liệu, không đi vào sản phẩm.
+#   python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
+mkdocs==1.6.1              # BSD-2-Clause, https://github.com/mkdocs/mkdocs
+mkdocs-material==9.7.7     # MIT, https://github.com/squidfunk/mkdocs-material
+pymdown-extensions==12.3   # MIT, https://github.com/facelessuser/pymdown-extensions

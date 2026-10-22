@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: Apache-2.0
+# Mẫu issue đề xuất một gói thủ tục mới thu-tuc/<ma>/ (D-009 hướng 3, #34).
+# Các ô khớp với khóa trong thu-tuc.yaml, xem docs/thu-tuc.md.
+name: Thủ tục mới
+description: Đề xuất thêm một gói thủ tục hành chính thu-tuc/<ma>/
+title: "Gói thủ tục: <tên thủ tục>"
+labels: [thu-tuc]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mỗi thủ tục là một gói `thu-tuc/<ma>/`, thêm mà không sửa mã bộ máy một cửa.
+        Cách viết gói: [Thêm một thủ tục mới](https://github.com/commune-dxos/commune-dxos/blob/develop/docs/thu-tuc.md).
+        Chỉ dùng dữ liệu giả; không đính kèm giấy tờ, số CCCD hay ảnh của người thật.
+  - type: input
+    id: ma
+    attributes:
+      label: Mã thủ tục
+      description: Khóa `ma` trong thu-tuc.yaml, ví dụ KS01, CT01.
+      placeholder: CT02
+    validations:
+      required: true
+  - type: input
+    id: ten
+    attributes:
+      label: Tên thủ tục
+      placeholder: Chứng thực chữ ký
+    validations:
+      required: true
+  - type: input
+    id: linh-vuc
+    attributes:
+      label: Lĩnh vực
+      description: Mã và tên lĩnh vực (khóa `linh_vuc`, `ten_linh_vuc`), ví dụ `chung_thuc` – Chứng thực, `ho_tich` – Hộ tịch.
+      placeholder: chung_thuc – Chứng thực
+    validations:
+      required: true
+  - type: input
+    id: thoi-han
+    attributes:
+      label: Thời hạn giải quyết (ngày làm việc)
+      description: Khóa `thoi_han_ngay_lam_viec`; 0 là trong ngày tiếp nhận.
+      placeholder: "0"
+    validations:
+      required: true
+  - type: textarea
+    id: can-cu
+    attributes:
+      label: Căn cứ pháp lý
+      description: Mỗi văn bản một dòng (khóa `can_cu_phap_ly`).
+      placeholder: |
+        - Nghị định 23/2015/NĐ-CP, Điều 24
+    validations:
+      required: true
+  - type: textarea
+    id: thanh-phan
+    attributes:
+      label: Thành phần hồ sơ và các bước xử lý
+      description: Giấy tờ người dân nộp; các bước từ tiếp nhận tới trả kết quả, ai làm bước nào.
+    validations:
+      required: false

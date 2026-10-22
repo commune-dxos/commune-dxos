@@ -26,7 +26,7 @@ Quy tắc:
 | `clamav/clamav` | 1.5.4-debian (đa kiến trúc, có sẵn CSDL virus) | GPL-2.0 – dịch vụ riêng, image gốc, không sửa mã; chỉ gọi qua giao thức TCP của `clamd` | Docker Hub · https://github.com/Cisco-Talos/clamav | core |
 | `getmeili/meilisearch` | (tuần 5) – chỉ CE | MIT | Docker Hub · https://github.com/meilisearch/meilisearch | docs |
 
-Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `db-init` (role + CSDL riêng của dịch vụ lõi bằng `psql`). Image `openbao/openbao` chạy server OpenBao và 6 dịch vụ một lần `*-secrets` (`bao agent`); không kéo thêm image nào cho bí mật. `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3. Image `python` chạy dịch vụ `app-backend` (backend của ứng dụng, ví dụ `apps/mot-cua/backend/main.py`), `app-worker` (tác vụ nền, `backend/worker.py`) và các dịch vụ một lần `bao-init` (khởi tạo OpenBao qua HTTP API), `garage-init`, `rabbitmq-init`, chỉ dùng thư viện chuẩn, không cài gói. Backend nói giao thức STOMP 1.2 tới RabbitMQ bằng client tự viết (`apps/mot-cua/backend/stomp.py`), không dùng `pika` hay thư viện nào của RabbitMQ. Backend tự ký S3 SigV4 và nói giao thức `clamd` bằng thư viện chuẩn (`apps/mot-cua/backend/tep.py`): không nhúng hay liên kết mã nào của Garage (AGPL-3.0) hay ClamAV (GPL-2.0). CSDL mẫu virus của ClamAV (tải bằng `freshclam`) do Cisco Talos phân phối kèm image, không nằm trong repo.
+Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `db-init` (role + CSDL riêng của dịch vụ lõi bằng `psql`). Image `openbao/openbao` chạy server OpenBao và 6 dịch vụ một lần `*-secrets` (`bao agent`); không kéo thêm image nào cho bí mật. `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3. Image `python` chạy dịch vụ `mot-cua-api` (API một cửa, `mot-cua/backend/main.py`), `mot-cua-worker` (tác vụ nền, `backend/worker.py`) và các dịch vụ một lần `nap-thu-tuc` (bộ nạp gói thủ tục, `backend/nap_thu_tuc.py`; `thu-tuc.yaml` đọc bằng bộ đọc tập con YAML tự viết, không cài PyYAML), `bao-init` (khởi tạo OpenBao qua HTTP API), `garage-init`, `rabbitmq-init`, chỉ dùng thư viện chuẩn, không cài gói. Backend nói giao thức STOMP 1.2 tới RabbitMQ bằng client tự viết (`mot-cua/backend/stomp.py`), không dùng `pika` hay thư viện nào của RabbitMQ. Backend tự ký S3 SigV4 và nói giao thức `clamd` bằng thư viện chuẩn (`mot-cua/backend/tep.py`): không nhúng hay liên kết mã nào của Garage (AGPL-3.0) hay ClamAV (GPL-2.0). CSDL mẫu virus của ClamAV (tải bằng `freshclam`) do Cisco Talos phân phối kèm image, không nằm trong repo.
 
 ## 2. Thư viện npm (`web/package.json`, chưa có)
 
@@ -44,7 +44,13 @@ Sinh bảng tự động khi có mã: `pip-licenses --format=markdown --with-url
 |---|---|---|---|---|
 | _(chưa có — tuần 4: dbt-core 1.x, duckdb, pyhanko…)_ | | | pypi.org | |
 | `yamllint` | 1.38.0 | GPL-3.0 – chỉ là công cụ lint, chạy riêng, không đi vào sản phẩm | pypi.org · https://github.com/adrienverge/yamllint | `make lint`, CI (`scripts/requirements-lint.txt`) |
+| `mkdocs` | 1.6.1 | BSD-2-Clause – công cụ build trang tài liệu, không đi vào sản phẩm | pypi.org · https://github.com/mkdocs/mkdocs | `make tai-lieu`, CI `tai-lieu` (`docs/requirements.txt`) |
+| `mkdocs-material` | 9.7.7 | MIT – giao diện trang tài liệu, bản community (không dùng Insiders); JS/CSS của giao diện nằm trong site đã build | pypi.org · https://github.com/squidfunk/mkdocs-material | `make tai-lieu`, CI `tai-lieu` (`docs/requirements.txt`) |
+| `pymdown-extensions` | 12.3 | MIT – phần mở rộng Markdown (khối ghi chú, sơ đồ Mermaid) | pypi.org · https://github.com/facelessuser/pymdown-extensions | `make tai-lieu`, CI `tai-lieu` (`docs/requirements.txt`) |
+| `git-cliff` | 2.14.2 | MIT OR Apache-2.0 – công cụ sinh CHANGELOG và ghi chú phát hành, không đi vào sản phẩm; gói PyPI chứa sẵn binary | pypi.org · https://github.com/orhun/git-cliff | `make nhat-ky`, `make ghi-chu-phat-hanh`, CI `phat-hanh`, `quy-uoc-commit` (`scripts/requirements-phat-hanh.txt`) |
 | `shellcheck-py` (ShellCheck 0.11.0) | 0.11.0.1 | MIT (gói bọc), ShellCheck GPL-3.0 – công cụ lint, không đi vào sản phẩm | pypi.org · https://github.com/koalaman/shellcheck | `make lint`, CI (`scripts/requirements-lint.txt`) |
+
+Trang tài liệu (`mkdocs.yml`, #32): hook `scripts/tai_lieu_hooks.py` chỉ dùng thư viện chuẩn và bộ kiểm gói của đội (`mot-cua/backend/goi_thu_tuc.py`). Giao diện không tải phông chữ từ Google Fonts (`theme.font: false`). Trang có sơ đồ Mermaid (README các gói thủ tục) để Material tải thư viện `mermaid` (MIT, https://github.com/mermaid-js/mermaid) từ CDN unpkg lúc người đọc mở trang; repo và site không chứa mã Mermaid.
 
 ## 4. Mô hình AI (tuần 5)
 
@@ -66,7 +72,7 @@ Sinh bảng tự động khi có mã: `pip-licenses --format=markdown --with-url
 | MongoDB | SSPL, không OSI | PostgreSQL |
 | Directus | BSL 1.1, không OSI | PostgREST (MIT) |
 | Orion-LD | Bắt buộc chạy kèm MongoDB (SSPL) | Không cần cho đề tài này |
-| bpmn-js | Giấy phép bpmn.io có điều khoản giữ logo/watermark, không OSI | BPMN 2.0 viết XML tay trong `processes/` |
+| bpmn-js | Giấy phép bpmn.io có điều khoản giữ logo/watermark, không OSI | BPMN 2.0 viết XML tay trong `thu-tuc/<ma>/quy-trinh.bpmn20.xml` |
 | immudb | Các bản từ cuối 2023 (kể cả v1.11.x) chuyển sang BSL 1.1, không OSI | Bảng append-only + chuỗi băm SHA-256 (mã của đội) + pgAudit |
 | Meilisearch Enterprise Edition | Các tệp `meilisearch-enterprise-*` dùng BUSL-1.1 | Meilisearch Community Edition (MIT), không bật tính năng EE |
 | dbt Fusion | Bản phân phối "dbt" viết bằng Rust dùng giấy phép riêng, không OSI | `dbt-core` 1.x cài từ PyPI (Apache-2.0) |

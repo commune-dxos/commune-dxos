@@ -1,10 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-# Test SQL/RLS của mọi ứng dụng trên PostgreSQL trống (#11), không cần cả stack `core`.
-# Mỗi ứng dụng apps/<tên>/ có db/ được thử trên một CSDL riêng, đúng thứ tự như khi `make up`:
-#   1. core/postgres/initdb/10-core.sql (lõi: role authenticator/anon, schema dxos);
-#   2. core/scripts/app-migrate.sh (migration của ứng dụng), chạy HAI lần: lần sau phải bỏ qua hết;
-#   3. apps/<tên>/db/tests/*.sql khi chưa có dữ liệu mẫu;
+# Test SQL/RLS của bộ máy một cửa trên PostgreSQL trống (#11), không cần cả stack `core`.
+# mot-cua/db/ được thử trên một CSDL riêng, đúng thứ tự như khi `make up`:
+#   1. nen-tang/postgres/initdb/10-core.sql (nền tảng: role authenticator/anon, schema dxos);
+#   2. nen-tang/scripts/tang2-migrate.sh (migration của mot-cua), chạy HAI lần: lần sau phải bỏ qua hết;
+#   3. mot-cua/db/tests/*.sql khi chưa có dữ liệu mẫu;
 #   4. nạp seed (DXOS_SEED=true) rồi chạy lại db/tests/*.sql.
 # Tệp test in mỗi dòng ĐẠT|… hoặc TRƯỢT|…; có dòng TRƯỢT hay psql lỗi → thoát mã 1.
 #
@@ -47,7 +47,7 @@ LOG="$(mktemp)"
 trap 'rm -f "$LOG"' EXIT
 
 chay_test() { # $1 = CSDL, $2 = nhãn giai đoạn
-  for tep in $(find "$APP_DIR/db/tests" -maxdepth 1 -type f -name '*.sql' | sort); do
+  for tep in $(find "$TANG2_DIR/db/tests" -maxdepth 1 -type f -name '*.sql' | sort); do
     if psql -X -qtA -v ON_ERROR_STOP=1 -d "$1" -f "$tep" > "$LOG" 2>&1; then ma=0; else ma=$?; fi
     dat="$(grep -c '^ĐẠT|' "$LOG" || true)"
     truot="$(grep -c '^TRƯỢT|' "$LOG" || true)"
@@ -61,36 +61,27 @@ chay_test() { # $1 = CSDL, $2 = nhãn giai đoạn
   done
 }
 
-so_app=0
-for APP_DIR in apps/*; do
-  [ -d "$APP_DIR/db" ] || continue
-  app="$(basename "$APP_DIR")"
-  so_app=$((so_app + 1))
-  db="test_$(printf '%s' "$app" | tr -c 'a-zA-Z0-9\n' '_')"
-  echo "== $app (CSDL $db)"
-  psql_q -d postgres -c "DROP DATABASE IF EXISTS $db" -c "CREATE DATABASE $db"
-  psql -X -q -v ON_ERROR_STOP=1 -d "$db" -f core/postgres/initdb/10-core.sql
-  for lan in 1 2; do
-    echo "-- app-migrate lần $lan"
-    if ! PGDATABASE="$db" DXOS_APP="$app" APP_DIR="$APP_DIR" DXOS_SEED=false \
-        sh core/scripts/app-migrate.sh > "$LOG" 2>&1; then
-      cat "$LOG"; echo "test-sql: app-migrate lỗi" >&2; exit 1
-    fi
-    cat "$LOG"
-    if [ "$lan" = 2 ] && grep -q '^app-migrate: đã áp dụng' "$LOG"; then
-      echo "test-sql: app-migrate lần 2 còn áp dụng lại tệp, migration không idempotent" >&2; exit 1
-    fi
-  done
-  if [ -d "$APP_DIR/db/tests" ]; then
-    chay_test "$db" "không dữ liệu mẫu"
-    echo "-- nạp dữ liệu mẫu"
-    PGDATABASE="$db" DXOS_APP="$app" APP_DIR="$APP_DIR" DXOS_SEED=true sh core/scripts/app-migrate.sh
-    chay_test "$db" "có dữ liệu mẫu"
-  else
-    echo "  ($app không có db/tests/, chỉ kiểm migration)"
+TANG2_DIR=mot-cua
+tang2=mot-cua
+db=test_mot_cua
+echo "== $tang2 (CSDL $db)"
+psql_q -d postgres -c "DROP DATABASE IF EXISTS $db" -c "CREATE DATABASE $db"
+psql -X -q -v ON_ERROR_STOP=1 -d "$db" -f nen-tang/postgres/initdb/10-core.sql
+for lan in 1 2; do
+  echo "-- tang2-migrate lần $lan"
+  if ! PGDATABASE="$db" DXOS_TANG2="$tang2" TANG2_DIR="$TANG2_DIR" DXOS_SEED=false \
+      sh nen-tang/scripts/tang2-migrate.sh > "$LOG" 2>&1; then
+    cat "$LOG"; echo "test-sql: tang2-migrate lỗi" >&2; exit 1
+  fi
+  cat "$LOG"
+  if [ "$lan" = 2 ] && grep -q '^tang2-migrate: đã áp dụng' "$LOG"; then
+    echo "test-sql: tang2-migrate lần 2 còn áp dụng lại tệp, migration không idempotent" >&2; exit 1
   fi
 done
+chay_test "$db" "không dữ liệu mẫu"
+echo "-- nạp dữ liệu mẫu"
+PGDATABASE="$db" DXOS_TANG2="$tang2" TANG2_DIR="$TANG2_DIR" DXOS_SEED=true sh nen-tang/scripts/tang2-migrate.sh
+chay_test "$db" "có dữ liệu mẫu"
 
-[ "$so_app" -gt 0 ] || { echo "test-sql: không có ứng dụng nào có db/" >&2; exit 1; }
-echo "test-sql: $so_app ứng dụng, $TONG_DAT kiểm tra đạt, $TONG_TRUOT trượt/lỗi"
+echo "test-sql: $TONG_DAT kiểm tra đạt, $TONG_TRUOT trượt/lỗi"
 [ "$TONG_TRUOT" -eq 0 ]

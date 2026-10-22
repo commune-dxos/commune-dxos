@@ -1,24 +1,30 @@
 # SPDX-License-Identifier: Apache-2.0
-# Commune DX-OS – lõi Tầng 1 (headless) + ứng dụng Tầng 2 cắm vào. Sơ đồ: docs/architecture.md
+# Commune DX-OS – nền tảng Tầng 1 (headless) + bộ máy một cửa Tầng 2 + gói thủ tục. Sơ đồ: docs/architecture.md
 #
-# Lõi (cấu hình trong core/) không chứa nghiệp vụ. Ứng dụng được chọn bằng DXOS_APP
-# trong .env; lõi chỉ biết quy ước thư mục apps/<DXOS_APP>/:
-#   app.env              cấu hình PostgREST của ứng dụng (schema phơi ra API)
-#   db/migrations/*.sql  schema, role, RLS  → dịch vụ một lần app-migrate
-#   db/seed/*.sql        dữ liệu giả        → app-migrate khi DXOS_SEED=true
-#   keycloak/realm.json  vai trò, nhóm, client, người dùng mẫu → dịch vụ một lần app-realm
-#   processes/*.bpmn20.xml  quy trình BPMN 2.0 → Flowable tự triển khai khi khởi động
-#   backend/main.py      backend riêng của ứng dụng (D-008) → dịch vụ app-backend, APISIX /workflow/*, /files/*
-#   backend/worker.py    tác vụ nền của ứng dụng (phát/nhận sự kiện, việc định kỳ) → dịch vụ app-worker
-#   s3/buckets.conf      bucket S3 ứng dụng cần → dịch vụ một lần garage-init tạo bucket + khóa riêng
-#   rabbitmq/definitions.json  exchange, queue, binding → dịch vụ một lần rabbitmq-init (vhost riêng)
+# Ba lớp thư mục (D-009):
+#   nen-tang/   Tầng 1 dùng chung, không chứa nghiệp vụ. Dịch vụ một lần của nền tảng (tang2-*,
+#               garage-init, rabbitmq-init) chỉ biết quy ước thư mục của dịch vụ Tầng 2 được mount
+#               vào /tang2 và tên của nó (DXOS_TANG2, cố định trong tệp này: x-tang2).
+#   mot-cua/    bộ máy một cửa Tầng 2 dùng chung cho mọi thủ tục:
+#     postgrest.env        cấu hình PostgREST (schema phơi ra API)
+#     db/migrations/*.sql  schema, role, RLS  → dịch vụ một lần tang2-migrate
+#     db/seed/*.sql        dữ liệu giả        → tang2-migrate khi DXOS_SEED=true
+#     keycloak/realm.json  vai trò, nhóm, client, người dùng mẫu → dịch vụ một lần tang2-realm
+#     backend/main.py      API một cửa (D-008) → dịch vụ mot-cua-api, APISIX /workflow/*, /files/*
+#     backend/worker.py    tác vụ nền (outbox → RabbitMQ, cảnh báo trễ hạn) → dịch vụ mot-cua-worker
+#     backend/nap_thu_tuc.py  bộ nạp gói thủ tục → dịch vụ một lần nap-thu-tuc (make nap-thu-tuc)
+#     s3/buckets.conf      bucket S3 → garage-init tạo bucket + khóa riêng
+#     rabbitmq/definitions.json  exchange, queue, binding → rabbitmq-init (vhost riêng)
+#   thu-tuc/<ma>/  mỗi thủ tục hành chính một gói: thu-tuc.yaml, quy-trinh.bpmn20.xml,
+#               thanh-phan-ho-so.schema.json, du-lieu-mau.json. nap-thu-tuc kiểm gói, deploy BPMN lên
+#               Flowable, ghi danh mục vào CSDL. Thêm thủ tục = thêm thư mục (docs/thu-tuc.md).
 #
 # Profile:
 #   core : PostgreSQL, Keycloak, APISIX, PostgREST   (tuần 1, v0.0.1)
-#          + Flowable REST (workflow, #8), app-backend (/workflow, #6)
+#          + Flowable REST (workflow, #8), mot-cua-api (/workflow, #6), nap-thu-tuc (D-009)
 #          + Garage (S3) và ClamAV (quét tệp trước khi lưu) (#7)
 #          + OpenBao giữ mọi bí mật dịch vụ (#10)
-#          + RabbitMQ hàng đợi sự kiện, app-worker (#9)
+#          + RabbitMQ hàng đợi sự kiện, mot-cua-worker (#9)
 #   docs : Gotenberg, step-ca, Meilisearch CE         (tuần 2–5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : Apache Superset                            (tuần 4)
@@ -26,11 +32,12 @@
 # Bí mật (#10, docs/architecture.md §4.4): KHÔNG có mật khẩu, khóa hay token nào trong repo
 # hay .env. OpenBao (KV v2 `dxos/`) là nguồn duy nhất; bao-init khởi tạo/unseal và nạp bí
 # mật lõi, mỗi dịch vụ một AppRole với policy chỉ đọc đúng phần của mình
-# (core/openbao/policies/). Dịch vụ lấy bí mật theo hai cách:
+# (nen-tang/openbao/policies/). Dịch vụ lấy bí mật theo hai cách:
 #   - image không tự gọi HTTP được (PostgreSQL, PostgREST, Keycloak, Flowable, Garage, RabbitMQ):
 #     agent một lần `<danh tính>-secrets` render tệp quyền 0400 vào volume riêng
 #     `<danh tính>-secrets`, dịch vụ mount chỉ đọc;
-#   - app-realm, garage-init, rabbitmq-init, app-backend, app-worker: tự đăng nhập AppRole và đọc/ghi qua HTTP API,
+#   - tang2-realm, garage-init, rabbitmq-init, mot-cua-api, mot-cua-worker, nap-thu-tuc: tự đăng
+#     nhập AppRole và đọc/ghi qua HTTP API,
 #     volume riêng chỉ chứa role_id/secret_id.
 #
 # Quy tắc: ghim phiên bản image cụ thể (không dùng `latest`), image lấy từ dự án gốc,
@@ -38,8 +45,12 @@
 
 name: commune
 
+# Tên dịch vụ Tầng 2 mà nền tảng phục vụ: nhánh OpenBao dxos/tang2/<tên>/, vhost RabbitMQ, sổ
+# migration. Bộ máy một cửa là dịch vụ Tầng 2 duy nhất; thủ tục cắm vào qua thu-tuc/, không qua đây.
+x-tang2: &tang2 mot-cua
+
 # Mẫu chung của agent OpenBao một lần (#10): đăng nhập AppRole của danh tính, render bí mật
-# theo core/openbao/agent/<danh tính>.hcl vào volume của danh tính rồi thoát (mã 1 nếu policy
+# theo nen-tang/openbao/agent/<danh tính>.hcl vào volume của danh tính rồi thoát (mã 1 nếu policy
 # chặn hay OpenBao seal). Chạy lại ở mỗi `up`, nên đổi bí mật trong OpenBao rồi `make up` là
 # dịch vụ nhận giá trị mới khi khởi động lại.
 x-bao-agent: &bao-agent
@@ -65,7 +76,7 @@ services:
       POSTGRES_PASSWORD_FILE: /run/dxos-secrets/postgres_password
     volumes:
       - pg-data:/var/lib/postgresql/data
-      - ./core/postgres/initdb:/docker-entrypoint-initdb.d:ro
+      - ./nen-tang/postgres/initdb:/docker-entrypoint-initdb.d:ro
       - db-secrets:/run/dxos-secrets:ro
     ports:
       # Chỉ mở trên máy local để debug bằng psql; Tầng 2 không gọi thẳng CSDL.
@@ -85,7 +96,7 @@ services:
     profiles: [core]
     # start-dev: HTTP, phù hợp chạy local. Triển khai thật dùng `start` + TLS.
     # kc-start.sh đọc mật khẩu CSDL và quản trị khởi tạo từ volume keycloak-secrets (OpenBao).
-    entrypoint: ["/bin/bash", "/core/scripts/kc-start.sh"]
+    entrypoint: ["/bin/bash", "/nen-tang/scripts/kc-start.sh"]
     command: ["start-dev", "--import-realm"]
     environment:
       KC_DB: postgres
@@ -99,8 +110,8 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
     volumes:
-      - ./core/keycloak/realm-dxos.json:/opt/keycloak/data/import/realm-dxos.json:ro
-      - ./core/scripts/kc-start.sh:/core/scripts/kc-start.sh:ro
+      - ./nen-tang/keycloak/realm-dxos.json:/opt/keycloak/data/import/realm-dxos.json:ro
+      - ./nen-tang/scripts/kc-start.sh:/nen-tang/scripts/kc-start.sh:ro
       - keycloak-secrets:/run/dxos-secrets:ro
     ports:
       - "${KEYCLOAK_PORT:-8080}:8080"
@@ -146,47 +157,47 @@ services:
       retries: 5
     restart: "no"
 
-  # Áp dụng migration + seed SQL của ứng dụng (core/scripts/app-migrate.sh) rồi thoát.
+  # Áp dụng migration + seed SQL của dịch vụ Tầng 2 (nen-tang/scripts/tang2-migrate.sh) rồi thoát.
   # Chạy lại an toàn: tệp đã áp dụng được bỏ qua. Chạy tay: make migrate.
-  app-migrate:
+  tang2-migrate:
     image: postgres:17.6-alpine
     profiles: [core]
-    entrypoint: ["/bin/sh", "/core/scripts/app-migrate.sh"]
+    entrypoint: ["/bin/sh", "/nen-tang/scripts/tang2-migrate.sh"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env (tên thư mục trong apps/)}
+      DXOS_TANG2: *tang2
       DXOS_SEED: ${DXOS_SEED:-false}
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-postgres}
       PGDATABASE: ${POSTGRES_DB:-commune}
       PGPASSFILE: /run/dxos-secrets/pgpass
     volumes:
-      - ./core/scripts:/core/scripts:ro
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - ./nen-tang/scripts:/nen-tang/scripts:ro
+      - ./mot-cua:/tang2:ro
       - db-secrets:/run/dxos-secrets:ro
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
-  # Nạp vai trò, nhóm, client, người dùng mẫu của ứng dụng vào realm lõi `dxos`
+  # Nạp vai trò, nhóm, client, người dùng mẫu của Tầng 2 vào realm lõi `dxos`
   # (Keycloak Partial Import, bỏ qua đối tượng đã có) rồi thoát. Dùng lại image Keycloak.
   # Mật khẩu quản trị Keycloak đọc từ OpenBao; client secret của client dịch vụ (service
-  # account) ghi vào OpenBao (AppRole app-realm, volume app-realm-secrets chỉ có role_id/
+  # account) ghi vào OpenBao (AppRole tang2-realm, volume tang2-realm-secrets chỉ có role_id/
   # secret_id). Chạy bằng root để đọc được tệp AppRole (chủ root, quyền 0400).
-  app-realm:
+  tang2-realm:
     image: quay.io/keycloak/keycloak:26.3.3
     profiles: [core]
     user: "0"
-    entrypoint: ["/bin/bash", "/core/scripts/app-realm.sh"]
+    entrypoint: ["/bin/bash", "/nen-tang/scripts/tang2-realm.sh"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_TANG2: *tang2
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       BAO_ADDR: http://openbao:8200
     volumes:
-      - ./core/scripts:/core/scripts:ro
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
-      - app-realm-secrets:/run/dxos-secrets:ro
+      - ./nen-tang/scripts:/nen-tang/scripts:ro
+      - ./mot-cua:/tang2:ro
+      - tang2-realm-secrets:/run/dxos-secrets:ro
     depends_on:
       keycloak:
         condition: service_healthy
@@ -202,11 +213,11 @@ services:
     environment:
       # URI kết nối (chứa mật khẩu authenticator) đọc từ tệp do agent postgrest-secrets render.
       PGRST_DB_URI: "@/run/dxos-secrets/db-uri"
-      # PGRST_DB_SCHEMAS lấy từ apps/<DXOS_APP>/app.env (env_file bên dưới).
+      # PGRST_DB_SCHEMAS lấy từ mot-cua/postgrest.env (env_file bên dưới).
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: "@/jwks/jwks.json"
       PGRST_JWT_AUD: dxos_api
-      # Mỗi người dùng có đúng một client role của dxos_api (ứng dụng khai báo),
+      # Mỗi người dùng có đúng một client role của dxos_api (Tầng 2 khai báo),
       # trùng tên role PostgreSQL → PostgREST SET ROLE → RLS áp dụng.
       PGRST_JWT_ROLE_CLAIM_KEY: .resource_access.dxos_api.roles[0]
       PGRST_ADMIN_SERVER_PORT: "3001"
@@ -219,7 +230,7 @@ services:
       # PostgREST mặc định cho mọi origin; giới hạn giống CORS của APISIX.
       PGRST_SERVER_CORS_ALLOWED_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
     env_file:
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/app.env
+      - ./mot-cua/postgrest.env
     volumes:
       - jwks:/jwks:ro
       - postgrest-secrets:/run/dxos-secrets:ro
@@ -233,11 +244,11 @@ services:
         condition: service_completed_successfully
       jwks-init:
         condition: service_completed_successfully
-      app-migrate:
+      tang2-migrate:
         condition: service_completed_successfully
     # Không dùng healthcheck của Docker: image amd64 dựng FROM scratch (không có shell)
     # và v13.0.4 chưa có cờ `--ready` (đã chạy thử 17/10/2026). Thay vào đó APISIX
-    # kiểm chủ động http://postgrest:3001/ready (xem upstream trong core/apisix/apisix.yaml).
+    # kiểm chủ động http://postgrest:3001/ready (xem upstream trong nen-tang/apisix/apisix.yaml).
     healthcheck:
       disable: true
     restart: unless-stopped
@@ -249,11 +260,11 @@ services:
     # vì entrypoint sẽ ghi đè config.yaml đã mount).
     environment:
       # Nguồn (origin) web của Tầng 2 được gọi API từ trình duyệt, cách nhau bởi dấu phẩy.
-      # Đọc trong core/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}.
+      # Đọc trong nen-tang/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}.
       DXOS_CORS_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
     volumes:
-      - ./core/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
-      - ./core/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ./nen-tang/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./nen-tang/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
     ports:
       - "${APISIX_PORT:-9080}:9080"
     depends_on:
@@ -261,9 +272,9 @@ services:
         condition: service_healthy
       postgrest:
         condition: service_started
-      app-realm:
+      tang2-realm:
         condition: service_completed_successfully
-      app-backend:
+      mot-cua-api:
         condition: service_healthy
       garage:
         condition: service_healthy
@@ -275,20 +286,20 @@ services:
     restart: unless-stopped
 
   # Role đăng nhập + CSDL riêng của dịch vụ lõi (authenticator, keycloak, flowable), mật
-  # khẩu theo OpenBao (core/scripts/db-init.sh), rồi thoát. Chạy mỗi lần `up`, không lỗi
+  # khẩu theo OpenBao (nen-tang/scripts/db-init.sh), rồi thoát. Chạy mỗi lần `up`, không lỗi
   # nếu đã có, nên dùng được với volume cũ và đổi mật khẩu trong OpenBao là PostgreSQL theo.
   # Thay flowable-db-init và initdb/20-auth.sh (#10). Dùng lại image postgres.
   db-init:
     image: postgres:17.6-alpine
     profiles: [core]
-    entrypoint: ["/bin/sh", "/core/scripts/db-init.sh"]
+    entrypoint: ["/bin/sh", "/nen-tang/scripts/db-init.sh"]
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-postgres}
       PGDATABASE: ${POSTGRES_DB:-commune}
       PGPASSFILE: /run/dxos-secrets/pgpass
     volumes:
-      - ./core/scripts:/core/scripts:ro
+      - ./nen-tang/scripts:/nen-tang/scripts:ro
       - db-secrets:/run/dxos-secrets:ro
     depends_on:
       postgres:
@@ -296,10 +307,11 @@ services:
     restart: "no"
 
   # Workflow engine BPMN 2.0 (Apache-2.0). Chỉ dùng flowable-rest (D-004): không có modeler,
-  # BPMN viết XML tay trong apps/<DXOS_APP>/processes/. Flowable tự triển khai các tệp
-  # *.bpmn20.xml ở đó khi khởi động (bỏ qua tệp không đổi), tắt quy trình demo của image.
+  # BPMN viết XML tay trong thu-tuc/<ma>/quy-trinh.bpmn20.xml. Flowable KHÔNG tự quét thư mục
+  # nào (tắt check-process-definitions và quy trình demo): dịch vụ nap-thu-tuc kiểm gói rồi
+  # deploy qua REST API, bỏ qua BPMN không đổi.
   # REST API: http://flowable:8080/flowable-rest/service (Basic auth tài khoản rest-admin).
-  # Tầng 2 không gọi thẳng: APISIX /workflow/* → app-backend → Flowable (#6). Cổng host chỉ
+  # Tầng 2 không gọi thẳng: APISIX /workflow/* → mot-cua-api → Flowable (#6). Cổng host chỉ
   # mở trên 127.0.0.1 để debug/smoke; API quản trị không đi qua gateway.
   flowable:
     image: flowable/flowable-rest:8.0.0
@@ -316,11 +328,10 @@ services:
       # config tree). Không có mật khẩu trong biến môi trường.
       SPRING_CONFIG_IMPORT: configtree:/run/dxos-secrets/flowable/
       FLOWABLE_REST_APP_CREATE-DEMO-DEFINITIONS: "false"
-      FLOWABLE_PROCESS-DEFINITION-LOCATION-PREFIX: file:/dxos/processes/
+      FLOWABLE_CHECK-PROCESS-DEFINITIONS: "false"
       JAVA_OPTS: -Xmx512M
       TZ: Asia/Ho_Chi_Minh
     volumes:
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}/processes:/dxos/processes:ro
       - flowable-secrets:/run/dxos-secrets:ro
     ports:
       - "127.0.0.1:${FLOWABLE_PORT:-8090}:8080"
@@ -343,27 +354,22 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # Backend riêng của ứng dụng (D-008): apps/<DXOS_APP>/backend/main.py, chạy trên image
-  # python gốc, chỉ thư viện chuẩn (không build, không cài gói). APISIX chuyển /workflow/*
-  # tới đây sau khi kiểm JWT. Với mot-cua: API quy trình mỏng – gọi Flowable bằng tài
-  # khoản kỹ thuật thay người dùng, sau khi tự kiểm quyền (người dùng không cầm mật khẩu
-  # Flowable); đọc/ghi hồ sơ qua PostgREST bằng token của người dùng nên RLS áp dụng.
-  # Ứng dụng không có backend/main.py thì dịch vụ chỉ chạy chỗ giữ và /workflow trả 502.
-  # API tệp (/files, #7): quét ClamAV trước khi lưu Garage bằng khóa S3 riêng của ứng dụng;
-  # metadata ghi bằng tài khoản dịch vụ Keycloak của ứng dụng.
+  # API một cửa (D-008): mot-cua/backend/main.py, chạy trên image python gốc, chỉ thư viện
+  # chuẩn (không build, không cài gói). APISIX chuyển /workflow/* tới đây sau khi kiểm JWT.
+  # API quy trình mỏng: gọi Flowable bằng tài khoản kỹ thuật thay người dùng, sau khi tự kiểm
+  # quyền (người dùng không cầm mật khẩu Flowable); đọc/ghi hồ sơ qua PostgREST bằng token của
+  # người dùng nên RLS áp dụng. Quy trình và biến từng bước của mỗi thủ tục lấy từ danh mục mà
+  # nap-thu-tuc ghi (gói thu-tuc/<ma>/), không gắn cứng trong mã.
+  # API tệp (/files, #7): quét ClamAV trước khi lưu Garage bằng khóa S3 riêng của bộ máy;
+  # metadata ghi bằng tài khoản dịch vụ Keycloak mot_cua_tep.
   # Bí mật (#10): mật khẩu rest-admin, client secret, khóa S3 đọc từ OpenBao lúc cần bằng
-  # AppRole `app` (volume app-secrets chỉ chứa role_id/secret_id), chỉ giữ trong bộ nhớ.
-  app-backend:
+  # AppRole `tang2` (volume tang2-secrets chỉ chứa role_id/secret_id), chỉ giữ trong bộ nhớ.
+  mot-cua-api:
     image: python:3.13.16-alpine3.24
     profiles: [core]
-    command:
-      - sh
-      - -c
-      - >-
-        [ -f /app/backend/main.py ] && exec python -u /app/backend/main.py;
-        echo "apps/$$DXOS_APP không có backend/main.py"; exec sleep infinity
+    command: ["python", "-u", "/mot-cua/backend/main.py"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_TANG2: *tang2
       DXOS_POSTGREST_URL: http://postgrest:3000
       DXOS_FLOWABLE_URL: http://flowable:8080/flowable-rest/service
       DXOS_FLOWABLE_USER: rest-admin
@@ -382,8 +388,8 @@ services:
       DXOS_FILE_LINK_TTL: ${DXOS_FILE_LINK_TTL:-300}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
-      - app-secrets:/run/dxos-secrets:ro
+      - ./mot-cua:/mot-cua:ro
+      - tang2-secrets:/run/dxos-secrets:ro
     # Không mở cổng ra host: chỉ APISIX gọi.
     expose:
       - "8000"
@@ -392,9 +398,11 @@ services:
         condition: service_started
       flowable:
         condition: service_healthy
-      app-realm:
+      tang2-realm:
         condition: service_completed_successfully
       garage-init:
+        condition: service_completed_successfully
+      nap-thu-tuc:
         condition: service_completed_successfully
       # ClamAV nạp CSDL virus mất khoảng 1 phút: không chờ. Chưa sẵn sàng thì API tải tệp
       # trả 503 (không bao giờ lưu tệp chưa quét).
@@ -404,28 +412,22 @@ services:
       test:
         - CMD-SHELL
         - >-
-          [ ! -f /app/backend/main.py ] ||
           python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
       interval: 5s
       timeout: 5s
       retries: 20
     restart: unless-stopped
 
-  # Tác vụ nền của ứng dụng (#9): apps/<DXOS_APP>/backend/worker.py, cùng image và cùng danh
-  # tính OpenBao `app` với app-backend, không nhận request nào (không có cổng). Với mot-cua:
-  # phát sự kiện trong hộp thư đi (outbox PostgreSQL) lên RabbitMQ, quét hồ sơ sắp trễ hạn,
-  # consumer mẫu ghi nhật ký sự kiện. Ứng dụng không có backend/worker.py thì chỉ chạy chỗ giữ.
-  app-worker:
+  # Tác vụ nền của bộ máy một cửa (#9): mot-cua/backend/worker.py, cùng image và cùng danh
+  # tính OpenBao `tang2` với mot-cua-api, không nhận request nào (không có cổng): phát sự kiện
+  # trong hộp thư đi (outbox PostgreSQL) lên RabbitMQ, quét hồ sơ sắp trễ hạn, consumer mẫu ghi
+  # nhật ký sự kiện.
+  mot-cua-worker:
     image: python:3.13.16-alpine3.24
     profiles: [core]
-    command:
-      - sh
-      - -c
-      - >-
-        [ -f /app/backend/worker.py ] && exec python -u /app/backend/worker.py;
-        echo "apps/$$DXOS_APP không có backend/worker.py"; touch /tmp/song; exec sleep infinity
+    command: ["python", "-u", "/mot-cua/backend/worker.py"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_TANG2: *tang2
       DXOS_POSTGREST_URL: http://postgrest:3000
       DXOS_FLOWABLE_URL: http://flowable:8080/flowable-rest/service
       DXOS_FLOWABLE_USER: rest-admin
@@ -436,14 +438,14 @@ services:
       DXOS_SU_KIEN_SAP_TRE_NGAY: ${DXOS_SU_KIEN_SAP_TRE_NGAY:-1}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
-      - app-secrets:/run/dxos-secrets:ro
+      - ./mot-cua:/mot-cua:ro
+      - tang2-secrets:/run/dxos-secrets:ro
     depends_on:
       postgrest:
         condition: service_started
       flowable:
         condition: service_healthy
-      app-realm:
+      tang2-realm:
         condition: service_completed_successfully
       rabbitmq-init:
         condition: service_completed_successfully
@@ -456,26 +458,60 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # Bộ nạp gói thủ tục (D-009): mot-cua/backend/nap_thu_tuc.py quét thu-tuc/*/thu-tuc.yaml,
+  # kiểm từng gói (đủ tệp, YAML, JSON Schema, BPMN, dữ liệu mẫu khớp schema), deploy BPMN lên
+  # Flowable qua REST (bỏ qua nếu không đổi), ghi danh mục qua PostgREST bằng tài khoản dịch vụ
+  # mot_cua_danh_muc (RPC mot_cua.nap_thu_tuc) rồi thoát. Gói lỗi: in lý do, bỏ qua, các gói
+  # khác vẫn nạp, mã thoát 0. Mã 1 chỉ khi Flowable hoặc PostgREST không gọi được. Chạy ở mỗi
+  # `up` (mot-cua-api chờ nó xong) và bằng tay: make nap-thu-tuc.
+  nap-thu-tuc:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    command: ["python", "-u", "/mot-cua/backend/nap_thu_tuc.py", "/thu-tuc"]
+    environment:
+      DXOS_TANG2: *tang2
+      DXOS_POSTGREST_URL: http://postgrest:3000
+      DXOS_FLOWABLE_URL: http://flowable:8080/flowable-rest/service
+      DXOS_FLOWABLE_USER: rest-admin
+      DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
+      DXOS_BAO_ADDR: http://openbao:8200
+      DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./mot-cua:/mot-cua:ro
+      - ./thu-tuc:/thu-tuc:ro
+      - tang2-secrets:/run/dxos-secrets:ro
+    depends_on:
+      postgrest:
+        condition: service_started
+      flowable:
+        condition: service_healthy
+      tang2-realm:
+        condition: service_completed_successfully
+      tang2-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   # --------------------------------------- dữ liệu phi cấu trúc (#7) ----
   # rpc_secret + admin_token của Garage: bao-init sinh trong OpenBao (dxos/core/garage), agent
   # này render ra volume garage-secrets (quyền 0400, chủ root) rồi thoát (#10).
   garage-secrets:
     <<: *bao-agent
     user: "0"
-    command: ["-config=/core/openbao/agent/garage.hcl"]
+    command: ["-config=/nen-tang/openbao/agent/garage.hcl"]
     volumes:
-      - ./core/openbao/agent:/core/openbao/agent:ro
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
       - garage-secrets:/run/dxos-secrets
 
   # Object storage S3 (AGPL-3.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE).
-  # Một nút; cấu hình core/garage/garage.toml. Không mở cổng ra host: S3 (3900) chỉ
-  # app-backend gọi bằng khóa riêng, và APISIX /files/s3/* cho link GET đã ký ngắn hạn;
+  # Một nút; cấu hình nen-tang/garage/garage.toml. Không mở cổng ra host: S3 (3900) chỉ
+  # mot-cua-api gọi bằng khóa riêng, và APISIX /files/s3/* cho link GET đã ký ngắn hạn;
   # API quản trị (3903) chỉ garage-init gọi.
   garage:
     image: dxflrs/garage:v2.4.1
     profiles: [core]
     volumes:
-      - ./core/garage/garage.toml:/etc/garage.toml:ro
+      - ./nen-tang/garage/garage.toml:/etc/garage.toml:ro
       - garage-secrets:/run/garage-secrets:ro
       - garage-meta:/var/lib/garage/meta
       - garage-data:/var/lib/garage/data
@@ -493,21 +529,21 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # Cấu hình Garage qua Admin API v2 (layout một nút, bucket trong apps/<DXOS_APP>/s3/
-  # buckets.conf, khóa S3 riêng của ứng dụng → OpenBao dxos/apps/<DXOS_APP>/s3) rồi thoát.
+  # Cấu hình Garage qua Admin API v2 (layout một nút, bucket trong mot-cua/s3/
+  # buckets.conf, khóa S3 riêng của Tầng 2 → OpenBao dxos/tang2/<DXOS_TANG2>/s3) rồi thoát.
   # Idempotent. AppRole garage-init (volume garage-init-secrets chỉ có role_id/secret_id).
   garage-init:
     image: python:3.13.16-alpine3.24
     profiles: [core]
-    entrypoint: ["python", "-u", "/core/scripts/garage-init.py"]
+    entrypoint: ["python", "-u", "/nen-tang/scripts/garage-init.py"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_TANG2: *tang2
       GARAGE_CAPACITY_BYTES: ${GARAGE_CAPACITY_BYTES:-10737418240}
       BAO_ADDR: http://openbao:8200
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./core/scripts:/core/scripts:ro
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - ./nen-tang/scripts:/nen-tang/scripts:ro
+      - ./mot-cua:/tang2:ro
       - garage-init-secrets:/run/dxos-secrets:ro
     depends_on:
       garage:
@@ -538,7 +574,7 @@ services:
   # ------------------------------------------------- bí mật (#10) ----
   # Két sắt bí mật (MPL-2.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE; không
   # dùng HashiCorp Vault – BSL). Chế độ server thường (không -dev), storage raft một nút
-  # trong volume bao-data, cấu hình core/openbao/config.hcl. Không mở cổng ra host, không
+  # trong volume bao-data, cấu hình nen-tang/openbao/config.hcl. Không mở cổng ra host, không
   # đi qua APISIX: chỉ dịch vụ trong mạng nội bộ gọi. Quản trị: docker compose exec openbao bao …
   # Khởi động lại thì OpenBao ở trạng thái seal: `make up` (bao-init) unseal lại.
   openbao:
@@ -549,7 +585,7 @@ services:
     environment:
       BAO_ADDR: http://127.0.0.1:8200
     volumes:
-      - ./core/openbao/config.hcl:/openbao/config/config.hcl:ro
+      - ./nen-tang/openbao/config.hcl:/openbao/config/config.hcl:ro
       - bao-data:/openbao/file
     expose:
       - "8200"
@@ -561,16 +597,16 @@ services:
       retries: 30
     restart: unless-stopped
 
-  # Khởi tạo idempotent (core/openbao/bao-init.py, cũng là `make bao-init`): init lần đầu →
+  # Khởi tạo idempotent (nen-tang/openbao/bao-init.py, cũng là `make bao-init`): init lần đầu →
   # unseal key + root token ra BAO_INIT_DIR trên máy (ngoài git, quyền 600), unseal, KV v2,
   # policy, AppRole; bí mật lõi chưa có thì lấy từ .env cũ (chuyển sang OpenBao) hoặc sinh
   # ngẫu nhiên; đặt role_id/secret_id vào volume riêng của từng danh tính. Rồi thoát.
   bao-init:
     image: python:3.13.16-alpine3.24
     profiles: [core]
-    entrypoint: ["python", "-u", "/core/openbao/bao-init.py"]
+    entrypoint: ["python", "-u", "/nen-tang/openbao/bao-init.py"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_TANG2: *tang2
       BAO_ADDR: http://openbao:8200
       # Một tệp cho mỗi compose project (project tạm không ghi đè khóa của project chính).
       BAO_INIT_FILE: /bao-init/${COMPOSE_PROJECT_NAME:-commune}.json
@@ -588,16 +624,16 @@ services:
       LEGACY_FLOWABLE_ADMIN_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD:-}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./core/openbao:/core/openbao:ro
+      - ./nen-tang/openbao:/nen-tang/openbao:ro
       - ${BAO_INIT_DIR:-./.data/openbao}:/bao-init
       - db-secrets:/vol/db
       - postgrest-secrets:/vol/postgrest
       - keycloak-secrets:/vol/keycloak
-      - app-realm-secrets:/vol/app-realm
+      - tang2-realm-secrets:/vol/tang2-realm
       - flowable-secrets:/vol/flowable
       - garage-secrets:/vol/garage
       - garage-init-secrets:/vol/garage-init
-      - app-secrets:/vol/app
+      - tang2-secrets:/vol/tang2
       - rabbitmq-secrets:/vol/rabbitmq
       - rabbitmq-init-secrets:/vol/rabbitmq-init
     depends_on:
@@ -609,52 +645,52 @@ services:
   db-secrets:
     <<: *bao-agent
     user: "70"
-    command: ["-config=/core/openbao/agent/db.hcl"]
+    command: ["-config=/nen-tang/openbao/agent/db.hcl"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
     volumes:
-      - ./core/openbao/agent:/core/openbao/agent:ro
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
       - db-secrets:/run/dxos-secrets
 
   postgrest-secrets:
     <<: *bao-agent
     user: "1000"
-    command: ["-config=/core/openbao/agent/postgrest.hcl"]
+    command: ["-config=/nen-tang/openbao/agent/postgrest.hcl"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-commune}
     volumes:
-      - ./core/openbao/agent:/core/openbao/agent:ro
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
       - postgrest-secrets:/run/dxos-secrets
 
   keycloak-secrets:
     <<: *bao-agent
     user: "1000"
-    command: ["-config=/core/openbao/agent/keycloak.hcl"]
+    command: ["-config=/nen-tang/openbao/agent/keycloak.hcl"]
     volumes:
-      - ./core/openbao/agent:/core/openbao/agent:ro
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
       - keycloak-secrets:/run/dxos-secrets
 
   flowable-secrets:
     <<: *bao-agent
     user: "100"
-    command: ["-config=/core/openbao/agent/flowable.hcl"]
+    command: ["-config=/nen-tang/openbao/agent/flowable.hcl"]
     volumes:
-      - ./core/openbao/agent:/core/openbao/agent:ro
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
       - flowable-secrets:/run/dxos-secrets
 
   rabbitmq-secrets:
     <<: *bao-agent
     user: "100"
-    command: ["-config=/core/openbao/agent/rabbitmq.hcl"]
+    command: ["-config=/nen-tang/openbao/agent/rabbitmq.hcl"]
     environment:
       RABBITMQ_ADMIN: ${RABBITMQ_ADMIN:-admin}
     volumes:
-      - ./core/openbao/agent:/core/openbao/agent:ro
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
       - rabbitmq-secrets:/run/dxos-secrets
 
   # ------------------------------------------- hàng đợi sự kiện (#9) ----
   # Message broker (MPL-2.0): dịch vụ riêng, image gốc, không sửa mã (D-004, NOTICE). Một nút;
-  # cấu hình core/rabbitmq/. Plugin: rabbitmq_stomp (ứng dụng phát/nhận, cổng 61613) và
+  # cấu hình nen-tang/rabbitmq/. Plugin: rabbitmq_stomp (Tầng 2 phát/nhận, cổng 61613) và
   # rabbitmq_management (HTTP API quản trị 15672, chỉ rabbitmq-init và người quản trị dùng).
   # Không mở cổng nào ra host, không có route APISIX: chỉ dịch vụ trong mạng nội bộ gọi.
   # Quản trị: docker compose exec rabbitmq rabbitmqctl … Tài khoản quản trị khởi tạo lấy từ
@@ -669,8 +705,8 @@ services:
       RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq.conf
       RABBITMQ_CONFIG_FILES: /run/dxos-secrets/conf.d
     volumes:
-      - ./core/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ./core/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./nen-tang/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./nen-tang/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
       - rabbitmq-secrets:/run/dxos-secrets:ro
       - rabbitmq-data:/var/lib/rabbitmq
     expose:
@@ -689,21 +725,21 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Vhost + user riêng của ứng dụng, topology apps/<DXOS_APP>/rabbitmq/definitions.json, thông
-  # tin kết nối → OpenBao dxos/apps/<DXOS_APP>/rabbitmq (core/scripts/rabbitmq-init.py) rồi thoát.
+  # Vhost + user riêng của Tầng 2, topology mot-cua/rabbitmq/definitions.json, thông
+  # tin kết nối → OpenBao dxos/tang2/<DXOS_TANG2>/rabbitmq (nen-tang/scripts/rabbitmq-init.py) rồi thoát.
   # Idempotent. AppRole rabbitmq-init (volume rabbitmq-init-secrets chỉ có role_id/secret_id).
   rabbitmq-init:
     image: python:3.13.16-alpine3.24
     profiles: [core]
-    entrypoint: ["python", "-u", "/core/scripts/rabbitmq-init.py"]
+    entrypoint: ["python", "-u", "/nen-tang/scripts/rabbitmq-init.py"]
     environment:
-      DXOS_APP: ${DXOS_APP:?Đặt DXOS_APP trong .env}
+      DXOS_TANG2: *tang2
       RABBITMQ_ADMIN: ${RABBITMQ_ADMIN:-admin}
       BAO_ADDR: http://openbao:8200
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./core/scripts:/core/scripts:ro
-      - ./apps/${DXOS_APP:?Đặt DXOS_APP trong .env}:/app:ro
+      - ./nen-tang/scripts:/nen-tang/scripts:ro
+      - ./mot-cua:/tang2:ro
       - rabbitmq-init-secrets:/run/dxos-secrets:ro
     depends_on:
       rabbitmq:
@@ -733,11 +769,11 @@ volumes:
   db-secrets:
   postgrest-secrets:
   keycloak-secrets:
-  app-realm-secrets:
+  tang2-realm-secrets:
   flowable-secrets:
   garage-secrets:
   garage-init-secrets:
-  app-secrets:
+  tang2-secrets:
   rabbitmq-secrets:
   rabbitmq-init-secrets:
   # RabbitMQ (#9): CSDL của nút (user, vhost, queue, tin nhắn bền vững).

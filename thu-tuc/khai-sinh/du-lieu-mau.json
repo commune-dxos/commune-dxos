@@ -1,0 +1,17 @@
+{
+  "mo_ta": "Hồ sơ mẫu GIẢ cho thủ tục KS01: người nộp, số điện thoại và id tệp đều không có thật. Smoke và cổng công dân (tuần 3) dùng làm ví dụ nộp hồ sơ; bộ nạp kiểm tệp này khớp thanh-phan-ho-so.schema.json.",
+  "ho_so": {
+    "ho_ten_nguoi_nop": "Nguyễn Văn Mẫu",
+    "so_dien_thoai": "0900000001"
+  },
+  "thanh_phan": {
+    "to_khai": ["5a1e0000-0000-4000-8000-000000000001"],
+    "giay_chung_sinh": ["5a1e0000-0000-4000-8000-000000000002"],
+    "giay_to_tuy_than": ["5a1e0000-0000-4000-8000-000000000003"]
+  },
+  "xu_ly": {
+    "tiep_nhan": {"hopLe": true},
+    "tham_dinh": {"datYeuCau": true},
+    "phe_duyet": {"pheDuyet": true, "ghiChu": "Đồng ý cấp giấy khai sinh"}
+  }
+}

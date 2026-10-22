@@ -4,7 +4,7 @@
 # cùng tên, nên lỗi ở máy và ở CI giống nhau:
 #   - phần shellcheck: mọi *.sh trong git hoặc chưa add (trừ .gitignore), theo cả tệp `source` (-x)
 #   - phần yamllint: compose, APISIX, workflow CI… theo .yamllint.yml, cảnh báo cũng tính là lỗi
-#   - phần bpmn: cấu trúc BPMN của apps/*/processes (scripts/check-bpmn.py) + test của chính bộ kiểm
+#   - phần bpmn: cấu trúc BPMN của mọi gói thu-tuc/*/quy-trinh.bpmn20.xml (scripts/check-bpmn.py) + test của chính bộ kiểm
 # Dùng: scripts/lint.sh [shellcheck|yamllint|bpmn]...   (không tham số = tất cả)
 # Thiếu công cụ → in cách cài và thoát mã 1 (không bỏ qua trong im lặng).
 set -euo pipefail

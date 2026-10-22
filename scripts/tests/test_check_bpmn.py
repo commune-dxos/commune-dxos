@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Test của scripts/check-bpmn.py (#11): quy trình thật của mọi ứng dụng đạt, còn mỗi lỗi
+"""Test của scripts/check-bpmn.py (#11): quy trình thật của mọi gói thủ tục đạt, còn mỗi lỗi
 vẽ tay hay gặp phải bị bắt. Chạy: make lint (job CI `bpmn`), chỉ thư viện chuẩn."""
 import glob
 import importlib.util
@@ -49,9 +49,9 @@ class TestCheckBpmn(unittest.TestCase):
     def assertLoi(self, loi, doan):
         self.assertTrue(any(doan in d for d in loi), f"không thấy lỗi chứa {doan!r} trong {loi}")
 
-    def test_quy_trinh_cua_cac_ung_dung_dat(self):
-        tep = sorted(glob.glob(os.path.join(GOC, "apps", "*", "processes", "*.bpmn20.xml")))
-        self.assertTrue(tep, "không tìm thấy tệp BPMN nào trong apps/*/processes")
+    def test_quy_trinh_cua_cac_goi_thu_tuc_dat(self):
+        tep = sorted(glob.glob(os.path.join(GOC, "thu-tuc", "*", "quy-trinh.bpmn20.xml")))
+        self.assertGreaterEqual(len(tep), 2, "cần ít nhất 2 gói thu-tuc/*/quy-trinh.bpmn20.xml")
         loi, process_ids = check_bpmn.kiem(tep, GOC)
         self.assertEqual(loi, [])
         self.assertEqual(len(process_ids), len(tep))
@@ -94,6 +94,12 @@ class TestCheckBpmn(unittest.TestCase):
 
     def test_user_task_khong_nguoi_nhan(self):
         self.assertLoi(kiem_noi_dung(MAU.replace(' flowable:candidateGroups="ho_tich"', "")), "không có người nhận")
+
+    def test_bien_buoc_kieu_la(self):
+        loi = kiem_noi_dung(MAU.replace('<userTask id="viec" flowable:candidateGroups="ho_tich"/>',
+                                        '<userTask id="viec" flowable:candidateGroups="ho_tich"><extensionElements>'
+                                        '<flowable:formProperty id="ok" type="date"/></extensionElements></userTask>'))
+        self.assertLoi(loi, "kiểu 'date'")
 
 
 if __name__ == "__main__":

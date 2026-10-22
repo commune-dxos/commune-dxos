@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: Apache-2.0
+# Trang tài liệu Commune DX-OS (D-009 hướng 2, #32): MkDocs + Material for MkDocs bản community.
+# Build: make tai-lieu (--strict, link gãy là lỗi) · xem trên máy: make xem-tai-lieu.
+# CI: .github/workflows/tai-lieu.yml build trên PR, deploy GitHub Pages khi push main.
+# Trang danh mục thủ tục và các trang gói thủ tục sinh lúc build: scripts/tai_lieu_hooks.py.
+site_name: Tài liệu Commune DX-OS
+site_description: Hệ điều hành Chính quyền số Cấp xã – nguồn mở, cắm–rút theo gói thủ tục hành chính
+site_author: DTU_DZ_2
+site_url: https://commune-dxos.github.io/commune-dxos/
+repo_url: https://github.com/commune-dxos/commune-dxos
+repo_name: commune-dxos/commune-dxos
+edit_uri: edit/develop/docs/
+copyright: Bản quyền 2026 DTU_DZ_2 · Apache License 2.0
+
+docs_dir: docs
+exclude_docs: |
+  contest/
+  requirements.txt
+
+hooks:
+  - scripts/tai_lieu_hooks.py
+
+# mkdocs serve tự build lại khi các tệp ngoài docs/ mà site dùng thay đổi.
+watch:
+  - thu-tuc
+  - mot-cua/README.md
+  - mot-cua/backend/goi_thu_tuc.py
+  - CONTRIBUTING.md
+  - CHANGELOG.md
+  - scripts/tai_lieu_hooks.py
+
+# Điều hướng theo vai người đọc. Mục "Người dân / cán bộ" được hook thêm mỗi gói thủ tục một trang.
+nav:
+  - Trang chủ: index.md
+  - Người dân / cán bộ:
+      - Danh mục thủ tục: danh-muc-thu-tuc.md
+  - Lập trình viên thêm thủ tục:
+      - Thêm một thủ tục mới: thu-tuc.md
+      - Bộ máy một cửa: mot-cua.md
+  - Vận hành:
+      - Cài đặt và chạy: cai-dat.md
+  - Kiến trúc:
+      - Kiến trúc tổng thể: architecture.md
+      - Đối chiếu yêu cầu đề thi: de-thi-mapping.md
+  - Đóng góp:
+      - Hướng dẫn đóng góp: dong-gop.md
+      - Quy trình làm việc và tiến độ: quy-trinh-lam-viec.md
+      - Kế hoạch: PLAN.md
+      - Nhật ký thay đổi: thay-doi.md
+      - Nguồn hình ảnh: images/README.md
+
+theme:
+  name: material
+  language: vi
+  # Không tải phông từ Google Fonts: dùng phông hệ thống, trang không gọi dịch vụ bên thứ ba.
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Chuyển sang nền tối
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Chuyển sang nền sáng
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang:
+        - vi
+        - en
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  # Neo tiêu đề tính như GitHub (giữ chữ có dấu): hook đặt toc.slugify, xem scripts/tai_lieu_hooks.py.
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

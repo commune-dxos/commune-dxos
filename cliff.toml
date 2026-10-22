@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: Apache-2.0
+# Cấu hình git-cliff (D-009 hướng 4, #36): sinh CHANGELOG và ghi chú phát hành từ Conventional Commits.
+# Không gọi git-cliff trực tiếp lên CHANGELOG.md; dùng `make nhat-ky` và
+# `make ghi-chu-phat-hanh PHIEN_BAN=x.y.z` (scripts/nhat_ky.py chọn khoảng commit đúng, giữ nguyên
+# phần v0.0.1, v0.1.0 viết tay). Quy ước commit: docs/quy-trinh-lam-viec.md mục 5.
+#
+# Mỗi phiên bản sinh ra một mục `## [x.y.z] - ngày` (hoặc `## [Unreleased]`), chia nhóm theo loại
+# commit; trong nhóm, commit xếp theo phạm vi (`thu-tuc`, `mot-cua`, `nen-tang`…) và phạm vi in đậm
+# ở đầu dòng. Gạch đầu dòng trong thân commit (mô tả squash của PR) in thành mục con, thụt 4 dấu
+# cách để MkDocs (Python-Markdown) cũng hiểu là danh sách lồng.
+# Biến môi trường GHI_CHU_PHAT_HANH=1: bỏ dòng tiêu đề phiên bản, thêm link so sánh (thân GitHub Release).
+
+[changelog]
+header = ""
+body = """
+{% macro dong(commit) -%}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}\
+{% if commit.body %}{% for line in commit.body | split(pat="\n") %}\
+{% if line is starting_with("- ") or line is starting_with("  ") %}
+{{ "    " }}{{ line }}\
+{% endif %}{% endfor %}{% endif -%}
+{%- endmacro dong -%}
+{% set ghi_chu = get_env(name="GHI_CHU_PHAT_HANH", default="") != "" -%}
+{% if not ghi_chu -%}
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+{% endif -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+
+{% for commit in commits | filter(attribute="scope") | sort(attribute="scope") -%}
+{{ self::dong(commit=commit) }}
+{% endfor -%}
+{% for commit in commits -%}
+{% if not commit.scope %}{{ self::dong(commit=commit) }}
+{% endif %}{% endfor -%}
+{% endfor %}
+{%- if ghi_chu and version and previous.version %}
+Toàn bộ thay đổi: https://github.com/commune-dxos/commune-dxos/compare/{{ previous.version }}...{{ version }}
+{% endif %}
+"""
+footer = ""
+trim = true
+# Gộp nhiều dòng trống liên tiếp thành một.
+postprocessors = [{ pattern = "\n{3,}", replace = "\n\n" }]
+
+[git]
+conventional_commits = true
+# Commit không theo quy ước vẫn giữ, vào nhóm "Khác" (commit_parsers cuối cùng).
+filter_unconventional = false
+split_commits = false
+protect_breaking_commits = false
+filter_commits = false
+# Tag phát hành là merge commit trên main (PR develop → main); commit của develop nằm ở nhánh
+# cha thứ hai nên duyệt theo thứ tự tô-pô.
+topo_order = true
+sort_commits = "oldest"
+tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+"
+
+commit_preprocessors = [
+  # `(#30) (#31)` ở cuối tiêu đề: số issue và số PR squash → link GitHub (issues/N tự chuyển sang pull/N).
+  { pattern = '\(#(\d+)\)', replace = "([#${1}](https://github.com/commune-dxos/commune-dxos/issues/${1}))" },
+]
+
+# Thứ tự nhóm theo chú thích HTML `<!-- n -->` (bị striptags bỏ khi in).
+commit_parsers = [
+  { message = "^Merge ", skip = true },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^feat", group = "<!-- 0 -->Tính năng mới" },
+  { message = "^fix", group = "<!-- 1 -->Sửa lỗi" },
+  { message = "^refactor", group = "<!-- 2 -->Tái cấu trúc" },
+  { message = "^docs", group = "<!-- 3 -->Tài liệu" },
+  { message = "^test", group = "<!-- 4 -->Kiểm thử" },
+  { message = "^(ci|chore|build)", group = "<!-- 5 -->Hạ tầng và CI" },
+  { message = ".*", group = "<!-- 9 -->Khác" },
+]

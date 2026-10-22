@@ -4,6 +4,79 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-22
+
+### Tái cấu trúc
+
+- **thu-tuc:** Mô hình gói thủ tục nen-tang/ + mot-cua/ + thu-tuc/ ([#30](https://github.com/commune-dxos/commune-dxos/issues/30)) ([#31](https://github.com/commune-dxos/commune-dxos/issues/31))
+    - core/ → nen-tang/, apps/mot-cua/ → mot-cua/ (git mv); bỏ DXOS_APP, dịch vụ
+      tang2-migrate, tang2-realm, mot-cua-api, mot-cua-worker; nhánh OpenBao dxos/tang2/.
+    - thu-tuc/khai-sinh (chuyển BPMN và danh mục KS01) và thu-tuc/chung-thuc-ban-sao (CT01,
+      hạn trong ngày): thu-tuc.yaml, quy-trinh.bpmn20.xml, thanh-phan-ho-so.schema.json,
+      du-lieu-mau.json, README.md.
+    - Bộ nạp nap-thu-tuc (make up, make nap-thu-tuc): kiểm gói, deploy BPMN qua REST, ghi danh
+      mục qua RPC mot_cua.nap_thu_tuc (migration 005, client mot_cua_danh_muc); gói lỗi bị bỏ qua.
+    - API /workflow đọc quy trình và biến từng bước từ danh mục (flowable:formProperty).
+    - make check kiểm gói; CI bpmn kiểm thu-tuc/*/quy-trinh.bpmn20.xml; test bộ nạp, test SQL
+      danh mục, smoke cắm–rút và hồ sơ chứng thực qua /workflow; docs/thu-tuc.md.
+
+### Tài liệu
+
+- **readme:** README tiếng Việt có ảnh minh họa, README.en.md, sơ đồ kiến trúc SVG ([#26](https://github.com/commune-dxos/commune-dxos/issues/26)) ([#27](https://github.com/commune-dxos/commune-dxos/issues/27))
+    - README.md viết lại thuần tiếng Việt, giữ đủ nội dung đã kiểm chứng ở #12;
+      thêm banner, ảnh minh họa bài toán, huy hiệu, mục Bài toán, bảng 4 dịch vụ bắt buộc
+    - README.en.md ngắn: mô tả, kiến trúc, chạy từ máy sạch, giấy phép
+    - docs/images/kien-truc.svg: sơ đồ kiến trúc vẽ tay theo docker-compose.yml, core/, apps/mot-cua/
+    - docs/images/luong-ho-so.svg: luồng hồ sơ khai sinh theo BPMN dang_ky_khai_sinh
+    - docs/images/*.webp: ảnh minh họa do đội tạo bằng công cụ AI; nguồn ghi ở docs/images/README.md
+- **readme:** README kể chuyện sản phẩm với ảnh minh họa, bỏ README.en.md ([#28](https://github.com/commune-dxos/commune-dxos/issues/28)) ([#29](https://github.com/commune-dxos/commune-dxos/issues/29))
+    - README.md thuần tiếng Việt theo trình tự: Giới thiệu, Thách thức, Giải pháp,
+      Đối tượng, Chức năng (đã có ở v0.1.0 / sắp có), Kiến trúc, Công nghệ,
+      Luồng hồ sơ, Hướng phát triển, Cài đặt từ máy sạch, Đóng góp, Báo lỗi,
+      Giấy phép, CHANGELOG.
+    - Ảnh mới trong docs/images/: banner có tiêu đề, vòng 6 chức năng, kiến trúc
+      tổng quan dạng biểu tượng, luồng hồ sơ 5 bước; nhãn tiếng Việt.
+    - Hướng dẫn cài đặt chi tiết chuyển sang docs/cai-dat.md, README giữ các lệnh chính.
+    - Sơ đồ SVG chi tiết chỉ dùng trong docs/architecture.md (§1, §4.2).
+    - Xóa README.en.md; cập nhật docs/images/README.md, CHANGELOG, de-thi-mapping.
+- **readme:** Bố cục riêng "Trước và sau chuyển đổi số", thủ tục đang hỗ trợ ([#38](https://github.com/commune-dxos/commune-dxos/issues/38)) ([#39](https://github.com/commune-dxos/commune-dxos/issues/39))
+    - Bảng Trước/Sau 8 dòng thay vòng tròn chức năng, mỗi dòng ghi trạng thái v0.1.0 / develop / tuần.
+    - Mục thủ tục đang hỗ trợ từ thu-tuc/*/thu-tuc.yaml, link danh mục và hướng dẫn 5 bước.
+    - Kiến trúc gọn theo nen-tang/, mot-cua/, thu-tuc/; chạy thử khớp Makefile; chỗ dành cho GIF demo.
+    - docs/images/README.md: vong-chuc-nang.webp, mot-cua-so.webp không còn dùng ở README; ghi chú cách quay GIF.
+- **tai-lieu:** Trang tài liệu MkDocs trên GitHub Pages, danh mục thủ tục tự sinh ([#32](https://github.com/commune-dxos/commune-dxos/issues/32)) ([#33](https://github.com/commune-dxos/commune-dxos/issues/33))
+    - mkdocs.yml: MkDocs 1.6.1 + Material for MkDocs 9.7.7 bản community, giao diện và tìm kiếm
+      tiếng Việt, điều hướng theo vai người đọc, dùng lại các tệp trong docs/, loại docs/contest/.
+    - scripts/tai_lieu_hooks.py: trang Danh mục thủ tục sinh từ thu-tuc/*/ bằng bộ kiểm của bộ nạp,
+      mỗi gói một trang từ README của gói; đưa mot-cua/README.md, CONTRIBUTING.md, CHANGELOG.md lên
+      site; neo tiêu đề như GitHub; link ra ngoài docs/ trỏ về GitHub.
+    - make tai-lieu (--strict), make xem-tai-lieu; workflow tai-lieu.yml build trên PR, deploy Pages
+      khi push main hoặc chạy tay.
+    - DEPENDENCIES.md, NOTICE, CHANGELOG, một dòng link trong README; site/ vào .gitignore.
+
+### Hạ tầng và CI
+
+- **phat-hanh:** Git-cliff tự sinh CHANGELOG và ghi chú phát hành ([#36](https://github.com/commune-dxos/commune-dxos/issues/36)) ([#37](https://github.com/commune-dxos/commune-dxos/issues/37))
+    - cliff.toml: nhóm theo loại commit với tiêu đề tiếng Việt, phạm vi in đậm và xếp theo
+      phạm vi, (#số) thành link GitHub, gạch đầu dòng của mô tả squash thành mục con;
+      bỏ commit Merge và chore(release), commit không theo quy ước vào nhóm Khác
+    - scripts/nhat_ky.py: chỉ viết lại mục [Unreleased] (khoảng <tag mới nhất>..HEAD vì tag nằm
+      trên merge commit của main), giữ nguyên mục v0.0.1, v0.1.0 viết tay
+    - make nhat-ky [PHIEN_BAN=x.y.z], make ghi-chu-phat-hanh PHIEN_BAN=x.y.z; git-cliff 2.14.2 ghim
+      trong scripts/requirements-phat-hanh.txt, cài bằng venv
+    - workflow phat-hanh (tag vX.Y.Z): ghi chú git-cliff, commune-dxos-X.Y.Z.tar.gz bằng git archive,
+      SHA256SUMS, GitHub Release; quyền contents: write
+    - workflow quy-uoc-commit trên PR (không bắt buộc): tiêu đề PR theo quy ước, chạy thử git-cliff
+    - docs/quy-trinh-lam-viec.md mục 5–6: quy ước commit, sinh CHANGELOG, quy trình phát hành;
+      link trong CONTRIBUTING.md và mẫu PR; DEPENDENCIES.md, NOTICE; CHANGELOG [Unreleased] sinh lại
+- **tien-do:** Milestone theo tuần, nhãn thành phần tự gắn, mẫu issue ([#34](https://github.com/commune-dxos/commune-dxos/issues/34)) ([#35](https://github.com/commune-dxos/commune-dxos/issues/35))
+    - .github/labeler.yml + workflow gan-nhan (actions/labeler, pull_request_target,
+      không checkout mã PR): tự gắn nen-tang, mot-cua, thu-tuc, docs, ci theo tệp sửa
+    - Mẫu issue "Thủ tục mới" (tự gắn thu-tuc) và "Việc trong tuần" (chọn thành phần)
+    - docs/quy-trinh-lam-viec.md: milestone Tuần 1–7, nhãn, bảng Project, luồng
+      issue → nhánh → PR → develop; thêm vào mục "Đóng góp" của site
+    - CONTRIBUTING.md, docs/PLAN.md, CHANGELOG cập nhật theo
+
 ## [0.1.0] - 2026-10-21
 ### Added
 - `apps/mot-cua/db/migrations/002_schema_day_du.sql`: schema `mot_cua` đầy đủ – `linh_vuc`, `thu_tuc` (thời hạn theo ngày làm việc, phí, công khai), `thanh_phan_yeu_cau`, `ngay_nghi`, `can_bo` (liên kết `sub` Keycloak) + `can_bo_linh_vuc`, `ho_so` (mã hồ sơ, hạn xử lý tính theo ngày làm việc, trạng thái `moi → dang_xu_ly → cho_bo_sung → hoan_tat | tu_choi` có trigger chặn bước sai), `thanh_phan_ho_so` (metadata, tệp ở Garage); khóa UUID, `created_at`/`updated_at` (#5).
@@ -104,6 +177,7 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/commune-dxos/commune-dxos/releases/tag/v0.0.1

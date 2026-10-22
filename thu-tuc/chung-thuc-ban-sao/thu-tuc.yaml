@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# Gói thủ tục: Chứng thực bản sao từ bản chính (D-009). Định dạng: docs/thu-tuc.md (tập con YAML).
+ma: CT01
+ten: Chứng thực bản sao từ bản chính
+linh_vuc: chung_thuc
+ten_linh_vuc: Chứng thực
+# 0 = trong ngày tiếp nhận (Nghị định 23/2015/NĐ-CP, Điều 7); nộp vào ngày nghỉ thì hạn là
+# ngày làm việc kế tiếp. Chưa xử lý quy tắc tiếp nhận sau 15 giờ.
+thoi_han_ngay_lam_viec: 0
+le_phi: 2000
+ghi_chu_le_phi: 2.000 đồng/trang; từ trang thứ ba 1.000 đồng/trang, tối đa 200.000 đồng/bản
+cong_khai: true
+quy_trinh: chung_thuc_ban_sao
+can_cu_phap_ly:
+  - Nghị định 23/2015/NĐ-CP, Điều 7 và Điều 20
+  - Thông tư 01/2020/TT-BTP
+  - Thông tư 226/2016/TT-BTC (lệ phí chứng thực)
