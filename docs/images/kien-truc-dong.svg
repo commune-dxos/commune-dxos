@@ -3,7 +3,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Sơ đồ kiến trúc động Commune DX-OS (#43): 2 tầng, gói thủ tục, một hồ sơ KS01 chạy qua hệ thống. -->
 <!-- Vẽ tay bằng SVG thuần, không JS, không phông hay ảnh ngoài. Chuyển động: SMIL, vòng 14 giây. -->
-<!-- Khung tĩnh (không chạy animation) vẫn là sơ đồ đầy đủ. Theo docker-compose.yml, nen-tang/, mot-cua/, thu-tuc/ v0.3.0. -->
+<!-- Khung tĩnh (không chạy animation) vẫn là sơ đồ đầy đủ. Theo docker-compose.yml, nen-tang/, mot-cua/, thu-tuc/ v0.4.0. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="tieu-de mo-ta">
 <title id="tieu-de">Kiến trúc Commune DX-OS: 2 tầng và gói thủ tục</title>
 <desc id="mo-ta">Người dân, cán bộ một cửa, lãnh đạo xã dùng Tầng 2 mot-cua gồm cổng công dân, cổng cán bộ, mot-cua-api, mot-cua-worker và các gói thủ tục cắm vào thu-tuc (KS01 khai sinh, CT01 chứng thực bản sao). Tầng 2 chỉ gọi Tầng 1 nen-tang qua APISIX. Tầng 1 headless gồm Keycloak, APISIX, PostgREST và PostgreSQL có RLS, ClamAV và Garage, Flowable, RabbitMQ, OpenBao cấp bí mật. Một hồ sơ KS01 đi qua 6 bước: nộp qua APISIX, kiểm thành phần hồ sơ, lưu, quét và lưu tệp, khởi tạo quy trình, cảnh báo sắp trễ hạn tới cán bộ.</desc>
