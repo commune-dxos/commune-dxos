@@ -52,6 +52,12 @@ upstreams:
     nodes:
       "mot-cua-web:8080": 1
 
+  # Superset (profile bi, #82): dashboard báo cáo, tự xử lý đăng nhập (SSO Keycloak).
+  - id: superset
+    type: roundrobin
+    nodes:
+      "superset:8088": 1
+
   # API S3 của Garage (object storage của lõi). Chỉ dùng cho link GET đã ký sẵn.
   - id: garage-s3
     type: roundrobin
@@ -237,6 +243,26 @@ routes:
           set:
             X-Robots-Tag: "noindex, nofollow"
     upstream_id: mot-cua-web
+
+  # Dashboard Superset (#82, profile bi): Superset chạy dưới tiền tố /bao-cao (SUPERSET_APP_ROOT) nên
+  # không cắt tiền tố. Không kiểm JWT ở gateway: Superset tự đăng nhập bằng SSO Keycloak (phiên cookie)
+  # và chỉ vai được ánh xạ mới xem được dashboard. Chưa chạy make up-bi → 502/503.
+  - id: superset
+    uris: [/bao-cao, /bao-cao/*]
+    priority: -4
+    plugins:
+      limit-count:
+        count: 600
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      response-rewrite:
+        headers:
+          set:
+            X-Robots-Tag: "noindex, nofollow"
+    upstream_id: superset
 
   # Cổng công dân (web Tầng 2, #57): mọi đường dẫn không thuộc route nào ở trên, ưu tiên thấp nhất
   # nên không che /public, /api, /workflow, /files. Không cần token (trang tĩnh; dữ liệu vẫn đi qua

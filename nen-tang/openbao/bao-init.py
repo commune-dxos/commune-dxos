@@ -54,6 +54,7 @@ DANH_TINH = {
     "rabbitmq-init": 0,
     "step-ca": 1000,    # smallstep/step-ca chạy user step (#77)
     "ca-init": 1000,    # dịch vụ một lần ca-init, cùng image step-ca
+    "superset": 1000,   # apache/superset chạy user superset; superset, superset-init (#82)
 }
 # Thời hạn token theo danh tính: agent một lần chỉ cần vài giây; backend chạy lâu thì
 # đăng nhập lại khi token hết hạn.
@@ -83,6 +84,11 @@ BI_MAT_LOI = {
     # đường dẫn để ca-init chỉ đọc được mật khẩu provisioner.
     "core/step-ca/ca": {"password": (None, _mat_khau)},
     "core/step-ca/provisioner": {"password": (None, _mat_khau)},
+    # Superset (#82): role metadata `superset`, role chỉ đọc báo cáo `bao_cao_doc`, khóa ký phiên/mã hóa
+    # mật khẩu kết nối của Superset.
+    "core/db/superset": {"password": (None, _mat_khau)},
+    "core/db/bao_cao_doc": {"password": (None, _mat_khau)},
+    "core/superset": {"secret_key": (None, lambda: secrets.token_urlsafe(48))},
 }
 
 

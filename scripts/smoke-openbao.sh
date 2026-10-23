@@ -70,6 +70,14 @@ MA_TRAN=(
   "tang2:read:$A/ky-so 200"
   "tang2:write:$A/ky-so 403"
   "tang2:read:core/step-ca/provisioner 403"
+  "superset:read:core/superset 200"
+  "superset:read:core/db/superset 200"
+  "superset:read:core/db/bao_cao_doc 200"
+  "superset:read:core/db/postgres 403"
+  "superset:read:core/db/authenticator 403"
+  "superset:read:$A/s3 403"
+  "superset:write:core/superset 403"
+  "tang2:read:core/superset 403"
 )
 muc=(); for m in "${MA_TRAN[@]}"; do muc+=("${m% *}"); done
 kq="$(docker compose run --rm --no-deps --entrypoint python bao-init /nen-tang/openbao/kiem-quyen.py "${muc[@]}" 2>&1)"
