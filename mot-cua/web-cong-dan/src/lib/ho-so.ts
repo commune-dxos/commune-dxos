@@ -1,13 +1,16 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Nộp hồ sơ qua APISIX bằng access token của công dân, theo thứ tự để quy trình chỉ chạy khi hồ
-// sơ đã đủ giấy tờ:
+// sơ đã đủ giấy tờ (#59):
+//   0. Poka-yoke: kiểm tệp đã chọn theo JSON Schema của gói; thiếu thì dừng, KHÔNG gửi request nào
 //   1. POST /api/ho_so            tạo hồ sơ (PostgREST, RLS: người nộp = người gọi, trạng thái mới)
 //   2. POST /files/ho-so/{id}/tep  tải từng tệp (mot-cua-api: ClamAV quét, kiểm magic bytes, Garage)
-//   3. POST /workflow/ho-so/{id}/khoi-tao  khởi tạo quy trình Flowable của thủ tục
+//   3. POST /workflow/ho-so/{id}/khoi-tao  khởi tạo quy trình Flowable của thủ tục; mot-cua-api kiểm
+//      lại schema với tệp đã quét sạch, thiếu → 422 (lớp Poka-yoke thứ hai)
 // Bước nào lỗi thì giữ kết quả các bước trước để người dân bấm "Thử lại" từ chỗ dở dang.
 import { cauHinh as cauHinhMacDinh, type CauHinh } from "./cau-hinh";
-import { LoiApi, thongDiepLoi } from "./api";
+import { LoiApi, thongDiepLoi, type ThuTuc } from "./api";
+import { docThanhPhan, kiemThanhPhan } from "./thanh-phan";
 
 export interface HoSoMoi {
   id: string;
@@ -118,4 +121,51 @@ export async function khoiTaoQuyTrinh(token: string, hoSoId: string, cauHinh = c
     if (e instanceof LoiApi && e.trangThai === 409 && /đã có quy trình/.test(e.message)) return;
     throw e;
   }
+}
+
+/** Thiếu hoặc sai thành phần theo JSON Schema: phát hiện trước khi gửi request nào. */
+export class LoiThieuThanhPhan extends LoiApi {
+  readonly thanhPhan: Record<string, string>;
+  constructor(thanhPhan: Record<string, string>) {
+    super(`Hồ sơ chưa đủ giấy tờ: ${Object.values(thanhPhan).join("; ")}.`, null);
+    this.name = "LoiThieuThanhPhan";
+    this.thanhPhan = thanhPhan;
+  }
+}
+
+/** Tiến độ nộp, giữ qua các lần "Thử lại" để không tạo trùng hồ sơ hay tải trùng tệp. */
+export interface TienDoNop {
+  hoSo: HoSoMoi | null;
+  daTai: Set<File>;
+  daKhoiTao: boolean;
+}
+
+export const tienDoMoi = (): TienDoNop => ({ hoSo: null, daTai: new Set(), daKhoiTao: false });
+
+/** Cả luồng nộp, Poka-yoke trước tiên. Lỗi ở bước nào thì `tienDo` giữ phần đã xong. */
+export async function nopHoSo(
+  token: string,
+  thuTuc: Pick<ThuTuc, "id" | "json_schema">,
+  nguoiNop: { ho_ten_nguoi_nop: string; so_dien_thoai: string },
+  tep: Record<string, File[] | undefined>,
+  tienDo: TienDoNop = tienDoMoi(),
+  cauHinh = cauHinhMacDinh,
+  goi: typeof fetch = fetch,
+) {
+  const thieu = kiemThanhPhan(thuTuc.json_schema, tep);
+  if (Object.keys(thieu).length) throw new LoiThieuThanhPhan(thieu);
+  tienDo.hoSo ??= await taoHoSo(token, { thu_tuc_id: thuTuc.id, ...nguoiNop }, cauHinh, goi);
+  const idThanhPhan = await layIdThanhPhan(thuTuc.id, cauHinh, goi);
+  for (const tp of docThanhPhan(thuTuc.json_schema)) {
+    for (const f of tep[tp.ma] ?? []) {
+      if (tienDo.daTai.has(f)) continue;
+      await taiTep(token, tienDo.hoSo.id, f, idThanhPhan[tp.ma], cauHinh, goi);
+      tienDo.daTai.add(f);
+    }
+  }
+  if (!tienDo.daKhoiTao) {
+    await khoiTaoQuyTrinh(token, tienDo.hoSo.id, cauHinh, goi);
+    tienDo.daKhoiTao = true;
+  }
+  return tienDo.hoSo;
 }

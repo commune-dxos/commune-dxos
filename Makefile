@@ -50,8 +50,12 @@ lint:          ## Lint như CI (job shellcheck, yamllint, bpmn). Cài công cụ
 
 test: test-backend test-sql ## Test như CI (job test-backend, test-sql)
 
-test-backend:  ## Test đơn vị (không cần Docker): mot-cua/backend/tests/test_*.py (kể cả bộ nạp gói), thư viện chuẩn unittest
-	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s mot-cua/backend/tests -p 'test_*.py'
+# Test backend cần jsonschema (Poka-yoke phía máy chủ, #59) như image mot-cua-api. Cài:
+# python3 -m venv .venv && .venv/bin/pip install -r mot-cua/backend/requirements.txt, rồi PYTHON=.venv/bin/python.
+PYTHON ?= python3
+test-backend:  ## Test đơn vị (không cần Docker): mot-cua/backend/tests/test_*.py (kể cả bộ nạp gói, Poka-yoke), unittest. Cần jsonschema (mot-cua/backend/requirements.txt)
+	@$(PYTHON) -c 'import jsonschema' 2> /dev/null || { echo "LỖI: $(PYTHON) chưa có jsonschema — python3 -m venv .venv && .venv/bin/pip install -r mot-cua/backend/requirements.txt, rồi PYTHON=.venv/bin/python make test-backend"; exit 1; }
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s mot-cua/backend/tests -p 'test_*.py'
 
 test-web:      ## Test + build cổng công dân (cần Node ≥ 20.19): npm ci, Vitest, tsc, vite build (#52)
 	cd mot-cua/web-cong-dan && npm ci --no-audit --no-fund && npm test && npm run build

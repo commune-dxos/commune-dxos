@@ -122,7 +122,7 @@ erDiagram
   }
 ```
 
-- **Thành phần hồ sơ bắt buộc** nằm trong bảng `thanh_phan_yeu_cau` (không phải JSON trong cột) để kiểm "đủ thành phần" bằng một truy vấn. Hàm `mot_cua.json_schema_thu_tuc(ma)` sinh JSON Schema 2020-12 từ bảng này cho Poka-yoke (tuần 3): `GET /public/rpc/json_schema_thu_tuc?ma=KS01`. Dữ liệu được kiểm có dạng `{"thanh_phan": {"<ma>": ["<id thanh_phan_ho_so>", …]}}`.
+- **Thành phần hồ sơ bắt buộc** nằm trong bảng `thanh_phan_yeu_cau` (không phải JSON trong cột) để kiểm "đủ thành phần" bằng một truy vấn. Hàm `mot_cua.json_schema_thu_tuc(ma)` trả JSON Schema 2020-12 cho Poka-yoke (schema của gói, thủ tục chưa có gói thì sinh từ bảng này): `GET /public/rpc/json_schema_thu_tuc?ma=KS01`. Dữ liệu được kiểm có dạng `{"thanh_phan": {"<ma>": ["<id thanh_phan_ho_so>", …]}}`, ở cả hai lớp: cổng công dân (tệp đã chọn, trước khi gửi request) và `mot-cua-api` (tệp đã quét sạch, trước khi khởi tạo quy trình, #59).
 - **Hạn xử lý** = ngày nhận (giờ Việt Nam) + `so_ngay_xu_ly` ngày làm việc, bỏ thứ Bảy, Chủ nhật và `ngay_nghi`; nộp vào ngày nghỉ thì tính từ ngày làm việc kế tiếp. Trigger tính khi nộp. Chưa xử lý: tạm dừng tính hạn khi chờ bổ sung, quy tắc nhận hồ sơ sau 15 giờ.
 - **Trạng thái** (trigger chặn bước sai, mã lỗi 23514 → HTTP 400):
 
@@ -182,10 +182,28 @@ OpenAPI của PostgREST: `GET /api/` (kèm token) hoặc `GET /public/`, chỉ l
 
 Body và response là JSON; lỗi có dạng `{"loi": "…", "chiTiet": …}`. Người dùng không gọi thẳng Flowable và không cầm mật khẩu của nó; backend tự kiểm token, tra quyền rồi gọi Flowable bằng tài khoản kỹ thuật.
 
+**Luồng nộp (#59):** tạo hồ sơ `POST /api/ho_so` → tải từng tệp `POST /files/ho-so/{id}/tep?thanh_phan_yeu_cau_id=…` (ClamAV quét) → khởi tạo `POST /workflow/ho-so/{id}/khoi-tao`. Cổng công dân (`web-cong-dan/src/lib/ho-so.ts`) và smoke dùng đúng thứ tự này.
+
+**Poka-yoke phía máy chủ (#59, `backend/poka_yoke.py`):** trước khi gọi Flowable, `mot-cua-api` dựng tài liệu hồ sơ **từ CSDL** (không lấy từ client), đọc bằng token người gọi (RLS):
+
+```json
+{"ho_so": {"ho_ten_nguoi_nop": "…", "so_dien_thoai": "…"},
+ "thanh_phan": {"<mã thành phần>": ["<id thanh_phan_ho_so>", …]}}
+```
+
+chỉ tính tệp đã quét sạch (`ket_qua_quet = 'sach'`) và đã có object trong kho, rồi kiểm bằng `jsonschema` (MIT, validator Draft 2020-12, kiểm cả `format: uuid`) với `thu_tuc.json_schema` của gói (không có thì `json_schema_thu_tuc`). Thiếu hoặc sai → **422**, không khởi tạo quy trình, không ghi sự kiện, hồ sơ vẫn `moi` để tải bổ sung rồi gọi lại:
+
+```json
+{"loi": "Hồ sơ chưa đủ thành phần: Giấy chứng sinh",
+ "chiTiet": {"thanhPhan": [{"thanhPhan": "giay_chung_sinh", "ten": "Giấy chứng sinh", "loi": "Thiếu thành phần bắt buộc"}]}}
+```
+
+Câu lỗi theo từng thành phần: `Thiếu thành phần bắt buộc`, `Tệp đã nộp chưa được quét sạch, chưa tính là đã nộp`, `Cần ít nhất N tệp`, `Thành phần không thuộc thủ tục này`. Schema trong CSDL hỏng → 500 (lỗi cấu hình, ghi log). Không thêm trigger CSDL cho bước này: khởi tạo quy trình chỉ đi qua `mot-cua-api` (Flowable không mở ra ngoài, APISIX chặn API quản trị), công dân không đổi được `trang_thai` khỏi `moi` qua PostgREST (RLS chỉ cho sửa khi `cho_bo_sung`); cán bộ chuyển `moi → dang_xu_ly` là thao tác tại quầy, không khởi tạo quy trình.
+
 | Endpoint | Ai | Làm gì | Mã trả về |
 |---|---|---|---|
-| `POST /workflow/ho-so` body `{"thu_tuc_id", "ho_ten_nguoi_nop", "so_dien_thoai"?}` | công dân | kiểm thủ tục có gói (`thu_tuc.quy_trinh`) → lưu hồ sơ qua PostgREST bằng token của công dân (RLS, CSDL tự đặt người nộp, trạng thái `moi`, hạn xử lý; cột khác client gửi bị bỏ) → khởi tạo quy trình với `businessKey` = mã hồ sơ. Trả `{"hoSo", "processInstanceId", "quyTrinh", "buocDangMo"}` | 201; 400 body sai; 403 không phải công dân; 404 thủ tục không thấy; 422 thủ tục chưa có quy trình (không lưu hồ sơ); 502 Flowable lỗi (hồ sơ đã lưu, trả kèm `chiTiet.hoSo` để gọi lại `khoi-tao`) |
-| `POST /workflow/ho-so/{id}/khoi-tao` | công dân (người nộp) | khởi tạo quy trình cho hồ sơ đã nộp (ví dụ nộp qua `/api/ho_so`) | 201; 404 không thấy hồ sơ (kể cả hồ sơ người khác); 409 đã có quy trình hoặc hồ sơ không còn `moi`; 422 |
+| `POST /workflow/ho-so` body `{"thu_tuc_id", "ho_ten_nguoi_nop", "so_dien_thoai"?}` | công dân | nộp và khởi tạo ngay, **chỉ dùng được cho thủ tục không có thành phần bắt buộc** (hồ sơ mới chưa có tệp). Kiểm thủ tục có gói (`thu_tuc.quy_trinh`) và schema với `{"thanh_phan": {}}` → lưu hồ sơ qua PostgREST bằng token của công dân (RLS, CSDL tự đặt người nộp, trạng thái `moi`, hạn xử lý; cột khác client gửi bị bỏ) → khởi tạo quy trình với `businessKey` = mã hồ sơ. Trả `{"hoSo", "processInstanceId", "quyTrinh", "buocDangMo"}` | 201; 400 body sai; 403 không phải công dân; 404 thủ tục không thấy; 422 thủ tục chưa có quy trình hoặc cần giấy tờ (không lưu hồ sơ, `chiTiet.thanhPhan` liệt kê thành phần thiếu; dùng luồng nộp ở trên); 502 Flowable lỗi (hồ sơ đã lưu, trả kèm `chiTiet.hoSo` để gọi lại `khoi-tao`) |
+| `POST /workflow/ho-so/{id}/khoi-tao` | công dân (người nộp) | bước cuối của luồng nộp: kiểm thành phần theo JSON Schema (Poka-yoke) rồi khởi tạo quy trình, `businessKey` = mã hồ sơ | 201; 404 không thấy hồ sơ (kể cả hồ sơ người khác); 409 đã có quy trình hoặc hồ sơ không còn `moi` (kiểm trước Poka-yoke); 422 thiếu/sai thành phần (`chiTiet.thanhPhan`) hoặc thủ tục chưa có quy trình |
 | `GET /workflow/ho-so/{id}/tien-do` | ai xem được hồ sơ theo RLS | các quy trình của hồ sơ: `batDau`, `ketThuc`, `diemKetThuc` (`ket_thuc_hoan_tat`/`ket_thuc_tu_choi`), `buocDangMo`, `lichSu` các bước | 200; 404 |
 | `GET /workflow/tasks` | mọi vai trò | task của người gọi: giao đích danh cho mình (`bo_sung` của công dân, task mình đã nhận) + task chưa ai nhận của nhóm mình (cán bộ: các lĩnh vực đang phụ trách; lãnh đạo: `lanh_dao`). Mỗi task: `id`, `buoc`, `ten`, `nguoiNhan`, `taoLuc`, `processInstanceId`, `hoSoId`, `maHoSo`, `hanXuLyLuc`, `quaHan` | 200 |
 | `POST /workflow/tasks/{id}/complete` body `{"bien": {…}}` | người được giao hoặc thuộc nhóm ứng viên | nhận task cho mình (nếu chưa ai nhận) rồi hoàn thành; trả `buocDangMo` sau đó | 200; 400 biến sai/thiếu; 403 không có quyền; 404 không thấy task; 409 người khác vừa nhận |
@@ -202,10 +220,16 @@ Biến được phép khi hoàn thành: đúng các `flowable:formProperty` củ
 Thêm thủ tục có quy trình: thêm một gói `thu-tuc/<ma>/` ([`docs/thu-tuc.md`](../docs/thu-tuc.md)), không sửa tệp nào ở đây. Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình.
 
 ```bash
-# Công dân (token lấy như docs/architecture.md §8) nộp hồ sơ khai sinh và khởi tạo quy trình
+# Công dân (token lấy như docs/architecture.md §8) nộp hồ sơ khai sinh: tạo hồ sơ → tải tệp → khởi tạo
 TT=$(curl -s 'http://localhost:9080/public/thu_tuc?ma=eq.KS01&select=id' | jq -r '.[0].id')
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d "{\"thu_tuc_id\":\"$TT\",\"ho_ten_nguoi_nop\":\"Nguyễn Văn Mẫu\"}" http://localhost:9080/workflow/ho-so
+HS=$(curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+  -d "{\"thu_tuc_id\":\"$TT\",\"ho_ten_nguoi_nop\":\"Nguyễn Văn Mẫu\"}" http://localhost:9080/api/ho_so | jq -r '.[0].id')
+curl -s -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9080/workflow/ho-so/$HS/khoi-tao   # chưa có tệp → 422
+for YC in $(curl -s "http://localhost:9080/public/thanh_phan_yeu_cau?thu_tuc_id=eq.$TT&bat_buoc=is.true&select=id" | jq -r '.[].id'); do
+  curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/pdf' --data-binary @giay-to-gia.pdf \
+    "http://localhost:9080/files/ho-so/$HS/tep?ten=giay-to.pdf&thanh_phan_yeu_cau_id=$YC"
+done
+curl -s -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9080/workflow/ho-so/$HS/khoi-tao   # đủ → 201
 # Cán bộ hộ tịch: xem task, tiếp nhận (đủ thành phần)
 curl -s -H "Authorization: Bearer $TOKEN_CAN_BO" http://localhost:9080/workflow/tasks
 curl -s -X POST -H "Authorization: Bearer $TOKEN_CAN_BO" -H 'Content-Type: application/json' \
