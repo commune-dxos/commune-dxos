@@ -105,6 +105,8 @@ nen-tang/                       Tầng 1 – không có tên bảng, vai trò ha
                                 dxos.jwt_claim(ten), dxos.jwt_sub(); sổ dxos.app_migration
   postgres/Dockerfile           postgres:17.6-alpine + pgAudit 17.1 (§4.6); role dxos_kiem_toan
                                 của log đối tượng do db-init tạo, Tầng 2 GRANT bảng cần theo dõi
+  step-ca/ky-tai-lieu.tpl       mẫu chứng thư ký tài liệu của CA nội bộ (§4.7); scripts/step-ca-start.sh,
+                                scripts/ca-init.sh: khởi tạo CA, cấp chứng thư cho dịch vụ Tầng 2
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
@@ -663,6 +665,58 @@ curl -H "Authorization: Bearer <token>" "http://localhost:9080/api/rpc/xac_minh_
 docker compose logs postgres | grep 'AUDIT:'
 ```
 
+### 4.7 Giấy tờ có ký số: step-ca + Gotenberg + pyHanko (#77)
+
+Hồ sơ được tiếp nhận vào quy trình thì có **biên nhận** (giấy tiếp nhận hồ sơ và hẹn trả kết quả), hoàn tất thì có **thông báo kết quả**: PDF ký số PAdES bằng chứng thư của xã, lưu trên Garage, SHA-256 vào nhật ký kiểm toán (§4.6). Sổ văn bản đến/đi dùng lại lớp này ở issue riêng (#78).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant BAO as OpenBao
+  participant CA as step-ca<br/>(CA nội bộ)
+  participant CI as ca-init<br/>(một lần, mỗi make up)
+  participant API as mot-cua-api
+  participant GT as Gotenberg<br/>(Chromium)
+  participant S3 as Garage
+  participant PG as PostgreSQL
+  CI->>BAO: AppRole ca-init: đọc mật khẩu provisioner
+  CI->>CA: xin chứng thư ký tài liệu (JWK provisioner, mẫu ky-tai-lieu.tpl)
+  CI->>BAO: ghi khóa + chuỗi chứng thư + root → dxos/tang2/mot-cua/ky-so
+  Note over API: khởi tạo quy trình xong (biên nhận) / bước cuối hoàn tất (kết quả): luồng nền
+  API->>BAO: AppRole tang2: đọc ky-so
+  API->>GT: HTML từ mot-cua/mau-giay-to/ → PDF A4
+  API->>API: pyHanko ký PAdES B-B (chuỗi chứng thư tới root)
+  API->>S3: PUT ho-so/<id>/giay-to/<loai>-<uuid>.pdf
+  API->>PG: INSERT giay_to_ky (dich_vu_tep) → trigger kiểm toán giay_to.ky + SHA-256
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **step-ca làm CA nội bộ hai tầng** (root + intermediate), một provisioner JWK chỉ để ký tài liệu | Xã có CA riêng, không phụ thuộc dịch vụ ngoài; khóa CA mã hóa trong volume `step-ca-data`, mật khẩu ở OpenBao (`dxos/core/step-ca/ca`), không có khóa nào trong git. Mẫu `nen-tang/step-ca/ky-tai-lieu.tpl`: Key Usage `digitalSignature` + `contentCommitment` (chống chối bỏ), không phải CA, không có tên miền (không dùng được cho TLS), hạn 1 năm |
+| **ca-init** cấp chứng thư rồi ghi vào OpenBao; backend chỉ đọc | Giống `garage-init` ghi khóa S3: danh tính `ca-init` chỉ đọc mật khẩu provisioner (không đọc mật khẩu khóa CA) và chỉ ghi `ky-so` của dịch vụ Tầng 2; `tang2` chỉ đọc. Chạy mỗi `make up`: còn hạn hơn 30 ngày, cùng tên và cùng root thì giữ; không thì cấp mới (khóa RSA 3072 mới) |
+| **Gotenberg** bản chỉ có Chromium, không mở ra host, chặn mạng | Sinh PDF đúng bố cục giấy tờ hành chính từ HTML/CSS, phông Noto Serif có tiếng Việt sẵn trong image. Chromium bị cấm truy cập mọi địa chỉ mạng (`--chromium-deny-private-ips`, `--chromium-deny-public-ips`), tắt JavaScript, webhook, downloadFrom: mẫu tự chứa, không SSRF được qua nội dung hồ sơ |
+| Mẫu trong **bộ máy** `mot-cua/mau-giay-to/`, nền tảng không biết giấy tờ nào | `nen-tang/` chỉ có dịch vụ (CA, Gotenberg). Dữ liệu đưa vào mẫu đã thoát HTML (họ tên người nộp không chèn được thẻ) |
+| **pyHanko** ký trong `mot-cua-api`, PAdES B-B, một chữ ký phủ toàn bộ tệp | Thư viện MIT thuần Python; Adobe Reader và các phần mềm đọc PDF có hỗ trợ chữ ký số nhận ra chữ ký, tin cậy khi người dùng tin root của xã. Chưa có dấu thời gian (TSA) hay LTV: hiệu lực dựa vào thời hạn chứng thư và SHA-256 trong nhật ký kiểm toán |
+| Phát hành **trong luồng nền** ngay sau Flowable, cộng endpoint "phát hành nếu chưa có" | Request nộp/xử lý không chậm thêm 1–3 giây và không lỗi khi Gotenberg hay CA tạm dừng; bấm tải sau đó phát hành lại. Mỗi hồ sơ một giấy tờ mỗi loại (`UNIQUE`), phát hành trùng thì xóa object thừa |
+| Metadata ghi bằng tài khoản dịch vụ tệp, không sửa được, SHA-256 vào chuỗi kiểm toán | Người dùng không tự khai giấy tờ; thay tệp trên Garage thì SHA-256 không khớp CSDL và nhật ký kiểm toán; RLS: ai xem được hồ sơ thì xem được giấy tờ |
+
+API (qua APISIX `/files`, token Keycloak):
+
+| Endpoint | Làm gì |
+|---|---|
+| `POST /files/ho-so/{id}/giay-to/{bien_nhan\|ket_qua}` | phát hành nếu chưa có (201) hoặc trả bản đã có (200), kèm link tải ký sẵn ngắn hạn; hồ sơ chưa vào quy trình → 409 biên nhận; chưa hoàn tất → 409 kết quả; không xem được hồ sơ → 404 |
+| `GET /files/ho-so/{id}/giay-to`, `GET /files/giay-to/{id}` | danh sách, metadata + link |
+| `POST /files/xac-minh` (body PDF) | pyHanko kiểm chữ ký theo root của xã: `hopLe` = toàn vẹn + chữ ký đúng + tin cậy + phủ toàn bộ tệp; `phatHanh` = giấy tờ đã phát hành có cùng SHA-256 (nếu có) |
+
+Kết quả xác minh mẫu (một byte bị sửa sau khi ký):
+
+```json
+{"hopLe": false, "coChuKy": true, "toanVen": false, "chuKyDung": true, "tinCay": true, "phuToanBo": true,
+ "nguoiKy": "UBND xã Mẫu – Bộ phận Một cửa", "loi": "Nội dung đã bị sửa sau khi ký", "phatHanh": null, "sha256": "…"}
+```
+
+Vận hành: đổi tên cơ quan (`DXOS_KY_SO_TEN`) rồi `make up` → chứng thư mới. Mất volume `step-ca-data` = CA mới: giấy tờ đã ký trước đó vẫn toàn vẹn nhưng không còn tin cậy khi xác minh, nên sao lưu volume này cùng OpenBao. Mật khẩu khóa CA chỉ dùng lúc khởi tạo; đổi trong OpenBao sau đó thì step-ca không mở được khóa.
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -680,7 +734,8 @@ docker compose logs postgres | grep 'AUDIT:'
 | `core` | Garage (+ dịch vụ một lần `garage-secrets`, `garage-init`), ClamAV | chạy thử 21/10/2026 (#7) | Garage ~30 MB RAM; ClamAV ~1–1,5 GB RAM cho CSDL virus |
 | `core` | OpenBao (+ dịch vụ một lần `bao-init`, 5 agent `*-secrets`) | chạy thử 21/10/2026 (#10) | agent chạy khoảng 1 giây rồi thoát, không giữ RAM |
 | `core` | RabbitMQ (+ dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`), `mot-cua-worker` | chạy thử 21/10/2026 (#9) | RabbitMQ ~150 MB RAM, chặn publisher ở 40% RAM; `mot-cua-worker` ~20 MB |
-| `docs` | Gotenberg, step-ca, Meilisearch CE | TODO tuần 2–5 | |
+| `core` | step-ca (+ dịch vụ một lần `step-ca-secrets`, `ca-init`), Gotenberg | chạy thử 23/10/2026 (#77) | đo 23/10/2026: step-ca ~70 MB RAM; Gotenberg (Chromium) ~470 MB sau khi sinh PDF, image ~1,7 GB; image `mot-cua-api` 157 MB (thêm pyHanko ~55 MB) |
+| `docs` | Meilisearch CE | TODO tuần 5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | Apache Superset | TODO tuần 4 | |
 

@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Chi tiết hồ sơ cho cán bộ: người nộp, thành phần hồ sơ và tệp (link ký sẵn ngắn hạn qua /files),
 // lịch sử các bước (/workflow/ho-so/{id}/tien-do), và form xử lý bước hiện tại nếu task thuộc mình
-// hoặc nhóm của mình. Hồ sơ RLS không cho xem (cán bộ lĩnh vực khác) → "Không thấy hồ sơ".
+// hoặc nhóm của mình. Hồ sơ RLS không cho xem (cán bộ lĩnh vực khác) → "Không thấy hồ sơ". Giấy tờ có
+// ký số (#77): biên nhận, và thông báo kết quả khi hồ sơ hoàn tất.
 import { ArrowLeft, CircleCheck, Download, FileText, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { NutGiayTo } from "@/components/nut-giay-to";
 import { ThongBao } from "@/components/thong-bao";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -135,6 +137,26 @@ function ThanhPhan({ yeuCau, tep }: { yeuCau: ThanhPhanYeuCau[]; tep: TepHoSo[] 
               ))}
             </ul>
           </section>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GiayToKySo({ hoSo }: { hoSo: HoSoCanBo }) {
+  const { api } = useDuLieuCanBo();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">
+          <h2>Giấy tờ có ký số</h2>
+        </CardTitle>
+        <CardDescription>PDF ký số bằng chứng thư của xã, tải để in hoặc gửi công dân.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <NutGiayTo key={`bn-${hoSo.id}`} loai="bien_nhan" layGiayTo={() => api.phatHanhGiayTo(hoSo.id, "bien_nhan")} />
+        {hoSo.trang_thai === "hoan_tat" && (
+          <NutGiayTo key={`kq-${hoSo.id}`} loai="ket_qua" layGiayTo={() => api.phatHanhGiayTo(hoSo.id, "ket_qua")} />
         )}
       </CardContent>
     </Card>
@@ -344,6 +366,7 @@ export function ChiTietHoSo() {
             </CardContent>
           </Card>
           <ThanhPhan yeuCau={duLieu.yeuCau} tep={duLieu.tep} />
+          <GiayToKySo hoSo={hoSo} />
           <LichSu tienDo={duLieu.tienDo} />
         </div>
 

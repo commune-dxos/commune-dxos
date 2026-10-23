@@ -68,6 +68,8 @@ beforeEach(() => {
     if (u.includes(`/workflow/ho-so/${ID}/tien-do`))
       return json({ hoSo: HS, quyTrinh: [{ processInstanceId: "pi", quyTrinh: "dang_ky_khai_sinh", batDau: "2026-10-22T02:00:00Z", ketThuc: null, diemKetThuc: null, buocDangMo: [{ id: TASK.id, buoc: "tiep_nhan", ten: TASK.ten }], lichSu: [{ buoc: "tiep_nhan", ten: TASK.ten, batDau: "2026-10-22T02:00:00Z", ketThuc: null }] }] });
     if (u.includes("/complete") && init?.method === "POST") return traLoiHoanThanh();
+    if (u.includes("/giay-to/") && init?.method === "POST")
+      return json({ id: "g1", loai: "bien_nhan", chung_thu_ten: "UBND xã Mẫu", maHoSo: HS.ma_ho_so, link: "http://localhost:9080/files/s3/x", hetHanLuc: "2026-10-23T03:05:00+00:00" }, 201);
     return json({ loi: "không có" }, 404);
   });
   vi.stubGlobal("fetch", goi);
@@ -135,6 +137,18 @@ describe("chi tiết và xử lý bước", () => {
     expect(await screen.findByRole("radiogroup")).toBeInTheDocument();
     expect(screen.getByText("Đủ thành phần hồ sơ?")).toBeInTheDocument();
     expect(screen.getByLabelText(/Ghi chú/)).toBeInTheDocument();
+  });
+
+  it("giấy tờ có ký số (#77): biên nhận luôn có, kết quả chỉ khi hồ sơ hoàn tất; bấm → POST phát hành", async () => {
+    const u = userEvent.setup();
+    ve(`/can-bo/ho-so/${ID}`, nguoiDung(["can_bo"]));
+    await screen.findByRole("heading", { level: 2, name: "Giấy tờ có ký số" });
+    expect(screen.getByRole("button", { name: /Tải biên nhận hồ sơ/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Tải thông báo kết quả/ })).toBeNull();
+    await u.click(screen.getByRole("button", { name: /Tải biên nhận hồ sơ/ }));
+    const [url, init] = goiTheo(`/files/ho-so/${ID}/giay-to/bien_nhan`)[0];
+    expect(String(url)).toMatch(/\/files\/ho-so\/[0-9a-f-]+\/giay-to\/bien_nhan$/);
+    expect(init?.method).toBe("POST");
   });
 
   it("thiếu lựa chọn bắt buộc: báo lỗi, KHÔNG gọi API; chọn Không + ghi chú → gửi đúng biến và kiểu", async () => {

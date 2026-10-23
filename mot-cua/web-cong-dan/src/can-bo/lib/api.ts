@@ -9,10 +9,12 @@
 //   GET  /api/thanh_phan_yeu_cau            giấy tờ thủ tục yêu cầu
 //   GET  /files/ho-so/{id}/tep              tệp đã nộp (metadata, theo RLS)
 //   GET  /files/tep/{id}?ttl=…              link GET ký sẵn ngắn hạn (/files/s3/…), mot-cua-api ghi nhật ký
+//   POST /files/ho-so/{id}/giay-to/{loai}   biên nhận / thông báo kết quả PDF có ký số (#77)
 //   GET  /workflow/ho-so/{id}/tien-do       bước đang mở và lịch sử các bước
 //   POST /workflow/tasks/{id}/complete      nhận + hoàn thành bước với biến khai báo cho bước đó
 // Không gọi thẳng PostgREST, Flowable hay Garage; không cầm mật khẩu hay khóa nào.
 import { cauHinh as cauHinhMacDinh, type CauHinh } from "@/lib/cau-hinh";
+import { phatHanhGiayTo, type LoaiGiayTo } from "@/lib/giay-to";
 import { goiGateway } from "@/lib/goi-api";
 import type { BienGui, BienTheoBuoc } from "./form-buoc";
 
@@ -154,6 +156,10 @@ export class ApiCanBo {
 
   layLinkTep(tepId: string) {
     return this.lay<LinkTep>(`/files/tep/${encodeURIComponent(tepId)}`);
+  }
+
+  phatHanhGiayTo(hoSoId: string, loai: LoaiGiayTo) {
+    return phatHanhGiayTo(this.token, hoSoId, loai, this.cauHinh, this.goi);
   }
 
   layTienDo(hoSoId: string) {

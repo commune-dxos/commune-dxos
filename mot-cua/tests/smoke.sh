@@ -24,6 +24,8 @@
 #      tests/smoke-can-bo.sh.
 #   4j. Nhật ký kiểm toán chuỗi băm (#75): quyền qua APISIX, dấu vết của hồ sơ vừa xử lý, nộp đồng thời,
 #      trình xác minh độc lập Python, log đối tượng pgAudit: tests/smoke-kiem-toan.sh.
+#   4k. Giấy tờ có ký số (#77): step-ca, ca-init, biên nhận/kết quả PDF ký PAdES phát hành khi nộp/hoàn tất,
+#      tải qua link ngắn hạn, xác minh (sửa 1 byte → không toàn vẹn), quyền: tests/smoke-ky-so.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -420,6 +422,10 @@ fi
 # --- 4j. Nhật ký kiểm toán chuỗi băm + pgAudit (#75) ------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-kiem-toan.sh
 . "mot-cua/tests/smoke-kiem-toan.sh"
+
+# --- 4k. Giấy tờ có ký số: biên nhận, kết quả, xác minh (#77) ----------------------------------------
+# shellcheck source=mot-cua/tests/smoke-ky-so.sh
+. "mot-cua/tests/smoke-ky-so.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';

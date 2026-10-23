@@ -162,6 +162,9 @@ describe("form nộp hồ sơ (bản mẫu)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Đã nộp hồ sơ" })).toBeInTheDocument();
     expect(screen.getByText("HS20261023-000123")).toBeInTheDocument();
     expect(screen.getByText("26/10/2026")).toBeInTheDocument();
+    // Biên nhận có ký số (#77) tải ngay trên trang đã nộp.
+    expect(screen.getByRole("heading", { level: 2, name: "Biên nhận" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tải biên nhận hồ sơ \(PDF có ký số\)/ })).toBeEnabled();
   });
 
   it("nộp thật theo thứ tự: tạo hồ sơ, tải từng tệp đúng thành phần, rồi mới khởi tạo quy trình", async () => {

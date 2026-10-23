@@ -1,16 +1,29 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Trang "Đã nộp" (mẫu confirmation page của GOV.UK): khung xanh có mã hồ sơ do CSDL cấp, rồi việc
-// tiếp theo. Chỉ hiện sau khi hồ sơ đã tạo, tệp đã tải và quy trình đã khởi tạo.
+// tiếp theo. Chỉ hiện sau khi hồ sơ đã tạo, tệp đã tải và quy trình đã khởi tạo. Biên nhận PDF có ký
+// số của xã (#77) tải ngay tại đây.
 import { Check } from "lucide-react";
 import { Link } from "react-router";
+import { NutGiayTo } from "@/components/nut-giay-to";
 import { buttonVariants } from "@/components/ui/button";
 import type { ThuTuc } from "@/lib/api";
 import { ngay } from "@/lib/dinh-dang";
+import type { GiayToKy } from "@/lib/giay-to";
 import type { HoSoMoi } from "@/lib/ho-so";
 import type { NguoiNop } from "./kieu";
 
-export function DaNop({ thuTuc, hoSo, nguoiNop }: { thuTuc: ThuTuc; hoSo: HoSoMoi; nguoiNop: NguoiNop }) {
+export function DaNop({
+  thuTuc,
+  hoSo,
+  nguoiNop,
+  layBienNhan,
+}: {
+  thuTuc: ThuTuc;
+  hoSo: HoSoMoi;
+  nguoiNop: NguoiNop;
+  layBienNhan: () => Promise<GiayToKy>;
+}) {
   return (
     <div className="flex max-w-3xl flex-col gap-10">
       <div className="nen-dam flex flex-col items-center gap-4 rounded-lg bg-primary px-6 py-10 text-center text-primary-foreground">
@@ -26,7 +39,16 @@ export function DaNop({ thuTuc, hoSo, nguoiNop }: { thuTuc: ThuTuc; hoSo: HoSoMo
           </strong>
         </div>
       </div>
-      <p className="text-lg">Ghi lại mã hồ sơ để hỏi bộ phận một cửa khi cần.</p>
+      <section aria-labelledby="bien-nhan" className="flex flex-col gap-3">
+        <h2 id="bien-nhan" className="text-2xl font-bold">
+          Biên nhận
+        </h2>
+        <p className="text-lg">
+          Giấy tiếp nhận hồ sơ và hẹn trả kết quả, có chữ ký số của xã. Lưu lại để đối chiếu khi cần; ghi mã hồ sơ
+          để hỏi bộ phận một cửa.
+        </p>
+        <NutGiayTo loai="bien_nhan" layGiayTo={layBienNhan} />
+      </section>
       <section aria-labelledby="tiep-theo" className="flex flex-col gap-3">
         <h2 id="tiep-theo" className="text-2xl font-bold">
           Việc tiếp theo

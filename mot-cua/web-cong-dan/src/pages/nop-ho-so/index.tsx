@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoiApi, type ThuTuc } from "@/lib/api";
+import { phatHanhGiayTo } from "@/lib/giay-to";
 import { nopHoSo, tienDoMoi, type HoSoMoi, type TienDoNop } from "@/lib/ho-so";
 import { docThanhPhan, kiemThanhPhan } from "@/lib/thanh-phan";
 import { BuocGiayTo } from "./buoc-giay-to";
@@ -62,7 +63,16 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
     if (!daNop) return <Navigate to={goc} replace />;
     return (
       <Khung>
-        <DaNop thuTuc={thuTuc} hoSo={daNop} nguoiNop={nguoiNop} />
+        <DaNop
+          thuTuc={thuTuc}
+          hoSo={daNop}
+          nguoiNop={nguoiNop}
+          layBienNhan={() => {
+            const token = nguoiDung?.access_token;
+            if (!token) return Promise.reject(new LoiApi("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401));
+            return phatHanhGiayTo(token, daNop.id, "bien_nhan");
+          }}
+        />
       </Khung>
     );
   }

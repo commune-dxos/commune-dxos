@@ -39,6 +39,18 @@ Kiểm quyền bằng token của người dùng (RLS); metadata và nhật ký 
 vụ Keycloak `mot_cua_tep` (role dich_vu_tep), nên công dân không tự khai được object_key hay
 kết quả quét qua /api.
 
+Giấy tờ có ký số (#77, phần thuần ở ky_so.py): biên nhận phát hành ngay sau khi khởi tạo quy
+trình, thông báo kết quả ngay khi hồ sơ hoàn tất (luồng nền, lỗi chỉ ghi log), hoặc khi người có
+quyền xem hồ sơ yêu cầu. Mẫu mot-cua/mau-giay-to/ → Gotenberg → pyHanko ký PAdES bằng chứng thư
+step-ca (ca-init ghi vào OpenBao dxos/tang2/<DXOS_TANG2>/ky-so) → Garage → giay_to_ky (dich_vu_tep;
+trigger ghi kiểm toán giay_to.ky kèm SHA-256):
+  GET  /files/ho-so/{id}/giay-to            giấy tờ đã phát hành của hồ sơ (theo RLS)
+  POST /files/ho-so/{id}/giay-to/{loai}     loai = bien_nhan | ket_qua: phát hành nếu chưa có
+                                            (201) hoặc trả bản đã có (200), kèm link tải ngắn hạn
+  GET  /files/giay-to/{id}                  metadata + link tải ngắn hạn
+  POST /files/xac-minh                      body = PDF bất kỳ (application/pdf): kiểm chữ ký số
+                                            theo CA của xã, đối chiếu SHA-256 với giấy tờ đã phát hành
+
 Sự kiện (#9, hop_thu.py) và trạng thái hồ sơ (#73, trang_thai.py): sau mỗi lời gọi Flowable
 thành công, đọc bước đang mở, tra ánh xạ bước → trạng thái của gói (thu_tuc.trang_thai_buoc) rồi
 gọi RPC dong_bo_trang_thai MỘT lần: đổi ho_so.trang_thai, ghi lịch sử chuyển trạng thái và ghi sự
@@ -58,8 +70,8 @@ tệp đã quét sạch trong CSDL và kiểm bằng JSON Schema 2020-12 của t
 từng thành phần, không khởi tạo quy trình, không ghi sự kiện. Luồng nộp: tạo hồ sơ (/api/ho_so)
 → tải tệp (/files) → khởi tạo (/workflow/ho-so/{id}/khoi-tao).
 
-Thư viện ngoài duy nhất là jsonschema (MIT, requirements.txt, image build từ Dockerfile cạnh tệp
-này); phần còn lại chỉ dùng thư viện chuẩn.
+Thư viện ngoài: jsonschema (MIT) và pyHanko (MIT, chỉ nạp trong ky_so.py) cùng gói kéo theo
+(requirements.txt, image build từ Dockerfile cạnh tệp này); phần còn lại chỉ dùng thư viện chuẩn.
 """
 
 import base64
@@ -80,6 +92,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bimat
 import hop_thu
+import ky_so
 import poka_yoke
 import su_kien
 import tep
@@ -100,6 +113,7 @@ CLAMAV_PORT = int(os.environ.get("DXOS_CLAMAV_PORT", "3310"))
 GATEWAY_URL = os.environ.get("DXOS_GATEWAY_URL", "http://localhost:9080").rstrip("/")
 FILE_MAX_BYTES = int(os.environ.get("DXOS_FILE_MAX_BYTES", str(10 * 1024 * 1024)))
 FILE_LINK_TTL = int(os.environ.get("DXOS_FILE_LINK_TTL", "300"))
+GOTENBERG_URL = os.environ.get("DXOS_GOTENBERG_URL", "http://gotenberg:3000")
 
 # --- Quy ước giữa bộ máy và gói thủ tục ------------------------------------------------
 # Kiểu của flowable:formProperty → kiểu JSON nhận khi hoàn thành bước. Biến không khai báo
@@ -358,6 +372,7 @@ def _khoi_tao(hs, sub, token):
     tt = dong_bo_trang_thai(hs["id"], hs["thu_tuc"].get("trang_thai_buoc"), ma_buoc, [(
         "ho_so.moi", {"processInstanceId": pi["id"], "quyTrinh": key, "hanXuLy": hs["han_xu_ly"],
                       "buocDangMo": ma_buoc}, f"ho_so.moi:{pi['id']}")], nguoi_sub=sub)
+    phat_hanh_nen(hs["id"], "bien_nhan", sub)
     return {"processInstanceId": pi["id"], "quyTrinh": key, "buocDangMo": buoc, "trangThai": tt}
 
 
@@ -518,6 +533,8 @@ def hoan_thanh(token, claims, task_id, body):
                            f"ho_so.ket_thuc:{pi}"))
         tt = dong_bo_trang_thai(ho_so_id, bang, ma_buoc, ds, ket_qua, da_ket_thuc, buoc=t["taskDefinitionKey"],
                                 ten_buoc=t.get("name"), ghi_chu=bien.get("ghiChu"), nguoi_sub=sub)
+        if tt == "hoan_tat":
+            phat_hanh_nen(ho_so_id, "ket_qua", sub)
     return 200, {"id": task_id, "buoc": t["taskDefinitionKey"], "buocDangMo": buoc, "trangThai": tt}
 
 
@@ -711,6 +728,156 @@ def xem_tep(token, claims, req, tep_id):
                  "hetHanLuc": het_han.isoformat(timespec="seconds")}
 
 
+# --- Giấy tờ có ký số (#77) ---------------------------------------------------------------
+_KY_SO = {"gia_tri": None, "luc": 0.0}
+_KHOA_PHAT_HANH = threading.Lock()
+_COT_GIAY_TO = "id,ho_so_id,loai,sha256,kich_thuoc,chung_thu_ten,chung_thu_so_hieu,ky_luc"
+_COT_HS_GIAY_TO = ("id,ma_ho_so,trang_thai,ho_ten_nguoi_nop,ngay_nhan,han_xu_ly,ngay_hoan_tat,"
+                   "thu_tuc:thu_tuc_id(ma,ten,le_phi)")
+
+
+def chung_thu_ky():
+    """Khóa + chứng thư ký tài liệu (ca-init ghi vào OpenBao); đọc lại sau 10 phút để nhận bản gia hạn."""
+    if not _KY_SO["gia_tri"] or time.time() - _KY_SO["luc"] > 600:
+        try:
+            _KY_SO.update(gia_tri=bimat.doc(f"tang2/{TANG2}/ky-so"), luc=time.time())
+        except bimat.LoiBiMat as e:
+            log.error("thiếu chứng thư ký số: %s", e)
+            raise Loi(503, "Chưa có chứng thư ký số (ca-init chưa chạy?)") from None
+    return _KY_SO["gia_tri"]
+
+
+def _le_phi(so):
+    return "Miễn lệ phí" if not so else f"{so:,} đồng".replace(",", ".")
+
+
+def _du_lieu_giay_to(svc, hs, loai, co_quan):
+    tt = hs.get("thu_tuc") or {}
+    du_lieu = {"co_quan": co_quan, "ma_ho_so": hs["ma_ho_so"], "nguoi_nop": hs["ho_ten_nguoi_nop"],
+               "thu_tuc": tt.get("ten"), "ma_thu_tuc": tt.get("ma"), "ngay_nhan": ky_so.ngay_vn(hs["ngay_nhan"]),
+               "han_xu_ly": ky_so.ngay_vn(hs["han_xu_ly"]),
+               "ngay_lap": ky_so.ngay_vn(datetime.datetime.now(datetime.timezone.utc).isoformat())}
+    if loai == "bien_nhan":
+        tep_hs = pgrst(svc, "GET", f"/thanh_phan_ho_so?ho_so_id=eq.{hs['id']}&object_key=not.is.null"
+                       "&select=ten_tep,thanh_phan_yeu_cau:thanh_phan_yeu_cau_id(ten)&order=created_at")
+        du_lieu.update(le_phi=_le_phi(tt.get("le_phi")),
+                       thanh_phan=[(t.get("thanh_phan_yeu_cau") or {}).get("ten") or t["ten_tep"] for t in tep_hs])
+    else:
+        du_lieu.update(ngay_hoan_tat=ky_so.ngay_vn(hs["ngay_hoan_tat"]), ket_qua="Đã giải quyết – hoàn tất")
+    return du_lieu
+
+
+def phat_hanh(ho_so_id, loai, nguoi_sub):
+    """Giấy tờ `loai` của hồ sơ: có rồi → (dòng, False); chưa có → sinh, ký, lưu → (dòng, True).
+    Đọc/ghi bằng tài khoản dịch vụ tệp: người gọi phải kiểm quyền xem hồ sơ trước."""
+    svc = DICH_VU_TEP.lay()
+    duong = f"/giay_to_ky?ho_so_id=eq.{ho_so_id}&loai=eq.{loai}&select={_COT_GIAY_TO}"
+    with _KHOA_PHAT_HANH:  # một tiến trình: không sinh hai lần cùng lúc
+        co = pgrst(svc, "GET", duong)
+        if co:
+            return co[0], False
+        rows = pgrst(svc, "GET", f"/ho_so?id=eq.{ho_so_id}&select={_COT_HS_GIAY_TO}")
+        if not rows:
+            raise Loi(404, "Không thấy hồ sơ")
+        hs = rows[0]
+        if loai == "ket_qua" and hs["trang_thai"] != "hoan_tat":
+            raise Loi(409, "Hồ sơ chưa hoàn tất, chưa có kết quả")
+        ky = chung_thu_ky()
+        try:
+            pdf = ky_so.html_sang_pdf(GOTENBERG_URL, ky_so.dung_html(loai, _du_lieu_giay_to(svc, hs, loai, ky["ten"])))
+            da_ky = ky_so.ky_pdf(pdf, ky, ly_do=f"{ky_so.LOAI[loai]} {hs['ma_ho_so']}", noi_ky=ky["ten"])
+        except ky_so.LoiKySo as e:
+            log.error("không phát hành %s cho hồ sơ %s: %s", loai, hs["ma_ho_so"], e)
+            raise Loi(503, "Chưa sinh được giấy tờ có ký số, thử lại sau") from None
+        key = f"ho-so/{ho_so_id}/giay-to/{loai}-{uuid.uuid4()}.pdf"
+        s3_goi("PUT", key, da_ky, {"Content-Type": "application/pdf"})
+        dong = {"ho_so_id": ho_so_id, "loai": loai, "object_key": key, "sha256": hashlib.sha256(da_ky).hexdigest(),
+                "kich_thuoc": len(da_ky), "chung_thu_ten": ky["ten"], "chung_thu_so_hieu": ky["so_hieu"],
+                "nguoi_yeu_cau_sub": nguoi_sub}
+        try:
+            moi = pgrst(svc, "POST", f"/giay_to_ky?select={_COT_GIAY_TO}", dong, prefer="return=representation")[0]
+        except Loi as e:
+            try:
+                s3_goi("DELETE", key)  # không để lại object không có metadata
+            except Loi:
+                log.error("không xóa được object mồ côi %s", key)
+            if e.status == 409:  # tiến trình khác vừa phát hành
+                return pgrst(svc, "GET", duong)[0], False
+            raise
+    log.info("phát hành %s cho hồ sơ %s (%d byte, sha256 %s)", loai, hs["ma_ho_so"], len(da_ky), dong["sha256"])
+    return moi, True
+
+
+def phat_hanh_nen(ho_so_id, loai, nguoi_sub):
+    """Phát hành ở luồng nền sau khi Flowable đã chạy: không làm chậm hay hỏng request; lỗi thì
+    người dùng bấm tải sau (POST /files/ho-so/{id}/giay-to/{loai}) sẽ phát hành lại."""
+    def chay():
+        try:
+            phat_hanh(ho_so_id, loai, nguoi_sub)
+        except Loi as e:
+            log.error("phát hành nền %s cho hồ sơ %s lỗi: %s", loai, ho_so_id, e.thong_diep)
+        except Exception:  # noqa: BLE001
+            log.exception("phát hành nền %s cho hồ sơ %s lỗi", loai, ho_so_id)
+    threading.Thread(target=chay, name=f"phat-hanh-{loai}", daemon=True).start()
+
+
+def _kem_link(dong, ma_ho_so, ttl=FILE_LINK_TTL):
+    c = s3()
+    rows = pgrst(DICH_VU_TEP.lay(), "GET", f"/giay_to_ky?id=eq.{dong['id']}&select=object_key")
+    url = tep.presign("GET", _url_object(rows[0]["object_key"]), c["region"], c["accessKeyId"],
+                      c["secretAccessKey"], ttl, query_them={
+                          "response-content-type": "application/pdf",
+                          "response-content-disposition": tep.content_disposition(f"{dong['loai']}-{ma_ho_so}.pdf")})
+    het_han = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
+    return {**dong, "maHoSo": ma_ho_so, "link": GATEWAY_URL + "/files/s3" + url[len(c["endpoint"]):],
+            "hetHanLuc": het_han.isoformat(timespec="seconds")}
+
+
+def tao_giay_to(token, claims, ho_so_id, loai):
+    hs = _doc_ho_so(token, ho_so_id)  # 404 nếu RLS không cho xem
+    if loai == "ket_qua" and hs["trang_thai"] != "hoan_tat":
+        raise Loi(409, "Hồ sơ chưa hoàn tất, chưa có kết quả")
+    if loai == "bien_nhan" and hs["trang_thai"] == "moi" and not _quy_trinh_cua(hs["ma_ho_so"]):
+        raise Loi(409, "Hồ sơ chưa được tiếp nhận vào quy trình")
+    dong, moi = phat_hanh(ho_so_id, loai, claims["sub"])
+    return (201 if moi else 200), _kem_link(dong, hs["ma_ho_so"])
+
+
+def ds_giay_to(token, claims, ho_so_id):
+    thay = bool(pgrst(token, "GET", f"/ho_so?id=eq.{ho_so_id}&select=id"))
+    tep.kiem_quyen_xem(vai_tro(claims), thay, thay or _ton_tai("ho_so", ho_so_id))
+    return 200, pgrst(token, "GET", f"/giay_to_ky?ho_so_id=eq.{ho_so_id}&select={_COT_GIAY_TO}&order=ky_luc")
+
+
+def xem_giay_to(token, claims, req, giay_to_id):
+    rows = pgrst(token, "GET", f"/giay_to_ky?id=eq.{giay_to_id}&select={_COT_GIAY_TO},ho_so:ho_so_id(ma_ho_so)")
+    tep.kiem_quyen_xem(vai_tro(claims), bool(rows), bool(rows) or _ton_tai("giay_to_ky", giay_to_id))
+    ttl = _so(req.query.get("ttl", FILE_LINK_TTL), "ttl")
+    if not 1 <= ttl <= FILE_LINK_TTL:
+        raise Loi(400, f"ttl phải trong 1–{FILE_LINK_TTL} giây")
+    dong = {k: v for k, v in rows[0].items() if k != "ho_so"}
+    return 200, _kem_link(dong, rows[0]["ho_so"]["ma_ho_so"], ttl)
+
+
+def xac_minh(token, claims, req):
+    """Ai đăng nhập cũng xác minh được một PDF (ví dụ cán bộ nơi khác nhận biên nhận từ công dân)."""
+    if (req.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/pdf":
+        raise Loi(415, "Body phải là PDF (Content-Type: application/pdf)")
+    n = _so(req.headers.get("Content-Length"), "Content-Length")
+    if n > FILE_MAX_BYTES:
+        raise Loi(413, f"Tệp vượt {FILE_MAX_BYTES // (1024 * 1024)} MB")
+    if n <= 0:
+        raise Loi(400, "Tệp rỗng")
+    pdf = req.rfile.read(n)
+    kq = ky_so.xac_minh_pdf(pdf, chung_thu_ky()["goc_pem"])
+    rows = pgrst(DICH_VU_TEP.lay(), "GET", f"/giay_to_ky?sha256=eq.{kq['sha256']}"
+                 "&select=loai,ky_luc,ho_so:ho_so_id(ma_ho_so)")
+    kq["phatHanh"] = ({"loai": rows[0]["loai"], "kyLuc": rows[0]["ky_luc"], "maHoSo": rows[0]["ho_so"]["ma_ho_so"]}
+                      if rows else None)
+    log.info("xác minh PDF sha256 %s: hợp lệ %s, đã phát hành %s", kq["sha256"], kq["hopLe"], bool(rows))
+    return 200, kq
+
+
 # --- HTTP --------------------------------------------------------------------------
 # (phương thức, đường dẫn, body JSON?, hàm(token, claims, body JSON hoặc request, match))
 ROUTES = [
@@ -723,6 +890,12 @@ ROUTES = [
     ("POST", re.compile(rf"/files/ho-so/({UUID})/tep"), False, lambda tk, c, r, m: tai_len(tk, c, r, m[1])),
     ("GET", re.compile(rf"/files/ho-so/({UUID})/tep"), False, lambda tk, c, r, m: ds_tep(tk, c, m[1])),
     ("GET", re.compile(rf"/files/tep/({UUID})"), False, lambda tk, c, r, m: xem_tep(tk, c, r, m[1])),
+    # Giấy tờ có ký số (#77).
+    ("GET", re.compile(rf"/files/ho-so/({UUID})/giay-to"), False, lambda tk, c, r, m: ds_giay_to(tk, c, m[1])),
+    ("POST", re.compile(rf"/files/ho-so/({UUID})/giay-to/(bien_nhan|ket_qua)"), False,
+     lambda tk, c, r, m: tao_giay_to(tk, c, m[1], m[2])),
+    ("GET", re.compile(rf"/files/giay-to/({UUID})"), False, lambda tk, c, r, m: xem_giay_to(tk, c, r, m[1])),
+    ("POST", re.compile(r"/files/xac-minh"), False, lambda tk, c, r, m: xac_minh(tk, c, r)),
 ]
 
 

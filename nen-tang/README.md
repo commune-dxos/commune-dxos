@@ -6,6 +6,7 @@ Cấu hình các dịch vụ lõi dùng chung cho Tầng 2. Ở đây **không c
 |---|---|
 | `postgres/initdb/` | role `authenticator` (PostgREST) và `anon`; schema `dxos`: hàm đọc claim JWT cho RLS (`dxos.jwt_sub()`…), sổ `dxos.app_migration` |
 | `postgres/Dockerfile` | image PostgreSQL của nền tảng: `postgres:17.6-alpine` gốc + pgAudit 17.1 biên dịch từ mã nguồn ghim SHA-256 (#75); `docker-compose.yml` bật `shared_preload_libraries=pgaudit`, log phiên theo `DXOS_PGAUDIT_LOG`, log đối tượng theo role `dxos_kiem_toan` (`docs/architecture.md` §4.6) |
+| `step-ca/ky-tai-lieu.tpl`, `scripts/step-ca-start.sh`, `scripts/ca-init.sh` | CA nội bộ (#77): step-ca khởi tạo CA hai tầng lần đầu (mật khẩu từ OpenBao), áp mẫu chứng thư ký tài liệu; `ca-init` cấp (gia hạn) chứng thư cho dịch vụ Tầng 2 rồi ghi vào OpenBao `dxos/tang2/<DXOS_TANG2>/ky-so`. Gotenberg (sinh PDF) không có cấu hình riêng ở đây, chỉ tham số trong `docker-compose.yml` (`docs/architecture.md` §4.7) |
 | `keycloak/realm-dxos.json` | realm `dxos`: khóa ký RS256, chính sách OTP, chống dò mật khẩu, client `dxos_api` (audience, không có role) và `dxos_cli` (chỉ dev) |
 | `apisix/` | `/public/*` → role `anon`, chỉ GET, 60 req/phút/IP; `/api/*` → PostgREST, `/workflow/*` → backend Tầng 2 (dịch vụ `mot-cua-api`), `/files/*` → API tệp: bắt buộc JWT realm `dxos`; chặn 403 API quản trị Flowable; CORS theo `DXOS_CORS_ORIGINS` (`docs/architecture.md` §4.1) |
 | `scripts/tang2-migrate.sh` | dịch vụ một lần: áp dụng `mot-cua/db/` (migration + seed) |
