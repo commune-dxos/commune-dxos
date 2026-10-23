@@ -107,7 +107,7 @@ nen-tang/                       Tầng 1 – không có tên bảng, vai trò ha
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
                                 /workflow/*, /files/* → mot-cua-api: bắt buộc JWT realm dxos;
-                                /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD);
+                                /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD); /* còn lại → web Tầng 2;
                                 chặn API quản trị Flowable; CORS theo DXOS_CORS_ORIGINS (§4.1)
   garage/garage.toml            Garage một nút (S3 :3900, Admin API :3903), bí mật đọc từ tệp (§4.3)
   openbao/config.hcl            OpenBao server (raft, không UI, audit ra stdout) (§4.4)
@@ -324,10 +324,11 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 | `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
 | `/files/*` | mọi (backend nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000`, giữ nguyên đường dẫn | 120 req/phút/IP; body ≤ 10 MiB (`client-control`, vượt → 413); endpoint: `mot-cua/README.md` |
 | `/files/s3/*` | GET, HEAD | chữ ký SigV4 trong URL (Garage kiểm chữ ký và hạn) | Garage S3 `garage:3900`, bỏ tiền tố, Host viết lại `garage:3900` | 120 req/phút/IP; bỏ header `Authorization`, `Cookie`; thêm `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store` |
+| `/*` (còn lại, ưu tiên thấp nhất) | GET, HEAD | không (trang tĩnh) | `mot-cua-web:8080`: cổng công dân, nginx không đặc quyền phục vụ bản build React (#57) | 600 req/phút/IP; bỏ `Authorization`, `Cookie`. nginx trả `index.html` cho route SPA (`/thu-tuc/…`, `/nop-ho-so/…`, `/dang-nhap/…`, 200) và đường dẫn lạ (404); CSP không `unsafe-inline`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: same-origin`; `/cau-hinh.js` (Keycloak, realm, client) sinh từ biến môi trường lúc chạy |
 
-- Toàn cục: plugin `cors` với `allow_origins` lấy từ biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
+- Toàn cục: plugin `cors` với `allow_origins` = origin của gateway (`DXOS_GATEWAY_URL`, nơi cổng công dân được phục vụ) + biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
 - Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
-- Không mở cổng ra host: PostgREST, `mot-cua-api`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+- Không mở cổng ra host: PostgREST, `mot-cua-api`, `mot-cua-web`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
 ### 4.2 Luồng `/workflow`: API quy trình mỏng của bộ máy một cửa
 

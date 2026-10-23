@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Máy chủ tĩnh của cổng công dân (#57). Entrypoint của image nginx thay ${DXOS_*} (chỉ biến môi
+# trường đã khai, biến của nginx như $uri giữ nguyên) rồi ghi ra /etc/nginx/conf.d/default.conf.
+# Chỉ APISIX gọi tới (không mở cổng ra host); APISIX giữ /public, /api, /files, /workflow.
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+    charset utf-8;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    include /etc/nginx/conf.d/bao-mat.headers;
+
+    # Đường dẫn lạ: trả index.html với mã 404 để SPA hiện trang "Không tìm thấy" mà mã HTTP vẫn đúng.
+    error_page 404 /index.html;
+
+    # Route của SPA (src/App.tsx): tải lại hay mở thẳng link sâu vẫn 200.
+    location = / {
+        rewrite ^ /index.html last;
+    }
+    location ~ ^/(thu-tuc|nop-ho-so|dang-nhap)/ {
+        rewrite ^ /index.html last;
+    }
+
+    location = /index.html {
+        include /etc/nginx/conf.d/bao-mat.headers;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Cấu hình lúc chạy, đọc trước mã ứng dụng (index.html). Không có bí mật. Gateway để trống:
+    # web gọi lõi qua chính origin này.
+    location = /cau-hinh.js {
+        default_type application/javascript;
+        include /etc/nginx/conf.d/bao-mat.headers;
+        add_header Cache-Control "no-store" always;
+        return 200 'window.__DXOS_CAU_HINH__ = {"gatewayUrl": "", "keycloakUrl": "${DXOS_KEYCLOAK_URL}", "realm": "${DXOS_KEYCLOAK_REALM}", "clientId": "${DXOS_OIDC_CLIENT_ID}"};\n';
+    }
+
+    # Tệp do Vite đặt tên theo băm nội dung: cache lâu dài.
+    location /assets/ {
+        include /etc/nginx/conf.d/bao-mat.headers;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri =404;
+    }
+}

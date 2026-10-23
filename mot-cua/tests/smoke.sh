@@ -16,6 +16,8 @@
 #   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh.
 #   4g. Gói thủ tục (D-009): danh mục, cắm–rút gói, hồ sơ chứng thực bản sao qua /workflow:
 #      tests/smoke-goi-thu-tuc.sh.
+#   4h. Cổng công dân mot-cua-web qua APISIX /: trang, phông, route SPA, header bảo mật, đăng nhập
+#      PKCE, nộp hồ sơ E2E từ origin của web (#57): tests/smoke-web.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -304,6 +306,10 @@ fi
 # --- 4g. Gói thủ tục (D-009) ---------------------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-goi-thu-tuc.sh
 . "mot-cua/tests/smoke-goi-thu-tuc.sh"
+
+# --- 4h. Cổng công dân qua APISIX (#57) ------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-web.sh
+. "mot-cua/tests/smoke-web.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';

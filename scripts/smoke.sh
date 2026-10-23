@@ -32,7 +32,7 @@ for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secre
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker; do
+for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker mot-cua-web; do
   for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break
@@ -69,8 +69,10 @@ kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "12
   "$(docker compose port flowable 8080 | cut -d: -f1)"
 # cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
 cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
-kiem "mot-cua-api, mot-cua-worker, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "||||||" \
-  "$(cong_host mot-cua-api)|$(cong_host mot-cua-worker)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
+kiem "mot-cua-api, mot-cua-worker, mot-cua-web, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "|||||||" \
+  "$(cong_host mot-cua-api)|$(cong_host mot-cua-worker)|$(cong_host mot-cua-web)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
+kiem "mot-cua-web chạy bằng user không phải root (uid 101), rootfs chỉ đọc" "101 true" \
+  "$(docker compose exec -T mot-cua-web id -u) $(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' "$(docker compose ps -q mot-cua-web)")"
 
 # 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
 ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
