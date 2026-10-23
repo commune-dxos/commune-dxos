@@ -42,7 +42,7 @@ Cách dùng tệp này:
 - [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả)
 
 ## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0
-- [ ] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit
+- [ ] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit (#75, PR chờ duyệt)
 - [ ] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF; văn bản đi/đến có ký số
 - [ ] V2 · Hồ sơ hoàn tất → Parquet + DuckDB; `dbt-core` dựng báo cáo + lineage
 - [ ] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn

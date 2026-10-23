@@ -103,6 +103,8 @@ flowchart TB
 nen-tang/                       Tầng 1 – không có tên bảng, vai trò hay thủ tục nghiệp vụ
   postgres/initdb/10-core.sql   role authenticator + anon; schema dxos: dxos.jwt_claims(),
                                 dxos.jwt_claim(ten), dxos.jwt_sub(); sổ dxos.app_migration
+  postgres/Dockerfile           postgres:17.6-alpine + pgAudit 17.1 (§4.6); role dxos_kiem_toan
+                                của log đối tượng do db-init tạo, Tầng 2 GRANT bảng cần theo dõi
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
@@ -262,7 +264,7 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`mot-cua
 |---|---|---|
 | Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do bộ máy một cửa nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `nen-tang/keycloak/realm-dxos.json`, `mot-cua/keycloak/realm.json` |
 | API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `nen-tang/apisix/config.yaml`, `nen-tang/apisix/apisix.yaml`, §4.1, §8.5 |
-| Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của bộ máy; migration theo dịch vụ Tầng 2; pgAudit (tuần 2) | `nen-tang/postgres/initdb/10-core.sql`, `nen-tang/scripts/tang2-migrate.sh`, `mot-cua/db/` |
+| Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của bộ máy; migration theo dịch vụ Tầng 2; pgAudit 17.1 (log DDL, quyền, truy cập bảng dữ liệu cá nhân) và nhật ký kiểm toán chuỗi băm SHA-256 của bộ máy (§4.6) | `nen-tang/postgres/`, `nen-tang/scripts/tang2-migrate.sh`, `mot-cua/db/` |
 | Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `nen-tang/garage/`, `nen-tang/scripts/garage-init.py`, `mot-cua/backend/`, §4.3, §8.6 |
 | Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong gói `thu-tuc/<ma>/quy-trinh.bpmn20.xml`, bộ nạp `nap-thu-tuc` kiểm và deploy qua REST; Tầng 2 dùng qua `/workflow` (API một cửa) | `docker-compose.yml` (`flowable`, `db-init`, `nap-thu-tuc`, `mot-cua-api`), `thu-tuc/`, `mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
@@ -613,6 +615,54 @@ Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `h
 - `hostname: rabbitmq` cố định trong compose: tên nút `rabbit@rabbitmq` quyết định thư mục dữ liệu, tạo lại container không mất queue và tin bền vững.
 - Xem nhanh: `docker compose exec rabbitmq rabbitmqctl -q list_queues -p mot-cua name type messages`.
 
+### 4.6 Nhật ký kiểm toán chuỗi băm và pgAudit (#75)
+
+Hai lớp, bổ sung cho nhau:
+
+| Lớp | Ở đâu | Ghi gì | Chống gì |
+|---|---|---|---|
+| **Nhật ký kiểm toán nghiệp vụ** `mot_cua.nhat_ky_kiem_toan` | bộ máy `mot-cua` (migration 007): nghiệp vụ nên không nằm ở `nen-tang/` | mỗi thao tác quan trọng một bản ghi: nộp hồ sơ, chuyển trạng thái, cập nhật hồ sơ, xử lý bước quy trình (người xử lý), tải tệp (SHA-256 nội dung tệp), kiểm tra tệp, nạp/rút gói thủ tục, phân công lĩnh vực cán bộ | sửa, xóa, chèn lặng lẽ: chuỗi băm SHA-256 + xác minh được qua API |
+| **pgAudit 17.1** (PostgreSQL License) | nền tảng: image `nen-tang/postgres/Dockerfile`, tham số khởi động của dịch vụ `postgres` | log PostgreSQL dòng `AUDIT: SESSION,…` cho lớp lệnh `DXOS_PGAUDIT_LOG` (mặc định `ddl,role`: đổi schema, role, quyền) và `AUDIT: OBJECT,…` cho mọi câu lệnh chạm bảng mà role `dxos_kiem_toan` có quyền (Tầng 2 tự GRANT bảng có dữ liệu cá nhân: `ho_so`, `thanh_phan_ho_so`, `can_bo`, `can_bo_linh_vuc`) | thao tác ngoài API (SQL quản trị, đổi quyền), truy cập dữ liệu cá nhân ở mức câu lệnh |
+
+#### 4.6.1 Thiết kế và lý do
+
+| Quyết định | Lý do |
+|---|---|
+| Ghi kiểm toán **bằng trigger và trong RPC**, cùng transaction với thao tác | Không đường nào (API, quy trình, đối soát, SQL tay) đổi hồ sơ mà thiếu bản ghi; thao tác rollback thì bản ghi cũng không có. Không cần sửa `mot-cua-api`: RPC `dong_bo_trang_thai` (#73) đã nhận người xử lý và bước, nay ghi thêm `quy_trinh.xu_ly_buoc` kèm các sự kiện vừa vào hộp thư đi |
+| `bam = hex(SHA-256(bam_truoc ‖ nội dung chuẩn))`, nội dung chuẩn là văn bản `jsonb` của bản ghi, giờ UTC micro giây | `jsonb::text` ổn định (khóa sắp theo độ dài rồi byte), không phụ thuộc múi giờ hay cấu hình phiên, dựng lại được ngoài CSDL. Dùng `sha256()` có sẵn của PostgreSQL, không cần `pgcrypto` |
+| **Khóa tuần tự** bằng dòng duy nhất `dau_chuoi_kiem_toan` (`SELECT … FOR UPDATE`) | Hai transaction ghi đồng thời không thể cùng đọc một `bam_truoc`: người sau chờ người trước commit rồi nối tiếp, `stt` liền, không trùng. Ở mức cô lập cao hơn READ COMMITTED thì báo lỗi tuần tự hóa thay vì làm đứt chuỗi. Đổi lại các transaction có ghi kiểm toán xếp hàng ở bước commit; request PostgREST ngắn nên chấp nhận được ở quy mô xã |
+| Chặn `UPDATE`/`DELETE`/`TRUNCATE` bằng trigger, không role nào có quyền ghi | Trigger chặn cả superuser và chủ bảng. Superuser vẫn tắt được trigger: không ngăn được, nhưng **phát hiện được** (mục 4.6.2). Đầu chuỗi chỉ tiến đúng một bước tới bản ghi vừa thêm |
+| Không ghi dữ liệu cá nhân vào nhật ký | `du_lieu` chỉ có mã hồ sơ, mã thủ tục, trạng thái, bước, **tên** cột đã đổi, SHA-256 tệp; không họ tên, số điện thoại, tên tệp. pgAudit tắt `log_parameter` nên log không chứa giá trị |
+| Trình xác minh độc lập `mot-cua/backend/kiem_toan.py` | Người kiểm tra không phải tin hàm chạy trong chính CSDL được kiểm: công cụ (chỉ thư viện chuẩn Python) đọc bản ghi qua `/api` bằng token lãnh đạo, tự tính lại chuỗi, báo cùng định dạng với RPC |
+| pgAudit biên dịch từ mã nguồn ghim SHA-256, chép sang image gốc `postgres:17.6-alpine` | Image gốc không có pgAudit; gói Alpine không khớp bản PostgreSQL tự biên dịch của image. Không sửa PostgreSQL, image cuối không có công cụ biên dịch. `test-sql` và CI vẫn dùng image gốc: migration không phụ thuộc pgAudit |
+
+#### 4.6.2 Xác minh toàn vẹn
+
+`GET /api/rpc/xac_minh_kiem_toan` (chỉ `lanh_dao`; công dân, cán bộ → 403) duyệt cả chuỗi theo `stt`, dừng ở chỗ hỏng đầu tiên:
+
+```json
+{"hopLe": false, "soBanGhi": 41, "sttCuoi": 41, "bamCuoi": "…", "dauChuoi": {"stt": 97, "bam": "…"},
+ "loi": {"stt": 42, "loai": "noi_dung_bi_sua", "moTa": "Nội dung bản ghi 42 không khớp bam đã lưu"}}
+```
+
+| `loi.loai` | Nghĩa |
+|---|---|
+| `noi_dung_bi_sua` | bản ghi `stt` bị sửa (băm tính lại khác băm đã lưu) |
+| `lien_ket_dut` | bản ghi trước bị sửa **và** tính lại băm (bản ghi `stt` không còn trỏ đúng), hoặc bản ghi `stt` bị thay |
+| `thieu_ban_ghi` | bản ghi `stt` bị xóa (hở số thứ tự) |
+| `dau_chuoi_lech` | bản ghi cuối bị xóa, hoặc có bản ghi chèn ngoài chuỗi |
+| `moc_khong_khop` | chuỗi bị viết lại toàn bộ từ trước mốc: bản ghi `stt` khác mốc `p_stt_moc`/`p_bam_moc` đã lưu ở ngoài |
+
+Kẻ có quyền superuser có thể viết lại toàn bộ chuỗi và đầu chuỗi cho khớp. Cách chặn: định kỳ lưu `sttCuoi:bamCuoi` ra ngoài hệ thống (biên bản, email, kho khác) rồi xác minh kèm mốc:
+
+```bash
+# Token lãnh đạo (có OTP) lấy như §8; mốc từ lần xác minh trước
+DXOS_TOKEN=<token> python3 mot-cua/backend/kiem_toan.py --api http://localhost:9080/api --moc 41:<bam>
+curl -H "Authorization: Bearer <token>" "http://localhost:9080/api/rpc/xac_minh_kiem_toan?p_stt_moc=41&p_bam_moc=<bam>"
+# Log pgAudit
+docker compose logs postgres | grep 'AUDIT:'
+```
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -874,7 +924,7 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 
 ## 9. Việc tiếp theo (tuần 2)
 
-- pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
+- ~~pgAudit~~: xong ở #75 (§4.6), biên dịch pgAudit từ mã nguồn trên image `postgres:17.6-alpine` gốc.
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.

@@ -52,14 +52,14 @@ Danh sách thư viện npm/pip, phiên bản cụ thể và cột tương thích
 | SSO/MFA | Keycloak (bắt buộc MFA cán bộ) | Apache-2.0 |
 | API Gateway | Apache APISIX (rate limit cổng công dân) | Apache-2.0 |
 | Bí mật | OpenBao 2.7.1 (dịch vụ riêng, image gốc `openbao/openbao`, không sửa mã; chỉ gọi qua HTTP API và `bao agent` của chính image). Không dùng HashiCorp Vault (BSL-1.1) | MPL-2.0 |
-| CSDL | PostgreSQL + Row-Level Security + pgAudit | PostgreSQL |
+| CSDL | PostgreSQL 17.6 (image gốc `postgres:17.6-alpine`) + Row-Level Security + pgAudit 17.1 (Copyright PostgreSQL Global Development Group, PostgreSQL License, https://github.com/pgaudit/pgaudit; biên dịch từ mã nguồn tag 17.1 đã kiểm SHA-256 trong `nen-tang/postgres/Dockerfile`, không sửa mã, LICENSE đi kèm image ở `/usr/local/share/doc/pgaudit/LICENSE`) | PostgreSQL |
 | Tự sinh API | PostgREST | MIT |
 | Object storage | Garage v2.4.1 (S3, dịch vụ riêng, image gốc `dxflrs/garage`, không sửa mã; chỉ gọi qua mạng: S3 và Admin API) | AGPL-3.0 |
 | Workflow | Flowable engine, image `flowable/flowable-rest` (BPMN 2.0, REST). Không dùng flowable-ui/modeler; BPMN viết XML tay | Apache-2.0 |
 | Backend ứng dụng | Python 3.13 (image gốc `python`, thư viện chuẩn); `mot-cua-api` thêm jsonschema 4.26.0 (Copyright (c) 2013 Julian Berman, MIT, https://github.com/python-jsonschema/jsonschema) và gói kéo theo (jsonschema-specifications, referencing, rpds-py, attrs; đều MIT) cho Poka-yoke phía máy chủ (#59), cài bằng pip lúc build image, không sửa mã | PSF-2.0 / MIT |
 | Hàng đợi | RabbitMQ 4.3.6 (dịch vụ riêng, image gốc `rabbitmq`, không sửa mã; plugin có sẵn trong image: STOMP, management). Backend chỉ nói giao thức STOMP bằng thư viện chuẩn Python, không nhúng thư viện của RabbitMQ | MPL-2.0 |
 | Tìm kiếm | Meilisearch Community Edition (MIT). Không dùng bản Enterprise (BUSL-1.1) | MIT |
-| Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội) | GPL-3.0-or-later |
+| Log kiểm toán bất biến | Bảng append-only + chuỗi băm SHA-256 (mã của đội: `mot-cua/db/migrations/007_nhat_ky_kiem_toan.sql`, trình xác minh `mot-cua/backend/kiem_toan.py`, #75; hàm `sha256()` có sẵn của PostgreSQL) | GPL-3.0-or-later |
 | Ký số | step-ca (smallstep/certificates) + pyHanko | Apache-2.0 / MIT |
 | Sinh PDF | Gotenberg | MIT |
 | Quét mã độc | ClamAV 1.5.4 (dịch vụ riêng, image gốc `clamav/clamav`, không sửa mã; chỉ gọi qua giao thức TCP của `clamd`) | GPL-2.0 |

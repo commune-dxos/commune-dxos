@@ -5,11 +5,12 @@ Cấu hình các dịch vụ lõi dùng chung cho Tầng 2. Ở đây **không c
 | Thư mục | Nội dung |
 |---|---|
 | `postgres/initdb/` | role `authenticator` (PostgREST) và `anon`; schema `dxos`: hàm đọc claim JWT cho RLS (`dxos.jwt_sub()`…), sổ `dxos.app_migration` |
+| `postgres/Dockerfile` | image PostgreSQL của nền tảng: `postgres:17.6-alpine` gốc + pgAudit 17.1 biên dịch từ mã nguồn ghim SHA-256 (#75); `docker-compose.yml` bật `shared_preload_libraries=pgaudit`, log phiên theo `DXOS_PGAUDIT_LOG`, log đối tượng theo role `dxos_kiem_toan` (`docs/architecture.md` §4.6) |
 | `keycloak/realm-dxos.json` | realm `dxos`: khóa ký RS256, chính sách OTP, chống dò mật khẩu, client `dxos_api` (audience, không có role) và `dxos_cli` (chỉ dev) |
 | `apisix/` | `/public/*` → role `anon`, chỉ GET, 60 req/phút/IP; `/api/*` → PostgREST, `/workflow/*` → backend Tầng 2 (dịch vụ `mot-cua-api`), `/files/*` → API tệp: bắt buộc JWT realm `dxos`; chặn 403 API quản trị Flowable; CORS theo `DXOS_CORS_ORIGINS` (`docs/architecture.md` §4.1) |
 | `scripts/tang2-migrate.sh` | dịch vụ một lần: áp dụng `mot-cua/db/` (migration + seed) |
 | `scripts/tang2-realm.sh` | dịch vụ một lần: nạp `mot-cua/keycloak/realm.json` vào realm `dxos` |
-| `scripts/db-init.sh` | dịch vụ một lần: role + CSDL riêng của `authenticator`, `keycloak`, `flowable`, mật khẩu theo OpenBao (chạy lại không lỗi, dùng được với volume cũ) |
+| `scripts/db-init.sh` | dịch vụ một lần: role + CSDL riêng của `authenticator`, `keycloak`, `flowable`, mật khẩu theo OpenBao; role `dxos_kiem_toan` và extension `pgaudit` (chạy lại không lỗi, dùng được với volume cũ) |
 | `scripts/kc-start.sh` | entrypoint Keycloak: đọc mật khẩu CSDL và quản trị từ tệp bí mật (OpenBao) |
 | `scripts/garage-init.py` | dịch vụ một lần: layout Garage, bucket Tầng 2 khai báo, khóa S3 riêng của Tầng 2 → OpenBao |
 | `rabbitmq/` | RabbitMQ một nút (#9): `rabbitmq.conf` (STOMP 61613, HTTP API quản trị 15672, chỉ trong mạng nội bộ), `enabled_plugins`; tài khoản quản trị từ OpenBao; `docs/architecture.md` §4.5 |
