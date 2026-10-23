@@ -243,6 +243,10 @@ nop_du() {
 so_tep_api() { curl -s -H "Authorization: Bearer $1" "$GW/files/ho-so/$2/tep" | jq 'length'; }
 # task_cua <token> <hoSoId> <bước> → id task (rỗng nếu người dùng không thấy)
 task_cua() { gw "$1" /tasks | jq -r --arg h "$2" --arg b "$3" '[.[] | select(.hoSoId == $h and .buoc == $b)][0].id // empty'; }
+# tt_csdl <hồ sơ> → "trạng thái|lý do" trong CSDL (#73: đi theo bước Flowable)
+tt_csdl() { sql "SELECT trang_thai || '|' || coalesce(ly_do, '') FROM mot_cua.ho_so WHERE id = '${1:-00000000-0000-0000-0000-000000000000}'"; }
+# xong_tt <token> <task> <biến JSON> → "bước đang mở trangThai" của response hoàn thành bước
+xong_tt() { gw "$1" "/tasks/$2/complete" "{\"bien\":$3}" | jq -r '"\([.buocDangMo[]?.buoc] | join(",")) \(.trangThai)"'; }
 
 KS_ID="$(sql "SELECT id FROM mot_cua.thu_tuc WHERE ma = 'KS01' AND cong_khai")"
 LV_HT="$(sql "SELECT id FROM mot_cua.linh_vuc WHERE ma = 'ho_tich'")"
@@ -314,29 +318,67 @@ else
   kiem "lãnh đạo không thấy task tiep_nhan" "" "$(task_cua "$TK_LD" "$WH" tiep_nhan)"
   kiem "cán bộ hoàn thành với biến của bước khác → 400" "400" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
   kiem "cán bộ hoàn thành thiếu biến hopLe → 400" "400" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{}}')"
-  kiem "cán bộ: thiếu thành phần (hopLe=false) → bước bo_sung" "bo_sung" \
-    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":false,"ghiChu":"thiếu tờ khai"}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ: thiếu thành phần (hopLe=false) → bước bo_sung, API trả trangThai cho_bo_sung" "bo_sung cho_bo_sung" \
+    "$(xong_tt "$TK_CB" "$TID" '{"hopLe":false,"ghiChu":"thiếu tờ khai"}')"
+  kiem "CSDL: hồ sơ cho_bo_sung, lý do = ghi chú của cán bộ (#73)" "cho_bo_sung|thiếu tờ khai" "$(tt_csdl "$WH")"
+  kiem "chờ bổ sung: công dân sửa số điện thoại qua /api → 1 dòng (RLS cho_bo_sung)" "1" \
+    "$(curl -s -X PATCH "${AUTH[@]}" "${REP[@]}" -d '{"so_dien_thoai":"0900000097"}' "$GW/api/ho_so?id=eq.$WH" | jq length)"
+  kiem "chờ bổ sung: công dân tải thêm giấy tờ → 201" "201" \
+    "$(tai_giay_to "$TOKEN" "$WH" "$(sql "SELECT id FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$KS_ID' AND bat_buoc ORDER BY thu_tu LIMIT 1")" bo-sung.pdf)"
   kiem "Flowable ghi người xử lý tiep_nhan = sub cán bộ" "$SUB_CB" \
     "$(wf "history/historic-task-instances?processInstanceId=$WPI&taskDefinitionKey=tiep_nhan" | jq -r '.data[0].assignee')"
   TID="$(task_cua "$TOKEN" "$WH" bo_sung)"
   kiem "cong_dan thấy task bo_sung của mình" "có" "$([ -n "$TID" ] && echo có || echo không)"
   kiem "cán bộ hoàn thành task bo_sung của công dân → 403" "403" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{}')"
-  kiem "cong_dan bổ sung xong → quay lại tiep_nhan" "tiep_nhan" \
-    "$(gw "$TOKEN" "/tasks/$TID/complete" '{"bien":{"ghiChu":"đã bổ sung"}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cong_dan bổ sung xong → quay lại tiep_nhan, hồ sơ dang_xu_ly (không về moi)" "tiep_nhan dang_xu_ly" \
+    "$(xong_tt "$TOKEN" "$TID" '{"ghiChu":"đã bổ sung"}')"
+  kiem "CSDL sau khi nộp lại: dang_xu_ly; công dân hết sửa được (RLS) → 0 dòng" "dang_xu_ly 0" \
+    "$(tt_csdl "$WH" | cut -d'|' -f1) $(curl -s -X PATCH "${AUTH[@]}" "${REP[@]}" -d '{"so_dien_thoai":"0900000096"}' "$GW/api/ho_so?id=eq.$WH" | jq length)"
   TID="$(task_cua "$TK_CB" "$WH" tiep_nhan)"
-  kiem "cán bộ: đủ thành phần → tham_dinh" "tham_dinh" \
-    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":true}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ: đủ thành phần → tham_dinh, hồ sơ dang_xu_ly" "tham_dinh dang_xu_ly" "$(xong_tt "$TK_CB" "$TID" '{"hopLe":true}')"
   TID="$(task_cua "$TK_CB" "$WH" tham_dinh)"
-  kiem "cán bộ: thẩm định đạt → phe_duyet" "phe_duyet" \
-    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"datYeuCau":true}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ: thẩm định đạt → phe_duyet, CSDL cho_phe_duyet" "phe_duyet cho_phe_duyet cho_phe_duyet|thiếu tờ khai" \
+    "$(xong_tt "$TK_CB" "$TID" '{"datYeuCau":true}') $(tt_csdl "$WH")"
+  kiem "chờ phê duyệt: cán bộ tự đặt hoan_tat qua /api → bị chặn (chỉ quy trình chuyển)" "400" \
+    "$(ma_http -X PATCH -H "Authorization: Bearer $TK_CB" -H 'Content-Type: application/json' -d '{"trang_thai":"hoan_tat"}' "$GW/api/ho_so?id=eq.$WH")"
   TID="$(wf "runtime/tasks?processInstanceId=$WPI" | jq -r '.data[0].id')"
   kiem "cán bộ hoàn thành phe_duyet (nhóm lanh_dao) → 403" "403" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
   kiem "lãnh đạo thấy task phe_duyet" "$TID" "$(task_cua "$TK_LD" "$WH" phe_duyet)"
   kiem "lãnh đạo phê duyệt → 200, không còn bước mở" "200" "$(gw_ma "$TK_LD" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+  kiem "CSDL: hoan_tat, có ngày hoàn tất" "hoan_tat true" \
+    "$(sql "SELECT trang_thai || ' ' || (ngay_hoan_tat IS NOT NULL) FROM mot_cua.ho_so WHERE id = '$WH'")"
+  kiem "lịch sử trạng thái WH: nộp → chờ bổ sung → đang xử lý → chờ phê duyệt → hoàn tất" \
+    "moi:nop cho_bo_sung:quy_trinh:tiep_nhan dang_xu_ly:quy_trinh:bo_sung cho_phe_duyet:quy_trinh:tham_dinh hoan_tat:quy_trinh:phe_duyet" \
+    "$(sql "SELECT string_agg(concat_ws(':', den_trang_thai, nguon, buoc), ' ' ORDER BY id) FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$WH'")"
+  kiem "công dân đọc lịch sử trạng thái hồ sơ của mình qua /api (RLS) → 5 dòng" "5" \
+    "$(curl -s "${AUTH[@]}" "$GW/api/lich_su_trang_thai?ho_so_id=eq.$WH&select=den_trang_thai" | jq length)"
   td="$(gw "$TOKEN" "/ho-so/$WH/tien-do")"
+  kiem "tiến độ /workflow trả cùng trạng thái với CSDL" "hoan_tat" "$(jq -r '.hoSo.trang_thai' <<<"$td")"
   kiem "tiến độ: kết thúc Hoàn tất, đi đúng các bước" "ket_thuc_hoan_tat tiep_nhan,bo_sung,tiep_nhan,tham_dinh,phe_duyet" \
     "$(jq -r '.quyTrinh[0] | "\(.diemKetThuc) \([.lichSu[].buoc] | join(","))"' <<<"$td")"
   kiem "task đã xong → hoàn thành lại → 404" "404" "$(gw_ma "$TK_LD" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+
+  # Đối soát (#73): Flowable đi tiếp mà CSDL không được ghi (mô phỏng mot-cua-api lỗi sau khi gọi
+  # Flowable bằng cách hoàn thành task thẳng trên Flowable) → mot-cua-worker sửa theo Flowable.
+  doi_soat() { docker compose exec -T mot-cua-worker python /mot-cua/backend/worker.py doi-soat-mot-lan 2>/dev/null | tail -1; }
+  r="$(nop_du "$TOKEN" "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Đối Soát\"}")"
+  HDS="$(jq -r '.hoSo.id // empty' <<<"$r")"; PDS="$(jq -r '.processInstanceId // empty' <<<"$r")"
+  ds_xong() { # ds_xong <biến JSON…> : hoàn thành task đang mở trên Flowable (rest-admin), không qua API
+    wf "runtime/tasks/$(wf "runtime/tasks?processInstanceId=$PDS" | jq -r '.data[0].id')" -o /dev/null -w '%{http_code}' \
+      -d "{\"action\":\"complete\",\"variables\":$1}"
+  }
+  kiem "đối soát: Flowable sang tham_dinh ngoài API → CSDL còn moi (lệch)" "200 tham_dinh moi" \
+    "$(ds_xong '[{"name":"hopLe","value":true}]') $(wf "runtime/tasks?processInstanceId=$PDS" | jq -r '.data[0].taskDefinitionKey') $(tt_csdl "$HDS" | cut -d'|' -f1)"
+  kiem "worker doi-soat-mot-lan → sửa ≥ 1 hồ sơ; hồ sơ dang_xu_ly, lịch sử nguồn doi_soat" "có dang_xu_ly doi_soat" \
+    "$([ "$(doi_soat)" -ge 1 ] 2>/dev/null && echo có || echo không) $(tt_csdl "$HDS" | cut -d'|' -f1) $(sql "SELECT nguon FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$HDS' ORDER BY id DESC LIMIT 1")"
+  kiem "đối soát ghi sự kiện ho_so.chuyen_buoc (doiSoat, trangThai dang_xu_ly) vào hộp thư đi" "true dang_xu_ly" \
+    "$(sql "SELECT (noi_dung->'duLieu'->>'doiSoat') || ' ' || (noi_dung->'duLieu'->>'trangThai') FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HDS' AND loai = 'ho_so.chuyen_buoc' ORDER BY tao_luc DESC LIMIT 1")"
+  kiem "đối soát chạy lại: không sửa gì thêm" "0 1" \
+    "$(doi_soat) $(sql "SELECT count(*) FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$HDS' AND nguon = 'doi_soat'")"
+  ds_xong '[{"name":"datYeuCau","value":false},{"name":"ghiChu","value":"Không đạt (smoke đối soát)"}]' > /dev/null
+  doi_soat > /dev/null
+  kiem "Flowable kết thúc Từ chối ngoài API → đối soát: tu_choi, lý do từ ghiChu, ho_so.tu_choi" "tu_choi|Không đạt (smoke đối soát) 1" \
+    "$(tt_csdl "$HDS") $(sql "SELECT count(*) FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HDS' AND loai = 'ho_so.tu_choi'")"
 
   # Zero-Trust: backend tự kiểm token, không tin gateway (gọi thẳng trong mạng nội bộ).
   goi_backend() {
