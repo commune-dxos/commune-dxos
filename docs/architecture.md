@@ -667,7 +667,7 @@ docker compose logs postgres | grep 'AUDIT:'
 
 ### 4.7 Giấy tờ có ký số: step-ca + Gotenberg + pyHanko (#77)
 
-Hồ sơ được tiếp nhận vào quy trình thì có **biên nhận** (giấy tiếp nhận hồ sơ và hẹn trả kết quả), hoàn tất thì có **thông báo kết quả**: PDF ký số PAdES bằng chứng thư của xã, lưu trên Garage, SHA-256 vào nhật ký kiểm toán (§4.6). Sổ văn bản đến/đi dùng lại lớp này ở issue riêng (#78).
+Hồ sơ được tiếp nhận vào quy trình thì có **biên nhận** (giấy tiếp nhận hồ sơ và hẹn trả kết quả), hoàn tất thì có **thông báo kết quả**: PDF ký số PAdES bằng chứng thư của xã, lưu trên Garage, SHA-256 vào nhật ký kiểm toán (§4.6). Sổ văn bản đến/đi dùng lại lớp này (§4.11, #78).
 
 ```mermaid
 sequenceDiagram
@@ -818,6 +818,56 @@ Apache Superset 6.1 (Apache-2.0) chạy như **dịch vụ riêng** bằng image
 | Chạy dưới tiền tố `/bao-cao` (`SUPERSET_APP_ROOT`, Superset 6) sau proxy (`ENABLE_PROXY_FIX`) | Cùng origin với các cổng; không cần tên miền riêng |
 
 Dashboard "Hiệu suất một cửa" (`/bao-cao/superset/dashboard/hieu-suat-mot-cua/`, liên kết "Báo cáo hiệu suất" trong cổng cán bộ khi đăng nhập vai lãnh đạo): số hồ sơ đã đóng, tỷ lệ trễ hạn, số hồ sơ theo lĩnh vực, tỷ lệ trễ hạn theo tháng × thủ tục, bảng thời gian giải quyết trung bình và trung vị (ngày làm việc, số giờ) theo thủ tục × tháng. Số liệu mới sau mỗi `make kho-du-lieu`.
+
+### 4.11 Sổ văn bản đến/đi có ký số (#78)
+
+Bộ phận văn thư của xã giữ **sổ văn bản đến** (công văn, quyết định… cơ quan khác gửi, đã quét) và **sổ văn bản đi** (văn bản xã ban hành). Đây là việc của bộ máy (`mot-cua/`), không thuộc gói thủ tục nào; dùng lại lớp tệp (§4.3), ký số (§4.7) và nhật ký kiểm toán (§4.6).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor VT as Văn thư<br/>(cổng /can-bo, OTP)
+  actor LD as Lãnh đạo<br/>(OTP)
+  participant API as mot-cua-api<br/>(/files/van-ban)
+  participant PG as PostgreSQL<br/>(RLS, kiểm toán)
+  participant GT as Gotenberg
+  participant S3 as Garage
+  VT->>API: POST /files/van-ban/den?… (tệp quét + số, ký hiệu, ngày, trích yếu, nơi gửi)
+  API->>API: ClamAV → magic bytes → PDF có chữ ký: pyHanko xác minh
+  API->>S3: PUT van-ban/den/<năm>/<uuid>.<ext>
+  API->>PG: INSERT van_ban (dich_vu_tep) → trigger cấp số đến kế tiếp, kiểm toán van_ban.vao_so
+  VT->>API: POST /files/van-ban/di (dự thảo: loại, trích yếu, nơi nhận, nội dung)
+  API->>PG: INSERT van_ban du_thao (chưa số) → kiểm toán van_ban.du_thao
+  LD->>API: POST /files/van-ban/{id}/ky
+  API->>PG: RPC cap_so_van_ban_di → số đi kế tiếp, ký hiệu <số>/<loại>-UBND
+  API->>GT: mau-giay-to/van_ban_di.html → PDF
+  API->>API: pyHanko ký PAdES (chứng thư của xã)
+  API->>S3: PUT van-ban/di/<năm>/<uuid>.pdf
+  API->>PG: UPDATE … WHERE trang_thai = du_thao → da_ky, kiểm toán van_ban.ky + SHA-256
+```
+
+| Quyết định | Lý do |
+|---|---|
+| Vai **`van_thu`** riêng (client role Keycloak, nhóm `/van-thu`, role PostgreSQL), bắt OTP như mọi cán bộ | Văn thư nhập sổ nhưng không xử lý hồ sơ: vai đầu tiên trong token quyết định role PostgreSQL, nên vai riêng giữ được RLS hồ sơ hiện có (văn thư không thấy hồ sơ nào). Người dùng mẫu `vanthu01` |
+| **Đọc** sổ qua `/api/van_ban` (PostgREST, RLS: cán bộ, lãnh đạo, văn thư; công dân 403); **ghi** chỉ qua `mot-cua-api` bằng tài khoản dịch vụ `dich_vu_tep` sau khi kiểm vai | Ghi luôn đi kèm tệp (quét, Garage) hoặc ký số, không làm được trong một lời gọi PostgREST; người dùng không tự khai SHA-256 hay đường dẫn tệp |
+| Đánh số **theo năm, theo chiều** bằng bảng đếm `so_van_ban_dem` (UPSERT `… RETURNING`, khóa dòng) và `UNIQUE (chieu, nam, so)` | Không trùng, không nhảy số khi nhiều người vào sổ cùng lúc (test SQL 6 kết nối đồng thời qua dblink); `max()+1` sẽ trùng số dưới tải đồng thời. Người dùng không tự đặt số (42501) |
+| Văn bản đến: số cấp **khi vào sổ**; văn bản đi: số cấp **khi lãnh đạo ký**, trước khi sinh PDF | Dự thảo bị bỏ không làm thủng sổ; PDF in đúng số và ký hiệu đã cấp. Ký lỗi giữa chừng (Gotenberg, CA) → số đã cấp được giữ cho văn bản đó, ký lại dùng lại số (503 có thông báo), không cấp số mới |
+| **Bất biến sau khi vào sổ hoặc ký**: trigger chặn mọi UPDATE (kể cả superuser), chỉ xóa được dự thảo, chặn TRUNCATE; số không đổi sau khi cấp | Sổ văn bản là sổ pháp lý; sửa là phải ban hành văn bản mới. Kết hợp với SHA-256 trong nhật ký kiểm toán: thay tệp trên Garage thì phát hiện được |
+| Ký bằng **chứng thư của cơ quan** (§4.7, như con dấu số); danh tính lãnh đạo ký ghi ở `nguoi_ky_sub`, tên in trên văn bản và nhật ký kiểm toán | Chứng thư cá nhân cho từng lãnh đạo (USB token, ký từ xa) ngoài phạm vi; ai ký được là quyền vai `lanh_dao` + OTP |
+| Văn bản đến là PDF có chữ ký số → xác minh khi vào sổ, lưu kết quả (`xac_minh_chu_ky`) | Văn thư biết ngay văn bản nhận được còn toàn vẹn và do ai ký; ảnh quét (JPEG, PNG) vẫn vào sổ được |
+| `POST /files/xac-minh` nhận ra văn bản đi đã phát hành (`phatHanh.loai = van_ban_di`, ký hiệu, trích yếu) | Người nhận văn bản (hoặc cán bộ) kiểm được bản PDF là đúng bản xã đã ban hành |
+
+API (qua APISIX `/files`, token Keycloak):
+
+| Endpoint | Ai | Làm gì |
+|---|---|---|
+| `POST /files/van-ban/den?ten=&loai=&ky_hieu=&ngay_van_ban=&noi_gui=&trich_yeu=` (body tệp) | văn thư | quét, lưu, vào sổ, trả số đến (201); mã độc → 422, không vào sổ |
+| `POST /files/van-ban/di` (JSON `loai`, `trich_yeu`, `noi_nhan`, `noi_dung`) | văn thư | lưu dự thảo (201), chưa có số |
+| `POST /files/van-ban/{id}/ky` | lãnh đạo | cấp số, sinh PDF, ký, lưu (200, kèm link); đã ký → 409 |
+| `GET /files/van-ban/{id}` | cán bộ, lãnh đạo, văn thư | metadata + link tải ký sẵn ngắn hạn |
+| `GET /api/van_ban?chieu=eq.den` | cán bộ, lãnh đạo, văn thư | danh sách sổ (PostgREST) |
+
+Loại văn bản đi và chữ viết tắt trong ký hiệu: Thông báo TB, Quyết định QĐ, Kế hoạch KH, Báo cáo BC, Tờ trình TTr, Giấy mời GM, Công văn CV, Biên bản BB (ví dụ `12/TB-UBND`). Kiểm bằng `mot-cua/db/tests/van_ban.sql`, `mot-cua/backend/tests/test_van_ban.py`, `so-van-ban.test.tsx` và smoke 4n (`mot-cua/tests/smoke-van-ban.sh`).
 
 ## 5. MFA cho cán bộ
 

@@ -15,9 +15,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/008_giay_to_ky_so.sql` | giấy tờ có ký số (#77): bảng `giay_to_ky` (biên nhận, kết quả; chỉ `dich_vu_tep` ghi, không sửa), trigger kiểm toán `giay_to.ky` kèm SHA-256; xem [Giấy tờ có ký số](#giấy-tờ-có-ký-số-77) |
 | `db/migrations/009_kho_du_lieu.sql` | kho dữ liệu (#80): role `dich_vu_bao_cao` (chỉ cột không cá nhân của hồ sơ đã đóng), schema `bao_cao` (bảng mart cho Superset), RPC `nap_bao_cao`; xem [Kho dữ liệu lịch sử](#kho-dữ-liệu-lịch-sử-80) |
 | `db/migrations/010_doc_bao_cao.sql` | quyền đọc báo cáo (#82): role `bao_cao_doc` (lõi tạo đăng nhập) chỉ đọc schema `bao_cao`, không đọc `mot_cua` |
+| `db/migrations/011_so_van_ban.sql` | sổ văn bản đến/đi (#78): role `van_thu`, bảng `van_ban` (bất biến sau khi vào sổ hoặc ký), bộ đếm `so_van_ban_dem` cấp số theo năm không trùng, RPC `cap_so_van_ban_di`, trigger kiểm toán `van_ban.*`; xem [Sổ văn bản](#sổ-văn-bản-đếnđi-78) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), chạy trong một transaction rồi ROLLBACK |
-| `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80) (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), chạy trong một transaction rồi ROLLBACK |
+| `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
 | `backend/nap_thu_tuc.py`, `goi_thu_tuc.py`, `kiem_bpmn.py` | bộ nạp gói thủ tục (D-009): dịch vụ một lần `nap-thu-tuc`, `make nap-thu-tuc`; phần kiểm gói chạy cả trong `make check` (`--chi-kiem`); xem [Gói thủ tục](#gói-thủ-tục-d-009) |
@@ -177,7 +178,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 
 ## Quyền theo vai trò
 
-Đổi vai trò như PostgREST làm cho mỗi request: `SET ROLE` theo `resource_access.dxos_api.roles[0]` của JWT, policy đọc `dxos.jwt_sub()` của lõi. RLS bật và `FORCE` trên mọi bảng của `mot_cua`. Không role nào ghi được danh mục, cán bộ, phân công, ngày nghỉ qua API (quản trị bằng migration/SQL); không role nào xóa được hồ sơ.
+Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản, không thấy hồ sơ nào. Đổi vai trò như PostgREST làm cho mỗi request: `SET ROLE` theo `resource_access.dxos_api.roles[0]` của JWT, policy đọc `dxos.jwt_sub()` của lõi. RLS bật và `FORCE` trên mọi bảng của `mot_cua`. Không role nào ghi được danh mục, cán bộ, phân công, ngày nghỉ qua API (quản trị bằng migration/SQL); không role nào xóa được hồ sơ.
 
 | Bảng | `anon` (`/public/*`) | `cong_dan` | `can_bo` | `lanh_dao` |
 |---|---|---|---|---|
@@ -193,6 +194,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 | `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
 | `giay_to_ky` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ `dich_vu_tep` ghi qua `/files`; không ai sửa, kể cả superuser) |
 | RPC `nap_bao_cao`, schema `bao_cao` | — | — | — | — (chỉ tài khoản dịch vụ `dich_vu_bao_cao` gọi RPC; Superset đọc `bao_cao` bằng role đăng nhập `bao_cao_doc`, lãnh đạo xem qua dashboard `/bao-cao`) |
+| `van_ban` (sổ văn bản đến/đi) | — | — | đọc | đọc; ký văn bản đi qua `/files` (văn thư: đọc, vào sổ đến và soạn dự thảo đi qua `/files`; chỉ `dich_vu_tep` ghi; không ai sửa sau khi vào sổ/ký, kể cả superuser; chỉ xóa được dự thảo) |
 | `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
@@ -209,6 +211,7 @@ Web (cổng công dân, cổng cán bộ) chỉ gọi APISIX `http://localhost:$
 | `/workflow/` (token) | quy trình Flowable của hồ sơ, qua `backend/main.py` | bảng dưới |
 | `/files/` (token, body ≤ 10 MiB) | tải lên, liệt kê, cấp link xem tệp hồ sơ, qua `backend/main.py` | [bảng dưới](#files--tệp-hồ-sơ) |
 | `/files/ho-so/{id}/giay-to/…`, `/files/xac-minh` (token) | biên nhận, thông báo kết quả PDF có ký số; xác minh chữ ký một PDF | [mục dưới](#giấy-tờ-có-ký-số-77) |
+| `/files/van-ban/…` (token) | sổ văn bản: văn thư vào sổ đến, soạn dự thảo đi; lãnh đạo ký ban hành | [mục dưới](#sổ-văn-bản-đếnđi-78) |
 | `/files/s3/` (không token, link ký sẵn) | tải nội dung tệp bằng link mà `/files/tep/{id}` hoặc giấy tờ cấp | chỉ GET/HEAD |
 
 OpenAPI của PostgREST: `GET /api/` (kèm token) hoặc `GET /public/`, chỉ liệt kê bảng, cột, RPC mà vai trò của người gọi được quyền.
@@ -441,6 +444,29 @@ curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/pdf' --data
 
 Cổng công dân hiện nút tải biên nhận ở trang "Đã nộp"; cổng cán bộ có thẻ "Giấy tờ có ký số" trong chi tiết hồ sơ (biên nhận, và kết quả khi hồ sơ hoàn tất).
 
+## Sổ văn bản đến/đi (#78)
+
+Thiết kế và lý do: `docs/architecture.md` §4.11. Văn thư (`van_thu`) vào sổ văn bản đến (tệp quét qua ClamAV, lưu Garage `van-ban/den/<năm>/…`, PDF có chữ ký số thì xác minh và lưu kết quả) và soạn dự thảo văn bản đi; lãnh đạo ký ban hành: cấp số đi, sinh PDF từ [`mau-giay-to/van_ban_di.html`](mau-giay-to/van_ban_di.html) bằng Gotenberg, ký PAdES bằng chứng thư của xã như giấy tờ hồ sơ. Số đến và số đi đánh riêng, bắt đầu lại từ 1 mỗi năm (giờ Việt Nam), không trùng khi nhiều người vào sổ cùng lúc. Văn bản đã vào sổ hoặc đã ký không sửa được; dự thảo xóa được.
+
+| Endpoint | Vai | Kết quả |
+|---|---|---|
+| `POST /files/van-ban/den?ten=&loai=&ky_hieu=&ngay_van_ban=&noi_gui=&trich_yeu=` (body tệp PDF/JPEG/PNG) | `van_thu` | 201 + số đến; mã độc → 422; vai khác → 403 |
+| `POST /files/van-ban/di` (JSON `loai`, `trich_yeu`, `noi_nhan`, `noi_dung`) | `van_thu` | 201 dự thảo, chưa số; `loai` ngoài danh mục → 400 |
+| `POST /files/van-ban/{id}/ky` | `lanh_dao` | 200 + `so`, `ky_hieu` (`<số>/<viết tắt loại>-UBND`), link PDF; đã ký → 409 |
+| `GET /files/van-ban/{id}` | `can_bo`, `lanh_dao`, `van_thu` | metadata + link tải ngắn hạn |
+| `GET /api/van_ban?chieu=eq.di&order=nam.desc,so.desc` | `can_bo`, `lanh_dao`, `van_thu` | danh sách sổ (PostgREST, RLS) |
+
+```bash
+# Văn thư vào sổ một công văn đến đã quét (token văn thư có OTP)
+curl -X POST -H "Authorization: Bearer $TOKEN_VT" -H 'Content-Type: application/pdf' --data-binary @cv.pdf \
+  'http://localhost:9080/files/van-ban/den?ten=cv.pdf&loai=C%C3%B4ng%20v%C4%83n&ky_hieu=15%2FUBND-VP&ngay_van_ban=2026-10-20&noi_gui=UBND%20huy%E1%BB%87n&trich_yeu=V%E1%BB%81%20vi%E1%BB%87c'
+# Lãnh đạo ký ban hành dự thảo <ID>; PDF tải về xác minh bằng POST /files/xac-minh (phatHanh.loai = van_ban_di)
+curl -X POST -H "Authorization: Bearer $TOKEN_LD" -H 'Content-Type: application/json' -d '{}' \
+  http://localhost:9080/files/van-ban/<ID>/ky
+```
+
+Cổng cán bộ có trang "Sổ văn bản" (`/can-bo/van-ban`): văn thư vào thẳng trang này; [`docs/cong-can-bo.md`](../docs/cong-can-bo.md).
+
 ## Kho dữ liệu lịch sử (#80)
 
 Thiết kế và lý do: `docs/architecture.md` §4.8. Chạy sau `make up` (hồ sơ phải đã đóng mới vào kho):
@@ -485,13 +511,14 @@ Thêm chart: khai trong `CHART`, `BO_CUC` của `superset_dung.py` rồi `make u
 | `canbo02` | `…0000b002` | `can_bo` | chứng thực; bắt cài OTP |
 | `canbo03` | `…0000b003` | `can_bo` | đất đai; bắt cài OTP |
 | `lanhdao01` | `…0000d001` | `lanh_dao` | bắt cài OTP |
+| `vanthu01` | `…0000e001` | `van_thu` | văn thư, sổ văn bản (#78); bắt cài OTP |
 
 Realm không chứa mật khẩu: đặt bằng `make demo-users` (chạy sau `make smoke`; xem `docs/cai-dat.md` mục 3 và `docs/architecture.md` §8). `sub` cố định chỉ áp dụng khi realm được nạp lần đầu; volume Keycloak cũ giữ `sub` cũ.
 
 ## Chạy test
 
 ```bash
-make test-backend               # test đơn vị API tệp, sự kiện, trình xác minh kiểm toán, ký số PDF (không cần Docker; make check cũng chạy)
+make test-backend               # test đơn vị API tệp, sự kiện, trình xác minh kiểm toán, ký số PDF, sổ văn bản (không cần Docker; make check cũng chạy)
 make test-sql                   # migration + db/tests/*.sql trên PostgreSQL trống, trước và sau seed (container tạm; CI job test-sql)
 make test-kho                   # kho dữ liệu trên dữ liệu mẫu: Parquet, idempotent, dbt build, số liệu mart (cần requirements của kho-du-lieu)
 make smoke                      # toàn bộ: nền tảng + bộ máy + gói thủ tục + quy trình Flowable + /workflow + /files + sự kiện + kiểm toán

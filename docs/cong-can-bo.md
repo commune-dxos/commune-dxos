@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Cổng cán bộ: luồng xử lý hồ sơ
 
-Cổng cán bộ (#55) là ứng dụng Tầng 2 cho **cán bộ một cửa, cán bộ chuyên môn và lãnh đạo xã**: đăng nhập một lần bằng mật khẩu + OTP, xem hồ sơ thuộc lĩnh vực mình phụ trách, xử lý từng bước của quy trình. Cổng chạy ở **http://localhost:9080/can-bo** sau `make up`, cùng ứng dụng web với cổng công dân ([`mot-cua/web-cong-dan/`](../mot-cua/web-cong-dan/), mã ở `src/can-bo/`) và chỉ gọi lõi qua APISIX.
+Cổng cán bộ (#55) là ứng dụng Tầng 2 cho **cán bộ một cửa, cán bộ chuyên môn, văn thư và lãnh đạo xã**: đăng nhập một lần bằng mật khẩu + OTP, xem hồ sơ thuộc lĩnh vực mình phụ trách, xử lý từng bước của quy trình. Cổng chạy ở **http://localhost:9080/can-bo** sau `make up`, cùng ứng dụng web với cổng công dân ([`mot-cua/web-cong-dan/`](../mot-cua/web-cong-dan/), mã ở `src/can-bo/`) và chỉ gọi lõi qua APISIX.
 
 <p>
   <img src="images/cong-can-bo-hop-viec.webp" alt="Hộp việc của cán bộ hộ tịch trên máy tính: thanh bên có Hộp việc, Quá hạn, Sắp trễ hạn, Tôi đang xử lý; ô số liệu; bảng hồ sơ với hạn xử lý đổi màu" width="100%">
@@ -13,8 +13,8 @@ Cổng cán bộ (#55) là ứng dụng Tầng 2 cho **cán bộ một cửa, c�
 | Bước | Ai kiểm | Cách |
 |---|---|---|
 | Đăng nhập | Keycloak realm `dxos` | client public **`mot_cua_can_bo`** (riêng với `mot_cua_web` của cổng công dân), Authorization Code + PKCE S256, chỉ nhận `redirect_uri` dưới `/can-bo/`. Web không có bí mật nào |
-| OTP | Keycloak | tài khoản vai `can_bo`, `lanh_dao` có required action `CONFIGURE_TOTP`: lần đầu quét mã QR bằng ứng dụng OTP, các lần sau nhập mật khẩu rồi mã 6 số |
-| Vào cổng | web | đọc client role `dxos_api` trong access token; không có `can_bo` hay `lanh_dao` (ví dụ công dân) thì hiện **"Bạn không có quyền vào cổng cán bộ"**, không gọi API nào |
+| OTP | Keycloak | tài khoản vai `can_bo`, `lanh_dao`, `van_thu` có required action `CONFIGURE_TOTP`: lần đầu quét mã QR bằng ứng dụng OTP, các lần sau nhập mật khẩu rồi mã 6 số |
+| Vào cổng | web | đọc client role `dxos_api` trong access token; không có `can_bo`, `lanh_dao` hay `van_thu` (ví dụ công dân) thì hiện **"Bạn không có quyền vào cổng cán bộ"**, không gọi API nào |
 | Thấy hồ sơ nào | PostgreSQL RLS | cán bộ chỉ thấy hồ sơ của lĩnh vực mình phụ trách (`mot_cua.can_bo_linh_vuc`), lãnh đạo thấy tất cả |
 | Thấy task nào, xử lý bước nào | `mot-cua-api` | task Flowable giao cho mình hoặc thuộc nhóm ứng viên của mình (`candidateGroups` = mã lĩnh vực, hoặc `lanh_dao`); sai nhóm → 403, sai biến → 400, người khác vừa nhận → 409, web hiện nguyên câu báo |
 
@@ -87,6 +87,19 @@ Chi tiết hồ sơ hiện huy hiệu **Trạng thái hồ sơ** đọc từ `ho
 - Hộp việc xếp quá hạn, sắp trễ lên đầu; ô số liệu và chuông ở đầu trang đếm từ dữ liệu đã có, tải lại mỗi phút. Đẩy cảnh báo realtime qua RabbitMQ là #56.
 - Bộ lọc (trạng thái nhận, thủ tục, hạn) nằm trên URL: `/can-bo?han=qua_han`, `/can-bo?han=sap_tre`, `/can-bo?trang_thai=cua_toi`, `/can-bo?thu_tuc=KS01`.
 
+## Sổ văn bản đến/đi (#78)
+
+Trang **Sổ văn bản** (`/can-bo/van-ban`, nhóm "Văn bản" ở thanh bên) hiện cho mọi vai của cổng; văn thư đăng nhập là vào thẳng trang này và không thấy mục "Xử lý hồ sơ" (vai `van_thu` không đọc được hồ sơ nào).
+
+| Vai | Làm được |
+|---|---|
+| `van_thu` | chọn sổ đến hoặc đi (`?chieu=den`, `?chieu=di`); **vào sổ văn bản đến**: chọn tệp quét (PDF, JPEG, PNG), nhập loại, số ký hiệu, ngày, nơi gửi, trích yếu → hệ thống quét mã độc, cấp số đến, PDF có chữ ký số thì hiện kết quả xác minh; **soạn dự thảo văn bản đi**: loại (danh mục cố định), trích yếu, nơi nhận, nội dung |
+| `lanh_dao` | xem hai sổ; nút **Ký ban hành** trên dòng dự thảo → cấp số đi, sinh PDF, ký số; báo "Đã ký ban hành văn bản <ký hiệu>." |
+| `can_bo` | xem hai sổ, tải tệp |
+| mọi vai | **Tải** tệp (link ngắn hạn); thẻ **Xác minh PDF**: chọn một PDF bất kỳ → hợp lệ hay không, người ký, có phải văn bản xã đã phát hành |
+
+Lỗi từ API (mã độc 422, không có quyền 403, đã ký 409) hiện nguyên câu báo trên trang. Thiết kế: [`architecture.md`](architecture.md) §4.11.
+
 ## Hạ tầng
 
 | Thành phần | Cấu hình |
@@ -101,7 +114,7 @@ Không mở cổng nào ra host: web, API, Flowable, Garage chỉ đi qua APISIX
 ## Chạy thử
 
 ```bash
-make up && make smoke     # smoke mục 4i: trang /can-bo, client mot_cua_can_bo, E2E cán bộ → lãnh đạo
+make up && make smoke     # smoke mục 4i: trang /can-bo, client mot_cua_can_bo, E2E cán bộ → lãnh đạo; 4n: sổ văn bản
 make demo-users           # đặt mật khẩu chung cho tài khoản mẫu và in ra
 ```
 
@@ -112,7 +125,8 @@ Mở **http://localhost:9080/can-bo**, đăng nhập:
 | `canbo01` | cán bộ hộ tịch | task KS01 (tiếp nhận, thẩm định) |
 | `canbo02` | cán bộ chứng thực | task CT01; **không** thấy hồ sơ KS01 |
 | `canbo03` | cán bộ đất đai | chưa có thủ tục nào có gói: hộp việc trống |
-| `lanhdao01` | lãnh đạo | bước phê duyệt, ký của mọi thủ tục |
+| `lanhdao01` | lãnh đạo | bước phê duyệt, ký của mọi thủ tục; ký ban hành văn bản đi |
+| `vanthu01` | văn thư | sổ văn bản đến/đi; không thấy hồ sơ |
 | `congdan01` | công dân | trang "không có quyền" |
 
 Lần đầu Keycloak đòi cài OTP: quét mã QR bằng FreeOTP, Google Authenticator… Smoke dùng người dùng tạm có OTP và xóa khi xong, không đụng tài khoản mẫu. Chạy dev (`npm run dev` trong `mot-cua/web-cong-dan/`) thì mở http://localhost:5173/can-bo.
