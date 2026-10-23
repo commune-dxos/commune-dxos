@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: 2
+
+models:
+  - name: stg_ho_so
+    description: Hồ sơ đã đóng, đổi tên cột theo nghĩa báo cáo.
+    columns:
+      - name: ho_so_id
+        data_tests: [unique, not_null]
+      - name: ket_qua
+        description: hoan_tat hoặc tu_choi
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["hoan_tat", "tu_choi"]
+      - name: thu_tuc
+        data_tests: [not_null]
+      - name: linh_vuc
+        data_tests: [not_null]
+      - name: ngay_nhan
+        data_tests: [not_null]
+      - name: ngay_hoan_tat
+        data_tests: [not_null]
+  - name: stg_lich_su_trang_thai
+    description: Lịch sử chuyển trạng thái của hồ sơ đã đóng.
+    columns:
+      - name: id
+        data_tests: [unique, not_null]
+      - name: ho_so_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_ho_so')
+                field: ho_so_id
+      - name: den_trang_thai
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["moi", "dang_xu_ly", "cho_bo_sung", "cho_phe_duyet", "hoan_tat", "tu_choi"]
+      - name: nguon
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["nop", "api", "quy_trinh", "doi_soat", "he_thong"]
+  - name: stg_ngay_nghi
+    columns:
+      - name: ngay
+        data_tests: [unique, not_null]

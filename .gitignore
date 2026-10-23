@@ -12,6 +12,8 @@ __pycache__/
 # Dữ liệu chạy local và model — không đưa lên repo
 .data/
 models/
+# …trừ model dbt của kho dữ liệu (#80): mã SQL, không phải trọng số
+!mot-cua/kho-du-lieu/dbt/models/
 *.gguf
 *.tar.gz
 
@@ -20,3 +22,11 @@ models/
 
 # Gói tạm do make smoke tạo để thử cắm–rút (tự xóa khi smoke chạy xong)
 thu-tuc/zz-smoke-*/
+
+# Kho dữ liệu (#80): sản phẩm chạy dbt và dữ liệu xuất, dựng lại được bằng make kho-du-lieu
+mot-cua/kho-du-lieu/dbt/target/
+mot-cua/kho-du-lieu/dbt/logs/
+mot-cua/kho-du-lieu/dbt/dbt_packages/
+*.parquet
+*.duckdb
+.venv-kho/

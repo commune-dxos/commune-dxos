@@ -31,7 +31,8 @@
 #            nộp hồ sơ chính nên chạy cùng core (#77)
 #   docs : Meilisearch CE                              (tuần 5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
-#   bi   : Apache Superset                            (tuần 4)
+#   bi   : kho-du-lieu (dịch vụ một lần: hồ sơ đã đóng → Parquet → dbt → bảng mart bao_cao, #80;
+#          make kho-du-lieu), Apache Superset (tuần 4)
 #
 # Bí mật (#10, docs/architecture.md §4.4): KHÔNG có mật khẩu, khóa hay token nào trong repo
 # hay .env. OpenBao (KV v2 `dxos/`) là nguồn duy nhất; bao-init khởi tạo/unseal và nạp bí
@@ -921,9 +922,36 @@ services:
   # ------------------------------------------------- docs – TODO tuần 5 ----
   # meilisearch: # Chỉ Community Edition (MIT), không bật tính năng Enterprise (D-004)
 
+  # ------------------------------------------- kho dữ liệu lịch sử (#80) ----
+  # Dịch vụ một lần của bộ máy (mot-cua/kho-du-lieu/chay.py), chạy tay hoặc theo lịch máy chủ:
+  # make kho-du-lieu (= docker compose --profile bi run --rm kho-du-lieu). Đọc hồ sơ đã đóng qua
+  # PostgREST bằng tài khoản dịch vụ mot_cua_bao_cao (secret ở OpenBao, AppRole tang2 như
+  # mot-cua-worker) → Parquet khử định danh trong volume kho-du-lieu → dbt-core + DuckDB build mart +
+  # docs (lineage) → RPC nap_bao_cao đẩy mart về schema bao_cao cho Superset. Không mở cổng.
+  kho-du-lieu:
+    build:
+      context: ./mot-cua/kho-du-lieu
+    image: commune-dxos/kho-du-lieu:local
+    profiles: [bi]
+    command: ["python", "-u", "/mot-cua/kho-du-lieu/chay.py"]
+    environment:
+      DXOS_TANG2: *tang2
+      DXOS_POSTGREST_URL: http://postgrest:3000
+      DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
+      DXOS_BAO_ADDR: http://openbao:8200
+      DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
+      DXOS_KHO_DIR: /kho
+    volumes:
+      - ./mot-cua:/mot-cua:ro
+      - tang2-secrets:/run/dxos-secrets:ro
+      - kho-du-lieu:/kho
+    # Không depends_on: dịch vụ của profile core (PostgREST, Keycloak, OpenBao) phải đang chạy
+    # (make up trước); khai phụ thuộc chéo profile thì `--profile bi` một mình không hợp lệ.
+    restart: "no"
+
   # --------------------------------------------------- ai / bi – TODO ----
   # ollama:      # profile ai; model Qwen2.5 7B/14B (Apache-2.0), không dùng bản 3B (D-004)
-  # superset:    # profile bi; apache/superset
+  # superset:    # profile bi; apache/superset, đọc schema bao_cao (#80) bằng role chỉ đọc
 
 volumes:
   pg-data:
@@ -950,5 +978,8 @@ volumes:
   # Mất volume này = CA mới: ca-init cấp lại chứng thư theo root mới; PDF đã ký bằng CA cũ vẫn
   # toàn vẹn nhưng không còn tin cậy khi xác minh. Sao lưu volume này cùng OpenBao.
   step-ca-data:
+  # Kho dữ liệu (#80): Parquet đã khử định danh, kho.duckdb của dbt, target/ (docs, lineage), log dbt.
+  # Dựng lại được hoàn toàn bằng make kho-du-lieu (nguồn đúng là PostgreSQL).
+  kho-du-lieu:
   step-ca-secrets:
   ca-init-secrets:

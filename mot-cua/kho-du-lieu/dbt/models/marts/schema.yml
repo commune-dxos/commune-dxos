@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: 2
+
+models:
+  - name: fct_ho_so
+    description: >
+      Một dòng mỗi hồ sơ đã đóng. Nạp về PostgreSQL bao_cao.fct_ho_so cho Superset. Không có dữ liệu cá nhân.
+    columns:
+      - name: ho_so_id
+        data_tests: [unique, not_null]
+      - name: ket_qua
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["hoan_tat", "tu_choi"]
+      - name: thang
+        description: Ngày đầu tháng đóng hồ sơ (giờ Việt Nam).
+        data_tests: [not_null]
+      - name: so_gio_giai_quyet
+        description: Số giờ từ lúc nộp tới lúc đóng.
+        data_tests: [not_null]
+      - name: so_ngay_lam_viec
+        description: Số ngày làm việc sau ngày nộp tới hết ngày đóng (bỏ thứ Bảy, Chủ nhật, ngày nghỉ).
+        data_tests: [not_null]
+      - name: so_lan_bo_sung
+        description: Số lần hồ sơ bị yêu cầu bổ sung.
+        data_tests: [not_null]
+      - name: tre_han
+        description: Đóng sau 17:00 ngày hạn xử lý.
+        data_tests: [not_null]
+  - name: hieu_suat_thang
+    description: >
+      Thời gian giải quyết, tỷ lệ trễ hạn theo tháng × thủ tục (kèm lĩnh vực). Nạp về PostgreSQL
+      bao_cao.hieu_suat_thang cho dashboard Superset.
+    columns:
+      - name: thang
+        data_tests: [not_null]
+      - name: thu_tuc
+        data_tests: [not_null]
+      - name: so_ho_so
+        data_tests: [not_null]
+      - name: ty_le_tre_han
+        description: so_tre_han / so_ho_so, từ 0 đến 1.
+        data_tests: [not_null]

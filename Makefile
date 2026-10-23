@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
+.PHONY: up down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -39,6 +39,13 @@ seed:          ## Nạp dữ liệu mẫu giả mot-cua/db/seed/ (kể cả khi 
 nap-thu-tuc:   ## Nạp lại gói thu-tuc/*/: kiểm gói, deploy BPMN lên Flowable, ghi danh mục (gói lỗi bị bỏ qua)
 	docker compose --profile core run --rm --no-deps nap-thu-tuc
 
+kho-du-lieu:   ## Kho dữ liệu (#80): hồ sơ đã đóng → Parquet (khử định danh) → dbt build + docs → nạp bảng mart bao_cao. Cần make up
+	docker compose --profile bi run --rm --build kho-du-lieu
+
+kho-du-lieu-tai-lieu: ## Xem lineage và mô tả model dbt ở http://127.0.0.1:8580 (sau make kho-du-lieu; Ctrl+C để dừng)
+	docker compose --profile bi run --rm --no-deps -p 127.0.0.1:8580:8580 kho-du-lieu \
+	  sh -c 'cd /mot-cua/kho-du-lieu/dbt && dbt docs serve --profiles-dir . --target-path /kho/dbt-target --host 0.0.0.0 --port 8580 --no-browser'
+
 smoke:         ## Kiểm tra hệ thống đang chạy: nền tảng (JWT, JWKS, OpenBao…) + bộ máy mot-cua + gói thủ tục
 	bash scripts/smoke.sh
 
@@ -59,6 +66,13 @@ test-backend:  ## Test đơn vị (không cần Docker): mot-cua/backend/tests/t
 
 test-web:      ## Test + build cổng công dân (cần Node ≥ 20.19): npm ci, Vitest, tsc, vite build (#52)
 	cd mot-cua/web-cong-dan && npm ci --no-audit --no-fund && npm test && npm run build
+
+# Kho dữ liệu (#80): xuất + dbt build + docs trên dữ liệu mẫu giả, không cần lõi. Cần duckdb, dbt-core,
+# dbt-duckdb: python3 -m venv .venv-kho && .venv-kho/bin/pip install -r mot-cua/kho-du-lieu/requirements.txt,
+# rồi PYTHON_KHO=.venv-kho/bin/python make test-kho. CI: job kho-du-lieu (không bắt buộc).
+PYTHON_KHO ?= python3
+test-kho:      ## Test kho dữ liệu trên dữ liệu mẫu: mot-cua/kho-du-lieu/tests/ (Parquet, idempotent, dbt build, số liệu mart)
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON_KHO) -W ignore -m unittest discover -s mot-cua/kho-du-lieu/tests -p 'test_*.py'
 
 test-sql:      ## Migration nền tảng + mot-cua và mot-cua/db/tests/*.sql (RLS) trên PostgreSQL tạm (Docker, hoặc PGHOST)
 	sh scripts/test-sql.sh

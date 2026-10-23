@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: 2
+
+sources:
+  - name: kho
+    description: >
+      Parquet do mot-cua/kho-du-lieu/chay.py xuất từ PostgreSQL (tài khoản dịch vụ dich_vu_bao_cao, chỉ
+      hồ sơ đã đóng), đã khử định danh: không họ tên, số điện thoại, sub người nộp, lý do. Giờ Việt Nam
+      không múi giờ. Phân vùng thang=YYYY-MM/thu_tuc=<mã>, cột phân vùng có cả trong tệp.
+    meta:
+      external_location: "read_parquet('{{ env_var('DXOS_KHO_DIR') }}/parquet/{name}/**/*.parquet', union_by_name = true)"
+    tables:
+      - name: ho_so
+        description: Hồ sơ đã hoàn tất hoặc bị từ chối.
+        columns:
+          - name: ho_so_id
+            description: id nội bộ của hồ sơ (uuid), không phải dữ liệu cá nhân
+            data_tests: [unique, not_null]
+          - name: trang_thai
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ["hoan_tat", "tu_choi"]
+      - name: lich_su_trang_thai
+        description: Các lần chuyển trạng thái của hồ sơ đã đóng (không có người đổi, không có lý do).
+        columns:
+          - name: id
+            data_tests: [unique, not_null]
+      - name: ngay_nghi
+        description: Ngày nghỉ lễ/Tết của cơ quan (không tính là ngày làm việc).
+        columns:
+          - name: ngay
+            data_tests: [unique, not_null]
