@@ -10,19 +10,21 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/003_tep_ho_so.sql` | tệp hồ sơ (#7): role `dich_vu_tep`, cột người tải/kết quả quét, ràng buộc khóa object theo hồ sơ, bảng `nhat_ky_tep` chỉ thêm; công dân thôi `INSERT` metadata trực tiếp |
 | `db/migrations/004_su_kien.sql` | sự kiện (#9): role `dich_vu_su_kien`, hộp thư đi `hop_thu_su_kien` (outbox), `nhat_ky_su_kien` chỉ thêm; xem [Sự kiện hồ sơ](#sự-kiện-hồ-sơ-rabbitmq-9) |
 | `db/migrations/005_goi_thu_tuc.sql` | gói thủ tục (D-009): cột `goi`, `quy_trinh`, `bien_theo_buoc`, `json_schema` của `thu_tuc`, hạn 0 ngày (trong ngày), role `dich_vu_danh_muc`, RPC `nap_thu_tuc`, `rut_goi_vang`; `json_schema_thu_tuc` trả schema của gói |
+| `db/migrations/006_trang_thai_theo_quy_trinh.sql` | trạng thái hồ sơ theo bước Flowable (#73): thêm `cho_phe_duyet`, cột `thu_tuc.trang_thai_buoc`, bảng `lich_su_trang_thai` chỉ thêm, RPC `dong_bo_trang_thai` (trạng thái + lịch sử + hộp thư đi một transaction); xem [Trạng thái hồ sơ](#trạng-thái-hồ-sơ) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql` | test quyền/RLS (110 kiểm tra) và danh mục gói (23 kiểm tra), chạy trong một transaction rồi ROLLBACK |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc` (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
 | `backend/nap_thu_tuc.py`, `goi_thu_tuc.py`, `kiem_bpmn.py` | bộ nạp gói thủ tục (D-009): dịch vụ một lần `nap-thu-tuc`, `make nap-thu-tuc`; phần kiểm gói chạy cả trong `make check` (`--chi-kiem`); xem [Gói thủ tục](#gói-thủ-tục-d-009) |
 | `rabbitmq/definitions.json` | exchange, queue, binding của sự kiện hồ sơ (#9); nền tảng tạo vhost `mot-cua`, user riêng rồi nạp tệp này |
-| `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `mot-cua-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, consumer mẫu |
+| `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `mot-cua-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, đối soát trạng thái với Flowable (#73), consumer mẫu |
+| `backend/trang_thai.py` | ánh xạ bước → trạng thái hồ sơ (mặc định theo người nhận, ghi đè của gói) và quy tắc tính trạng thái mới (hàm thuần, #73) |
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền), bộ nạp gói và test đơn vị: `make test` |
 | `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
 | `web-cong-dan/` | web Tầng 2: cổng công dân `/` (#52, đăng nhập `mot_cua_web`) và cổng cán bộ `/can-bo` (#55, đăng nhập `mot_cua_can_bo` + OTP; hộp việc, xử lý bước). React + Vite + Tailwind + shadcn/ui, PKCE; xem [README](web-cong-dan/README.md) |
 
-Sửa schema: thêm tệp `db/migrations/006_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`tang2-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
+Sửa schema: thêm tệp `db/migrations/007_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`tang2-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
 
 ## Sơ đồ dữ liệu
 
@@ -161,6 +163,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 | `thanh_phan_ho_so` – thêm | — | không trực tiếp: qua API tệp `/files` (quét ClamAV trước); dòng do tài khoản dịch vụ `dich_vu_tep` ghi, chỉ vào hồ sơ của người tải khi `moi`/`cho_bo_sung`, loại thành phần phải thuộc thủ tục của hồ sơ | — | — |
 | `thanh_phan_ho_so` – sửa | — | — | `trang_thai_kiem_tra`, `ghi_chu_kiem_tra` (CSDL ghi người, giờ kiểm tra) | — |
 | `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
+| `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
 Cán bộ phụ trách lĩnh vực nào được tra từ `can_bo` (theo `sub`) + `can_bo_linh_vuc`, không cần claim riêng trong JWT: đổi phân công có hiệu lực ngay. Hàm tra cứu nằm ở schema `mot_cua_noi_bo` (không phơi ra API), `SECURITY DEFINER`, `search_path` rỗng.
 
@@ -217,7 +220,36 @@ Biến được phép khi hoàn thành: đúng các `flowable:formProperty` củ
 | `tham_dinh` | cán bộ lĩnh vực `ho_tich` | `datYeuCau` (bool) | `ghiChu` |
 | `phe_duyet` | lãnh đạo | `pheDuyet` (bool) | `ghiChu` |
 
-Thêm thủ tục có quy trình: thêm một gói `thu-tuc/<ma>/` ([`docs/thu-tuc.md`](../docs/thu-tuc.md)), không sửa tệp nào ở đây. Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình.
+Thêm thủ tục có quy trình: thêm một gói `thu-tuc/<ma>/` ([`docs/thu-tuc.md`](../docs/thu-tuc.md)), không sửa tệp nào ở đây.
+
+Response của `…/khoi-tao`, `POST /workflow/ho-so` và `…/complete` có thêm `trangThai`: trạng thái hồ sơ trong CSDL sau khi đồng bộ (`null` nếu chưa ghi được, worker sẽ đối soát). Công dân hoàn thành bước `bo_sung` (nộp lại) thì hồ sơ phải đủ thành phần như lúc nộp (cùng Poka-yoke, thiếu → 422, không gọi Flowable).
+
+### Trạng thái hồ sơ
+
+`ho_so.trang_thai` là bản chiếu của tiến độ trong Flowable (#73): cổng công dân, cổng cán bộ, báo cáo và RLS đọc cùng một giá trị, không phải gọi Flowable. Ánh xạ bước → trạng thái khai trong gói (mặc định theo người nhận của bước, ghi đè bằng `trang_thai_theo_buoc` của `thu-tuc.yaml`, [`docs/thu-tuc.md`](../docs/thu-tuc.md#trạng-thái-hồ-sơ-theo-bước)); bộ nạp ghi vào `thu_tuc.trang_thai_buoc`.
+
+| Trạng thái | Nghĩa | Vào khi (gói khai sinh) | Ai chuyển |
+|---|---|---|---|
+| `moi` | mới nộp, chờ tiếp nhận | nộp hồ sơ; khởi tạo quy trình, bước `tiep_nhan` (gói khai `tiep_nhan: moi`) | CSDL khi thêm |
+| `dang_xu_ly` | cán bộ đang xử lý | `tham_dinh`; quay lại `tiep_nhan` sau khi bổ sung; lãnh đạo trả lại | quy trình; cán bộ tại quầy (hồ sơ giấy) |
+| `cho_bo_sung` | chờ công dân bổ sung (công dân sửa hồ sơ, tải thêm tệp được) | `tiep_nhan` thiếu thành phần → bước `bo_sung`; `ly_do` = `ghiChu` của cán bộ | quy trình; cán bộ tại quầy |
+| `cho_phe_duyet` | chờ lãnh đạo phê duyệt/ký | `phe_duyet` (nhóm `lanh_dao`) | **chỉ quy trình** (cán bộ PATCH → 400) |
+| `hoan_tat` | đã trả kết quả | `endEvent` đặt `ketQua = hoan_tat`; CSDL ghi `ngay_hoan_tat` | quy trình; cán bộ tại quầy |
+| `tu_choi` | không giải quyết | `endEvent` đặt `ketQua = tu_choi`; `ly_do` = `ghiChu` | quy trình; cán bộ tại quầy |
+
+Chuyển qua `/api` (tại quầy, công dân báo đã bổ sung) vẫn theo bảng của trigger như trước, `cho_phe_duyet` không ai tự chuyển vào/ra. Quy trình (RPC dưới đây) đưa hồ sơ chưa đóng sang bất kỳ trạng thái nào trừ `moi`, vì Flowable có thể đi nhiều bước giữa hai lần đối soát. Hồ sơ đã `hoan_tat`/`tu_choi` không đổi nữa.
+
+**Cập nhật ở đâu, theo thứ tự nào.** Flowable là nguồn đúng; CSDL ghi sau:
+
+1. `mot-cua-api` kiểm quyền, biến, (công dân nộp lại: thành phần hồ sơ) bằng token người dùng.
+2. Gọi Flowable (khởi tạo / nhận + hoàn thành task). Lỗi → trả 502, **không ghi gì vào CSDL**.
+3. Đọc bước đang mở (và `ketQua` nếu quy trình vừa kết thúc), tính trạng thái mới (`backend/trang_thai.py`).
+4. Gọi **một** RPC `mot_cua.dong_bo_trang_thai` bằng tài khoản dịch vụ `mot_cua_su_kien`: khóa dòng hồ sơ (`FOR UPDATE`), đổi `trang_thai` (kèm `ly_do`, giao cán bộ vừa xử lý nếu chưa giao), trigger ghi `lich_su_trang_thai`, ghi các sự kiện `ho_so.*` (mỗi sự kiện mang `duLieu.trangThai`) vào hộp thư đi — **cùng một transaction**, lỗi ở đâu cũng không ghi gì.
+5. Bước 4 lỗi (PostgREST, Keycloak dừng; tiến trình chết giữa 2 và 4): request vẫn 200 vì task đã xong trong Flowable, `trangThai: null`, ghi log. `mot-cua-worker` đối soát mỗi `DXOS_SU_KIEN_QUET_GIAY` giây: hồ sơ chưa đóng có quy trình mà trạng thái lệch Flowable (bước mở hoặc `ketQua`) → gọi cùng RPC với nguồn `doi_soat`, kèm sự kiện. Bỏ qua hồ sơ vừa đổi bước trong `DXOS_DOI_SOAT_CHO_GIAY` (60) giây để không giành với API; hồ sơ giấy (không có quy trình) không bị đụng tới. Chạy tay: `docker compose exec mot-cua-worker python /mot-cua/backend/worker.py doi-soat-mot-lan`.
+
+Gọi lại an toàn: sự kiện có khóa chống trùng `ho_so.moi:<quy trình>`, `ho_so.chuyen_buoc:<task>`, `ho_so.ket_thuc:<quy trình>` (API và worker dùng chung khóa kết thúc nên không phát hai lần), trạng thái đã đúng thì RPC không đổi, không thêm lịch sử.
+
+`lich_su_trang_thai`: một dòng cho mỗi lần đổi (cả lúc nộp), ghi bằng trigger nên mọi đường đổi đều có: `tu_trang_thai`, `den_trang_thai`, `ly_do`, `buoc` (bước Flowable vừa xong), `nguon` (`nop`, `api`, `quy_trinh`, `doi_soat`, `he_thong` = SQL quản trị), `nguoi_sub`, `luc`. Ví dụ đọc: `GET /api/lich_su_trang_thai?ho_so_id=eq.<id>&order=id`.
 
 ```bash
 # Công dân (token lấy như docs/architecture.md §8) nộp hồ sơ khai sinh: tạo hồ sơ → tải tệp → khởi tạo
@@ -279,9 +311,10 @@ Thiết kế, lý do và sơ đồ: [`docs/architecture.md` §4.5](../docs/archi
 | Loại (routing key) | Khi nào | Ai phát | `duLieu` |
 |---|---|---|---|
 | `ho_so.moi` | khởi tạo quy trình thành công (`POST /workflow/ho-so`, `/ho-so/{id}/khoi-tao`) | mot-cua-api | `processInstanceId`, `quyTrinh`, `hanXuLy` (ngày), `buocDangMo` (mã bước) |
-| `ho_so.chuyen_buoc` | hoàn thành một task (`POST /workflow/tasks/{id}/complete`) | mot-cua-api | `processInstanceId`, `tuBuoc`, `denBuoc` (mã bước đang mở sau đó, rỗng nếu kết thúc), `vaiTroXuLy` |
+| `ho_so.chuyen_buoc` | hoàn thành một task (`POST /workflow/tasks/{id}/complete`); hoặc đối soát sửa trạng thái lệch Flowable | mot-cua-api; mot-cua-worker (đối soát) | `processInstanceId`, `tuBuoc`, `denBuoc` (mã bước đang mở sau đó, rỗng nếu kết thúc), `vaiTroXuLy`; đối soát: `tuBuoc` = `null`, `doiSoat: true` |
 | `ho_so.hoan_tat` | quy trình kết thúc ở *Hoàn tất* (biến `ketQua = hoan_tat`) | mot-cua-api, ngay sau `chuyen_buoc` cuối | `processInstanceId`, `ketQua`, `diemKetThuc` |
 | `ho_so.tu_choi` | quy trình kết thúc ở *Từ chối* (`ketQua = tu_choi`) | mot-cua-api | như trên |
+| (mọi loại trên trừ `sap_tre_han`) | | | thêm `trangThai`: trạng thái hồ sơ sau sự kiện, ghi cùng transaction với thay đổi (#73) |
 | `ho_so.sap_tre_han` | hồ sơ chưa xong (còn quy trình đang chạy), chưa quá 17:00 ngày hạn, còn ≤ `DXOS_SU_KIEN_SAP_TRE_NGAY` (1) ngày làm việc; **mỗi (hồ sơ, hạn xử lý) một lần** | mot-cua-worker, quét mỗi `DXOS_SU_KIEN_QUET_GIAY` (300) giây | `processInstanceId`, `hanXuLy`, `hanXuLyLuc`, `conLaiNgayLamViec` (0 = hạn hôm nay), `buocDangMo` |
 
 ### Định dạng (phiên bản 1)
