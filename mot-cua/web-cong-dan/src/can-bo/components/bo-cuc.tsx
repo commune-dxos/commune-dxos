@@ -4,7 +4,7 @@
 // chép mã): thanh bên (Sidebar của shadcn/ui; dưới 768px thành ngăn kéo), đầu trang có nút thu thanh
 // bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung bên phải. Lãnh đạo có
 // thêm liên kết dashboard báo cáo (Superset ở /bao-cao, đăng nhập SSO cùng Keycloak, #82).
-import { AlarmClockOff, ChartColumn, ExternalLink, Hourglass, Inbox, UserCheck } from "lucide-react";
+import { AlarmClockOff, BookOpen, ChartColumn, ExternalLink, Hourglass, Inbox, UserCheck } from "lucide-react";
 import { Link, Outlet, useLocation, useMatch } from "react-router";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -70,6 +70,7 @@ function ThanhBen() {
   const { pathname, search } = useLocation();
   const dem = demTheoHan(viec);
   const oHopViec = pathname.replace(/\/$/, "") === GOC_CAN_BO;
+  const oSoVanBan = pathname.replace(/\/$/, "") === `${GOC_CAN_BO}/van-ban`;
   const q = new URLSearchParams(search);
   const loc = q.get("han") ?? q.get("trang_thai") ?? "";
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
@@ -85,6 +86,7 @@ function ThanhBen() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
+        {vaiTro !== "van_thu" && (
         <SidebarGroup>
           <SidebarGroupLabel className="text-sm">Xử lý hồ sơ</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -111,6 +113,15 @@ function ThanhBen() {
                 dem={viec.filter((v) => v.cuaToi).length}
                 dangMo={oHopViec && loc === "cua_toi"}
               />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        )}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sm">Văn bản</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <MucMenu den={`${GOC_CAN_BO}/van-ban`} nhan="Sổ văn bản" bieuTuong={BookOpen} dangMo={oSoVanBan} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -143,7 +154,13 @@ function ThanhBen() {
       <SidebarFooter className="border-t border-sidebar-border p-4 text-sm">
         <p className="font-semibold">{TEN_VAI_TRO[vaiTro]}</p>
         <p className="text-muted-foreground">
-          {vaiTro === "lanh_dao" ? "Phê duyệt, ký các bước của lãnh đạo" : linhVuc ? `Lĩnh vực: ${linhVuc}` : "Chưa được giao lĩnh vực"}
+          {vaiTro === "lanh_dao"
+            ? "Phê duyệt, ký các bước của lãnh đạo"
+            : vaiTro === "van_thu"
+              ? "Vào sổ văn bản đến, soạn văn bản đi"
+              : linhVuc
+                ? `Lĩnh vực: ${linhVuc}`
+                : "Chưa được giao lĩnh vực"}
         </p>
       </SidebarFooter>
     </Sidebar>
@@ -152,7 +169,9 @@ function ThanhBen() {
 
 function TieuDeTrang() {
   const hoSo = useMatch(`${GOC_CAN_BO}/ho-so/:id`);
+  const soVanBan = useMatch(`${GOC_CAN_BO}/van-ban`);
   const { viec, hoSoDangXem } = useDuLieuCanBo();
+  if (soVanBan) return <span className="truncate font-semibold">Sổ văn bản</span>;
   if (!hoSo) return <span className="truncate font-semibold">Hộp việc</span>;
   const ma =
     (hoSoDangXem && hoSoDangXem.id === hoSo.params.id ? hoSoDangXem.ma : null) ??

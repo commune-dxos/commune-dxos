@@ -5,11 +5,12 @@
 // thật do APISIX, mot-cua-api và RLS của CSDL kiểm lại ở mỗi request.
 
 export const CLIENT_VAI_TRO = "dxos_api";
-export type VaiTroCanBo = "can_bo" | "lanh_dao";
+export type VaiTroCanBo = "can_bo" | "lanh_dao" | "van_thu";
 
 export const TEN_VAI_TRO: Record<VaiTroCanBo, string> = {
   can_bo: "Cán bộ một cửa",
   lanh_dao: "Lãnh đạo xã",
+  van_thu: "Văn thư",
 };
 
 function giaiMaPhan(jwt: string): unknown {
@@ -33,9 +34,11 @@ export function docVaiTro(accessToken: string | undefined | null): string[] {
   return Array.isArray(roles) ? roles.filter((r): r is string => typeof r === "string") : [];
 }
 
-/** Vai được vào cổng cán bộ; lãnh đạo ưu tiên nếu có cả hai. Không có vai nào → null ("không có quyền"). */
+/** Vai được vào cổng cán bộ; ưu tiên lãnh đạo, rồi cán bộ, rồi văn thư (#78: chỉ sổ văn bản). Không có vai
+ * nào → null ("không có quyền"). */
 export function vaiTroCanBo(roles: string[]): VaiTroCanBo | null {
   if (roles.includes("lanh_dao")) return "lanh_dao";
   if (roles.includes("can_bo")) return "can_bo";
+  if (roles.includes("van_thu")) return "van_thu";
   return null;
 }

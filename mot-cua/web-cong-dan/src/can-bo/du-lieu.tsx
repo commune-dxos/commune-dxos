@@ -50,6 +50,11 @@ export function DuLieuCanBoProvider({
   const [hoSoDangXem, datHoSoDangXem] = useState<{ id: string; ma: string } | null>(null);
 
   const taiLai = useCallback(async () => {
+    // Văn thư (#78) không xử lý hồ sơ: không có hộp việc, không đọc bảng cán bộ.
+    if (vaiTro === "van_thu") {
+      datDangTai(false);
+      return;
+    }
     try {
       const tasks = await api.layTask();
       const hoSo = await api.layHoSo(tasks.flatMap((t) => (t.hoSoId ? [t.hoSoId] : [])));
@@ -62,17 +67,18 @@ export function DuLieuCanBoProvider({
     } finally {
       datDangTai(false);
     }
-  }, [api, sub]);
+  }, [api, sub, vaiTro]);
 
   useEffect(() => {
     void taiLai();
+    if (vaiTro === "van_thu") return;
     api
       .layCanBo(sub)
       .then(datCanBo)
       .catch(() => datCanBo(null));
     const hen = window.setInterval(() => void taiLai(), CHU_KY_TAI_LAI_MS);
     return () => window.clearInterval(hen);
-  }, [api, sub, taiLai]);
+  }, [api, sub, taiLai, vaiTro]);
 
   const giaTri = useMemo(
     () => ({ api, nguoiDung, vaiTro, canBo, viec, dangTai, loi, bayGio, taiLai, hoSoDangXem, datHoSoDangXem }),
