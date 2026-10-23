@@ -35,7 +35,9 @@ npm test           # Vitest
 npm run build      # kiểm kiểu + build vào dist/
 ```
 
-Cổng 5173 khớp `DXOS_CORS_ORIGINS` mặc định (`.env.example` ở gốc) và `redirectUris` của client `mot_cua_web`. Đổi địa chỉ: chép [`.env.example`](.env.example) thành `.env.local`. Container phục vụ bản build qua compose làm ở #57.
+Cổng 5173 khớp `DXOS_CORS_ORIGINS` mặc định (`.env.example` ở gốc) và `redirectUris` của client `mot_cua_web`. Đổi địa chỉ: chép [`.env.example`](.env.example) thành `.env.local`.
+
+**Trong compose (#57):** `make up` ở gốc repo build [`Dockerfile`](Dockerfile) (node → `nginxinc/nginx-unprivileged`, uid 101, rootfs chỉ đọc) thành dịch vụ `mot-cua-web`; APISIX phục vụ ở **http://localhost:9080/** cùng origin với `/public`, `/api`, `/files`, `/workflow`, nên web gọi lõi bằng đường dẫn tương đối. Image không có bí mật hay địa chỉ nào: [`nginx/default.conf.template`](nginx/default.conf.template) sinh `/cau-hinh.js` (Keycloak, realm, client) từ biến môi trường lúc chạy, `src/lib/cau-hinh.ts` ưu tiên nó hơn biến `VITE_*`; [`nginx/bao-mat.headers.template`](nginx/bao-mat.headers.template) đặt CSP (không `unsafe-inline`), `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`. Route SPA tải lại vẫn 200, đường dẫn lạ trả 404. Kiểm: `make smoke` mục 4h (`mot-cua/tests/smoke-web.sh`).
 
 Tài khoản thử (sau `make demo-users` ở gốc repo): `congdan01`, `congdan02` – dữ liệu giả.
 

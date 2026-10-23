@@ -5,9 +5,9 @@
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
 
-up:            ## Chạy nền tảng Tầng 1 + bộ máy mot-cua + nạp gói thu-tuc/ (profile core); tự init/unseal OpenBao. Cần: cp .env.example .env
+up:            ## Chạy nền tảng Tầng 1 + bộ máy mot-cua + nạp gói thu-tuc/ + cổng công dân http://localhost:9080/ (profile core); tự init/unseal OpenBao. Cần: cp .env.example .env
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env (không có mật khẩu nào cần điền)"; exit 1; }
-	docker compose --profile core up -d
+	docker compose --profile core up -d --build
 
 bao-init:      ## OpenBao: init (lần đầu) → unseal → KV, policy, AppRole, bí mật lõi. Idempotent; `make up` tự gọi
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }

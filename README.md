@@ -89,14 +89,14 @@ Cần Docker (Compose v2.20+), RAM cho Docker 4 GB, ổ trống 6 GB, `git`, `ma
 git clone https://github.com/commune-dxos/commune-dxos.git
 cd commune-dxos
 cp .env.example .env      # không có mật khẩu nào cần điền
-make up                   # chạy lõi + bộ máy một cửa + nạp gói thu-tuc/
+make up                   # chạy lõi + bộ máy một cửa + nạp gói thu-tuc/ + cổng công dân
 make smoke                # kiểm tra đầu-cuối, kết thúc bằng "0 trượt"
 make demo-users           # đặt mật khẩu cho tài khoản mẫu và in ra
 ```
 
 Lần đầu `make up` mất 2–10 phút tùy mạng, `make smoke` khoảng 1,5 phút. Dừng: `make down` (giữ dữ liệu). Không xóa, không commit `.data/openbao/commune.json`: mất tệp này là mất mọi bí mật.
 
-Thử ngay: http://localhost:9080/public/thu_tuc (danh mục thủ tục, không cần đăng nhập). Tài khoản mẫu: `congdan01` (người dân), `canbo01` (cán bộ hộ tịch), `lanhdao01` (lãnh đạo).
+Mở cổng công dân: **http://localhost:9080/** (APISIX phục vụ, cùng cổng với API; xem danh mục và chi tiết thủ tục không cần đăng nhập, nộp hồ sơ sau khi đăng nhập). API công khai: http://localhost:9080/public/thu_tuc. Tài khoản mẫu: `congdan01` (người dân), `canbo01` (cán bộ hộ tịch), `lanhdao01` (lãnh đạo).
 
 Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md`](docs/cai-dat.md).
 

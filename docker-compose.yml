@@ -26,6 +26,7 @@
 #          + Garage (S3) và ClamAV (quét tệp trước khi lưu) (#7)
 #          + OpenBao giữ mọi bí mật dịch vụ (#10)
 #          + RabbitMQ hàng đợi sự kiện, mot-cua-worker (#9)
+#          + cổng công dân mot-cua-web, APISIX phục vụ ở route / (#57)
 #   docs : Gotenberg, step-ca, Meilisearch CE         (tuần 2–5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : Apache Superset                            (tuần 4)
@@ -228,8 +229,9 @@ services:
       PGRST_OPENAPI_MODE: follow-privileges
       # Chặn trên số dòng mỗi response, tránh một request đọc cả bảng lớn.
       PGRST_DB_MAX_ROWS: "1000"
-      # PostgREST mặc định cho mọi origin; giới hạn giống CORS của APISIX.
-      PGRST_SERVER_CORS_ALLOWED_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
+      # PostgREST mặc định cho mọi origin; giới hạn giống CORS của APISIX. PostgREST từ chối request
+      # có Origin lạ, nên luôn kèm origin của gateway (cổng công dân mot-cua-web, #57).
+      PGRST_SERVER_CORS_ALLOWED_ORIGINS: ${DXOS_GATEWAY_URL:-http://localhost:9080},${DXOS_CORS_ORIGINS:-http://localhost:5173}
     env_file:
       - ./mot-cua/postgrest.env
     volumes:
@@ -261,8 +263,9 @@ services:
     # vì entrypoint sẽ ghi đè config.yaml đã mount).
     environment:
       # Nguồn (origin) web của Tầng 2 được gọi API từ trình duyệt, cách nhau bởi dấu phẩy.
-      # Đọc trong nen-tang/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}.
-      DXOS_CORS_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
+      # Đọc trong nen-tang/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}. Luôn kèm origin của
+      # gateway: cổng công dân mot-cua-web được phục vụ ở đó (#57).
+      DXOS_CORS_ORIGINS: ${DXOS_GATEWAY_URL:-http://localhost:9080},${DXOS_CORS_ORIGINS:-http://localhost:5173}
     volumes:
       - ./nen-tang/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ./nen-tang/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
@@ -278,6 +281,8 @@ services:
       mot-cua-api:
         condition: service_healthy
       garage:
+        condition: service_healthy
+      mot-cua-web:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
@@ -416,6 +421,38 @@ services:
           python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
       interval: 5s
       timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Cổng công dân (#57): bản build của mot-cua/web-cong-dan/ (React) do nginx không đặc quyền phục
+  # vụ (Dockerfile hai tầng: node build → nginxinc/nginx-unprivileged, uid 101). Không mở cổng ra
+  # host: APISIX phục vụ ở route / (http://localhost:9080/), cùng origin với /public, /api, /files,
+  # /workflow nên web gọi lõi bằng đường dẫn tương đối. Không có bí mật: Keycloak mà trình duyệt
+  # thấy truyền lúc chạy (sinh /cau-hinh.js và CSP). `make up` build lại image khi mã web đổi.
+  mot-cua-web:
+    build:
+      context: ./mot-cua/web-cong-dan
+    image: commune-dxos/mot-cua-web:local
+    profiles: [core]
+    environment:
+      DXOS_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8080}
+      DXOS_KEYCLOAK_REALM: dxos
+      DXOS_OIDC_CLIENT_ID: mot_cua_web
+      # Entrypoint của nginx chỉ thay biến DXOS_* vào nginx/*.template.
+      NGINX_ENVSUBST_FILTER: ^DXOS_
+    read_only: true
+    tmpfs:
+      - /tmp
+      # Cấu hình nginx sinh từ template lúc khởi động (chủ uid 101).
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
       retries: 20
     restart: unless-stopped
 
