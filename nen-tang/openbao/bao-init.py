@@ -52,6 +52,8 @@ DANH_TINH = {
     "tang2": 0,         # mot-cua-api, mot-cua-worker, nap-thu-tuc (dịch vụ Tầng 2 DXOS_TANG2)
     "rabbitmq": 100,    # rabbitmq:*-alpine (#9)
     "rabbitmq-init": 0,
+    "step-ca": 1000,    # smallstep/step-ca chạy user step (#77)
+    "ca-init": 1000,    # dịch vụ một lần ca-init, cùng image step-ca
 }
 # Thời hạn token theo danh tính: agent một lần chỉ cần vài giây; backend chạy lâu thì
 # đăng nhập lại khi token hết hạn.
@@ -77,6 +79,10 @@ BI_MAT_LOI = {
     "core/flowable/rest-admin": {"password": ("FLOWABLE_ADMIN_PASSWORD", _mat_khau)},
     "core/garage": {"rpc_secret": (None, _hex32), "admin_token": (None, _hex32)},
     "core/rabbitmq/admin": {"password": (None, _mat_khau)},
+    # CA nội bộ (#77): mật khẩu giải mã khóa CA và mật khẩu provisioner ký tài liệu, tách hai
+    # đường dẫn để ca-init chỉ đọc được mật khẩu provisioner.
+    "core/step-ca/ca": {"password": (None, _mat_khau)},
+    "core/step-ca/provisioner": {"password": (None, _mat_khau)},
 }
 
 

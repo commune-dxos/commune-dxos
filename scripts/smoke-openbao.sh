@@ -59,6 +59,17 @@ MA_TRAN=(
   "rabbitmq-init:write:core/rabbitmq/admin 403"
   "rabbitmq-init:read:core/db/postgres 403"
   "rabbitmq-init:read:$A/s3 403"
+  "step-ca:read:core/step-ca/ca 200"
+  "step-ca:read:core/step-ca/provisioner 200"
+  "step-ca:read:$A/ky-so 403"
+  "step-ca:write:core/step-ca/ca 403"
+  "ca-init:read:core/step-ca/provisioner 200"
+  "ca-init:read:core/step-ca/ca 403"
+  "ca-init:write:$A/ky-so 400"
+  "ca-init:read:$A/s3 403"
+  "tang2:read:$A/ky-so 200"
+  "tang2:write:$A/ky-so 403"
+  "tang2:read:core/step-ca/provisioner 403"
 )
 muc=(); for m in "${MA_TRAN[@]}"; do muc+=("${m% *}"); done
 kq="$(docker compose run --rm --no-deps --entrypoint python bao-init /nen-tang/openbao/kiem-quyen.py "${muc[@]}" 2>&1)"
@@ -70,7 +81,7 @@ done
 # (cho phép *_FILE, *_URL và giá trị "@/đường dẫn tệp" như PGRST_JWT_SECRET=@/jwks/jwks.json là
 # khóa CÔNG KHAI). bao-init chỉ nhận biến LEGACY_* khi .env cũ còn mật khẩu.
 for svc in postgres keycloak postgrest flowable mot-cua-api tang2-realm garage-init db-init tang2-migrate \
-           rabbitmq rabbitmq-init mot-cua-worker; do
+           rabbitmq rabbitmq-init mot-cua-worker step-ca ca-init gotenberg; do
   id="$(docker compose ps -aq "$svc" | head -1)"
   kiem "$svc: không có mật khẩu/secret trong biến môi trường" "0" \
     "$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$id" \

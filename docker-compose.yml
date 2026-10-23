@@ -27,7 +27,9 @@
 #          + OpenBao giữ mọi bí mật dịch vụ (#10)
 #          + RabbitMQ hàng đợi sự kiện, mot-cua-worker (#9)
 #          + cổng công dân mot-cua-web, APISIX phục vụ ở route / (#57)
-#   docs : Gotenberg, step-ca, Meilisearch CE         (tuần 2–5)
+#          + step-ca (CA nội bộ), ca-init, Gotenberg: biên nhận/kết quả PDF có ký số thuộc luồng
+#            nộp hồ sơ chính nên chạy cùng core (#77)
+#   docs : Meilisearch CE                              (tuần 5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : Apache Superset                            (tuần 4)
 #
@@ -419,6 +421,12 @@ services:
       DXOS_GATEWAY_URL: ${DXOS_GATEWAY_URL:-http://localhost:9080}
       DXOS_FILE_MAX_BYTES: ${DXOS_FILE_MAX_BYTES:-10485760}
       DXOS_FILE_LINK_TTL: ${DXOS_FILE_LINK_TTL:-300}
+      # Ký số giấy tờ (#77): Gotenberg sinh PDF từ mẫu mot-cua/mau-giay-to/, pyHanko ký bằng chứng
+      # thư ca-init ghi vào OpenBao. Tên cơ quan in trên giấy tờ = tên trong chứng thư.
+      DXOS_GOTENBERG_URL: http://gotenberg:3000
+      DXOS_KY_SO_TEN: ${DXOS_KY_SO_TEN:-UBND xã Mẫu – Bộ phận Một cửa}
+      # pyHanko (tzlocal) cần múi giờ hệ thống; giờ Việt Nam trên giấy tờ tính bằng offset cố định.
+      TZ: UTC
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./mot-cua:/mot-cua:ro
@@ -705,6 +713,8 @@ services:
       - tang2-secrets:/vol/tang2
       - rabbitmq-secrets:/vol/rabbitmq
       - rabbitmq-init-secrets:/vol/rabbitmq-init
+      - step-ca-secrets:/vol/step-ca
+      - ca-init-secrets:/vol/ca-init
     depends_on:
       openbao:
         condition: service_started
@@ -817,9 +827,98 @@ services:
         condition: service_completed_successfully
     restart: "no"
 
-  # ------------------------------------------------- docs – TODO tuần 2–5 ----
-  # gotenberg:   # MIT, gotenberg/gotenberg
-  # step-ca:     # Apache-2.0, smallstep/step-ca
+  # --------------------------------------------- ký số giấy tờ (#77) ----
+  # Mật khẩu khóa CA và mật khẩu provisioner: bao-init sinh trong OpenBao (dxos/core/step-ca/*),
+  # agent này render ra volume step-ca-secrets (quyền 0400, chủ uid 1000 = user step) rồi thoát.
+  step-ca-secrets:
+    <<: *bao-agent
+    user: "1000"
+    command: ["-config=/nen-tang/openbao/agent/step-ca.hcl"]
+    volumes:
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
+      - step-ca-secrets:/run/dxos-secrets
+
+  # CA nội bộ của xã (Apache-2.0): dịch vụ riêng, image gốc smallstep/step-ca, không sửa mã. Lần
+  # đầu tự khởi tạo CA hai tầng trong volume step-ca-data (khóa mã hóa bằng mật khẩu OpenBao), một
+  # provisioner JWK ký tài liệu theo mẫu nen-tang/step-ca/ky-tai-lieu.tpl (nen-tang/scripts/
+  # step-ca-start.sh). Không mở cổng ra host, không có route APISIX: chỉ ca-init gọi.
+  step-ca:
+    image: smallstep/step-ca:0.30.2
+    profiles: [core]
+    entrypoint: ["/bin/bash", "/nen-tang/scripts/step-ca-start.sh"]
+    environment:
+      DXOS_CA_TEN: ${DXOS_CA_TEN:-CA nội bộ Commune DX-OS}
+      DXOS_KY_SO_THOI_HAN: ${DXOS_KY_SO_THOI_HAN:-8760h}
+    volumes:
+      - ./nen-tang/scripts/step-ca-start.sh:/nen-tang/scripts/step-ca-start.sh:ro
+      - ./nen-tang/step-ca:/nen-tang/step-ca:ro
+      - step-ca-secrets:/run/dxos-secrets:ro
+      - step-ca-data:/home/step
+    expose:
+      - "9000"
+    depends_on:
+      step-ca-secrets:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "--cacert", "/home/step/certs/root_ca.crt", "https://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Cấp (hoặc gia hạn khi còn dưới 30 ngày) chứng thư ký tài liệu cho dịch vụ Tầng 2, ghi khóa +
+  # chứng thư vào OpenBao dxos/tang2/<DXOS_TANG2>/ky-so (nen-tang/scripts/ca-init.sh) rồi thoát.
+  # Idempotent. AppRole ca-init (volume ca-init-secrets chỉ có role_id/secret_id); đọc root CA từ
+  # volume step-ca-data chỉ đọc.
+  ca-init:
+    image: smallstep/step-ca:0.30.2
+    profiles: [core]
+    entrypoint: ["/bin/bash", "/nen-tang/scripts/ca-init.sh"]
+    environment:
+      DXOS_TANG2: *tang2
+      DXOS_KY_SO_TEN: ${DXOS_KY_SO_TEN:-UBND xã Mẫu – Bộ phận Một cửa}
+      DXOS_KY_SO_THOI_HAN: ${DXOS_KY_SO_THOI_HAN:-8760h}
+      BAO_ADDR: http://openbao:8200
+    volumes:
+      - ./nen-tang/scripts/ca-init.sh:/nen-tang/scripts/ca-init.sh:ro
+      - ca-init-secrets:/run/dxos-secrets:ro
+      - step-ca-data:/ca:ro
+    depends_on:
+      step-ca:
+        condition: service_healthy
+      bao-init:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  # Sinh PDF từ HTML (MIT): dịch vụ riêng, image gốc bản chỉ có Chromium, không sửa mã. Chỉ
+  # mot-cua-api gọi (không mở cổng, không route APISIX). Chromium không được tải gì từ mạng (mẫu
+  # giấy tờ tự chứa), không chạy JavaScript; tắt webhook và downloadFrom (chống SSRF).
+  gotenberg:
+    image: gotenberg/gotenberg:8.37.0-chromium
+    profiles: [core]
+    command:
+      - gotenberg
+      - --api-timeout=30s
+      - --api-disable-health-check-logging
+      - --api-disable-download-from
+      - --webhook-disable
+      - --chromium-disable-javascript
+      - --chromium-deny-private-ips
+      - --chromium-deny-public-ips
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # ------------------------------------------------- docs – TODO tuần 5 ----
   # meilisearch: # Chỉ Community Edition (MIT), không bật tính năng Enterprise (D-004)
 
   # --------------------------------------------------- ai / bi – TODO ----
@@ -847,3 +946,9 @@ volumes:
   rabbitmq-init-secrets:
   # RabbitMQ (#9): CSDL của nút (user, vhost, queue, tin nhắn bền vững).
   rabbitmq-data:
+  # step-ca (#77): cấu hình CA, root + intermediate (khóa đã mã hóa), CSDL chứng thư đã cấp.
+  # Mất volume này = CA mới: ca-init cấp lại chứng thư theo root mới; PDF đã ký bằng CA cũ vẫn
+  # toàn vẹn nhưng không còn tin cậy khi xác minh. Sao lưu volume này cùng OpenBao.
+  step-ca-data:
+  step-ca-secrets:
+  ca-init-secrets:
