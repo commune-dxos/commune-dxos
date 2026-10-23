@@ -3,7 +3,7 @@
 -- Test kho dữ liệu (#80, migration 009): tài khoản dịch vụ báo cáo chỉ đọc hồ sơ ĐÃ ĐÓNG và chỉ cột
 -- không phải dữ liệu cá nhân (họ tên, số điện thoại, sub người nộp, lý do, người đổi trạng thái → 42501);
 -- RPC nap_bao_cao chỉ cho dich_vu_bao_cao, thay nội dung bảng mart trong một transaction, bảng lạ hay
--- dữ liệu sai → không nạp gì; schema bao_cao không mở cho role nào khác.
+-- dữ liệu sai → không nạp gì; schema bao_cao chỉ mở cho role đọc bao_cao_doc của Superset (#82, migration 010).
 -- Cùng khung với giay_to_ky.sql: một transaction rồi ROLLBACK, mỗi dòng in ra KẾT_QUẢ|mô tả|mong đợi|thực tế.
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -122,6 +122,20 @@ SELECT pg_temp.kiem('nạp lần 2 thay chứ không cộng dồn; lỗi không 
   SELECT (SELECT count(*) FROM bao_cao.fct_ho_so) || ' ' || (SELECT count(*) FROM bao_cao.hieu_suat_thang)));
 SELECT pg_temp.kiem('mỗi lần nạp ghi bao_cao.lan_nap kèm invocation dbt', 'run-1,run-2', (
   SELECT string_agg(dbt_run_id, ',' ORDER BY id) FROM bao_cao.lan_nap WHERE dbt_run_id LIKE 'run-%'));
+
+-- 3. Role đọc báo cáo của Superset (#82, migration 010) ----------------------------------------
+SET LOCAL ROLE bao_cao_doc;
+SELECT pg_temp.kiem('bao_cao_doc đọc bao_cao.fct_ho_so, hieu_suat_thang, lan_nap', '1 1 2', (
+  SELECT (SELECT count(*) FROM bao_cao.fct_ho_so) || ' ' || (SELECT count(*) FROM bao_cao.hieu_suat_thang) || ' '
+      || (SELECT count(*) FROM bao_cao.lan_nap WHERE dbt_run_id LIKE 'run-%')));
+SELECT pg_temp.kiem('bao_cao_doc đọc mot_cua.ho_so → chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.ho_so'));
+SELECT pg_temp.kiem('bao_cao_doc đọc mot_cua.nhat_ky_kiem_toan → chặn', 'chặn 42501', pg_temp.dem('SELECT 1 FROM mot_cua.nhat_ky_kiem_toan'));
+SELECT pg_temp.kiem('bao_cao_doc ghi bao_cao.fct_ho_so → chặn', 'chặn 42501', pg_temp.thu('DELETE FROM bao_cao.fct_ho_so'));
+SELECT pg_temp.kiem('bao_cao_doc gọi nap_bao_cao → chặn', 'chặn 42501',
+  pg_temp.thu($$SELECT mot_cua.nap_bao_cao('{"fct_ho_so": []}')$$));
+RESET ROLE;
+SELECT pg_temp.kiem('bao_cao_doc không là thành viên role nào (không thừa hưởng quyền API)', '0', (
+  SELECT count(*)::text FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.member WHERE r.rolname = 'bao_cao_doc'));
 
 -- Kết quả -------------------------------------------------------------------------------
 RESET ROLE;
