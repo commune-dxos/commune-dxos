@@ -459,6 +459,9 @@ kiem "đã xóa người dùng tạm của smoke" "0" \
 # Hồ sơ KS01 do công dân nộp qua API → khởi tạo quy trình với biến lấy từ hồ sơ → cán bộ
 # hoàn thành từng bước. Gọi Flowable REST trực tiếp (cổng debug 127.0.0.1) để kiểm riêng
 # engine và BPMN; luồng người dùng qua gateway ở mục 4d.
+# Token công dân lấy ở đầu smoke đã quá hạn 5 phút sau các mục 4a–4n: lấy lại.
+TOKEN="$(lay_token congdan01 "$MK" | jq -r '.access_token // empty')"
+AUTH=(-H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json')
 # wf_bat_dau <businessKey> <hoSoId> <hanXuLyLuc> → id process instance
 wf_bat_dau() {
   wf runtime/process-instances -d "$(jq -nc --arg bk "$1" --arg id "$2" --arg sub "$SUB" --arg han "$3" \
