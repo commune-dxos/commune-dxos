@@ -15,6 +15,10 @@
           "description": "mot-cua: lãnh đạo xã. Bắt buộc MFA (OTP). Trùng role PostgreSQL lanh_dao"
         },
         {
+          "name": "van_thu",
+          "description": "mot-cua: văn thư xã (#78): vào sổ văn bản đến, soạn dự thảo văn bản đi; xem sổ văn bản. Không xem hồ sơ công dân. Trùng role PostgreSQL van_thu"
+        },
+        {
           "name": "dich_vu_tep",
           "description": "mot-cua: tài khoản dịch vụ của API tệp (backend), chỉ ghi metadata tệp đã quét và nhật ký tệp. Không gán cho người. Trùng role PostgreSQL dich_vu_tep"
         },
@@ -58,6 +62,15 @@
       "clientRoles": {
         "dxos_api": [
           "lanh_dao"
+        ]
+      }
+    },
+    {
+      "name": "van-thu",
+      "path": "/van-thu",
+      "clientRoles": {
+        "dxos_api": [
+          "van_thu"
         ]
       }
     }
@@ -263,6 +276,21 @@
       "lastName": "Lê",
       "groups": [
         "/lanh-dao"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000e001",
+      "username": "vanthu01",
+      "enabled": true,
+      "email": "vanthu01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Thị Văn Thư",
+      "lastName": "Phạm",
+      "groups": [
+        "/van-thu"
       ],
       "requiredActions": [
         "CONFIGURE_TOTP"
