@@ -4,7 +4,7 @@
 
 Một gói gồm đúng các tệp trong TEP_BAT_BUOC:
   thu-tuc.yaml                  mã, tên, lĩnh vực, thời hạn (ngày làm việc), lệ phí, căn cứ pháp lý,
-                                process id của quy trình
+                                process id của quy trình, trạng thái hồ sơ theo bước (không bắt buộc)
   quy-trinh.bpmn20.xml          BPMN 2.0 viết tay, một process; biến từng bước khai bằng
                                 flowable:formProperty
   thanh-phan-ho-so.schema.json  JSON Schema 2020-12 các thành phần hồ sơ (Poka-yoke)
@@ -26,6 +26,7 @@ import os
 import re
 
 import kiem_bpmn
+import trang_thai
 
 TEP_YAML = "thu-tuc.yaml"
 TEP_BPMN = "quy-trinh.bpmn20.xml"
@@ -57,11 +58,13 @@ KHOA_YAML = {
     "quy_trinh": (str, True),
     "cong_khai": (bool, False),
     "mo_ta": (str, False),
+    # Mỗi mục "<bước>: <trạng thái>" ghi đè trạng thái mặc định của bước (trang_thai.py, #73).
+    "trang_thai_theo_buoc": (list, False),
 }
 # Người nhận userTask mà bộ máy một cửa hiểu: nhóm = mã lĩnh vực của thủ tục hoặc lanh_dao;
 # assignee chỉ là công dân nộp hồ sơ (biến quy trình nguoiNopSub do API một cửa đặt).
-NHOM_LANH_DAO = "lanh_dao"
-ASSIGNEE_CONG_DAN = "${nguoiNopSub}"
+NHOM_LANH_DAO = trang_thai.NHOM_LANH_DAO
+ASSIGNEE_CONG_DAN = trang_thai.ASSIGNEE_CONG_DAN
 
 
 class LoiYaml(ValueError):
@@ -270,19 +273,21 @@ def kiem_xu_ly_mau(mau, bien_theo_buoc):
 
 
 def kiem_quy_trinh(duong_bpmn, mo_ta):
-    """→ (bien_theo_buoc, lỗi). bien_theo_buoc = {bước: {biến: {"kieu", "bat_buoc"}}}."""
+    """→ (bien_theo_buoc, trang_thai_buoc, lỗi). bien_theo_buoc = {bước: {biến: {"kieu",
+    "bat_buoc", "ten"}}}; trang_thai_buoc = {bước: trạng thái hồ sơ} cho mọi userTask (mặc định
+    theo người nhận, ghi đè bằng trang_thai_theo_buoc của thu-tuc.yaml)."""
     loi, _ = kiem_bpmn.kiem([duong_bpmn], os.path.dirname(os.path.dirname(duong_bpmn)))
     if loi:
-        return None, loi
+        return None, None, loi
     process = kiem_bpmn.doc_process(duong_bpmn)
     if process is None:
-        return None, [f"{TEP_BPMN}: phải có đúng một <process>"]
+        return None, None, [f"{TEP_BPMN}: phải có đúng một <process>"]
     if process.get("id") != mo_ta["quy_trinh"]:
-        return None, [f"{TEP_BPMN}: process id '{process.get('id')}' khác quy_trinh "
-                      f"'{mo_ta['quy_trinh']}' trong {TEP_YAML}"]
+        return None, None, [f"{TEP_BPMN}: process id '{process.get('id')}' khác quy_trinh "
+                            f"'{mo_ta['quy_trinh']}' trong {TEP_YAML}"]
     buoc = kiem_bpmn.buoc_nguoi_xu_ly(process)
     if not buoc:
-        return None, [f"{TEP_BPMN}: quy trình không có userTask nào cho người xử lý"]
+        return None, None, [f"{TEP_BPMN}: quy trình không có userTask nào cho người xử lý"]
     nhom_hop_le = {mo_ta["linh_vuc"], NHOM_LANH_DAO}
     for bid, b in buoc.items():
         la = sorted(set(b["nhom"]) - nhom_hop_le)
@@ -291,7 +296,9 @@ def kiem_quy_trinh(duong_bpmn, mo_ta):
                        f"'{mo_ta['linh_vuc']}' hoặc '{NHOM_LANH_DAO}'")
         if b["assignee"] and b["assignee"] != ASSIGNEE_CONG_DAN:
             loi.append(f"{TEP_BPMN}: bước '{bid}' có assignee '{b['assignee']}'; chỉ nhận {ASSIGNEE_CONG_DAN}")
-    return {bid: b["bien"] for bid, b in buoc.items()}, loi
+    ghi_de, loi_tt = trang_thai.doc_ghi_de(mo_ta.get("trang_thai_theo_buoc"), buoc)
+    loi += [f"{TEP_YAML}: {l}" for l in loi_tt]
+    return {bid: b["bien"] for bid, b in buoc.items()}, trang_thai.anh_xa(buoc, ghi_de), loi
 
 
 def sha256_goi(thu_muc):
@@ -338,7 +345,7 @@ def kiem_goi(thu_muc):
     if loi:
         return None, loi
     loi = kiem_du_lieu_mau(json_doc[TEP_MAU], json_doc[TEP_SCHEMA])
-    bien_theo_buoc, loi_bpmn = kiem_quy_trinh(os.path.join(thu_muc, TEP_BPMN), mo_ta)
+    bien_theo_buoc, trang_thai_buoc, loi_bpmn = kiem_quy_trinh(os.path.join(thu_muc, TEP_BPMN), mo_ta)
     loi += loi_bpmn
     if bien_theo_buoc is not None:
         loi += kiem_xu_ly_mau(json_doc[TEP_MAU], bien_theo_buoc)
@@ -358,6 +365,7 @@ def kiem_goi(thu_muc):
         "cong_khai": mo_ta.get("cong_khai", True),
         "quy_trinh": mo_ta["quy_trinh"],
         "bien_theo_buoc": bien_theo_buoc,
+        "trang_thai_buoc": trang_thai_buoc,
         "json_schema": json_doc[TEP_SCHEMA],
         "thanh_phan": thanh_phan,
         "goi_sha256": sha256_goi(thu_muc),
