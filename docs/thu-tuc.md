@@ -133,7 +133,7 @@ nap-thu-tuc: gói xac-nhan-cu-tru LỖI, bỏ qua:
   - quy-trinh.bpmn20.xml: process id 'chung_thuc_ban_sao' khác quy_trinh 'xac_nhan_cu_tru' trong thu-tuc.yaml
 ```
 
-Nộp thử một hồ sơ qua `/workflow` (token công dân lấy như `docs/architecture.md` §8): `POST /workflow/ho-so` với `thu_tuc_id` của thủ tục mới. Muốn smoke kiểm luôn thủ tục mới, xem mẫu ở `mot-cua/tests/smoke-goi-thu-tuc.sh` (mục 4 chạy hết quy trình chứng thực bằng `du-lieu-mau.json`).
+Nộp thử một hồ sơ (token công dân lấy như `docs/architecture.md` §8) theo luồng tạo hồ sơ `POST /api/ho_so` → tải tệp cho từng thành phần bắt buộc `POST /files/ho-so/{id}/tep` → `POST /workflow/ho-so/{id}/khoi-tao` (ví dụ lệnh: `mot-cua/README.md` mục `/workflow`). Cổng công dân tự sinh form từ `thanh-phan-ho-so.schema.json` của gói mới, không sửa mã web; cả cổng và `mot-cua-api` kiểm đủ thành phần theo đúng schema này (Poka-yoke 2 lớp, #53/#59). Muốn smoke kiểm luôn thủ tục mới, xem mẫu ở `mot-cua/tests/smoke-goi-thu-tuc.sh` (mục 4 chạy hết quy trình chứng thực bằng `du-lieu-mau.json`).
 
 Mở PR theo [`CONTRIBUTING.md`](../CONTRIBUTING.md): job CI `make-check` chạy bộ kiểm gói, job `bpmn` kiểm cấu trúc mọi `thu-tuc/*/quy-trinh.bpmn20.xml`.
 

@@ -343,7 +343,7 @@ Flowable REST chỉ có Basic auth bằng tài khoản của chính nó, không 
 | Cách | Vì sao không/có chọn |
 |---|---|
 | APISIX proxy thẳng `/workflow/*` → Flowable, lọc đường dẫn, gateway gắn Basic auth | **Không chọn**: mọi người dùng thành `rest-admin` trong mắt Flowable; lọc đường dẫn không ngăn công dân liệt kê task của người khác, hoàn thành task tiếp nhận hay khởi tạo quy trình với biến tùy ý |
-| API mỏng `mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; ~300 dòng Python thư viện chuẩn, không build image |
+| API mỏng `mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; Python thư viện chuẩn, chỉ thêm `jsonschema` (MIT) cho Poka-yoke phía máy chủ (#59; image `python` gốc + `requirements.txt`, mã mount chỉ đọc) |
 
 ```mermaid
 sequenceDiagram
@@ -354,13 +354,16 @@ sequenceDiagram
   participant API as PostgREST
   participant FL as Flowable REST
 
-  App->>GW: POST /workflow/ho-so<br/>Bearer TOKEN công dân
+  Note over App: Poka-yoke lớp 1: tệp đã chọn khớp JSON Schema<br/>của gói, thiếu → không gửi request nào
+  App->>GW: POST /api/ho_so → hồ sơ moi (RLS: người nộp = sub)
+  App->>GW: POST /files/ho-so/{id}/tep × n (ClamAV quét, Garage)
+  App->>GW: POST /workflow/ho-so/{id}/khoi-tao<br/>Bearer TOKEN công dân
   GW->>GW: openid-connect (JWKS). Sai → 401
-  GW->>BE: POST /ho-so (giữ Authorization)
+  GW->>BE: POST /ho-so/{id}/khoi-tao (giữ Authorization)
   BE->>BE: kiểm lại RS256, exp, iss, aud = dxos_api
-  BE->>API: GET /thu_tuc?id=… (token người dùng)<br/>quy_trinh của gói thủ tục?
-  BE->>API: POST /ho_so (token người dùng) → RLS: người nộp = sub
-  API-->>BE: hồ sơ (mã, hạn xử lý do CSDL tính)
+  BE->>API: GET /ho_so?id=… kèm thu_tuc(quy_trinh, json_schema)<br/>(token người dùng, RLS)
+  BE->>API: GET /thanh_phan_ho_so?ho_so_id=… (tệp đã quét sạch)
+  BE->>BE: Poka-yoke lớp 2: jsonschema Draft 2020-12<br/>thiếu → 422, không khởi tạo, không ghi sự kiện
   BE->>FL: POST runtime/process-instances (Basic rest-admin)<br/>businessKey = mã hồ sơ, biến lấy từ CSDL
   FL-->>BE: process instance, task tiep_nhan (nhóm ho_tich)
   BE-->>App: 201 hồ sơ + processInstanceId + bước đang mở
@@ -372,7 +375,8 @@ sequenceDiagram
 - **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `mot-cua-api` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
 - **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
 - **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện.
-- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình; Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
+- **Poka-yoke 2 lớp** (#53, #59): cổng công dân kiểm tệp đã chọn theo JSON Schema 2020-12 của gói (`@cfworker/json-schema`, không cần `unsafe-eval` nên hợp CSP của cổng), thiếu thì không gửi request nào; `mot-cua-api` kiểm lại cùng schema với tệp **đã lưu và quét sạch** trong CSDL (`jsonschema`, `mot-cua/backend/poka_yoke.py`) trước khi gọi Flowable, nên gọi thẳng API khi thiếu giấy tờ → 422 kèm lỗi từng thành phần, không khởi tạo quy trình. `POST /workflow/ho-so` (nộp gộp) chỉ còn dùng được cho thủ tục không có thành phần bắt buộc. Chi tiết: [`mot-cua/README.md`](../mot-cua/README.md) mục `/workflow`.
+- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình.
 
 ### 4.3 Dữ liệu phi cấu trúc: tải tệp, quét ClamAV, link ký ngắn hạn (#7)
 
@@ -785,7 +789,7 @@ Docker Desktop, macOS arm64. Ba lần chạy, mỗi lần `make smoke` **199 đ�
 | `/api/*` | token công dân, cán bộ (mật khẩu + TOTP), lãnh đạo (mật khẩu + TOTP) | đúng quyền theo RLS (§8.3) |
 | `/public/*` | không token: danh mục thủ tục, JSON Schema; hồ sơ, cán bộ | 200; 401 |
 | `/public/*` | dùng hết 60 request/phút | 429; `/api` không bị ảnh hưởng |
-| `/workflow/ho-so` | công dân nộp hồ sơ KS01 | 201, quy trình `dang_ky_khai_sinh` ở `tiep_nhan`, hồ sơ trong CSDL có người nộp = `sub`, trạng thái `moi` (bỏ qua `trang_thai` client gửi); khởi tạo lại → 409; thủ tục chưa có quy trình → 422, không lưu hồ sơ; cán bộ, lãnh đạo nộp → 403 |
+| `/workflow/ho-so` | công dân nộp hồ sơ KS01, CT01 theo luồng tạo hồ sơ → tải tệp → `…/khoi-tao` | 201, quy trình ở `tiep_nhan`, tệp hiện trong `GET /files/ho-so/{id}/tep`, hồ sơ trong CSDL có người nộp = `sub`, trạng thái `moi`; khởi tạo lại → 409; gọi thẳng `…/khoi-tao` khi thiếu tệp → 422 nêu đúng thành phần thiếu, Flowable không có quy trình, không có sự kiện; `POST /workflow/ho-so` KS01 (cần giấy tờ) → 422, không lưu hồ sơ; thủ tục chưa có quy trình → 422; cán bộ, lãnh đạo nộp → 403 |
 | `/workflow/ho-so/{id}/…` | công dân với hồ sơ người khác | 404 (RLS) |
 | `/workflow/tasks` | cán bộ chưa/đã được giao lĩnh vực hộ tịch; lãnh đạo; công dân | không thấy/thấy task `tiep_nhan`; số task = số task của các nhóm lĩnh vực phụ trách; lãnh đạo chỉ thấy `phe_duyet`; công dân chỉ thấy `bo_sung` của mình |
 | `/workflow/tasks/{id}/complete` | đi hết quy trình bằng token thật | tiep_nhan (thiếu) → bo_sung (công dân) → tiep_nhan → tham_dinh → phe_duyet (lãnh đạo) → `ket_thuc_hoan_tat`; Flowable ghi người xử lý = `sub` cán bộ; biến sai bước hoặc thiếu biến → 400; công dân làm bước của cán bộ, cán bộ làm bước của công dân/lãnh đạo → 403; task đã xong → 404 |
@@ -873,8 +877,8 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.
-- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình (có thể làm bằng một consumer của sự kiện `ho_so.*`, §4.5); khởi tạo quy trình sau Poka-yoke (tuần 3).
+- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình (có thể làm bằng một consumer của sự kiện `ho_so.*`, §4.5); khởi tạo quy trình đã đi sau Poka-yoke (#59).
 - Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
-- Tệp: giao diện tải/xem (tuần 3); Poka-yoke kiểm đủ thành phần theo JSON Schema dựa trên `thanh_phan_ho_so` đã quét (tuần 3); OCR đọc tệp đã lưu (tuần 5).
+- Tệp: giao diện xem tệp cho cán bộ (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

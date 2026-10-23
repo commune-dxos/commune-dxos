@@ -371,7 +371,10 @@ services:
   # Bí mật (#10): mật khẩu rest-admin, client secret, khóa S3 đọc từ OpenBao lúc cần bằng
   # AppRole `tang2` (volume tang2-secrets chỉ chứa role_id/secret_id), chỉ giữ trong bộ nhớ.
   mot-cua-api:
-    image: python:3.13.16-alpine3.24
+    # python:3.13.16-alpine3.24 + jsonschema (Poka-yoke phía máy chủ, #59): mot-cua/backend/Dockerfile.
+    build:
+      context: ./mot-cua/backend
+    image: commune-dxos/mot-cua-api:local
     profiles: [core]
     command: ["python", "-u", "/mot-cua/backend/main.py"]
     environment:

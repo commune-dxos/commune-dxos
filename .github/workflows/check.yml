@@ -7,7 +7,7 @@
 #   shellcheck    make lint → scripts/lint.sh shellcheck
 #   yamllint      make lint → scripts/lint.sh yamllint (.yamllint.yml)
 #   bpmn          make lint → scripts/lint.sh bpmn (cấu trúc BPMN thu-tuc/*/quy-trinh.bpmn20.xml + test bộ kiểm)
-#   test-backend  make test-backend (unittest của mot-cua/backend, kể cả bộ nạp gói thủ tục)
+#   test-backend  make test-backend (unittest của mot-cua/backend, kể cả bộ nạp gói thủ tục và Poka-yoke)
 #   test-sql      make test-sql: PostgreSQL trống → migration nền tảng + mot-cua → mot-cua/db/tests/*.sql
 # Action và công cụ ghim phiên bản; công cụ lint ghim trong scripts/requirements-lint.txt.
 name: check
@@ -24,6 +24,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      # make check chạy cả test-backend: cần jsonschema như image mot-cua-api (#59).
+      - name: Cài thư viện của mot-cua-api (phiên bản ghim)
+        run: pip install -r mot-cua/backend/requirements.txt
       - name: Kiểm tra giấy phép, gói thủ tục và compose
         run: make check
 
@@ -69,6 +75,8 @@ jobs:
       - uses: actions/setup-python@v6.0.0
         with:
           python-version: "3.13"
+      - name: Cài thư viện của mot-cua-api (phiên bản ghim)
+        run: pip install -r mot-cua/backend/requirements.txt
       - name: Test đơn vị bộ máy một cửa và bộ nạp gói
         run: make test-backend
 

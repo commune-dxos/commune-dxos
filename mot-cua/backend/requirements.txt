@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Thư viện ngoài của mot-cua-api (Dockerfile cùng thư mục) và của `make test-backend`.
+# Chỉ Poka-yoke phía máy chủ (#59, poka_yoke.py) cần: kiểm JSON Schema 2020-12. Ghim đủ cây
+# phụ thuộc; tất cả MIT (DEPENDENCIES.md). worker.py, nap_thu_tuc.py vẫn chỉ dùng thư viện chuẩn.
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==0.30.0
+attrs==26.1.0

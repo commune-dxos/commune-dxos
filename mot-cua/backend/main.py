@@ -15,7 +15,8 @@ APISIX chuyển /workflow/* tới đây (bỏ tiền tố /workflow) và /files/
   quản trị (deployment, management, identity) của Flowable.
 
 Endpoint (đường dẫn sau khi bỏ /workflow):
-  POST /ho-so                   công dân nộp hồ sơ và khởi tạo quy trình của thủ tục
+  POST /ho-so                   công dân nộp hồ sơ và khởi tạo quy trình ngay (chỉ thủ tục không
+                                có thành phần bắt buộc; còn lại → 422 trước khi lưu)
   POST /ho-so/{id}/khoi-tao     khởi tạo quy trình cho hồ sơ đã nộp mà chưa có quy trình
   GET  /ho-so/{id}/tien-do      bước đang mở và các bước đã qua (ai thấy hồ sơ thì xem được)
   GET  /tasks                   task của người đang gọi (được giao hoặc thuộc nhóm của mình)
@@ -47,7 +48,13 @@ Bí mật (#10): mật khẩu rest-admin của Flowable, client secret `mot_cua_
 khóa S3 riêng của bộ máy đều đọc từ OpenBao lúc cần (bimat.py, AppRole `tang2`), chỉ giữ trong
 bộ nhớ.
 
-Chỉ dùng thư viện chuẩn Python: chạy trên image python gốc, không cài gói, không build.
+Poka-yoke phía máy chủ (#59, poka_yoke.py): trước khi gọi Flowable, dựng tài liệu hồ sơ từ các
+tệp đã quét sạch trong CSDL và kiểm bằng JSON Schema 2020-12 của thủ tục; thiếu → 422 kèm lỗi
+từng thành phần, không khởi tạo quy trình, không ghi sự kiện. Luồng nộp: tạo hồ sơ (/api/ho_so)
+→ tải tệp (/files) → khởi tạo (/workflow/ho-so/{id}/khoi-tao).
+
+Thư viện ngoài duy nhất là jsonschema (MIT, requirements.txt, image build từ Dockerfile cạnh tệp
+này); phần còn lại chỉ dùng thư viện chuẩn.
 """
 
 import base64
@@ -68,6 +75,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bimat
 import hop_thu
+import poka_yoke
 import tep
 
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
@@ -271,8 +279,42 @@ def phat_su_kien(loai, ho_so_id, du_lieu):
         log.error("không ghi được sự kiện %s của hồ sơ %s: %s", loai, ho_so_id, e)
 
 
-def _khoi_tao(hs, sub):
-    """hs: dòng ho_so (đọc qua RLS) kèm thu_tuc(ma, quy_trinh)."""
+def _schema_cua(token, tt):
+    """JSON Schema thành phần hồ sơ của thủ tục: thu_tuc.json_schema (gói), không có thì sinh từ
+    thanh_phan_yeu_cau (RPC json_schema_thu_tuc)."""
+    if isinstance(tt.get("json_schema"), dict):
+        return tt["json_schema"]
+    schema = pgrst(token, "GET", "/rpc/json_schema_thu_tuc?ma=" + urllib.parse.quote(tt["ma"]))
+    if not isinstance(schema, dict):
+        raise Loi(404, "Không thấy thủ tục")
+    return schema
+
+
+def kiem_thanh_phan(schema, doc, chua_sach=()):
+    """Poka-yoke: thiếu/sai thành phần → Loi 422 kèm danh sách lỗi theo thành phần."""
+    try:
+        loi = poka_yoke.kiem(schema, doc, chua_sach)
+    except poka_yoke.LoiSchema as e:
+        log.error("JSON Schema của thủ tục hỏng: %s", e)
+        raise Loi(500, "JSON Schema của thủ tục không hợp lệ") from None
+    if loi:
+        thieu = [l["ten"] for l in loi if l["thanhPhan"]]
+        raise Loi(422, "Hồ sơ chưa đủ thành phần" + (": " + "; ".join(thieu) if thieu else ""),
+                  {"thanhPhan": loi})
+
+
+_COT_TEP_KIEM = "id,ket_qua_quet,object_key,thanh_phan_yeu_cau:thanh_phan_yeu_cau_id(ma)"
+
+
+def _kiem_ho_so(token, hs):
+    """Dựng tài liệu hồ sơ từ tệp đã lưu (đọc bằng token người gọi, RLS) và kiểm theo schema."""
+    ds = pgrst(token, "GET", f"/thanh_phan_ho_so?ho_so_id=eq.{hs['id']}&select={_COT_TEP_KIEM}&order=created_at")
+    doc, chua_sach = poka_yoke.tai_lieu(hs, ds)
+    kiem_thanh_phan(_schema_cua(token, hs["thu_tuc"]), doc, chua_sach)
+
+
+def _khoi_tao(hs, sub, token):
+    """hs: dòng ho_so (đọc qua RLS) kèm thu_tuc(ma, quy_trinh, json_schema)."""
     ma_tt = (hs.get("thu_tuc") or {}).get("ma")
     key = (hs.get("thu_tuc") or {}).get("quy_trinh")
     if not key:
@@ -283,6 +325,7 @@ def _khoi_tao(hs, sub):
         raise Loi(409, "Hồ sơ không còn ở trạng thái mới")
     if _quy_trinh_cua(hs["ma_ho_so"]):
         raise Loi(409, "Hồ sơ đã có quy trình")
+    _kiem_ho_so(token, hs)
     bien = {"hoSoId": hs["id"], "maHoSo": hs["ma_ho_so"], "nguoiNopSub": sub,
             "hanXuLyLuc": hs["han_xu_ly"] + GIO_HET_HAN}
     _, pi = flowable("POST", "/runtime/process-instances", {
@@ -295,7 +338,8 @@ def _khoi_tao(hs, sub):
     return {"processInstanceId": pi["id"], "quyTrinh": key, "buocDangMo": buoc}
 
 
-_COT_HO_SO = "id,ma_ho_so,trang_thai,han_xu_ly,nguoi_nop_sub,thu_tuc:thu_tuc_id(ma,quy_trinh)"
+_COT_HO_SO = ("id,ma_ho_so,trang_thai,han_xu_ly,nguoi_nop_sub,ho_ten_nguoi_nop,so_dien_thoai,"
+              "thu_tuc:thu_tuc_id(ma,quy_trinh,json_schema)")
 
 
 def _doc_ho_so(token, ho_so_id):
@@ -312,26 +356,29 @@ def nop_ho_so(token, claims, body):
     if not isinstance(tt_id, str) or not re.fullmatch(UUID, tt_id):
         raise Loi(400, "thu_tuc_id phải là UUID")
     # Kiểm trước khi lưu để không để lại hồ sơ không có quy trình.
-    tt = pgrst(token, "GET", f"/thu_tuc?id=eq.{tt_id}&select=ma,quy_trinh")
+    tt = pgrst(token, "GET", f"/thu_tuc?id=eq.{tt_id}&select=ma,quy_trinh,json_schema")
     if not tt:
         raise Loi(404, "Không thấy thủ tục")
     if not tt[0]["quy_trinh"]:
         raise Loi(422, f"Thủ tục {tt[0]['ma']} chưa có quy trình")
+    # Hồ sơ mới chưa có tệp: thủ tục có thành phần bắt buộc thì không khởi tạo ngay được. Báo
+    # trước khi lưu; client tạo hồ sơ, tải tệp rồi gọi /ho-so/{id}/khoi-tao (#59).
+    kiem_thanh_phan(_schema_cua(token, tt[0]), {"thanh_phan": {}})
     # Chỉ chuyển các cột công dân được nhập; CSDL tự đặt người nộp, trạng thái, hạn xử lý.
     moi = {k: body[k] for k in ("thu_tuc_id", "ho_ten_nguoi_nop", "so_dien_thoai") if k in body}
     rows = pgrst(token, "POST", f"/ho_so?select={_COT_HO_SO}", moi, prefer="return=representation")
     hs = rows[0]
     try:
-        kq = _khoi_tao(hs, claims["sub"])
+        kq = _khoi_tao(hs, claims["sub"], token)
     except Loi as e:
         # Hồ sơ đã lưu; client gọi lại POST /ho-so/{id}/khoi-tao khi lỗi tạm thời.
-        e.chi_tiet = {"hoSo": hs}
+        e.chi_tiet = {**(e.chi_tiet or {}), "hoSo": hs}
         raise
     return 201, {"hoSo": hs, **kq}
 
 
 def khoi_tao(token, claims, ho_so_id):
-    return 201, _khoi_tao(_doc_ho_so(token, ho_so_id), claims["sub"])
+    return 201, _khoi_tao(_doc_ho_so(token, ho_so_id), claims["sub"], token)
 
 
 def tien_do(token, ho_so_id):

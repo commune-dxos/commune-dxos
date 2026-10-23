@@ -70,7 +70,7 @@ kiem "sự kiện không chứa dữ liệu cá nhân (họ tên, số điện t
           AND (noi_dung::text LIKE '%Người Thử Workflow%' OR noi_dung::text LIKE '%0900000098%' OR noi_dung::text LIKE '%$SUB%')")"
 
 # --- 3. Nhánh từ chối ---------------------------------------------------------------------
-r="$(gw "$TOKEN" /ho-so "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Sự Kiện\"}")"
+r="$(nop_du "$TOKEN" "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Sự Kiện\"}")"
 HTC="$(jq -r '.hoSo.id // empty' <<<"$r")"
 gw "$TK_CB" "/tasks/$(task_cua "$TK_CB" "$HTC" tiep_nhan)/complete" '{"bien":{"hopLe":true}}' > /dev/null
 gw "$TK_CB" "/tasks/$(task_cua "$TK_CB" "$HTC" tham_dinh)/complete" '{"bien":{"datYeuCau":false,"ghiChu":"không đạt"}}' > /dev/null
@@ -78,7 +78,7 @@ kiem "thẩm định không đạt qua /workflow → consumer nhận ho_so.tu_ch
   "$(cho_sql "ho_so.chuyen_buoc:2 ho_so.moi:1 ho_so.tu_choi:1" "$(dem_loai "${HTC:-00000000-0000-0000-0000-000000000000}")")"
 
 # --- 4. Sắp trễ hạn: đúng một lần -----------------------------------------------------------
-r="$(gw "$TOKEN" /ho-so "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Sắp Trễ\"}")"
+r="$(nop_du "$TOKEN" "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Sắp Trễ\"}")"
 HST="$(jq -r '.hoSo.id // empty' <<<"$r")"; HST="${HST:-00000000-0000-0000-0000-000000000000}"
 # Hạn = ngày làm việc kế tiếp (giờ Việt Nam): còn đúng 1 ngày làm việc.
 HAN_MOI="$(sql "UPDATE mot_cua.ho_so SET han_xu_ly = mot_cua_noi_bo.cong_ngay_lam_viec((now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date + 1, 0)
