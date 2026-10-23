@@ -35,10 +35,11 @@ nav:
   - Trang chủ: index.md
   - Người dân / cán bộ:
       - Danh mục thủ tục: danh-muc-thu-tuc.md
+      - Cổng cán bộ – luồng xử lý hồ sơ: cong-can-bo.md
   - Lập trình viên thêm thủ tục:
       - Thêm một thủ tục mới: thu-tuc.md
       - Bộ máy một cửa: mot-cua.md
-      - Cổng công dân (web): cong-cong-dan.md
+      - Web Tầng 2 (cổng công dân, cán bộ): cong-cong-dan.md
   - Vận hành:
       - Cài đặt và chạy: cai-dat.md
   - Kiến trúc:
