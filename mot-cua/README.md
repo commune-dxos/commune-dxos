@@ -12,8 +12,9 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/005_goi_thu_tuc.sql` | gói thủ tục (D-009): cột `goi`, `quy_trinh`, `bien_theo_buoc`, `json_schema` của `thu_tuc`, hạn 0 ngày (trong ngày), role `dich_vu_danh_muc`, RPC `nap_thu_tuc`, `rut_goi_vang`; `json_schema_thu_tuc` trả schema của gói |
 | `db/migrations/006_trang_thai_theo_quy_trinh.sql` | trạng thái hồ sơ theo bước Flowable (#73): thêm `cho_phe_duyet`, cột `thu_tuc.trang_thai_buoc`, bảng `lich_su_trang_thai` chỉ thêm, RPC `dong_bo_trang_thai` (trạng thái + lịch sử + hộp thư đi một transaction); xem [Trạng thái hồ sơ](#trạng-thái-hồ-sơ) |
 | `db/migrations/007_nhat_ky_kiem_toan.sql` | nhật ký kiểm toán append-only chuỗi băm SHA-256 (#75): bảng `nhat_ky_kiem_toan` + đầu chuỗi `dau_chuoi_kiem_toan`, trigger ghi kiểm toán cho hồ sơ, tệp, thủ tục, phân công; `dong_bo_trang_thai` ghi thêm bước quy trình; RPC `xac_minh_kiem_toan`; GRANT cho role pgAudit `dxos_kiem_toan`; xem [Nhật ký kiểm toán](#nhật-ký-kiểm-toán-75) |
+| `db/migrations/008_giay_to_ky_so.sql` | giấy tờ có ký số (#77): bảng `giay_to_ky` (biên nhận, kết quả; chỉ `dich_vu_tep` ghi, không sửa), trigger kiểm toán `giay_to.ky` kèm SHA-256; xem [Giấy tờ có ký số](#giấy-tờ-có-ký-số-77) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), chạy trong một transaction rồi ROLLBACK |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc` (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
@@ -44,6 +45,7 @@ erDiagram
   can_bo |o--o{ thanh_phan_ho_so : "kiểm tra"
   ho_so |o--o{ nhat_ky_tep : "ghi lại"
   ho_so |o--o{ nhat_ky_kiem_toan : "doi_tuong_id"
+  ho_so ||--o{ giay_to_ky : "biên nhận, kết quả"
 
   linh_vuc {
     uuid id PK
@@ -120,6 +122,15 @@ erDiagram
     text sha256
     text chi_tiet "tên mẫu virus, ttl…"
   }
+  giay_to_ky {
+    uuid id PK
+    uuid ho_so_id FK
+    text loai "bien_nhan, ket_qua; UNIQUE theo hồ sơ"
+    text object_key UK "ho-so/<id>/giay-to/…pdf"
+    text sha256 UK "PDF đã ký"
+    text chung_thu_so_hieu
+    timestamptz ky_luc
+  }
   nhat_ky_kiem_toan {
     bigint stt PK "liền từ 1"
     timestamptz luc
@@ -176,6 +187,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 | `thanh_phan_ho_so` – thêm | — | không trực tiếp: qua API tệp `/files` (quét ClamAV trước); dòng do tài khoản dịch vụ `dich_vu_tep` ghi, chỉ vào hồ sơ của người tải khi `moi`/`cho_bo_sung`, loại thành phần phải thuộc thủ tục của hồ sơ | — | — |
 | `thanh_phan_ho_so` – sửa | — | — | `trang_thai_kiem_tra`, `ghi_chu_kiem_tra` (CSDL ghi người, giờ kiểm tra) | — |
 | `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
+| `giay_to_ky` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ `dich_vu_tep` ghi qua `/files`; không ai sửa, kể cả superuser) |
 | `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
@@ -191,7 +203,8 @@ Web (cổng công dân, cổng cán bộ) chỉ gọi APISIX `http://localhost:$
 | `/api/` (token) | đọc/ghi bảng `mot_cua` theo cú pháp PostgREST, quyền theo bảng ở mục [Quyền theo vai trò](#quyền-theo-vai-trò) | `GET /api/ho_so?select=*,thu_tuc:thu_tuc_id(ma,ten)&order=ngay_nhan.desc`, `PATCH /api/ho_so?id=eq.<id>` (cán bộ đổi trạng thái), `PATCH /api/thanh_phan_ho_so?id=eq.<id>` (cán bộ kiểm tra giấy tờ) |
 | `/workflow/` (token) | quy trình Flowable của hồ sơ, qua `backend/main.py` | bảng dưới |
 | `/files/` (token, body ≤ 10 MiB) | tải lên, liệt kê, cấp link xem tệp hồ sơ, qua `backend/main.py` | [bảng dưới](#files--tệp-hồ-sơ) |
-| `/files/s3/` (không token, link ký sẵn) | tải nội dung tệp bằng link mà `/files/tep/{id}` cấp | chỉ GET/HEAD |
+| `/files/ho-so/{id}/giay-to/…`, `/files/xac-minh` (token) | biên nhận, thông báo kết quả PDF có ký số; xác minh chữ ký một PDF | [mục dưới](#giấy-tờ-có-ký-số-77) |
+| `/files/s3/` (không token, link ký sẵn) | tải nội dung tệp bằng link mà `/files/tep/{id}` hoặc giấy tờ cấp | chỉ GET/HEAD |
 
 OpenAPI của PostgREST: `GET /api/` (kèm token) hoặc `GET /public/`, chỉ liệt kê bảng, cột, RPC mà vai trò của người gọi được quyền.
 
@@ -382,6 +395,7 @@ Một object JSON, `content-type: application/json`; header AMQP `message-id` = 
 | `ho_so.cap_nhat` | đổi thông tin người nộp, hạn, cán bộ xử lý, lý do | người đổi | `cot` (tên cột), `canBoXuLy` |
 | `ho_so.xoa` | xóa hồ sơ (chỉ SQL quản trị) | — | `maHoSo`, `trangThai` |
 | `quy_trinh.xu_ly_buoc`, `quy_trinh.dong_bo` | RPC `dong_bo_trang_thai` có thay đổi (sau khi hoàn thành task Flowable; đối soát của worker) | người hoàn thành task | `buoc`, `trangThaiTruoc`, `trangThai`, `suKien` (id, loại sự kiện vào hộp thư đi) |
+| `giay_to.ky` | phát hành biên nhận / thông báo kết quả có ký số (#77) | người có thao tác dẫn tới phát hành | `loai`, `giayToId`, `sha256` (PDF đã ký), `chungThu` (số hiệu) |
 | `tep.tai_len`, `tep.kiem_tra` | tải tệp qua `/files`; cán bộ đổi `trang_thai_kiem_tra` | người tải / cán bộ | `tepId`, `thanhPhan`, `sha256` (nội dung tệp), `kichThuoc`, `ketQua` |
 | `thu_tuc.them`, `thu_tuc.nap_goi`, `thu_tuc.rut_goi` | thêm thủ tục; nạp gói mới hoặc đã đổi (`goi_sha256`); rút gói | tài khoản dịch vụ danh mục | `goi`, `goiSha256`, `goiSha256Truoc`, `quyTrinh` |
 | `can_bo.them_linh_vuc`, `can_bo.bo_linh_vuc` | đổi phân công lĩnh vực (= đổi hồ sơ cán bộ thấy) | — | `linhVuc` |
@@ -399,6 +413,29 @@ DXOS_TOKEN=$TOKEN_LANH_DAO python3 mot-cua/backend/kiem_toan.py --api http://loc
 
 Truy cập bảng có dữ liệu cá nhân (`ho_so`, `thanh_phan_ho_so`) và thay đổi cán bộ, phân công còn được pgAudit ghi ở mức câu lệnh vào log PostgreSQL (`docker compose logs postgres | grep 'AUDIT: OBJECT'`), không kèm tham số.
 
+## Giấy tờ có ký số (#77)
+
+Thiết kế và lý do: `docs/architecture.md` §4.7. Mẫu HTML ở [`mau-giay-to/`](mau-giay-to/) (`bien_nhan.html`, `ket_qua.html`, biến `$ten` thay bằng dữ liệu đã thoát HTML trong `backend/ky_so.py`); Gotenberg in A4, pyHanko ký PAdES bằng chứng thư step-ca của xã (OpenBao `dxos/tang2/mot-cua/ky-so`, do `ca-init` của nền tảng cấp).
+
+| Giấy tờ | Phát hành khi | Nội dung |
+|---|---|---|
+| `bien_nhan` – Giấy tiếp nhận hồ sơ và hẹn trả kết quả | ngay sau khi khởi tạo quy trình (nộp đủ thành phần) | mã hồ sơ, người nộp, thủ tục, thời điểm nộp, thành phần đã nhận, lệ phí, hẹn trả |
+| `ket_qua` – Thông báo kết quả giải quyết hồ sơ | ngay khi bước cuối đưa hồ sơ sang `hoan_tat` | mã hồ sơ, người nộp, thủ tục, hạn, thời điểm hoàn tất, kết quả |
+
+Phát hành chạy ở luồng nền (lỗi chỉ ghi log), nên cổng gọi `POST …/giay-to/{loai}` khi người dùng bấm tải: có rồi trả lại, chưa có thì phát hành ngay.
+
+```bash
+# Công dân lấy biên nhận hồ sơ <HS> (link tải hết hạn sau DXOS_FILE_LINK_TTL giây)
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9080/files/ho-so/<HS>/giay-to/bien_nhan
+# Xác minh một PDF bất kỳ (ví dụ biên nhận công dân mang tới)
+curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/pdf' --data-binary @bien-nhan.pdf \
+  http://localhost:9080/files/xac-minh
+# → {"hopLe": true, "toanVen": true, "tinCay": true, "nguoiKy": "UBND xã Mẫu – Bộ phận Một cửa",
+#    "phatHanh": {"loai": "bien_nhan", "maHoSo": "HS…", "kyLuc": "…"}, …}
+```
+
+Cổng công dân hiện nút tải biên nhận ở trang "Đã nộp"; cổng cán bộ có thẻ "Giấy tờ có ký số" trong chi tiết hồ sơ (biên nhận, và kết quả khi hồ sơ hoàn tất).
+
 ## Người dùng mẫu
 
 | Người dùng | `sub` | Vai trò | Ghi chú |
@@ -415,7 +452,7 @@ Realm không chứa mật khẩu: đặt bằng `make demo-users` (chạy sau `m
 ## Chạy test
 
 ```bash
-make test-backend               # test đơn vị API tệp, sự kiện, trình xác minh kiểm toán (không cần Docker; make check cũng chạy)
+make test-backend               # test đơn vị API tệp, sự kiện, trình xác minh kiểm toán, ký số PDF (không cần Docker; make check cũng chạy)
 make test-sql                   # migration + db/tests/*.sql trên PostgreSQL trống, trước và sau seed (container tạm; CI job test-sql)
 make smoke                      # toàn bộ: nền tảng + bộ máy + gói thủ tục + quy trình Flowable + /workflow + /files + sự kiện + kiểm toán
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < mot-cua/db/tests/rls.sql   # chỉ RLS
