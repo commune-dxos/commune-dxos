@@ -22,6 +22,7 @@ path = [
   # Tệp có header SPDX đúng, nhưng reuse 6.2 đọc 2048 byte đầu để đoán bảng mã, cắt giữa một ký tự
   # UTF-8 tiếng Việt nên coi là tệp nhị phân và bỏ qua header.
   "nen-tang/postgres/initdb/10-core.sql",
+  "mot-cua/web-cong-dan/src/index.css",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 DTU_DZ_2"

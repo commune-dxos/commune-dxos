@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useXacThuc } from "@/auth/xac-thuc";
+import { Khung } from "@/components/khung";
 
 export function DangNhapXong() {
   const { hoanTatDangNhap } = useXacThuc();
@@ -22,17 +23,21 @@ export function DangNhapXong() {
 
   if (loi) {
     return (
-      <div role="alert" className="flex flex-col gap-3">
-        <p className="text-lg font-semibold text-destructive">Đăng nhập không thành công hoặc đã hết hạn.</p>
-        <Link to="/" className="text-lg text-primary underline">
-          Về trang chủ và thử lại
-        </Link>
-      </div>
+      <Khung>
+        <div role="alert" className="flex flex-col gap-3">
+          <p className="text-lg font-semibold text-destructive">Đăng nhập không thành công hoặc đã hết hạn.</p>
+          <Link to="/" className="text-lg text-primary underline">
+            Về trang chủ và thử lại
+          </Link>
+        </div>
+      </Khung>
     );
   }
   return (
-    <p role="status" className="text-lg">
-      Đang hoàn tất đăng nhập…
-    </p>
+    <Khung>
+      <p role="status" className="text-lg">
+        Đang hoàn tất đăng nhập…
+      </p>
+    </Khung>
   );
 }

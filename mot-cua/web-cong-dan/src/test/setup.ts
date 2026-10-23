@@ -5,3 +5,10 @@ import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
 afterEach(cleanup);
+
+// jsdom chưa có ResizeObserver; Radix (RadioGroup của shadcn/ui, dùng ở form #64) cần nó để đo kích thước.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
