@@ -15,6 +15,8 @@
 # | /files/*      | JWT Keycloak    | mot-cua-api (API tệp, #7)    | 120 req/phút/IP,    |
 # |               |                 |                              | body ≤ 10 MiB       |
 # | /files/s3/*   | chữ ký trong URL| Garage S3, chỉ GET/HEAD      | 120 req/phút/IP     |
+# | /can-bo,      | không (trang)   | mot-cua-web (cổng cán bộ),   | 300 req/phút/IP     |
+# | /can-bo/*     |                 | chỉ GET/HEAD, noindex, #55   |                     |
 # | /* (còn lại)  | không           | mot-cua-web (cổng công dân), | 600 req/phút/IP     |
 # |               |                 | chỉ GET/HEAD, #57            |                     |
 # Đường dẫn API quản trị Flowable (repository, management, identity…) bị chặn 403 ở
@@ -210,6 +212,31 @@ routes:
         rejected_code: 429
         policy: local
     upstream_id: mot-cua-api
+
+  # Cổng cán bộ (web Tầng 2, #55): cùng dịch vụ mot-cua-web với cổng công dân (SPA fallback, CSP và
+  # header bảo mật do nginx đặt), route riêng để giới hạn chặt hơn và báo máy tìm kiếm không lập chỉ
+  # mục. Trang tĩnh không cần token: dữ liệu đi qua /api, /workflow, /files bằng token của cán bộ
+  # (client mot_cua_can_bo, mật khẩu + OTP).
+  - id: mot-cua-web-can-bo
+    uris: [/can-bo, /can-bo/*]
+    methods: [GET, HEAD]
+    priority: -5
+    plugins:
+      limit-count:
+        count: 300
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      proxy-rewrite:
+        headers:
+          remove: [Authorization, Cookie]
+      response-rewrite:
+        headers:
+          set:
+            X-Robots-Tag: "noindex, nofollow"
+    upstream_id: mot-cua-web
 
   # Cổng công dân (web Tầng 2, #57): mọi đường dẫn không thuộc route nào ở trên, ưu tiên thấp nhất
   # nên không che /public, /api, /workflow, /files. Không cần token (trang tĩnh; dữ liệu vẫn đi qua

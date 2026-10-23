@@ -33,6 +33,7 @@ describe("cấu hình", () => {
       keycloakUrl: "http://localhost:8080",
       realm: "dxos",
       clientId: "mot_cua_web",
+      clientIdCanBo: "mot_cua_can_bo",
       duLieuGia: false,
     });
   });

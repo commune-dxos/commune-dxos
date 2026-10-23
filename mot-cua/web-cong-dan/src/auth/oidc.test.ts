@@ -34,4 +34,19 @@ describe("đăng nhập OIDC", () => {
     expect(q.get("ui_locales")).toBe("vi");
     expect(q.has("client_secret")).toBe(false);
   });
+
+  it("cổng cán bộ: client public riêng mot_cua_can_bo, quay về /can-bo, không có secret", async () => {
+    const cb = taoCaiDatOidc(docCauHinh({}), "http://localhost:9080", "can-bo");
+    expect(cb.client_id).toBe("mot_cua_can_bo");
+    expect(cb.client_secret).toBeUndefined();
+    expect(cb.redirect_uri).toBe("http://localhost:9080/can-bo/dang-nhap/xong");
+    expect(cb.post_logout_redirect_uri).toBe("http://localhost:9080/can-bo");
+    const client = new OidcClient({
+      ...cb,
+      metadata: { issuer: cb.authority, authorization_endpoint: `${cb.authority}/protocol/openid-connect/auth` },
+    });
+    const q = new URL((await client.createSigninRequest({ state: {} })).url).searchParams;
+    expect(q.get("client_id")).toBe("mot_cua_can_bo");
+    expect(q.get("code_challenge_method")).toBe("S256");
+  });
 });

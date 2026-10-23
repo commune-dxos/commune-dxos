@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Máy chủ tĩnh của cổng công dân (#57). Entrypoint của image nginx thay ${DXOS_*} (chỉ biến môi
+# Máy chủ tĩnh của cổng công dân (#57) và cổng cán bộ /can-bo (#55, cùng ứng dụng). Entrypoint của image nginx thay ${DXOS_*} (chỉ biến môi
 # trường đã khai, biến của nginx như $uri giữ nguyên) rồi ghi ra /etc/nginx/conf.d/default.conf.
 # Chỉ APISIX gọi tới (không mở cổng ra host); APISIX giữ /public, /api, /files, /workflow.
 
@@ -26,6 +26,10 @@ server {
     location ~ ^/(thu-tuc|nop-ho-so|dang-nhap)/ {
         rewrite ^ /index.html last;
     }
+    # Cổng cán bộ: /can-bo, /can-bo/ho-so/{id}, /can-bo/dang-nhap/xong (APISIX route mot-cua-web-can-bo).
+    location ~ ^/can-bo(/|$) {
+        rewrite ^ /index.html last;
+    }
 
     location = /index.html {
         include /etc/nginx/conf.d/bao-mat.headers;
@@ -38,7 +42,7 @@ server {
         default_type application/javascript;
         include /etc/nginx/conf.d/bao-mat.headers;
         add_header Cache-Control "no-store" always;
-        return 200 'window.__DXOS_CAU_HINH__ = {"gatewayUrl": "", "keycloakUrl": "${DXOS_KEYCLOAK_URL}", "realm": "${DXOS_KEYCLOAK_REALM}", "clientId": "${DXOS_OIDC_CLIENT_ID}"};\n';
+        return 200 'window.__DXOS_CAU_HINH__ = {"gatewayUrl": "", "keycloakUrl": "${DXOS_KEYCLOAK_URL}", "realm": "${DXOS_KEYCLOAK_REALM}", "clientId": "${DXOS_OIDC_CLIENT_ID}", "clientIdCanBo": "${DXOS_OIDC_CLIENT_ID_CAN_BO}"};\n';
     }
 
     # Tệp do Vite đặt tên theo băm nội dung: cache lâu dài.

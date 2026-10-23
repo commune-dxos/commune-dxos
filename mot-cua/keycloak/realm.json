@@ -61,7 +61,7 @@
   "clients": [
     {
       "clientId": "mot_cua_web",
-      "name": "mot-cua: cổng công dân và cổng cán bộ (React)",
+      "name": "mot-cua: cổng công dân (React)",
       "description": "Public client, Authorization Code + PKCE.",
       "enabled": true,
       "publicClient": true,
@@ -79,6 +79,29 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:9080/*##http://localhost:5173/*"
+      },
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "mot_cua_can_bo",
+      "name": "mot-cua: cổng cán bộ (React, /can-bo)",
+      "description": "Public client, Authorization Code + PKCE, chỉ cho cổng cán bộ (#55). Tài khoản can_bo, lanh_dao bị bắt OTP (required action CONFIGURE_TOTP); web từ chối người không có hai vai này, API kiểm lại bằng RLS và mot-cua-api.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9080/can-bo/*",
+        "http://localhost:5173/can-bo/*"
+      ],
+      "webOrigins": [
+        "http://localhost:9080",
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:9080/can-bo*##http://localhost:5173/can-bo*"
       },
       "protocol": "openid-connect"
     },

@@ -73,7 +73,8 @@ class GoiHopLe(CoGoiTam):
         self.assertEqual((kq["ma"], kq["linh_vuc"], kq["so_ngay_xu_ly"], kq["le_phi"], kq["quy_trinh"]),
                          ("CT01", "chung_thuc", 0, 2000, "chung_thuc_ban_sao"))
         self.assertEqual(list(kq["bien_theo_buoc"]), ["tiep_nhan", "kiem_tra_ban_chinh", "ky_chung_thuc", "tra_ket_qua"])
-        self.assertEqual(kq["bien_theo_buoc"]["tra_ket_qua"]["soBan"], {"kieu": "long", "bat_buoc": True})
+        self.assertEqual(kq["bien_theo_buoc"]["tra_ket_qua"]["soBan"], {"kieu": "long", "bat_buoc": True,
+                                                                     "ten": "Số bản đã chứng thực"})
         self.assertEqual([(t["ma"], t["bat_buoc"]) for t in kq["thanh_phan"]], [("ban_chinh", True), ("ban_sao", False)])
         self.assertIn("Nghị định 23/2015/NĐ-CP", kq["can_cu_phap_ly"])
         self.assertEqual(len(kq["goi_sha256"]), 64)
