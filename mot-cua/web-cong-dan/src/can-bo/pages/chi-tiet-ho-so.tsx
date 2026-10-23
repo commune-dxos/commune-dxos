@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { GOC_CAN_BO } from "@/auth/oidc";
 import { ngay } from "@/lib/dinh-dang";
+import { tenTrangThai } from "@/lib/trang-thai";
 import { cn } from "@/lib/utils";
 import { FormXuLy } from "../components/form-xu-ly";
 import { TheHan } from "../components/the-han";
@@ -289,6 +290,7 @@ export function ChiTietHoSo() {
           {!qt?.ketThuc && <TheHan han={han} />}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">Trạng thái hồ sơ: {tenTrangThai(hoSo.trang_thai)}</Badge>
           {qt?.ketThuc ? (
             <Badge variant="default">{KET_THUC[qt.diemKetThuc?.replace("ket_thuc_", "") ?? ""] ?? "Đã kết thúc"}</Badge>
           ) : (
