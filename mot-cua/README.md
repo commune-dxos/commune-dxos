@@ -14,9 +14,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/007_nhat_ky_kiem_toan.sql` | nhật ký kiểm toán append-only chuỗi băm SHA-256 (#75): bảng `nhat_ky_kiem_toan` + đầu chuỗi `dau_chuoi_kiem_toan`, trigger ghi kiểm toán cho hồ sơ, tệp, thủ tục, phân công; `dong_bo_trang_thai` ghi thêm bước quy trình; RPC `xac_minh_kiem_toan`; GRANT cho role pgAudit `dxos_kiem_toan`; xem [Nhật ký kiểm toán](#nhật-ký-kiểm-toán-75) |
 | `db/migrations/008_giay_to_ky_so.sql` | giấy tờ có ký số (#77): bảng `giay_to_ky` (biên nhận, kết quả; chỉ `dich_vu_tep` ghi, không sửa), trigger kiểm toán `giay_to.ky` kèm SHA-256; xem [Giấy tờ có ký số](#giấy-tờ-có-ký-số-77) |
 | `db/migrations/009_kho_du_lieu.sql` | kho dữ liệu (#80): role `dich_vu_bao_cao` (chỉ cột không cá nhân của hồ sơ đã đóng), schema `bao_cao` (bảng mart cho Superset), RPC `nap_bao_cao`; xem [Kho dữ liệu lịch sử](#kho-dữ-liệu-lịch-sử-80) |
+| `db/migrations/010_doc_bao_cao.sql` | quyền đọc báo cáo (#82): role `bao_cao_doc` (lõi tạo đăng nhập) chỉ đọc schema `bao_cao`, không đọc `mot_cua` |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
 | `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), chạy trong một transaction rồi ROLLBACK |
-| `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80) (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
+| `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80) (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
 | `backend/nap_thu_tuc.py`, `goi_thu_tuc.py`, `kiem_bpmn.py` | bộ nạp gói thủ tục (D-009): dịch vụ một lần `nap-thu-tuc`, `make nap-thu-tuc`; phần kiểm gói chạy cả trong `make check` (`--chi-kiem`); xem [Gói thủ tục](#gói-thủ-tục-d-009) |
@@ -24,6 +25,7 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `mot-cua-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, đối soát trạng thái với Flowable (#73), consumer mẫu |
 | `backend/trang_thai.py` | ánh xạ bước → trạng thái hồ sơ (mặc định theo người nhận, ghi đè của gói) và quy tắc tính trạng thái mới (hàm thuần, #73) |
 | `kho-du-lieu/` (`chay.py`, `dbt/`, `du-lieu-mau.json`, `tests/`), `backend/kho_du_lieu.py` | kho dữ liệu lịch sử (#80): dịch vụ một lần `kho-du-lieu`, `make kho-du-lieu`; khử định danh là hàm thuần trong `backend/` |
+| `bao-cao/superset_dung.py` | dashboard Superset dựng bằng mã (#82): kết nối `bao_cao`, dataset, 5 chart, dashboard "Hiệu suất một cửa", vai "Lãnh đạo xã"; superset-init của lõi chạy ở mỗi `make up-bi` |
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền), bộ nạp gói và test đơn vị: `make test` |
 | `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
 | `web-cong-dan/` | web Tầng 2: cổng công dân `/` (#52, đăng nhập `mot_cua_web`) và cổng cán bộ `/can-bo` (#55, đăng nhập `mot_cua_can_bo` + OTP; hộp việc, xử lý bước). React + Vite + Tailwind + shadcn/ui, PKCE; xem [README](web-cong-dan/README.md) |
@@ -190,7 +192,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 | `thanh_phan_ho_so` – sửa | — | — | `trang_thai_kiem_tra`, `ghi_chu_kiem_tra` (CSDL ghi người, giờ kiểm tra) | — |
 | `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
 | `giay_to_ky` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ `dich_vu_tep` ghi qua `/files`; không ai sửa, kể cả superuser) |
-| RPC `nap_bao_cao`, schema `bao_cao` | — | — | — | — (chỉ tài khoản dịch vụ `dich_vu_bao_cao` gọi RPC; Superset đọc `bao_cao` bằng role riêng) |
+| RPC `nap_bao_cao`, schema `bao_cao` | — | — | — | — (chỉ tài khoản dịch vụ `dich_vu_bao_cao` gọi RPC; Superset đọc `bao_cao` bằng role đăng nhập `bao_cao_doc`, lãnh đạo xem qua dashboard `/bao-cao`) |
 | `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
@@ -458,6 +460,20 @@ make test-kho               # cùng luồng trên dữ liệu mẫu giả, khôn
 | PostgreSQL `bao_cao.lan_nap` | mỗi lần nạp: số dòng, `invocation_id` của dbt (đối chiếu với `dbt-target/run_results.json`) |
 
 Trễ hạn = đóng (hoàn tất hoặc từ chối) sau 17:00 ngày `han_xu_ly`, giờ Việt Nam; số ngày làm việc tính từ sau ngày nộp tới hết ngày đóng, bỏ thứ Bảy, Chủ nhật, `ngay_nghi`. Thêm model: tệp `.sql` trong `kho-du-lieu/dbt/models/`, mô tả và test trong `schema.yml` cùng thư mục; bảng mới muốn đưa về `bao_cao` thì thêm bảng ở migration mới và vào danh sách của `nap_bao_cao`, `BANG_MART` trong `chay.py`.
+
+## Dashboard báo cáo (#82)
+
+`make up-bi` (= `make up` thêm profile `bi`) rồi `make kho-du-lieu` để có số liệu; mở http://localhost:9080/bao-cao/ (hoặc liên kết "Báo cáo hiệu suất" trong cổng cán bộ), đăng nhập bằng tài khoản lãnh đạo (mật khẩu + OTP). Dashboard "Hiệu suất một cửa" do `bao-cao/superset_dung.py` dựng; chart và thước đo:
+
+| Chart | Dataset | Thước đo |
+|---|---|---|
+| Hồ sơ đã đóng | `bao_cao.fct_ho_so` | `COUNT(*)` |
+| Tỷ lệ trễ hạn | `bao_cao.fct_ho_so` | tỷ lệ hồ sơ đóng sau 17:00 ngày hạn |
+| Số hồ sơ theo lĩnh vực | `bao_cao.fct_ho_so` | số hồ sơ theo `ten_linh_vuc` |
+| Tỷ lệ trễ hạn theo tháng và thủ tục | `bao_cao.hieu_suat_thang` | `SUM(so_tre_han) / SUM(so_ho_so)` |
+| Thời gian giải quyết theo thủ tục và tháng | `bao_cao.fct_ho_so` | số hồ sơ, ngày làm việc trung bình/trung vị, số giờ trung bình/trung vị, tỷ lệ trễ hạn |
+
+Thêm chart: khai trong `CHART`, `BO_CUC` của `superset_dung.py` rồi `make up-bi` (superset-init dựng lại, không nhân bản). Vai Keycloak nào được xem: `DXOS_SUPERSET_VAI_TRO` trong `docker-compose.yml`.
 
 ## Người dùng mẫu
 

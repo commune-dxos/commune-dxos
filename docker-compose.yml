@@ -32,7 +32,7 @@
 #   docs : Meilisearch CE                              (tuần 5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
 #   bi   : kho-du-lieu (dịch vụ một lần: hồ sơ đã đóng → Parquet → dbt → bảng mart bao_cao, #80;
-#          make kho-du-lieu), Apache Superset (tuần 4)
+#          make kho-du-lieu), Apache Superset (dashboard /bao-cao, SSO Keycloak, #82): make up-bi
 #
 # Bí mật (#10, docs/architecture.md §4.4): KHÔNG có mật khẩu, khóa hay token nào trong repo
 # hay .env. OpenBao (KV v2 `dxos/`) là nguồn duy nhất; bao-init khởi tạo/unseal và nạp bí
@@ -68,6 +68,32 @@ x-bao-agent: &bao-agent
   healthcheck:
     disable: true
   restart: "no"
+
+# Dashboard (Apache-2.0): image gốc apache/superset bản lean + driver PostgreSQL và Authlib
+# (nen-tang/superset/Dockerfile), không sửa mã. Cấu hình nen-tang/superset/superset_config.py: metadata
+# trong CSDL superset của PostgreSQL lõi, không Redis/Celery, chạy dưới /bao-cao của APISIX, đăng nhập
+# chỉ bằng SSO Keycloak (client public DXOS_SUPERSET_CLIENT, PKCE), vai Superset theo client role của
+# dxos_api. Không mở cổng ra host.
+x-superset: &superset
+  build:
+    context: ./nen-tang/superset
+  image: commune-dxos/superset:6.1.0
+  profiles: [bi]
+  environment: &superset-env
+    SUPERSET_CONFIG_PATH: /nen-tang/superset/superset_config.py
+    SUPERSET_APP_ROOT: /bao-cao
+    DXOS_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8080}
+    DXOS_KEYCLOAK_NOI_BO: http://keycloak:8080
+    DXOS_KEYCLOAK_REALM: dxos
+    DXOS_SUPERSET_CLIENT: bao_cao_superset
+    DXOS_SUPERSET_TEN: Báo cáo một cửa
+    # Client role của dxos_api (do dịch vụ Tầng 2 khai) → vai Superset (do mot-cua/bao-cao/ dựng).
+    DXOS_SUPERSET_VAI_TRO: '{"lanh_dao": ["Lãnh đạo xã"]}'
+    DXOS_BAO_CAO_DB: ${POSTGRES_DB:-commune}
+  volumes:
+    - ./nen-tang/superset:/nen-tang/superset:ro
+    - ./mot-cua:/tang2:ro
+    - superset-secrets:/run/dxos-secrets:ro
 
 services:
   # ---------------------------------------------------------------- core ----
@@ -716,6 +742,7 @@ services:
       - rabbitmq-init-secrets:/vol/rabbitmq-init
       - step-ca-secrets:/vol/step-ca
       - ca-init-secrets:/vol/ca-init
+      - superset-secrets:/vol/superset
     depends_on:
       openbao:
         condition: service_started
@@ -924,7 +951,7 @@ services:
 
   # ------------------------------------------- kho dữ liệu lịch sử (#80) ----
   # Dịch vụ một lần của bộ máy (mot-cua/kho-du-lieu/chay.py), chạy tay hoặc theo lịch máy chủ:
-  # make kho-du-lieu (= docker compose --profile bi run --rm kho-du-lieu). Đọc hồ sơ đã đóng qua
+  # make kho-du-lieu (= docker compose --profile core --profile bi run --rm --no-deps kho-du-lieu). Đọc hồ sơ đã đóng qua
   # PostgREST bằng tài khoản dịch vụ mot_cua_bao_cao (secret ở OpenBao, AppRole tang2 như
   # mot-cua-worker) → Parquet khử định danh trong volume kho-du-lieu → dbt-core + DuckDB build mart +
   # docs (lineage) → RPC nap_bao_cao đẩy mart về schema bao_cao cho Superset. Không mở cổng.
@@ -949,9 +976,57 @@ services:
     # (make up trước); khai phụ thuộc chéo profile thì `--profile bi` một mình không hợp lệ.
     restart: "no"
 
-  # --------------------------------------------------- ai / bi – TODO ----
+  # ---------------------------------------------------- Superset (#82) ----
+  # SECRET_KEY, mật khẩu role metadata `superset` và role đọc báo cáo `bao_cao_doc` (bao-init sinh trong
+  # OpenBao) → volume superset-secrets, quyền 0400, chủ uid 1000 (user superset).
+  superset-secrets:
+    <<: *bao-agent
+    profiles: [bi]
+    user: "1000"
+    command: ["-config=/nen-tang/openbao/agent/superset.hcl"]
+    volumes:
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
+      - superset-secrets:/run/dxos-secrets
+
+  # Một lần (nen-tang/superset/superset-init.sh): nâng lược đồ metadata, vai trò mặc định, rồi dựng
+  # kết nối, dataset, chart, dashboard của Tầng 2 bằng mã (mot-cua/bao-cao/superset_dung.py).
+  superset-init:
+    <<: *superset
+    entrypoint: ["/bin/bash", "/nen-tang/superset/superset-init.sh"]
+    # CSDL superset, role bao_cao_doc (db-init) và schema bao_cao (migration Tầng 2) phải có trước.
+    depends_on:
+      superset-secrets:
+        condition: service_completed_successfully
+      db-init:
+        condition: service_completed_successfully
+      tang2-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  superset:
+    <<: *superset
+    command: ["/usr/bin/run-server.sh"]
+    environment:
+      <<: *superset-env
+      # Một tiến trình (20 luồng): cache trong bộ nhớ (không Redis) dùng chung cho mọi request.
+      SERVER_WORKER_AMOUNT: "1"
+    expose:
+      - "8088"
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8088/bao-cao/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # --------------------------------------------------- ai – TODO ----
   # ollama:      # profile ai; model Qwen2.5 7B/14B (Apache-2.0), không dùng bản 3B (D-004)
-  # superset:    # profile bi; apache/superset, đọc schema bao_cao (#80) bằng role chỉ đọc
 
 volumes:
   pg-data:
@@ -981,5 +1056,6 @@ volumes:
   # Kho dữ liệu (#80): Parquet đã khử định danh, kho.duckdb của dbt, target/ (docs, lineage), log dbt.
   # Dựng lại được hoàn toàn bằng make kho-du-lieu (nguồn đúng là PostgreSQL).
   kho-du-lieu:
+  superset-secrets:
   step-ca-secrets:
   ca-init-secrets:

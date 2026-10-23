@@ -110,6 +110,27 @@
       "protocol": "openid-connect"
     },
     {
+      "clientId": "bao_cao_superset",
+      "name": "mot-cua: dashboard báo cáo (Superset, /bao-cao)",
+      "description": "Public client, Authorization Code + PKCE, chỉ cho Superset (#82). Superset ánh xạ client role lanh_dao của dxos_api sang vai Lãnh đạo xã; lãnh đạo bị bắt OTP như ở cổng cán bộ. Vai khác đăng nhập được nhưng không có quyền xem gì.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9080/bao-cao/oauth-authorized/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:9080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:9080/bao-cao/*"
+      },
+      "protocol": "openid-connect"
+    },
+    {
       "clientId": "mot_cua_tep",
       "name": "mot-cua: API tệp (backend, tài khoản dịch vụ)",
       "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; tang2-realm ghi secret vào OpenBao (dxos/tang2/mot-cua/keycloak/mot_cua_tep) cho mot-cua-api.",

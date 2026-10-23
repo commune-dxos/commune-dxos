@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
+.PHONY: up up-bi down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -8,6 +8,13 @@ COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
 up:            ## Chạy nền tảng Tầng 1 + bộ máy mot-cua + nạp gói thu-tuc/ + cổng công dân http://localhost:9080/ (profile core); tự init/unseal OpenBao. Cần: cp .env.example .env
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env (không có mật khẩu nào cần điền)"; exit 1; }
 	docker compose --profile core up -d --build
+
+# Profile bi (#80, #82) dùng dịch vụ của core (OpenBao, PostgreSQL, Keycloak): luôn bật cả hai profile.
+BI := docker compose --profile core --profile bi
+
+up-bi:         ## Như make up, thêm Superset (dashboard http://localhost:9080/bao-cao/, SSO Keycloak, #82). Chạy make kho-du-lieu để có số liệu
+	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
+	$(BI) up -d --build
 
 bao-init:      ## OpenBao: init (lần đầu) → unseal → KV, policy, AppRole, bí mật lõi. Idempotent; `make up` tự gọi
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
@@ -40,10 +47,10 @@ nap-thu-tuc:   ## Nạp lại gói thu-tuc/*/: kiểm gói, deploy BPMN lên Flo
 	docker compose --profile core run --rm --no-deps nap-thu-tuc
 
 kho-du-lieu:   ## Kho dữ liệu (#80): hồ sơ đã đóng → Parquet (khử định danh) → dbt build + docs → nạp bảng mart bao_cao. Cần make up
-	docker compose --profile bi run --rm --build kho-du-lieu
+	$(BI) run --rm --build --no-deps kho-du-lieu
 
 kho-du-lieu-tai-lieu: ## Xem lineage và mô tả model dbt ở http://127.0.0.1:8580 (sau make kho-du-lieu; Ctrl+C để dừng)
-	docker compose --profile bi run --rm --no-deps -p 127.0.0.1:8580:8580 kho-du-lieu \
+	$(BI) run --rm --no-deps -p 127.0.0.1:8580:8580 kho-du-lieu \
 	  sh -c 'cd /mot-cua/kho-du-lieu/dbt && dbt docs serve --profiles-dir . --target-path /kho/dbt-target --host 0.0.0.0 --port 8580 --no-browser'
 
 smoke:         ## Kiểm tra hệ thống đang chạy: nền tảng (JWT, JWKS, OpenBao…) + bộ máy mot-cua + gói thủ tục

@@ -11,9 +11,9 @@
 
 echo "== Kho dữ liệu: Parquet + DuckDB + dbt (#80)"
 # kho <lệnh python> → chạy trong container kho-du-lieu (volume /kho), không khởi động thêm dịch vụ.
-kho() { docker compose --profile bi run --rm --no-deps -T --entrypoint python kho-du-lieu -c "$1"; }
+kho() { docker compose --profile core --profile bi run --rm --no-deps -T --entrypoint python kho-du-lieu -c "$1"; }
 
-if out="$(docker compose --profile bi run --rm --build -T kho-du-lieu 2>&1)"; then ma=0; else ma=$?; fi
+if out="$(docker compose --profile core --profile bi run --rm --build -T kho-du-lieu 2>&1)"; then ma=0; else ma=$?; fi
 kiem "make kho-du-lieu: xuất → dbt build → docs → nạp, mã thoát 0" "0" "$ma"
 [ "$ma" = 0 ] || tail -20 <<<"$out"
 kiem "dbt build: không model/test nào lỗi hay trượt" "0" \
@@ -32,7 +32,7 @@ print("ho_so_id " + ("có" if "ho_so_id" in c else "không") + ", cá nhân: " +
 kiem "Parquet không chứa họ tên người nộp hồ sơ $WEB_HS" "0" \
   "$(kho "import duckdb, json; t = json.dumps(duckdb.sql(\"SELECT * FROM read_parquet('/kho/parquet/ho_so/**/*.parquet')\").fetchall(), default=str, ensure_ascii=False); print(t.count('''$KH_TEN''') if '''$KH_TEN''' else 'thiếu tên')")"
 KH_MF="$(kho 'print(open("/kho/parquet/_manifest.json").read())' | shasum -a 256 | cut -d' ' -f1)"
-docker compose --profile bi run --rm --no-deps -T kho-du-lieu python -u /mot-cua/kho-du-lieu/chay.py --chi-xuat > /dev/null 2>&1
+docker compose --profile core --profile bi run --rm --no-deps -T kho-du-lieu python -u /mot-cua/kho-du-lieu/chay.py --chi-xuat > /dev/null 2>&1
 kiem "xuất lại → đúng các tệp Parquet cũ (manifest SHA-256 không đổi)" "$KH_MF" \
   "$(kho 'print(open("/kho/parquet/_manifest.json").read())' | shasum -a 256 | cut -d' ' -f1)"
 

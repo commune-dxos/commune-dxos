@@ -39,13 +39,13 @@ Cách dùng tệp này:
 - [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái – khung + danh mục + đăng nhập (#52, PR chờ duyệt); nộp hồ sơ #53, tra cứu #54
 - [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác
 - [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `mot-cua/`): sự kiện `ho_so.sap_tre_han` và `mot-cua-worker` đã có (#9); còn consumer thông báo cho cán bộ/công dân
-- [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả)
+- [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả) (#82, PR chờ duyệt)
 
 ## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0
 - [ ] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit (#75, PR chờ duyệt)
 - [ ] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF (#77, PR chờ duyệt); văn bản đi/đến có ký số (#78)
 - [ ] V2 · Hồ sơ hoàn tất → Parquet + DuckDB; `dbt-core` dựng báo cáo + lineage (#80, PR chờ duyệt)
-- [ ] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn
+- [ ] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn (#82, PR chờ duyệt)
 - [ ] V1 · **Thuê VPS + tên miền**, HTTPS, CI tự triển khai khi merge `main`
 - [ ] V3 · Cuối tuần mời 3–5 người dùng thật (cán bộ xã, sinh viên) dùng thử, ghi phản hồi thành issue nhãn `user-feedback`
 - [ ] V1 · Release v0.2.0

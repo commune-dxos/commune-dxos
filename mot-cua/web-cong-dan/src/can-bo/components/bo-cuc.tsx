@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Khung cổng cán bộ theo bố cục shadcn-admin (satnaing/shadcn-admin, MIT; tham khảo bố cục, không
 // chép mã): thanh bên (Sidebar của shadcn/ui; dưới 768px thành ngăn kéo), đầu trang có nút thu thanh
-// bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung bên phải.
-import { AlarmClockOff, ExternalLink, Hourglass, Inbox, UserCheck } from "lucide-react";
+// bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung bên phải. Lãnh đạo có
+// thêm liên kết dashboard báo cáo (Superset ở /bao-cao, đăng nhập SSO cùng Keycloak, #82).
+import { AlarmClockOff, ChartColumn, ExternalLink, Hourglass, Inbox, UserCheck } from "lucide-react";
 import { Link, Outlet, useLocation, useMatch } from "react-router";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -117,6 +118,16 @@ function ThanhBen() {
           <SidebarGroupLabel className="text-sm">Khác</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {vaiTro === "lanh_dao" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild className={LOP_MUC}>
+                    <a href={DUONG_BAO_CAO}>
+                      <ChartColumn aria-hidden="true" />
+                      <span>Báo cáo hiệu suất</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className={LOP_MUC}>
                   <a href="/">
@@ -160,6 +171,9 @@ function TieuDeTrang() {
     </nav>
   );
 }
+
+/** Dashboard "Hiệu suất một cửa" của Superset (mot-cua/bao-cao/superset_dung.py), qua APISIX /bao-cao. */
+export const DUONG_BAO_CAO = "/bao-cao/superset/dashboard/hieu-suat-mot-cua/";
 
 export function BoCucCanBo() {
   return (

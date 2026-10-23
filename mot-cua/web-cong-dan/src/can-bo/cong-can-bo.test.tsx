@@ -3,7 +3,7 @@
 // Cổng cán bộ (#55) với đăng nhập giả và API giả bằng fetch: cổng vào theo vai trò, hộp việc (hạn,
 // lọc), chi tiết hồ sơ, form xử lý bước sinh từ biến của bước (không gửi khi thiếu, gửi đúng kiểu,
 // báo lỗi quyền của máy chủ).
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { User, UserManager } from "oidc-client-ts";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -97,6 +97,16 @@ describe("cổng vào cổng cán bộ", () => {
 });
 
 describe("hộp việc", () => {
+  it("lãnh đạo có liên kết dashboard báo cáo /bao-cao (#82); cán bộ thì không", async () => {
+    ve("/can-bo", nguoiDung(["lanh_dao"]));
+    expect(await screen.findByRole("link", { name: "Báo cáo hiệu suất" })).toHaveAttribute(
+      "href", "/bao-cao/superset/dashboard/hieu-suat-mot-cua/");
+    cleanup();
+    ve("/can-bo", nguoiDung(["can_bo"]));
+    await screen.findByRole("heading", { level: 1, name: "Hộp việc" });
+    expect(screen.queryByRole("link", { name: "Báo cáo hiệu suất" })).toBeNull();
+  });
+
   it("cán bộ thấy task của lĩnh vực mình, hồ sơ quá hạn đứng đầu, có cảnh báo và chuông", async () => {
     ve("/can-bo", nguoiDung(["can_bo"]));
     expect(await screen.findByRole("heading", { level: 1, name: "Hộp việc" })).toBeInTheDocument();

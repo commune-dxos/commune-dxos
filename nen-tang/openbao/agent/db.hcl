@@ -65,3 +65,17 @@ template {
   error_on_missing_key = true
   contents             = "{{ with secret \"dxos/data/core/db/flowable\" }}{{ .Data.data.password }}{{ end }}"
 }
+
+template {
+  destination          = "/run/dxos-secrets/superset_password"
+  perms                = "0400"
+  error_on_missing_key = true
+  contents             = "{{ with secret \"dxos/data/core/db/superset\" }}{{ .Data.data.password }}{{ end }}"
+}
+
+template {
+  destination          = "/run/dxos-secrets/bao_cao_doc_password"
+  perms                = "0400"
+  error_on_missing_key = true
+  contents             = "{{ with secret \"dxos/data/core/db/bao_cao_doc\" }}{{ .Data.data.password }}{{ end }}"
+}

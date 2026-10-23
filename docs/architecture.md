@@ -743,6 +743,82 @@ flowchart LR
 
 Model: `stg_ho_so`, `stg_lich_su_trang_thai`, `stg_ngay_nghi` (view) → `int_lich_lam_viec` (ngày làm việc = thứ Hai–Sáu, không phải ngày nghỉ) → `fct_ho_so` (một dòng mỗi hồ sơ: số giờ, số ngày làm việc, số lần bổ sung, trễ hạn) → `hieu_suat_thang` (tháng × thủ tục: số hồ sơ, hoàn tất, từ chối, trễ hạn, tỷ lệ trễ hạn, trung bình ngày làm việc). Xem lineage và mô tả cột: `make kho-du-lieu-tai-lieu` rồi mở http://127.0.0.1:8580 (dbt docs; `target/` nằm trong volume, không vào git).
 
+### 4.9 Luồng hồ sơ một cửa từ nộp tới trả kết quả (#82)
+
+Tổng hợp các mục §4.2–§4.8 theo đúng thứ tự một hồ sơ đi qua hệ thống, lấy thủ tục **đăng ký khai sinh** (gói `thu-tuc/khai-sinh/`) làm ví dụ. Thủ tục khác chỉ khác quy trình BPMN và ánh xạ bước → trạng thái trong gói của nó; bộ máy giữ nguyên. Mọi lời gọi của người dùng đi qua APISIX bằng token Keycloak; mọi ghi vào CSDL đều chịu RLS.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor CD as Công dân<br/>(cổng /)
+  actor CB as Cán bộ hộ tịch<br/>(cổng /can-bo, OTP)
+  actor LD as Lãnh đạo<br/>(OTP)
+  participant GW as APISIX
+  participant API as mot-cua-api
+  participant PG as PostgreSQL<br/>(RLS, kiểm toán)
+  participant FL as Flowable
+  participant WK as mot-cua-worker
+  participant MQ as RabbitMQ
+  CD->>GW: POST /api/ho_so
+  GW->>PG: PostgREST (role cong_dan): ho_so "moi", mã HS…, hạn theo ngày làm việc
+  CD->>GW: POST /files/ho-so/{id}/tep (từng thành phần)
+  GW->>API: ClamAV quét → magic bytes → Garage → thanh_phan_ho_so
+  CD->>GW: POST /workflow/ho-so/{id}/khoi-tao
+  API->>API: Poka-yoke: JSON Schema của gói trên tệp đã quét sạch (thiếu → 422, dừng)
+  API->>FL: start dang_ky_khai_sinh (businessKey = mã hồ sơ, hanXuLyLuc)
+  API->>PG: RPC dong_bo_trang_thai: trạng thái + lịch sử + outbox ho_so.moi + kiểm toán
+  API-->>PG: (nền) biên nhận PDF ký số → Garage → giay_to_ky
+  CB->>GW: POST /workflow/tasks/{id}/complete (tiep_nhan: hopLe)
+  GW->>API: kiểm nhóm lĩnh vực, biến của bước
+  API->>FL: complete → thiếu: bo_sung (công dân) / đủ: tham_dinh
+  API->>PG: dong_bo_trang_thai (cho_bo_sung | dang_xu_ly) + ho_so.chuyen_buoc
+  CB->>GW: complete tham_dinh (dat)
+  API->>FL: → phe_duyet (nhóm lanh_dao) / không đạt: kết thúc từ chối
+  API->>PG: dong_bo_trang_thai (cho_phe_duyet)
+  LD->>GW: complete phe_duyet (pheDuyet)
+  API->>FL: → ket_thuc_hoan_tat (ketQua = hoan_tat) / trả lại: tham_dinh
+  API->>PG: dong_bo_trang_thai (hoan_tat, ngay_hoan_tat) + ho_so.hoan_tat
+  API-->>PG: (nền) thông báo kết quả PDF ký số
+  loop mỗi vài giây
+    WK->>PG: đọc outbox chưa phát
+    WK->>MQ: STOMP SEND (chờ RECEIPT) → đánh dấu đã phát
+  end
+```
+
+| # | Bước | Ai, qua đâu | Dữ liệu thay đổi (PostgreSQL) | Trạng thái `ho_so` | Sự kiện (outbox → RabbitMQ) | Kiểm toán (§4.6) |
+|---|---|---|---|---|---|---|
+| 1 | Nộp hồ sơ | công dân, `POST /api/ho_so` (PostgREST, role `cong_dan`) | `ho_so` (trigger: mã `HSYYYYMMDD-…`, `han_xu_ly` = ngày nhận + số ngày làm việc của thủ tục, bỏ thứ Bảy, Chủ nhật, ngày nghỉ), `lich_su_trang_thai` (nguồn `nop`) | `moi` | – | `ho_so.nop`; pgAudit `OBJECT WRITE INSERT mot_cua.ho_so` |
+| 2 | Tải thành phần | công dân, `POST /files/ho-so/{id}/tep` → `mot-cua-api` (§4.3) | tệp lên Garage sau khi ClamAV quét sạch và kiểm magic bytes; `thanh_phan_ho_so` (tài khoản dịch vụ `dich_vu_tep`), `nhat_ky_tep` | `moi` | – | `tep.tai_len` kèm SHA-256 nội dung tệp |
+| 3 | Khởi tạo quy trình | công dân, `POST /workflow/ho-so/{id}/khoi-tao` (§4.2) | Poka-yoke (JSON Schema 2020-12 của gói) trước khi gọi Flowable; thiếu → 422, không gì thay đổi. Đủ → Flowable `start`, rồi RPC `dong_bo_trang_thai` trong **một transaction**: trạng thái + lịch sử + outbox | `moi` (bước `tiep_nhan` ánh xạ `moi` trong gói) | `ho_so.moi` | `quy_trinh.dong_bo` |
+| 3b | Biên nhận | `mot-cua-api`, luồng nền ngay sau bước 3 (§4.7) | Gotenberg sinh PDF từ `mot-cua/mau-giay-to/bien_nhan.html`, pyHanko ký PAdES bằng chứng thư step-ca của xã, Garage, `giay_to_ky` | – | – | `giay_to.ky` kèm SHA-256 PDF |
+| 4 | Tiếp nhận | cán bộ hộ tịch (nhóm `ho_tich` = lĩnh vực phụ trách), `POST /workflow/tasks/{id}/complete` `{hopLe}` | Flowable hoàn thành `tiep_nhan`; RPC đồng bộ; cán bộ vừa xử lý được giao hồ sơ nếu chưa giao | thiếu → `cho_bo_sung` (bước `bo_sung` giao công dân); đủ → `dang_xu_ly` (`tham_dinh`) | `ho_so.chuyen_buoc` | `quy_trinh.xu_ly_buoc` (người xử lý = cán bộ), `ho_so.chuyen_trang_thai`, `ho_so.cap_nhat` (cán bộ xử lý) |
+| 4b | Bổ sung (nếu thiếu) | công dân: sửa hồ sơ (`PATCH /api/ho_so`, RLS chỉ cho khi `cho_bo_sung`), tải thêm tệp, `complete` bước `bo_sung` (Poka-yoke lại) | như bước 2 và 4; quay về `tiep_nhan` | `cho_bo_sung` → `dang_xu_ly` (`moi` chỉ có trước lần tiếp nhận đầu tiên) | `ho_so.chuyen_buoc` | như trên |
+| 5 | Thẩm định | cán bộ hộ tịch, `complete` `tham_dinh` `{dat}` | đạt → `phe_duyet`; không đạt → quy trình kết thúc `ket_thuc_tu_choi` | đạt → `cho_phe_duyet`; không đạt → `tu_choi` (`ngay_hoan_tat`, lý do) | `ho_so.chuyen_buoc` (+ `ho_so.tu_choi`) | `quy_trinh.xu_ly_buoc`, `ho_so.chuyen_trang_thai` |
+| 6 | Phê duyệt | lãnh đạo (nhóm `lanh_dao`, OTP), `complete` `phe_duyet` `{pheDuyet}`; cán bộ không tự phê duyệt được (403) | duyệt → `ket_thuc_hoan_tat` (`ketQua = hoan_tat`); trả lại → `tham_dinh` | duyệt → `hoan_tat` (`ngay_hoan_tat`); trả lại → `dang_xu_ly` | `ho_so.chuyen_buoc`, `ho_so.hoan_tat` | `quy_trinh.xu_ly_buoc` (người xử lý = lãnh đạo), `ho_so.chuyen_trang_thai` |
+| 6b | Trả kết quả | `mot-cua-api`, luồng nền khi trạng thái thành `hoan_tat`; công dân/cán bộ tải ở cổng | thông báo kết quả PDF ký số (`ket_qua.html`), Garage, `giay_to_ky` | `hoan_tat` | – | `giay_to.ky` |
+| – | Hạn xử lý | Flowable: hẹn giờ `den_han` lúc 17:00 ngày hạn đặt biến `quaHan` (cổng cán bộ hiện "Quá hạn"); `mot-cua-worker` quét hồ sơ còn ≤ 1 ngày làm việc | `hop_thu_su_kien` (khóa chống trùng theo hồ sơ + hạn) | không đổi | `ho_so.sap_tre_han` | – |
+| – | Phát sự kiện | `mot-cua-worker` (§4.5) | `hop_thu_su_kien.da_phat_luc` sau khi RabbitMQ xác nhận; consumer mẫu ghi `nhat_ky_su_kien` | – | exchange `mot_cua.su_kien` → queue `mot_cua.nhat_ky` | – |
+| – | Đối soát | `mot-cua-worker` định kỳ: CSDL lỗi sau khi Flowable đã chạy → sửa trạng thái cho khớp Flowable | như RPC đồng bộ, nguồn `doi_soat` | theo Flowable | sự kiện còn thiếu | `quy_trinh.dong_bo` |
+| 7 | Kho dữ liệu | `make kho-du-lieu` (tay hoặc cron, §4.8) | hồ sơ đã đóng → Parquet khử định danh → dbt → `bao_cao.fct_ho_so`, `bao_cao.hieu_suat_thang` | đã đóng | – | `bao_cao.lan_nap` ghi invocation dbt |
+| 8 | Báo cáo | lãnh đạo, `/bao-cao` (Superset, SSO + OTP, §4.10) | Superset đọc `bao_cao` bằng role chỉ đọc `bao_cao_doc` | – | – | – |
+
+Bất biến của luồng: **Flowable trước, CSDL sau** (Flowable lỗi → không ghi gì; CSDL lỗi sau Flowable → request vẫn thành công, worker đối soát); trạng thái, lịch sử, sự kiện và bản ghi kiểm toán của một bước luôn **cùng một transaction**; công dân chỉ thấy hồ sơ của mình, cán bộ chỉ hồ sơ thuộc lĩnh vực phụ trách, lãnh đạo thấy tất cả (RLS); dữ liệu cá nhân không đi vào sự kiện, nhật ký kiểm toán, Parquet hay báo cáo. Kiểm bằng smoke: `mot-cua/tests/smoke.sh` mục 4d (luồng qua `/workflow`), `smoke-can-bo.sh` (đầu cuối từ web: nộp → bổ sung → thẩm định → phê duyệt), `smoke-su-kien.sh`, `smoke-kiem-toan.sh`, `smoke-ky-so.sh`, `smoke-kho-du-lieu.sh`, `smoke-superset.sh`.
+
+### 4.10 Dashboard Superset (#82)
+
+Apache Superset 6.1 (Apache-2.0) chạy như **dịch vụ riêng** bằng image gốc `apache/superset:6.1.0` bản lean, thêm driver `psycopg2-binary` và `Authlib` (`nen-tang/superset/Dockerfile`), profile `bi` (`make up-bi`), không mở cổng ra host, đi qua APISIX ở `/bao-cao`.
+
+| Quyết định | Lý do |
+|---|---|
+| Metadata trong CSDL riêng `superset` của PostgreSQL lõi (db-init), **không Redis, không Celery** | Không thêm dịch vụ cho quy mô xã: một worker, cache metadata trong tiến trình (`SimpleCache`), không cache kết quả truy vấn (dashboard thấy số liệu mới ngay sau `make kho-du-lieu`), tắt báo cáo/alert theo lịch |
+| Đọc schema `bao_cao` (mart của §4.8) bằng role đăng nhập **`bao_cao_doc`**: lõi tạo role và mật khẩu (OpenBao), bộ máy GRANT đúng schema `bao_cao` (migration 010) | Superset không đọc được `mot_cua`, không ghi, không gọi RPC (test SQL); mật khẩu kết nối lưu mã hóa bằng `SECRET_KEY` trong metadata |
+| Đăng nhập **chỉ SSO Keycloak**: client public `bao_cao_superset`, Authorization Code + PKCE, trình duyệt đi tới Keycloak công khai, Superset đổi code qua mạng nội bộ; vai Superset theo client role `dxos_api` (`DXOS_SUPERSET_VAI_TRO`: `lanh_dao` → "Lãnh đạo xã") | Một danh tính cho mọi cổng, lãnh đạo bị bắt OTP như ở cổng cán bộ; không có tài khoản mật khẩu Superset nào (kể cả quản trị). Vai khác đăng nhập được nhưng chỉ có vai Public (không xem được gì) |
+| Dashboard **dựng bằng mã** (`mot-cua/bao-cao/superset_dung.py`, chạy trong `superset-init` mỗi `make up-bi`, uuid cố định nên idempotent) | Không ai phải bấm tay; dashboard nằm trong git, dựng lại được trên máy sạch. Nền tảng chỉ chạy tệp mà dịch vụ Tầng 2 khai báo, không biết nội dung |
+| `SECRET_KEY`, mật khẩu `superset`, `bao_cao_doc` sinh trong OpenBao (`dxos/core/superset`, `dxos/core/db/…`), agent `superset-secrets` render ra tệp 0400 | Như mọi dịch vụ khác (§4.4) |
+| Chạy dưới tiền tố `/bao-cao` (`SUPERSET_APP_ROOT`, Superset 6) sau proxy (`ENABLE_PROXY_FIX`) | Cùng origin với các cổng; không cần tên miền riêng |
+
+Dashboard "Hiệu suất một cửa" (`/bao-cao/superset/dashboard/hieu-suat-mot-cua/`, liên kết "Báo cáo hiệu suất" trong cổng cán bộ khi đăng nhập vai lãnh đạo): số hồ sơ đã đóng, tỷ lệ trễ hạn, số hồ sơ theo lĩnh vực, tỷ lệ trễ hạn theo tháng × thủ tục, bảng thời gian giải quyết trung bình và trung vị (ngày làm việc, số giờ) theo thủ tục × tháng. Số liệu mới sau mỗi `make kho-du-lieu`.
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -764,9 +840,9 @@ Model: `stg_ho_so`, `stg_lich_su_trang_thai`, `stg_ngay_nghi` (view) → `int_li
 | `docs` | Meilisearch CE | TODO tuần 5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
 | `bi` | `kho-du-lieu` (dịch vụ một lần, `make kho-du-lieu`) | chạy thử 23/10/2026 (#80) | image 399 MB (python slim 206 MB + dbt, DuckDB ~190 MB); một lần chạy ~4 giây trên dữ liệu smoke rồi thoát |
-| `bi` | Apache Superset | TODO tuần 4 | |
+| `bi` | Superset (+ dịch vụ một lần `superset-secrets`, `superset-init`), `make up-bi` | chạy thử 23/10/2026 (#82) | image 1,28 GB; một worker gunicorn 20 luồng, ~230 MB RAM (đo 23/10/2026) |
 
-Chạy: `make up` (= `docker compose --profile core up -d`), kiểm tra: `make smoke`. Thêm profile: `docker compose --profile core --profile docs up -d`.
+Chạy: `make up` (= `docker compose --profile core up -d`), thêm Superset: `make up-bi` (= `--profile core --profile bi`), kiểm tra: `make smoke` (mục Superset chỉ chạy khi profile `bi` đang chạy). Thêm profile: `docker compose --profile core --profile docs up -d`.
 Mọi image ghim phiên bản cụ thể, lấy từ dự án gốc (bảng ở `DEPENDENCIES.md`). Cấu hình qua `.env` (mẫu `.env.example`).
 
 ## 7. Viết BPMN khi không có modeler
