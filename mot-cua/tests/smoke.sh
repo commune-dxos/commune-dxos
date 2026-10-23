@@ -5,7 +5,7 @@
 # scripts/lib-smoke.sh: kiem, ma_http, sql, sql_loi, kc, lay_token…), không chạy riêng.
 # Kiểm:
 #   1. Route công khai (role anon): danh mục thủ tục, JSON Schema; không thấy hồ sơ.
-#   2. Test SQL mot-cua/db/tests/*.sql: RLS, danh mục nạp từ gói (mỗi dòng ĐẠT/TRƯỢT là một kiểm tra).
+#   2. Test SQL mot-cua/db/tests/*.sql: RLS, danh mục nạp từ gói, nhật ký kiểm toán (mỗi dòng ĐẠT/TRƯỢT là một kiểm tra).
 #   3. MFA: cán bộ, lãnh đạo bị bắt cài OTP; công dân thì không.
 #   4. Qua APISIX → PostgREST với token thật của từng vai trò: cong_dan (mật khẩu),
 #      can_bo và lanh_dao (mật khẩu + mã TOTP). Cán bộ, lãnh đạo dùng người dùng TẠM có
@@ -22,6 +22,8 @@
 #   4i. Cổng cán bộ /can-bo: trang, client mot_cua_can_bo (PKCE + OTP), E2E cán bộ hộ tịch tiếp nhận →
 #      thẩm định → lãnh đạo phê duyệt hồ sơ vừa nộp từ web; cán bộ lĩnh vực khác không thấy (#55):
 #      tests/smoke-can-bo.sh.
+#   4j. Nhật ký kiểm toán chuỗi băm (#75): quyền qua APISIX, dấu vết của hồ sơ vừa xử lý, nộp đồng thời,
+#      trình xác minh độc lập Python, log đối tượng pgAudit: tests/smoke-kiem-toan.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -414,6 +416,10 @@ fi
 # --- 4i. Cổng cán bộ qua APISIX (#55) --------------------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-can-bo.sh
 . "mot-cua/tests/smoke-can-bo.sh"
+
+# --- 4j. Nhật ký kiểm toán chuỗi băm + pgAudit (#75) ------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-kiem-toan.sh
+. "mot-cua/tests/smoke-kiem-toan.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
