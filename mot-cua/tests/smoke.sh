@@ -26,6 +26,8 @@
 #      trình xác minh độc lập Python, log đối tượng pgAudit: tests/smoke-kiem-toan.sh.
 #   4k. Giấy tờ có ký số (#77): step-ca, ca-init, biên nhận/kết quả PDF ký PAdES phát hành khi nộp/hoàn tất,
 #      tải qua link ngắn hạn, xác minh (sửa 1 byte → không toàn vẹn), quyền: tests/smoke-ky-so.sh.
+#   4l. Kho dữ liệu (#80): xuất Parquet khử định danh, dbt build + lineage, mart khớp SQL trên kho nóng:
+#      tests/smoke-kho-du-lieu.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -426,6 +428,10 @@ fi
 # --- 4k. Giấy tờ có ký số: biên nhận, kết quả, xác minh (#77) ----------------------------------------
 # shellcheck source=mot-cua/tests/smoke-ky-so.sh
 . "mot-cua/tests/smoke-ky-so.sh"
+
+# --- 4l. Kho dữ liệu: Parquet + DuckDB + dbt, mart về bao_cao (#80) --------------------------------
+# shellcheck source=mot-cua/tests/smoke-kho-du-lieu.sh
+. "mot-cua/tests/smoke-kho-du-lieu.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';

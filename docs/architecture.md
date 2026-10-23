@@ -717,6 +717,32 @@ Kết quả xác minh mẫu (một byte bị sửa sau khi ký):
 
 Vận hành: đổi tên cơ quan (`DXOS_KY_SO_TEN`) rồi `make up` → chứng thư mới. Mất volume `step-ca-data` = CA mới: giấy tờ đã ký trước đó vẫn toàn vẹn nhưng không còn tin cậy khi xác minh, nên sao lưu volume này cùng OpenBao. Mật khẩu khóa CA chỉ dùng lúc khởi tạo; đổi trong OpenBao sau đó thì step-ca không mở được khóa.
 
+### 4.8 Kho dữ liệu lịch sử: Parquet + DuckDB + dbt-core (#80)
+
+Tách **dữ liệu nóng** (PostgreSQL: hồ sơ đang xử lý, RLS theo người dùng) khỏi **dữ liệu lịch sử phân tích** (Parquet: hồ sơ đã đóng, khử định danh), dựng báo cáo bằng dbt có test và phả hệ (lineage). Đây là nền cho dashboard Superset.
+
+```mermaid
+flowchart LR
+  PG[("PostgreSQL<br/>mot_cua (nóng)")] -->|"PostgREST, tài khoản dich_vu_bao_cao<br/>chỉ hồ sơ đã đóng, chỉ cột không cá nhân"| X["chay.py: khử định danh<br/>(backend/kho_du_lieu.py)"]
+  X -->|"DuckDB COPY … PARTITION_BY"| PQ[["Parquet<br/>thang=YYYY-MM/thu_tuc=…"]]
+  PQ --> S["dbt staging<br/>(view)"] --> I["intermediate<br/>lịch làm việc"] --> M["mart<br/>fct_ho_so, hieu_suat_thang"]
+  M -->|"RPC nap_bao_cao<br/>(một transaction)"| BC[("PostgreSQL<br/>schema bao_cao")]
+  BC --> SS["Superset (việc kế tiếp)"]
+  M -. "dbt docs generate" .-> L["lineage, mô tả cột<br/>make kho-du-lieu-tai-lieu"]
+```
+
+| Quyết định | Lý do |
+|---|---|
+| Dịch vụ một lần `kho-du-lieu` (profile `bi`), chạy tay `make kho-du-lieu` hoặc theo lịch máy chủ (cron gọi cùng lệnh); không trong `mot-cua-worker` | dbt-core và gói kéo theo ~170 MB, không cần thời gian thực; worker giữ nhẹ (chỉ thư viện chuẩn). Image riêng `python:…-slim` vì DuckDB có wheel dựng sẵn cho glibc |
+| Đọc qua **PostgREST bằng tài khoản dịch vụ `mot_cua_bao_cao`**, không đọc thẳng CSDL | Cùng khuôn với các dịch vụ khác của Tầng 2. Role `dich_vu_bao_cao` chỉ có quyền cột không phải dữ liệu cá nhân và RLS chỉ cho hồ sơ đã đóng: họ tên, số điện thoại, sub người nộp, lý do, người đổi trạng thái bị chặn ở CSDL (42501). Bộ xuất còn có danh sách trắng cột và dừng nếu gặp khóa cá nhân (lớp thứ hai) |
+| **Ghi lại toàn bộ** Parquet mỗi lần, vào thư mục mới rồi đổi tên một lần | Hồ sơ đã đóng không đổi, quy mô xã nhỏ: đơn giản và idempotent (cùng dữ liệu → cùng tệp, `_manifest.json` ghi SHA-256); dbt không bao giờ đọc nửa cũ nửa mới |
+| Parquet trong **volume** `kho-du-lieu`, không trên Garage | DuckDB đọc S3 cần extension `httpfs` tải từ mạng lúc chạy (không ghim được như gói pip). Kho dựng lại được hoàn toàn từ PostgreSQL bằng `make kho-du-lieu` |
+| Giờ Việt Nam không múi giờ trong Parquet | dbt tính ngày, tháng, trễ hạn (đóng sau 17:00 ngày hạn) mà không cần dữ liệu múi giờ trong DuckDB |
+| Mart **nạp ngược về PostgreSQL** schema `bao_cao` (RPC `nap_bao_cao`, một transaction) | Superset đọc PostgreSQL bằng driver có sẵn; đọc thẳng DuckDB cần cài thêm driver vào image Superset và tranh khóa tệp với lần build sau. `bao_cao` không phơi ra PostgREST, chỉ có bảng tổng hợp đã khử định danh |
+| dbt test: `unique`, `not_null`, `accepted_values`, `relationships` + test riêng (khóa tháng × thủ tục, tổng khớp `fct_ho_so`, thời gian hợp lý, **không có cột cá nhân**) | Test trượt → `dbt build` lỗi → không nạp gì về `bao_cao` |
+
+Model: `stg_ho_so`, `stg_lich_su_trang_thai`, `stg_ngay_nghi` (view) → `int_lich_lam_viec` (ngày làm việc = thứ Hai–Sáu, không phải ngày nghỉ) → `fct_ho_so` (một dòng mỗi hồ sơ: số giờ, số ngày làm việc, số lần bổ sung, trễ hạn) → `hieu_suat_thang` (tháng × thủ tục: số hồ sơ, hoàn tất, từ chối, trễ hạn, tỷ lệ trễ hạn, trung bình ngày làm việc). Xem lineage và mô tả cột: `make kho-du-lieu-tai-lieu` rồi mở http://127.0.0.1:8580 (dbt docs; `target/` nằm trong volume, không vào git).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -737,6 +763,7 @@ Vận hành: đổi tên cơ quan (`DXOS_KY_SO_TEN`) rồi `make up` → chứng
 | `core` | step-ca (+ dịch vụ một lần `step-ca-secrets`, `ca-init`), Gotenberg | chạy thử 23/10/2026 (#77) | đo 23/10/2026: step-ca ~70 MB RAM; Gotenberg (Chromium) ~470 MB sau khi sinh PDF, image ~1,7 GB; image `mot-cua-api` 157 MB (thêm pyHanko ~55 MB) |
 | `docs` | Meilisearch CE | TODO tuần 5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
+| `bi` | `kho-du-lieu` (dịch vụ một lần, `make kho-du-lieu`) | chạy thử 23/10/2026 (#80) | image 399 MB (python slim 206 MB + dbt, DuckDB ~190 MB); một lần chạy ~4 giây trên dữ liệu smoke rồi thoát |
 | `bi` | Apache Superset | TODO tuần 4 | |
 
 Chạy: `make up` (= `docker compose --profile core up -d`), kiểm tra: `make smoke`. Thêm profile: `docker compose --profile core --profile docs up -d`.

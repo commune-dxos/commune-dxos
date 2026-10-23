@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: 2
+
+models:
+  - name: int_lich_lam_viec
+    description: Lịch ngày trong khoảng có hồ sơ, đánh dấu ngày làm việc (thứ Hai–Sáu, không phải ngày nghỉ).
+    columns:
+      - name: ngay
+        data_tests: [unique, not_null]
+      - name: la_ngay_lam_viec
+        data_tests: [not_null]

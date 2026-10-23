@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Dự án dbt-core của kho dữ liệu bộ máy một cửa (#80): Parquet (khử định danh, do chay.py xuất) →
+# staging (view) → intermediate (view) → mart (bảng trong DXOS_KHO_DIR/kho.duckdb). chay.py chạy
+# `dbt build` (model + test) rồi `docs generate` (lineage); target/ và log nằm trong DXOS_KHO_DIR.
+name: kho_mot_cua
+version: "1.0.0"
+config-version: 2
+profile: kho
+model-paths: ["models"]
+test-paths: ["tests"]
+flags:
+  # Không gửi thống kê sử dụng ẩn danh của dbt Labs ra ngoài.
+  send_anonymous_usage_stats: false
+  use_colors: false
+models:
+  kho_mot_cua:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table

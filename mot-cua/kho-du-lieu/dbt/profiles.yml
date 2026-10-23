@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Hồ sơ kết nối dbt-duckdb: một tệp DuckDB trong thư mục kho (volume kho-du-lieu), một luồng.
+kho:
+  target: duckdb
+  outputs:
+    duckdb:
+      type: duckdb
+      path: "{{ env_var('DXOS_KHO_DIR') }}/kho.duckdb"
+      threads: 1
