@@ -1,0 +1,62 @@
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Mẫu văn bản đi của xã (#78): sinh khi lãnh đạo ký ban hành, sau khi CSDL cấp số đi.
+     mot-cua-api thay $$ten_bien bằng dữ liệu đã thoát HTML (ky_so.dung_html; nội dung thành các đoạn
+     <p>), Gotenberg in ra PDF A4 rồi pyHanko ký. Tự chứa: không tải gì từ mạng. -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>$loai $ky_hieu</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Noto Serif", "DejaVu Serif", serif; font-size: 13pt; color: #111; line-height: 1.45; }
+    .trang { padding: 18mm 20mm 20mm 25mm; }
+    .dau { display: flex; justify-content: space-between; text-align: center; font-size: 12pt; }
+    .dau .trai { width: 45%; font-weight: bold; text-transform: uppercase; }
+    .dau .phai { width: 55%; }
+    .dau .phai b { display: block; }
+    .gach { display: block; width: 40%; margin: 2px auto 0; border-top: 1px solid #111; }
+    h1 { text-align: center; font-size: 15pt; margin: 14mm 0 2mm; text-transform: uppercase; }
+    .so { text-align: center; font-style: italic; margin: 0 0 8mm; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 4px 0; vertical-align: top; }
+    td.nhan { width: 38%; }
+    ul { margin: 2px 0 0; padding-left: 20px; }
+    .ghi-chu { margin-top: 8mm; font-size: 11.5pt; }
+    .ky { margin-top: 12mm; margin-left: 50%; text-align: center; }
+    .ky .chuc { font-weight: bold; text-transform: uppercase; }
+    .ky .so-hoa { margin-top: 6mm; border: 1px solid #b91c1c; color: #b91c1c; padding: 4px 8px; font-size: 10.5pt; display: inline-block; }
+    .chan { position: fixed; bottom: 10mm; left: 25mm; right: 20mm; font-size: 9.5pt; color: #555; border-top: 1px solid #ccc; padding-top: 2mm; }
+    .so-ky { display: flex; justify-content: space-between; font-size: 12pt; margin-top: 6mm; }
+    .so-ky .ngay { font-style: italic; }
+    .doan p { text-indent: 10mm; margin: 0 0 3mm; text-align: justify; }
+    .cuoi { display: flex; justify-content: space-between; margin-top: 10mm; }
+    .noi-nhan { width: 45%; font-size: 11pt; }
+    .noi-nhan b { font-style: italic; }
+    .cuoi .ky { margin: 0; width: 50%; }
+  </style>
+</head>
+<body>
+<div class="trang">
+  <div class="dau">
+    <div class="trai">$co_quan</div>
+    <div class="phai"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><b>Độc lập – Tự do – Hạnh phúc</b><span class="gach"></span></div>
+  </div>
+  <div class="so-ky"><span>Số: $ky_hieu</span><span class="ngay">$dia_danh, ngày $ngay_van_ban</span></div>
+  <h1>$loai</h1>
+  <p class="so">$trich_yeu</p>
+  <div class="doan">$noi_dung</div>
+  <div class="cuoi">
+    <div class="noi-nhan"><b>Nơi nhận:</b><br>$noi_nhan</div>
+    <div class="ky">
+      <div class="chuc">$chuc_vu</div>
+      <div class="so-hoa">Đã ký số – $co_quan</div>
+      <div><b>$nguoi_ky</b></div>
+    </div>
+  </div>
+</div>
+<div class="chan">Văn bản $ky_hieu · Văn bản điện tử có chữ ký số PAdES của $co_quan. Kiểm tra chữ ký bằng phần mềm đọc PDF có hỗ trợ chữ ký số hoặc nhờ bộ phận Một cửa xác minh.</div>
+</body>
+</html>
