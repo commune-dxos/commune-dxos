@@ -64,4 +64,14 @@ describe("trang chủ – danh mục thủ tục", () => {
     expect(await screen.findByRole("article", { name: "Đăng ký khai sinh" })).toBeInTheDocument();
     expect(tai).toHaveBeenCalledTimes(2);
   });
+
+  it("không thấy thủ tục thì có nút xóa từ khóa", async () => {
+    ve(() => Promise.resolve(DS));
+    await screen.findByRole("article", { name: "Đăng ký khai sinh" });
+    const o = screen.getByRole("searchbox", { name: "Tìm thủ tục" });
+    await userEvent.type(o, "ho khau");
+    await userEvent.click(screen.getByRole("button", { name: "Xóa từ khóa, xem tất cả" }));
+    expect(o).toHaveValue("");
+    expect(screen.getByText("2 thủ tục nhận hồ sơ")).toBeInTheDocument();
+  });
 });
