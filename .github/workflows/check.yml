@@ -9,6 +9,7 @@
 #   bpmn          make lint → scripts/lint.sh bpmn (cấu trúc BPMN thu-tuc/*/quy-trinh.bpmn20.xml + test bộ kiểm)
 #   test-backend  make test-backend (unittest của mot-cua/backend, kể cả bộ nạp gói thủ tục và Poka-yoke)
 #   test-sql      make test-sql: PostgreSQL trống → migration nền tảng + mot-cua → mot-cua/db/tests/*.sql
+#   kho-du-lieu   make test-kho: dữ liệu mẫu giả → Parquet → dbt build + docs generate (#80; không bắt buộc)
 # Action và công cụ ghim phiên bản; công cụ lint ghim trong scripts/requirements-lint.txt.
 name: check
 on:
@@ -79,6 +80,21 @@ jobs:
         run: pip install -r mot-cua/backend/requirements.txt
       - name: Test đơn vị bộ máy một cửa và bộ nạp gói
         run: make test-backend
+
+  kho-du-lieu:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      # Cùng nhánh Python với image kho-du-lieu (python:3.13.16-slim-bookworm).
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Cài duckdb, dbt-core, dbt-duckdb (phiên bản ghim)
+        run: "pip install --only-binary=:all: -r mot-cua/kho-du-lieu/requirements.txt"
+      - name: Xuất Parquet, dbt build + test + docs generate, kiểm số liệu mart trên dữ liệu mẫu
+        env:
+          DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
+        run: make test-kho
 
   test-sql:
     runs-on: ubuntu-24.04
