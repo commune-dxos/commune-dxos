@@ -63,7 +63,7 @@ Danh sách thư viện npm/pip, phiên bản cụ thể và cột tương thích
 | Ký số | step-ca (smallstep/certificates) + pyHanko | Apache-2.0 / MIT |
 | Sinh PDF | Gotenberg | MIT |
 | Quét mã độc | ClamAV 1.5.4 (dịch vụ riêng, image gốc `clamav/clamav`, không sửa mã; chỉ gọi qua giao thức TCP của `clamd`) | GPL-2.0 |
-| Web | React + Vite + Tailwind + shadcn/ui | MIT |
+| Web (cổng công dân `mot-cua/web-cong-dan/`, #52) | React 19 + React Router + Vite + Tailwind CSS 4; thành phần giao diện lấy bằng shadcn CLI 4.22.1 từ shadcn/ui kiểu new-york-v4 (Copyright (c) 2023 shadcn, MIT, https://github.com/shadcn-ui/ui), đội chỉnh cỡ chữ và vùng bấm, ghi nguồn trong từng tệp `src/components/ui/`; nguyên thủy Radix UI (`radix-ui`, Copyright (c) 2022 WorkOS, MIT); biểu tượng Lucide (`lucide-react`, ISC); phông Be Vietnam Pro tự host qua `@fontsource/be-vietnam-pro` (Copyright 2021 The Be Vietnam Pro Project Authors, SIL OFL-1.1); đăng nhập OIDC bằng oidc-client-ts. Form nộp hồ sơ học cách thiết kế luồng của GOV.UK Design System (mỗi trang một nhóm câu hỏi, tóm tắt lỗi, kiểm tra lại, trang xác nhận; không chép mã, CSS hay câu chữ); màn chưa đăng nhập/đăng nhập lỗi theo bố cục block `login-03` của shadcn/ui | MIT / ISC / OFL-1.1 / Apache-2.0 |
 | Dữ liệu lịch sử + lineage | Parquet + DuckDB; dbt-core 1.x (PyPI). Không dùng dbt Fusion | MIT / Apache-2.0 |
 | Dashboard | Apache Superset | Apache-2.0 |
 | Trang tài liệu (công cụ build, không đi vào sản phẩm) | MkDocs 1.6.1 + Material for MkDocs 9.7.7 bản community + PyMdown Extensions; trình duyệt tải Mermaid để vẽ sơ đồ | BSD-2-Clause / MIT |

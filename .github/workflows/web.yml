@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Web Tầng 2 (#52): cổng công dân mot-cua/web-cong-dan/ – npm ci theo lockfile, Vitest, tsc, vite build.
+# Lọc theo đường dẫn nên KHÔNG đặt làm check bắt buộc của bảo vệ nhánh (check bắt buộc bị bỏ qua
+# sẽ chặn PR); 6 check bắt buộc nằm ở check.yml. Muốn bắt buộc thì bỏ `paths` rồi mới thêm vào
+# bảo vệ nhánh. Action ghim phiên bản; Node 22 LTS (Vite 7 cần Node ≥ 20.19).
+name: web
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "mot-cua/web-*/**"
+      - "thu-tuc/*/thu-tuc.yaml"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "mot-cua/web-*/**"
+      - "thu-tuc/*/thu-tuc.yaml"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-cong-dan:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mot-cua/web-cong-dan
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-node@v5.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mot-cua/web-cong-dan/package-lock.json
+      - name: Cài gói đúng lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Test đơn vị (Vitest)
+        run: npm test
+      - name: Kiểm kiểu + build
+        run: npm run build

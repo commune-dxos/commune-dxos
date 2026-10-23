@@ -1,4 +1,11 @@
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo/logo-ngang-nen-trang.png">
+    <img src="docs/images/logo/logo-ngang.png" alt="Logo Commune DX-OS: mái nhà công sở che hồ sơ có dấu tích đỏ và hai gói thủ tục cắm vào thanh đế, chữ COMMUNE DX-OS, khẩu hiệu Chính quyền số Cấp xã" width="480">
+  </picture>
+</p>
+
+<p align="center">
   <img src="docs/images/banner.webp" alt="Ảnh đầu trang có tiêu đề DTU_DZ_2 · OLP PMNM 2026 · COMMUNE DX-OS, Hệ điều hành Chính quyền số Cấp xã: bộ phận một cửa của xã, người dân nộp hồ sơ từ điện thoại, hồ sơ điện tử chuyển giữa các bàn cán bộ" width="100%">
 </p>
 
@@ -17,7 +24,7 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.3.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **đang làm**, ghi tuần dự kiến
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.4.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **đang làm**, ghi tuần dự kiến
 
 | Trước | Sau |
 |---|---|

@@ -34,13 +34,37 @@ Quy tắc:
 
 Image `postgres` cũng được dùng cho dịch vụ một lần `jwks-init` (lấy JWKS bằng `wget` có sẵn trong image) và `db-init` (role + CSDL riêng của dịch vụ lõi bằng `psql`). Image `openbao/openbao` chạy server OpenBao và 6 dịch vụ một lần `*-secrets` (`bao agent`); không kéo thêm image nào cho bí mật. `scripts/check-bpmn.py` chỉ dùng thư viện chuẩn Python 3. Image `python` chạy dịch vụ `mot-cua-api` (API một cửa, `mot-cua/backend/main.py`), `mot-cua-worker` (tác vụ nền, `backend/worker.py`) và các dịch vụ một lần `nap-thu-tuc` (bộ nạp gói thủ tục, `backend/nap_thu_tuc.py`; `thu-tuc.yaml` đọc bằng bộ đọc tập con YAML tự viết, không cài PyYAML), `bao-init` (khởi tạo OpenBao qua HTTP API), `garage-init`, `rabbitmq-init`, chỉ dùng thư viện chuẩn, không cài gói. Backend nói giao thức STOMP 1.2 tới RabbitMQ bằng client tự viết (`mot-cua/backend/stomp.py`), không dùng `pika` hay thư viện nào của RabbitMQ. Backend tự ký S3 SigV4 và nói giao thức `clamd` bằng thư viện chuẩn (`mot-cua/backend/tep.py`): không nhúng hay liên kết mã nào của Garage (AGPL-3.0) hay ClamAV (GPL-2.0). CSDL mẫu virus của ClamAV (tải bằng `freshclam`) do Cisco Talos phân phối kèm image, không nằm trong repo.
 
-## 2. Thư viện npm (`web/package.json`, chưa có)
+## 2. Thư viện npm (`mot-cua/web-cong-dan/package.json`)
 
-Sinh bảng tự động khi có mã: `npx license-checker --production --csv` rồi dán vào đây.
+Cổng công dân (#52). Phiên bản ghim cứng trong `package.json` (`.npmrc` `save-exact`), cây phụ thuộc đầy đủ khóa trong `package-lock.json`; `make check` (`scripts/check-web.py`) báo lỗi nếu có `^`/`~` hoặc lockfile lệch. "Sản phẩm" là gói có trong bản build chạy trên trình duyệt; "công cụ" chỉ chạy lúc build/test.
 
 | Gói | Phiên bản | Giấy phép | Nguồn | Dùng ở | Tương thích GPL-3.0 |
 |---|---|---|---|---|---|
-| _(chưa có — tuần 3: react, vite, tailwindcss, shadcn/ui…)_ | | | npmjs.com | | |
+| `react` | 19.3.1 | MIT | npmjs.com · https://github.com/facebook/react | `mot-cua/web-cong-dan` – sản phẩm | ✓ MIT |
+| `react-dom` | 19.3.1 | MIT | npmjs.com · https://github.com/facebook/react | `mot-cua/web-cong-dan` – sản phẩm | ✓ MIT |
+| `react-router` | 7.18.4 | MIT | npmjs.com · https://github.com/remix-run/react-router | `mot-cua/web-cong-dan` – sản phẩm (điều hướng trang) | ✓ MIT |
+| `oidc-client-ts` | 3.5.0 | Apache-2.0 | npmjs.com · https://github.com/authts/oidc-client-ts | `mot-cua/web-cong-dan` – sản phẩm (đăng nhập OIDC + PKCE) | ✓ Apache-2.0 (tương thích GPLv3) |
+| `class-variance-authority` | 0.7.1 | Apache-2.0 | npmjs.com · https://github.com/joe-bell/cva | `mot-cua/web-cong-dan` – sản phẩm (biến thể thành phần shadcn/ui) | ✓ Apache-2.0 (tương thích GPLv3) |
+| `clsx` | 2.1.1 | MIT | npmjs.com · https://github.com/lukeed/clsx | `mot-cua/web-cong-dan` – sản phẩm | ✓ MIT |
+| `tailwind-merge` | 3.7.0 | MIT | npmjs.com · https://github.com/dcastil/tailwind-merge | `mot-cua/web-cong-dan` – sản phẩm | ✓ MIT |
+| `tailwindcss` | 4.3.3 | MIT | npmjs.com · https://github.com/tailwindlabs/tailwindcss | `mot-cua/web-cong-dan` – công cụ (sinh CSS lúc build; CSS kết quả vào bản build) | ✓ MIT; công cụ |
+| `@tailwindcss/vite` | 4.3.3 | MIT | npmjs.com · https://github.com/tailwindlabs/tailwindcss | `mot-cua/web-cong-dan` – công cụ | ✓ MIT; công cụ |
+| `vite` | 7.3.7 | MIT | npmjs.com · https://github.com/vitejs/vite | `mot-cua/web-cong-dan` – công cụ (dev server, build) | ✓ MIT; công cụ |
+| `@vitejs/plugin-react` | 5.2.0 | MIT | npmjs.com · https://github.com/vitejs/vite-plugin-react | `mot-cua/web-cong-dan` – công cụ | ✓ MIT; công cụ |
+| `typescript` | 5.9.3 | Apache-2.0 | npmjs.com · https://github.com/microsoft/TypeScript | `mot-cua/web-cong-dan` – công cụ (kiểm kiểu) | ✓ Apache-2.0; công cụ |
+| `vitest` | 3.2.7 | MIT | npmjs.com · https://github.com/vitest-dev/vitest | `mot-cua/web-cong-dan` – công cụ (test) | ✓ MIT; công cụ |
+| `jsdom` | 26.1.0 | MIT | npmjs.com · https://github.com/jsdom/jsdom | `mot-cua/web-cong-dan` – công cụ (DOM giả cho test) | ✓ MIT; công cụ |
+| `@testing-library/react` | 16.3.3 | MIT | npmjs.com · https://github.com/testing-library/react-testing-library | `mot-cua/web-cong-dan` – công cụ | ✓ MIT; công cụ |
+| `@testing-library/jest-dom` | 6.9.1 | MIT | npmjs.com · https://github.com/testing-library/jest-dom | `mot-cua/web-cong-dan` – công cụ | ✓ MIT; công cụ |
+| `@testing-library/user-event` | 14.6.8 | MIT | npmjs.com · https://github.com/testing-library/user-event | `mot-cua/web-cong-dan` – công cụ | ✓ MIT; công cụ |
+| `@types/react, @types/react-dom` | 19.3.0 | MIT | npmjs.com · https://github.com/DefinitelyTyped/DefinitelyTyped | `mot-cua/web-cong-dan` – công cụ (kiểu TypeScript) | ✓ MIT; công cụ |
+| `@types/node` | 22.20.5 | MIT | npmjs.com · https://github.com/DefinitelyTyped/DefinitelyTyped | `mot-cua/web-cong-dan` – công cụ | ✓ MIT; công cụ |
+| `radix-ui` | 1.8.1 | MIT | npmjs.com · https://github.com/radix-ui/primitives | `mot-cua/web-cong-dan` – sản phẩm (nguyên thủy truy cập được cho RadioGroup, Checkbox, Label, Slot của shadcn/ui) | ✓ MIT |
+| `lucide-react` | 1.61.0 | ISC | npmjs.com · https://github.com/lucide-icons/lucide | `mot-cua/web-cong-dan` – sản phẩm (biểu tượng; chỉ biểu tượng được import vào bản build) | ✓ ISC |
+| `@fontsource/be-vietnam-pro` | 5.3.0 | OFL-1.1 | npmjs.com · https://github.com/fontsource/font-files | `mot-cua/web-cong-dan` – sản phẩm (phông tự host; woff2 latin + vietnamese đóng gói vào bản build, không gọi Google Fonts) | ✓ OFL-1.1 là giấy phép phông, phông là dữ liệu đi kèm, không liên kết vào mã GPL |
+| shadcn/ui (mã thành phần, không phải gói npm) | shadcn CLI 4.22.1, kiểu `new-york-v4`, 23/10/2026 | MIT | https://github.com/shadcn-ui/ui · https://ui.shadcn.com/docs/components | `src/components/ui/*.tsx` (15 tệp: alert, badge, breadcrumb, button, card, empty, field, input, input-group, item, label, radio-group, separator, skeleton, textarea) chép vào repo bằng CLI, đội chỉnh chữ ≥ 16px, vùng bấm ≥ 44px; ghi nguồn trong tệp và NOTICE (#63). Bố cục block `login-03` cho màn chưa đăng nhập/đăng nhập lỗi (#64) | ✓ MIT |
+
+Rà giấy phép ngày 23/10/2026 (bản mẫu giao diện shadcn) trên `package-lock.json` (330 gói kể cả gói kéo theo): 292 MIT, 12 MPL-2.0 (`lightningcss` của Tailwind, công cụ), 10 ISC, 8 Apache-2.0, 2 BSD-2-Clause, 2 BSD-3-Clause, 1 MIT-0 (`@csstools/color-helpers`, công cụ test), 1 0BSD (`tslib`, kéo theo bởi Radix), 1 OFL-1.1 (phông). Gói không thuộc nhánh dev: 90 (85 MIT, 2 Apache-2.0, 1 ISC, 1 0BSD, 1 OFL-1.1), phần lớn là các gói `@radix-ui/*` mà `radix-ui` kéo theo; trình đóng gói chỉ đưa vào bản build phần được import. Một gói không phải giấy phép mã: `caniuse-lite` (CC-BY-4.0, bảng dữ liệu trình duyệt mà `browserslist` của Babel đọc lúc build, kéo theo bởi `@vitejs/plugin-react`), chỉ là công cụ build, không vào bản build và không liên kết với mã của dự án. Không có gói GPL-2.0-only, SSPL, BSL hay giấy phép không OSI trong mã chạy.
 
 ## 3. Thư viện Python (`pyproject.toml` / `requirements.txt`, chưa có)
 

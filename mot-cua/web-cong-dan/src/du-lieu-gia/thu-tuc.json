@@ -1,0 +1,131 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-0000000000c1",
+    "ma": "CT01",
+    "ten": "Chứng thực bản sao từ bản chính",
+    "so_ngay_xu_ly": 0,
+    "le_phi": 2000,
+    "ghi_chu_le_phi": "2.000 đồng/trang; từ trang thứ ba 1.000 đồng/trang, tối đa 200.000 đồng/bản",
+    "quy_trinh": "chung_thuc_ban_sao",
+    "linh_vuc": {
+      "ma": "chung_thuc",
+      "ten": "Chứng thực"
+    },
+    "json_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:dxos:mot-cua:thu-tuc:CT01",
+      "title": "Chứng thực bản sao từ bản chính",
+      "description": "Thành phần hồ sơ chứng thực bản sao. Mỗi thành phần là mảng id tệp đã tải qua /files (thanh_phan_ho_so.id). Bản chính vẫn phải xuất trình tại bộ phận một cửa để đối chiếu.",
+      "type": "object",
+      "required": [
+        "thanh_phan"
+      ],
+      "properties": {
+        "thanh_phan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ban_chinh"
+          ],
+          "properties": {
+            "ban_chinh": {
+              "title": "Bản chính giấy tờ cần chứng thực",
+              "description": "Ảnh chụp để cán bộ chuẩn bị đối chiếu; xuất trình bản chính tại bộ phận một cửa",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1
+            },
+            "ban_sao": {
+              "title": "Bản sao cần chứng thực",
+              "description": "Nếu người yêu cầu tự chuẩn bị bản sao",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "00000000-0000-4000-8000-0000000000a1",
+    "ma": "KS01",
+    "ten": "Đăng ký khai sinh",
+    "so_ngay_xu_ly": 1,
+    "le_phi": 0,
+    "ghi_chu_le_phi": "Miễn lệ phí khi đăng ký đúng hạn",
+    "quy_trinh": "dang_ky_khai_sinh",
+    "linh_vuc": {
+      "ma": "ho_tich",
+      "ten": "Hộ tịch"
+    },
+    "json_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:dxos:mot-cua:thu-tuc:KS01",
+      "title": "Đăng ký khai sinh",
+      "description": "Thành phần hồ sơ đăng ký khai sinh. Mỗi thành phần là mảng id tệp đã tải qua /files (thanh_phan_ho_so.id). Poka-yoke kiểm dữ liệu nộp theo schema này trước khi khởi tạo quy trình.",
+      "type": "object",
+      "required": [
+        "thanh_phan"
+      ],
+      "properties": {
+        "thanh_phan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "to_khai",
+            "giay_chung_sinh",
+            "giay_to_tuy_than"
+          ],
+          "properties": {
+            "to_khai": {
+              "title": "Tờ khai đăng ký khai sinh (theo mẫu)",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1
+            },
+            "giay_chung_sinh": {
+              "title": "Giấy chứng sinh",
+              "description": "Không có thì thay bằng văn bản của người làm chứng hoặc giấy cam đoan về việc sinh",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1
+            },
+            "giay_to_tuy_than": {
+              "title": "Giấy tờ tùy thân của người đi đăng ký",
+              "description": "Xuất trình bản chính hoặc ảnh chụp",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1
+            },
+            "giay_ket_hon_cha_me": {
+              "title": "Giấy chứng nhận kết hôn của cha mẹ",
+              "description": "Nếu cha mẹ đã đăng ký kết hôn",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 0
+            }
+          }
+        }
+      }
+    }
+  }
+]

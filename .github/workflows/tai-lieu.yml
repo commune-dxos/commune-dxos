@@ -15,6 +15,7 @@ on:
       - "thu-tuc/**"
       - "scripts/tai_lieu_hooks.py"
       - "mot-cua/README.md"
+      - "mot-cua/web-cong-dan/README.md"
       - "mot-cua/backend/goi_thu_tuc.py"
       - "mot-cua/backend/kiem_bpmn.py"
       - "CONTRIBUTING.md"

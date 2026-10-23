@@ -14,12 +14,15 @@ path = [
   "**/*.json",
   "docs/images/**",
   "docs/media/**",
+  # Biểu tượng của cổng công dân: bản sao docs/images/logo/ (#61), Vite phục vụ từ public/.
+  "mot-cua/web-cong-dan/public/**",
   ".gitignore",
   "NOTICE",
   "nen-tang/rabbitmq/enabled_plugins",
   # Tệp có header SPDX đúng, nhưng reuse 6.2 đọc 2048 byte đầu để đoán bảng mã, cắt giữa một ký tự
   # UTF-8 tiếng Việt nên coi là tệp nhị phân và bỏ qua header.
   "nen-tang/postgres/initdb/10-core.sql",
+  "mot-cua/web-cong-dan/src/index.css",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 DTU_DZ_2"

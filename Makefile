@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
+.PHONY: up down logs ps migrate seed nap-thu-tuc smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -53,6 +53,9 @@ test: test-backend test-sql ## Test như CI (job test-backend, test-sql)
 test-backend:  ## Test đơn vị (không cần Docker): mot-cua/backend/tests/test_*.py (kể cả bộ nạp gói), thư viện chuẩn unittest
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s mot-cua/backend/tests -p 'test_*.py'
 
+test-web:      ## Test + build cổng công dân (cần Node ≥ 20.19): npm ci, Vitest, tsc, vite build (#52)
+	cd mot-cua/web-cong-dan && npm ci --no-audit --no-fund && npm test && npm run build
+
 test-sql:      ## Migration nền tảng + mot-cua và mot-cua/db/tests/*.sql (RLS) trên PostgreSQL tạm (Docker, hoặc PGHOST)
 	sh scripts/test-sql.sh
 
@@ -92,10 +95,11 @@ ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có th
 license:       ## Thêm header SPDX (bản quyền + GPL-3.0-or-later, D-010) cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + test đơn vị + compose hợp lệ (mọi profile)
+check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/tests/test_check_license.py
 	python3 scripts/check-bpmn.py
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check-web.py
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_thu_tuc.py thu-tuc --chi-kiem
 	$(MAKE) --no-print-directory test-backend
 	docker compose $(COMPOSE_ENV) --profile '*' config --quiet && echo "OK: docker-compose.yml hợp lệ (mọi profile)"
