@@ -375,9 +375,9 @@ sequenceDiagram
 - **Hồ sơ** luôn đọc/ghi qua PostgREST bằng token người dùng: khởi tạo quy trình hay xem tiến độ hồ sơ người khác → 404 vì RLS không trả dòng. Thủ tục chưa có gói (`thu_tuc.quy_trinh` rỗng) → 422 trước khi lưu hồ sơ.
 - **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `mot-cua-api` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
 - **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
-- **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện.
+- **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện ngay; vòng đối soát của `mot-cua-worker` sửa trạng thái theo Flowable và ghi sự kiện sau (#73).
 - **Poka-yoke 2 lớp** (#53, #59): cổng công dân kiểm tệp đã chọn theo JSON Schema 2020-12 của gói (`@cfworker/json-schema`, không cần `unsafe-eval` nên hợp CSP của cổng), thiếu thì không gửi request nào; `mot-cua-api` kiểm lại cùng schema với tệp **đã lưu và quét sạch** trong CSDL (`jsonschema`, `mot-cua/backend/poka_yoke.py`) trước khi gọi Flowable, nên gọi thẳng API khi thiếu giấy tờ → 422 kèm lỗi từng thành phần, không khởi tạo quy trình. `POST /workflow/ho-so` (nộp gộp) chỉ còn dùng được cho thủ tục không có thành phần bắt buộc. Chi tiết: [`mot-cua/README.md`](../mot-cua/README.md) mục `/workflow`.
-- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình.
+- **Trạng thái hồ sơ** (#73): sau mỗi lời gọi Flowable thành công, `mot-cua-api` tra ánh xạ bước → trạng thái của gói (`thu_tuc.trang_thai_buoc`) và gọi một RPC `mot_cua.dong_bo_trang_thai`: đổi `ho_so.trang_thai`, ghi `lich_su_trang_thai` và sự kiện vào hộp thư đi trong cùng transaction. Flowable trước, CSDL sau; CSDL lỗi thì request vẫn thành công và `mot-cua-worker` đối soát lại. Bảng trạng thái, thứ tự gọi, xử lý lỗi: [`mot-cua/README.md`](../mot-cua/README.md#trạng-thái-hồ-sơ); cách khai trong gói: [`docs/thu-tuc.md`](thu-tuc.md#trạng-thái-hồ-sơ-theo-bước).
 
 ### 4.3 Dữ liệu phi cấu trúc: tải tệp, quét ClamAV, link ký ngắn hạn (#7)
 
@@ -878,7 +878,6 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.
-- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình (có thể làm bằng một consumer của sự kiện `ho_so.*`, §4.5); khởi tạo quy trình đã đi sau Poka-yoke (#59).
 - Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
 - Tệp: giao diện xem tệp cho cán bộ (tuần 3); OCR đọc tệp đã lưu (tuần 5).

@@ -61,6 +61,10 @@ kiem "chuyển bước theo đúng thứ tự tiep_nhan→bo_sung→tiep_nhan→
   "tiep_nhan>bo_sung bo_sung>tiep_nhan tiep_nhan>tham_dinh tham_dinh>phe_duyet phe_duyet>" \
   "$(sql "SELECT string_agg((noi_dung->'duLieu'->>'tuBuoc') || '>' || coalesce(noi_dung->'duLieu'->'denBuoc'->>0, ''), ' ' ORDER BY tao_luc, id)
           FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$WH' AND loai = 'ho_so.chuyen_buoc'")"
+kiem "mỗi ho_so.chuyen_buoc mang trạng thái hồ sơ sau bước đó (#73, ghi cùng transaction)" \
+  "cho_bo_sung dang_xu_ly dang_xu_ly cho_phe_duyet hoan_tat" \
+  "$(sql "SELECT string_agg(noi_dung->'duLieu'->>'trangThai', ' ' ORDER BY tao_luc, id)
+          FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$WH' AND loai = 'ho_so.chuyen_buoc'")"
 kiem "bước bổ sung do công dân hoàn thành: vaiTroXuLy cong_dan" "cong_dan" \
   "$(sql "SELECT noi_dung->'duLieu'->>'vaiTroXuLy' FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$WH' AND noi_dung->'duLieu'->>'tuBuoc' = 'bo_sung'")"
 kiem "ho_so.hoan_tat: ketQua hoan_tat, điểm kết thúc ket_thuc_hoan_tat" "hoan_tat ket_thuc_hoan_tat" \

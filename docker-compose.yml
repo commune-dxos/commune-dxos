@@ -479,6 +479,8 @@ services:
       DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
       DXOS_SU_KIEN_QUET_GIAY: ${DXOS_SU_KIEN_QUET_GIAY:-300}
       DXOS_SU_KIEN_SAP_TRE_NGAY: ${DXOS_SU_KIEN_SAP_TRE_NGAY:-1}
+      DXOS_DOI_SOAT_CHO_GIAY: ${DXOS_DOI_SOAT_CHO_GIAY:-60}
+      DXOS_DOI_SOAT_TOI_DA: ${DXOS_DOI_SOAT_TOI_DA:-500}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./mot-cua:/mot-cua:ro

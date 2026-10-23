@@ -76,6 +76,10 @@ Trường `required="true"` đứng đầu và phải điền: thiếu thì form
   <img src="images/cong-can-bo-xu-ly.webp" alt="Ô Xử lý bước của bước Thẩm định: câu hỏi Đạt yêu cầu? đã chọn Có, ghi chú trình lãnh đạo ký, nút Hoàn thành bước" width="40%">
 </p>
 
+## Trạng thái hồ sơ
+
+Chi tiết hồ sơ hiện huy hiệu **Trạng thái hồ sơ** đọc từ `ho_so.trang_thai` qua `/api` (tên hiển thị ở [`src/lib/trang-thai.ts`](../mot-cua/web-cong-dan/src/lib/trang-thai.ts), dùng chung với cổng công dân), cạnh bước hiện tại lấy từ Flowable. Cột này đi theo bước quy trình (#73): mới nộp → chờ công dân bổ sung → đang xử lý → chờ lãnh đạo phê duyệt → hoàn tất / từ chối, nên cán bộ và công dân luôn thấy cùng một giá trị. Bảng trạng thái: [`mot-cua/README.md`](../mot-cua/README.md#trạng-thái-hồ-sơ).
+
 ## Hạn xử lý và cảnh báo
 
 - Hạn lấy từ biến `hanXuLyLuc` của quy trình (`mot-cua-api` đặt lúc khởi tạo = `ho_so.han_xu_ly` 17:00 giờ Việt Nam); biến `quaHan` (hẹn giờ trong BPMN) đặt `true` khi tới hạn.

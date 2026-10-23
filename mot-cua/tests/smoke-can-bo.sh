@@ -10,8 +10,11 @@
 #   Keycloak: client mot_cua_can_bo chỉ nhận redirect_uri /can-bo/*, bắt PKCE; cán bộ nhập mật khẩu
 #   xong vẫn bị đòi OTP, có OTP mới có code (Authorization Code + PKCE, đúng các bước trình duyệt làm);
 #   E2E: cán bộ hộ tịch thấy hồ sơ $WEB_HS trong hộp việc → xem hồ sơ, tệp (link ký sẵn), tiến độ →
+#   tiếp nhận thiếu thành phần → công dân bổ sung (sửa hồ sơ, tải thêm tệp) và nộp lại (#73) →
 #   tiếp nhận → thẩm định đạt (chuyển lãnh đạo) → không tự phê duyệt được → lãnh đạo phê duyệt →
-#   kết thúc Hoàn tất – trả kết quả; cán bộ lĩnh vực khác không thấy và không xử lý được hồ sơ đó;
+#   kết thúc Hoàn tất – trả kết quả; sau mỗi bước ho_so.trang_thai trong CSDL khớp bước của quy
+#   trình, cán bộ và công dân đọc cùng trạng thái qua /api và /workflow, lịch sử chuyển trạng thái
+#   đủ từng bước; cán bộ lĩnh vực khác không thấy và không xử lý được hồ sơ đó;
 #   công dân đăng nhập client cán bộ chỉ có vai cong_dan (web hiện "không có quyền").
 # Không in mật khẩu, secret OTP hay token.
 
@@ -132,6 +135,9 @@ cb_xong() {
   ma="$(cb_api "$1" POST "/workflow/tasks/$2/complete" -H 'Content-Type: application/json' -d "{\"bien\":$3}")"
   echo "$ma|$(jq -r '[.buocDangMo[]?.buoc] | join(",")' "$CB_TD/b" 2>/dev/null)"
 }
+# cb_tt → "trạng thái|lý do" của $WEB_HS trong CSDL; cb_tt_api <token> → trang_thai đọc qua /api (RLS)
+cb_tt() { sql "SELECT trang_thai || '|' || coalesce(ly_do, '') FROM mot_cua.ho_so WHERE id = '$WEB_HS'"; }
+cb_tt_api() { cb_api "$1" GET "/api/ho_so?id=eq.$WEB_HS&select=trang_thai" > /dev/null; jq -r '.[0].trang_thai // "không thấy"' "$CB_TD/b" 2>/dev/null; }
 
 if [ -n "$TK_CB_WEB" ] && [ -n "${WEB_HS:-}" ]; then
   T="$(cb_task "$TK_CB_WEB" "$WEB_HS")"
@@ -160,12 +166,42 @@ if [ -n "$TK_CB_WEB" ] && [ -n "${WEB_HS:-}" ]; then
 
   # Cán bộ hộ tịch xử lý: nhận (tiếp nhận) → thẩm định đạt (chuyển lãnh đạo).
   kiem "cán bộ gửi sai biến cho bước (pheDuyet ở tiep_nhan) → 400" "400" "$(cb_xong "$TK_CB_WEB" "${T%%|*}" '{"pheDuyet":true}' | cut -d'|' -f1)"
-  kiem "cán bộ tiếp nhận: Đủ thành phần hồ sơ? Có → 200, sang tham_dinh" "200|tham_dinh" \
+  kiem "trước tiếp nhận: CSDL moi (gói khai tiep_nhan: moi), cán bộ đọc qua /api cũng moi" "moi| moi" "$(cb_tt) $(cb_tt_api "$TK_CB_WEB")"
+
+  # Luồng bổ sung (#73): cán bộ yêu cầu bổ sung → công dân sửa, tải thêm tệp, nộp lại → đi tiếp.
+  kiem "cán bộ tiếp nhận: Đủ thành phần? Không + ghi chú → 200, sang bo_sung (bước của công dân)" "200|bo_sung" \
+    "$(cb_xong "$TK_CB_WEB" "${T%%|*}" '{"hopLe":false,"ghiChu":"Thiếu bản sao giấy chứng sinh (smoke #73)"}')"
+  kiem "CSDL: cho_bo_sung, lý do = ghi chú cán bộ" "cho_bo_sung|Thiếu bản sao giấy chứng sinh (smoke #73)" "$(cb_tt)"
+  TK_CD73="$(lay_token congdan01 "$MK" | jq -r '.access_token // empty')"
+  kiem "cán bộ (/api), công dân (/api, tiến độ /workflow) đọc cùng trạng thái cho_bo_sung" "cho_bo_sung cho_bo_sung cho_bo_sung" \
+    "$(cb_tt_api "$TK_CB_WEB") $(cb_tt_api "$TK_CD73") $(cb_api "$TK_CD73" GET "/workflow/ho-so/$WEB_HS/tien-do" > /dev/null; jq -r '.hoSo.trang_thai' "$CB_TD/b" 2>/dev/null)"
+  kiem "chờ bổ sung: công dân sửa số điện thoại qua /api → 200, 1 dòng (RLS chỉ cho khi cho_bo_sung)" "200 1" \
+    "$(cb_api "$TK_CD73" PATCH "/api/ho_so?id=eq.$WEB_HS" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+       -d '{"so_dien_thoai":"0900000073"}') $(jq length "$CB_TD/b" 2>/dev/null)"
+  printf '%%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%%%EOF\n' > "$CB_TD/bo-sung.pdf"
+  kiem "chờ bổ sung: công dân tải thêm giấy tờ qua /files → 201" "201" \
+    "$(cb_api "$TK_CD73" POST "/files/ho-so/$WEB_HS/tep?ten=bo-sung.pdf&thanh_phan_yeu_cau_id=$(sql "SELECT y.id FROM mot_cua.thanh_phan_yeu_cau y JOIN mot_cua.ho_so h ON h.thu_tuc_id = y.thu_tuc_id WHERE h.id = '$WEB_HS' AND y.bat_buoc ORDER BY y.thu_tu LIMIT 1")" \
+       -H 'Content-Type: application/pdf' --data-binary "@$CB_TD/bo-sung.pdf")"
+  kiem "hộp việc cán bộ không còn hồ sơ (đang chờ công dân)" "" "$(cb_task "$TK_CB_WEB" "$WEB_HS")"
+  T="$(cb_task "$TK_CD73" "$WEB_HS")"
+  kiem "công dân thấy task bo_sung của mình qua /workflow/tasks" "bo_sung" "${T#*|}"
+  kiem "công dân nộp lại (hoàn thành bo_sung) → 200, quay lại tiep_nhan" "200|tiep_nhan" \
+    "$(cb_xong "$TK_CD73" "${T%%|*}" '{"ghiChu":"Đã bổ sung bản sao (smoke #73)"}')"
+  kiem "nộp lại: CSDL dang_xu_ly (không về moi); công dân hết sửa được (RLS) → 0 dòng" "dang_xu_ly 0" \
+    "$(cb_tt | cut -d'|' -f1) $(cb_api "$TK_CD73" PATCH "/api/ho_so?id=eq.$WEB_HS" -H 'Content-Type: application/json' \
+       -H 'Prefer: return=representation' -d '{"so_dien_thoai":"0900000074"}' > /dev/null; jq length "$CB_TD/b" 2>/dev/null)"
+
+  T="$(cb_task "$TK_CB_WEB" "$WEB_HS")"
+  kiem "hộp việc cán bộ: hồ sơ về lại bước tiep_nhan" "tiep_nhan" "${T#*|}"
+  kiem "cán bộ tiếp nhận lại: Đủ thành phần hồ sơ? Có → 200, sang tham_dinh" "200|tham_dinh" \
     "$(cb_xong "$TK_CB_WEB" "${T%%|*}" '{"hopLe":true,"ghiChu":"Đủ giấy tờ (smoke #55)"}')"
+  kiem "CSDL sau tiếp nhận: dang_xu_ly" "dang_xu_ly" "$(cb_tt | cut -d'|' -f1)"
   T="$(cb_task "$TK_CB_WEB" "$WEB_HS")"
   kiem "hộp việc cán bộ: hồ sơ ở bước tham_dinh" "tham_dinh" "${T#*|}"
   kiem "cán bộ thẩm định: Đạt yêu cầu? Có → chuyển lãnh đạo (phe_duyet)" "200|phe_duyet" \
     "$(cb_xong "$TK_CB_WEB" "${T%%|*}" '{"datYeuCau":true,"ghiChu":"Trình lãnh đạo"}')"
+  kiem "CSDL sau thẩm định: cho_phe_duyet; cán bộ đọc qua /api cũng vậy" "cho_phe_duyet cho_phe_duyet" \
+    "$(cb_tt | cut -d'|' -f1) $(cb_tt_api "$TK_CB_WEB")"
   kiem "hộp việc cán bộ không còn hồ sơ (bước của lãnh đạo)" "" "$(cb_task "$TK_CB_WEB" "$WEB_HS")"
   CB_PD="$(wf "runtime/tasks?processInstanceId=$(cb_api "$TK_CB_WEB" GET "/workflow/ho-so/$WEB_HS/tien-do" > /dev/null; jq -r '.quyTrinh[-1].processInstanceId' "$CB_TD/b")" | jq -r '.data[0].id // empty')"
   kiem "cán bộ tự phê duyệt (bước nhóm lanh_dao) → 403" "403" "$(cb_xong "$TK_CB_WEB" "${CB_PD:-x}" '{"pheDuyet":true}' | cut -d'|' -f1)"
@@ -177,10 +213,17 @@ if [ -n "$TK_CB_WEB" ] && [ -n "${WEB_HS:-}" ]; then
   T="$(cb_task "$TK_LD_WEB" "$WEB_HS")"
   kiem "hộp việc lãnh đạo có hồ sơ ở bước phe_duyet" "phe_duyet" "${T#*|}"
   kiem "lãnh đạo phê duyệt → 200, không còn bước mở" "200|" "$(cb_xong "$TK_LD_WEB" "${T%%|*}" '{"pheDuyet":true,"ghiChu":"Đồng ý (smoke #55)"}')"
-  kiem "tiến độ: kết thúc Hoàn tất – trả kết quả, đi đúng tiep_nhan,tham_dinh,phe_duyet" "ket_thuc_hoan_tat tiep_nhan,tham_dinh,phe_duyet" \
+  kiem "CSDL sau phê duyệt: hoan_tat, có ngày hoàn tất; lãnh đạo và công dân đọc qua /api cũng hoan_tat" "hoan_tat true hoan_tat hoan_tat" \
+    "$(sql "SELECT trang_thai || ' ' || (ngay_hoan_tat IS NOT NULL) FROM mot_cua.ho_so WHERE id = '$WEB_HS'") $(cb_tt_api "$TK_LD_WEB") $(cb_tt_api "$TK_CD73")"
+  kiem "lịch sử trạng thái: mỗi bước một dòng, nguồn quy trình, đúng bước gây ra" \
+    "moi:nop cho_bo_sung:quy_trinh:tiep_nhan dang_xu_ly:quy_trinh:bo_sung cho_phe_duyet:quy_trinh:tham_dinh hoan_tat:quy_trinh:phe_duyet" \
+    "$(sql "SELECT string_agg(concat_ws(':', den_trang_thai, nguon, buoc), ' ' ORDER BY id) FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$WEB_HS'")"
+  kiem "cán bộ hộ tịch đọc lịch sử trạng thái qua /api → 5 dòng; cán bộ lĩnh vực khác → 0" "5 0" \
+    "$(cb_api "$TK_CB_WEB" GET "/api/lich_su_trang_thai?ho_so_id=eq.$WEB_HS&select=den_trang_thai" > /dev/null; jq length "$CB_TD/b") $(cb_api "$TK_CB2_WEB" GET "/api/lich_su_trang_thai?ho_so_id=eq.$WEB_HS&select=den_trang_thai" > /dev/null; jq length "$CB_TD/b")"
+  kiem "tiến độ: kết thúc Hoàn tất – trả kết quả, đi đúng tiep_nhan,bo_sung,tiep_nhan,tham_dinh,phe_duyet" "ket_thuc_hoan_tat tiep_nhan,bo_sung,tiep_nhan,tham_dinh,phe_duyet" \
     "$(cb_api "$TK_CB_WEB" GET "/workflow/ho-so/$WEB_HS/tien-do" > /dev/null; jq -r '.quyTrinh[-1] | "\(.diemKetThuc) \([.lichSu[].buoc] | join(","))"' "$CB_TD/b" 2>/dev/null)"
-  kiem "Flowable ghi người xử lý: tiep_nhan, tham_dinh = cán bộ hộ tịch; phe_duyet = lãnh đạo" \
-    "$SUB_CB $SUB_CB $(jwt_payload "$TK_LD_WEB" | jq -r .sub)" \
+  kiem "Flowable ghi người xử lý: tiep_nhan, tham_dinh = cán bộ hộ tịch; bo_sung = công dân; phe_duyet = lãnh đạo" \
+    "$SUB_CB $SUB $SUB_CB $SUB_CB $(jwt_payload "$TK_LD_WEB" | jq -r .sub)" \
     "$(wf "history/historic-task-instances?processInstanceId=$(jq -r '.quyTrinh[-1].processInstanceId' "$CB_TD/b")&sort=startTime&order=asc" | jq -r '[.data[].assignee] | join(" ")')"
 else
   kiem "E2E cổng cán bộ: có token cán bộ (PKCE + OTP) và hồ sơ nộp từ web" "có" "không"

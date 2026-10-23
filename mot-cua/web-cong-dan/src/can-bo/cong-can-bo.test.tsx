@@ -126,6 +126,8 @@ describe("chi tiết và xử lý bước", () => {
     ve(`/can-bo/ho-so/${ID}`, nguoiDung(["can_bo"]));
     expect(await screen.findByRole("heading", { level: 1, name: `Hồ sơ ${HS.ma_ho_so}` })).toBeInTheDocument();
     expect(screen.getByText(HS.ho_ten_nguoi_nop)).toBeInTheDocument();
+    // Trạng thái đọc từ CSDL (ho_so.trang_thai, đi theo bước quy trình #73), cùng giá trị cổng công dân thấy.
+    expect(screen.getByText("Trạng thái hồ sơ: Mới nộp, chờ tiếp nhận")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Tờ khai đăng ký khai sinh/ })).toBeInTheDocument();
     expect(goiTheo("/files/tep/")).toHaveLength(0);
     await u.click(screen.getByRole("button", { name: /Xem tệp to-khai.pdf/ }));

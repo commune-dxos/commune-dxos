@@ -116,7 +116,8 @@ class CsdlGia:
         return {"id": HS_ID, "ma_ho_so": "HS20261023-000001", "trang_thai": self.trang_thai,
                 "han_xu_ly": "2026-10-28", "nguoi_nop_sub": SUB, "ho_ten_nguoi_nop": "Nguyễn Văn Mẫu",
                 "so_dien_thoai": "0900000001",
-                "thu_tuc": {"ma": "KS01", "quy_trinh": "dang_ky_khai_sinh", "json_schema": copy.deepcopy(self.schema)}}
+                "thu_tuc": {"ma": "KS01", "quy_trinh": "dang_ky_khai_sinh", "json_schema": copy.deepcopy(self.schema),
+                            "trang_thai_buoc": {"tiep_nhan": "moi", "tham_dinh": "dang_xu_ly"}}}
 
     def pgrst(self, token, method, path, body=None, prefer=None):
         if method == "GET" and path.startswith("/ho_so?id=eq."):
@@ -129,6 +130,14 @@ class CsdlGia:
             self.ho_so_moi.append(body)
             return [self.ho_so()]
         raise AssertionError(f"PostgREST giả không biết {method} {path}")
+
+    def ngu_canh(self, ids):
+        return {HS_ID: {"id": HS_ID, "ma_ho_so": "HS20261023-000001", "trang_thai": self.trang_thai,
+                        "thu_tuc": {"ma": "KS01", "linh_vuc": {"ma": "ho_tich"}}}}
+
+    def dong_bo(self, ho_so_id, trang_thai_moi, cac_su_kien, **kw):
+        self.su_kien += [(ev["loai"], ho_so_id, trang_thai_moi) for ev, _ in cac_su_kien]
+        return {"trangThai": trang_thai_moi or self.trang_thai, "daDoi": bool(trang_thai_moi)}
 
     def flowable(self, method, path, body=None, cho_phep=()):
         if path.startswith("/history/historic-process-instances"):
@@ -161,7 +170,8 @@ class KhoiTaoQuaHttp(unittest.TestCase):
                                      headers={"Authorization": "Bearer x", "Content-Type": "application/json"})
         with mock.patch.object(main, "kiem_token", return_value=("tk", claims)), \
                 mock.patch.object(main, "pgrst", csdl.pgrst), mock.patch.object(main, "flowable", csdl.flowable), \
-                mock.patch.object(main.hop_thu, "ghi", side_effect=lambda *a: csdl.su_kien.append(a)):
+                mock.patch.object(main.hop_thu, "ngu_canh", csdl.ngu_canh), \
+                mock.patch.object(main.hop_thu, "dong_bo", csdl.dong_bo):
             try:
                 with urllib.request.urlopen(req, timeout=5) as r:
                     return r.status, json.loads(r.read())
@@ -178,7 +188,9 @@ class KhoiTaoQuaHttp(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertEqual(data["processInstanceId"], "pi-1")
         self.assertEqual(len(csdl.flowable_post), 1)
-        self.assertEqual([s[0] for s in csdl.su_kien], ["ho_so.moi"])
+        # Bước đầu (tiep_nhan) khai "moi" trong gói: chỉ ghi sự kiện, không đổi trạng thái (#73).
+        self.assertEqual(csdl.su_kien, [("ho_so.moi", HS_ID, None)])
+        self.assertEqual(data["trangThai"], "moi")
 
     def test_ct01_du_ban_chinh_201(self):
         csdl = CsdlGia(schema=CT, ds_tep=[tep(1, "ban_chinh")])
