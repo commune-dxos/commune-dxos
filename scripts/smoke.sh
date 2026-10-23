@@ -93,6 +93,25 @@ kiem "schema dxos chỉ có bảng app_migration" "app_migration" \
 kiem "sổ migration có tệp của $DXOS_TANG2" "có" \
   "$(sql "SELECT CASE WHEN count(*) > 0 THEN 'có' ELSE 'không' END FROM dxos.app_migration WHERE ung_dung = '$DXOS_TANG2'")"
 
+# 4a. pgAudit (#75): nạp sẵn, có extension, log kiểm toán phiên ---------------------------------
+kiem "pgAudit: shared_preload_libraries có pgaudit, extension đã tạo" "pgaudit 17.1" \
+  "$(sql "SHOW shared_preload_libraries") $(sql "SELECT extversion FROM pg_extension WHERE extname = 'pgaudit'")"
+kiem "pgAudit: log phiên theo DXOS_PGAUDIT_LOG, không ghi tham số" "${DXOS_PGAUDIT_LOG:-ddl,role} off" \
+  "$(sql "SHOW pgaudit.log") $(sql "SHOW pgaudit.log_parameter")"
+# Log của container tới `docker compose logs` có độ trễ: thử lại tới 10 giây.
+pga_ddl() {
+  local i log
+  sql "CREATE TEMP TABLE smoke_pgaudit (x int)" > /dev/null
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    # Đọc hết vào biến rồi mới grep: `logs | grep -q` với pipefail trượt vì logs nhận SIGPIPE.
+    log="$(docker compose logs --no-log-prefix --since 2m postgres 2>&1)"
+    grep -q 'AUDIT: SESSION,[0-9]*,[0-9]*,DDL,CREATE TABLE,TABLE,pg_temp.smoke_pgaudit' <<<"$log" && { echo có; return; }
+    sleep 1
+  done
+  echo không
+}
+kiem "pgAudit: DDL được ghi (AUDIT: SESSION …,DDL,CREATE TABLE…)" "có" "$(pga_ddl)"
+
 # 4b. Garage: một nút đã có layout, API quản trị đòi token ------------------------------
 kiem "Garage: nút có vai trò trong layout (zone dxos)" "dxos" \
   "$(docker compose exec -T garage /garage status 2>/dev/null | awk '/HEALTHY NODES/ {f=1; next} f && $1 ~ /^[0-9a-f]+$/ {print $4; exit}' | tr -d '[]')"

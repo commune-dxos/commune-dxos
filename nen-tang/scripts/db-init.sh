@@ -7,6 +7,8 @@
 #   authenticator  PostgREST (role tạo trong initdb/10-core.sql)
 #   keycloak       CSDL riêng keycloak
 #   flowable       CSDL riêng flowable (Flowable tự tạo bảng ACT_* khi khởi động)
+#   dxos_kiem_toan role NOLOGIN của pgAudit (log đối tượng: Tầng 2 GRANT bảng cần theo dõi, #75)
+# và extension pgaudit trong CSDL chính khi PostgreSQL đã nạp pgAudit (docker-compose.yml).
 # Mật khẩu đọc từ tệp do agent `db-secrets` render vào volume db-secrets (DB_SECRETS_DIR);
 # superuser đăng nhập bằng PGPASSFILE cùng volume. Mật khẩu không nằm trong tham số lệnh
 # (psql tự đọc tệp bằng \set … `cat …`), không in ra log.
@@ -27,5 +29,8 @@ SELECT 'CREATE DATABASE keycloak OWNER keycloak' WHERE NOT EXISTS (SELECT 1 FROM
 SELECT 'CREATE ROLE flowable LOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flowable') \gexec
 ALTER ROLE flowable WITH LOGIN PASSWORD :'pw_flowable';
 SELECT 'CREATE DATABASE flowable OWNER flowable' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'flowable') \gexec
+SELECT 'CREATE ROLE dxos_kiem_toan NOLOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dxos_kiem_toan') \gexec
+SELECT 'CREATE EXTENSION IF NOT EXISTS pgaudit'
+ WHERE current_setting('shared_preload_libraries') ~ '(^|[ ,])pgaudit($|[ ,])' \gexec
 SQL
-echo "db-init: role authenticator, keycloak, flowable và CSDL keycloak, flowable sẵn sàng (mật khẩu theo OpenBao)"
+echo "db-init: role authenticator, keycloak, flowable, dxos_kiem_toan, CSDL keycloak, flowable, pgAudit sẵn sàng (mật khẩu theo OpenBao)"

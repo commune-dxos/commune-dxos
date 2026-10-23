@@ -69,8 +69,32 @@ x-bao-agent: &bao-agent
 services:
   # ---------------------------------------------------------------- core ----
   postgres:
-    image: postgres:17.6-alpine
+    # postgres:17.6-alpine + pgAudit 17.1 biên dịch từ mã nguồn ghim SHA-256 (#75): nen-tang/postgres/Dockerfile.
+    build:
+      context: ./nen-tang/postgres
+    image: commune-dxos/postgres:17.6-pgaudit17.1
     profiles: [core]
+    # pgAudit (#75) ghi vào log PostgreSQL (docker compose logs postgres) các dòng "AUDIT: …":
+    #   SESSION: lớp câu lệnh theo DXOS_PGAUDIT_LOG (mặc định ddl,role: đổi schema, role, quyền);
+    #   OBJECT: câu lệnh chạm bảng mà role dxos_kiem_toan có quyền tương ứng (Tầng 2 tự GRANT bảng
+    #           có dữ liệu cá nhân cho role này, ví dụ mot-cua/db/migrations/007_nhat_ky_kiem_toan.sql).
+    # Không ghi tham số câu lệnh (log_parameter tắt) để log không chứa dữ liệu cá nhân.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pgaudit
+      - -c
+      - pgaudit.log=${DXOS_PGAUDIT_LOG:-ddl,role}
+      - -c
+      - pgaudit.role=dxos_kiem_toan
+      - -c
+      - pgaudit.log_catalog=off
+      - -c
+      - pgaudit.log_relation=on
+      - -c
+      - pgaudit.log_parameter=off
+      - -c
+      - "log_line_prefix=%m [%p] %q%u@%d "
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-commune}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
