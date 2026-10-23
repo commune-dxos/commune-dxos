@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from "vitest";
 import { docCauHinh } from "./cau-hinh";
-import { chuanHoa, lePhi, thoiHan } from "./dinh-dang";
+import { chuanHoa, lePhi, ngay, thoiHan } from "./dinh-dang";
 
 describe("định dạng", () => {
   it("thời hạn theo ngày làm việc", () => {
@@ -15,6 +15,10 @@ describe("định dạng", () => {
     expect(lePhi(0)).toBe("Miễn phí");
     expect(lePhi(2000)).toBe("2.000 đồng");
     expect(lePhi(200000)).toBe("200.000 đồng");
+  });
+
+  it("ngày hạn xử lý dạng dd/mm/yyyy", () => {
+    expect(ngay("2026-10-26")).toBe("26/10/2026");
   });
 
   it("tìm không dấu", () => {

@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Một thủ tục trong danh mục (dòng danh sách dựng trên Item của shadcn/ui): tên, lĩnh vực, mã,
-// thời hạn, lệ phí, nút nộp hồ sơ. Giấy tờ cần có (từ JSON Schema) và liên kết tới trang chi tiết
-// thêm ở #64.
-import { ArrowRight, Banknote, Clock } from "lucide-react";
+// thời hạn, lệ phí, giấy tờ cần mang (từ JSON Schema của gói), nút nộp hồ sơ.
+import { ArrowRight, Banknote, Clock, FileText } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent } from "@/components/ui/item";
 import type { ThuTuc } from "@/lib/api";
 import { lePhi, thoiHan } from "@/lib/dinh-dang";
+import { docThanhPhan } from "@/lib/thanh-phan";
 
 function Dong({ bieuTuong, nhan, children }: { bieuTuong: ReactNode; nhan: string; children: ReactNode }) {
   return (
@@ -28,6 +28,7 @@ function Dong({ bieuTuong, nhan, children }: { bieuTuong: ReactNode; nhan: strin
 
 export function TheThuTuc({ thuTuc }: { thuTuc: ThuTuc }) {
   const idTieuDe = `thu-tuc-${thuTuc.ma}`;
+  const giayTo = docThanhPhan(thuTuc.json_schema).filter((t) => t.batBuoc);
   return (
     <Item
       variant="outline"
@@ -43,15 +44,28 @@ export function TheThuTuc({ thuTuc }: { thuTuc: ThuTuc }) {
           </span>
         </div>
         <h3 id={idTieuDe} className="text-xl font-bold">
-          {thuTuc.ten}
+          <Link to={`/thu-tuc/${encodeURIComponent(thuTuc.ma)}`} className="-my-1.5 inline-block rounded-sm py-1.5 text-link underline decoration-1 hover:decoration-2">
+            {thuTuc.ten}
+          </Link>
         </h3>
-        <dl className="grid gap-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,12rem)]">
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,10rem)_minmax(0,10rem)_1fr]">
           <Dong bieuTuong={<Clock />} nhan="Thời hạn">
             {thoiHan(thuTuc.so_ngay_xu_ly)}
           </Dong>
           <Dong bieuTuong={<Banknote />} nhan="Lệ phí">
             {lePhi(thuTuc.le_phi)}
           </Dong>
+          {giayTo.length > 0 && (
+            <div className="sm:col-span-2 lg:col-span-1">
+              <Dong bieuTuong={<FileText />} nhan={`Giấy tờ cần có (${giayTo.length})`}>
+                <ul className="flex flex-col gap-0.5 font-normal">
+                  {giayTo.map((t) => (
+                    <li key={t.ma}>{t.ten}</li>
+                  ))}
+                </ul>
+              </Dong>
+            </div>
+          )}
         </dl>
       </ItemContent>
       <ItemActions className="w-full md:w-auto md:self-center">

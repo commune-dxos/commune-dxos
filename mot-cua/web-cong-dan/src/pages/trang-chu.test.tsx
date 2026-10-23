@@ -74,4 +74,11 @@ describe("trang chủ – danh mục thủ tục", () => {
     expect(o).toHaveValue("");
     expect(screen.getByText("2 thủ tục nhận hồ sơ")).toBeInTheDocument();
   });
+
+  it("thẻ thủ tục hiện giấy tờ bắt buộc lấy từ JSON Schema", async () => {
+    ve(() => Promise.resolve(DS));
+    const ks = await screen.findByRole("article", { name: "Đăng ký khai sinh" });
+    expect(within(ks).getByText("Giấy tờ cần có (3)")).toBeInTheDocument();
+    expect(within(ks).getByText("Giấy chứng sinh")).toBeInTheDocument();
+  });
 });

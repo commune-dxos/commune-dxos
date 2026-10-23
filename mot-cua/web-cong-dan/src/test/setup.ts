@@ -6,9 +6,11 @@ import { afterEach } from "vitest";
 
 afterEach(cleanup);
 
-// jsdom chưa có ResizeObserver; Radix (RadioGroup của shadcn/ui, dùng ở form #64) cần nó để đo kích thước.
+// jsdom chưa có ResizeObserver; Radix (RadioGroup của shadcn/ui) cần nó để đo kích thước.
 globalThis.ResizeObserver ??= class {
   observe() {}
   unobserve() {}
   disconnect() {}
 };
+// jsdom không cuộn trang; form nộp hồ sơ cuộn lên đầu khi sang bước.
+window.scrollTo = () => {};

@@ -12,6 +12,12 @@ export function lePhi(dongVn: number) {
   return dongVn === 0 ? "Miễn phí" : `${dong.format(dongVn)} đồng`;
 }
 
+/** Ngày dạng YYYY-MM-DD (cột date của PostgreSQL) → dd/mm/yyyy, không đổi múi giờ. */
+export function ngay(isoNgay: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoNgay);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : isoNgay;
+}
+
 /** Bỏ dấu tiếng Việt và viết thường, để ô tìm "khai sinh" khớp "Đăng ký khai sinh". */
 export function chuanHoa(s: string) {
   return s

@@ -23,10 +23,10 @@ describe("layDanhMucThuTuc", () => {
     expect(new Headers(init?.headers).has("Authorization")).toBe(false);
   });
 
-  it("chỉ lấy cột cần hiển thị, kèm lĩnh vực, xếp theo mã", () => {
+  it("chỉ lấy cột cần hiển thị, kèm lĩnh vực và JSON Schema thành phần hồ sơ, xếp theo mã", () => {
     const q = new URL("http://x" + DUONG_DAN_DANH_MUC).searchParams;
     expect(q.get("select")?.split(",")).toEqual([
-      "id", "ma", "ten", "so_ngay_xu_ly", "le_phi", "ghi_chu_le_phi", "quy_trinh", "linh_vuc:linh_vuc_id(ma",
+      "id", "ma", "ten", "so_ngay_xu_ly", "le_phi", "ghi_chu_le_phi", "quy_trinh", "json_schema", "linh_vuc:linh_vuc_id(ma",
       "ten)",
     ]);
     expect(q.get("order")).toBe("ma");
