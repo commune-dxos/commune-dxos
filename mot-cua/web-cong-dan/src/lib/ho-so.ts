@@ -9,7 +9,8 @@
 //      lại schema với tệp đã quét sạch, thiếu → 422 (lớp Poka-yoke thứ hai)
 // Bước nào lỗi thì giữ kết quả các bước trước để người dân bấm "Thử lại" từ chỗ dở dang.
 import { cauHinh as cauHinhMacDinh, type CauHinh } from "./cau-hinh";
-import { LoiApi, thongDiepLoi, type ThuTuc } from "./api";
+import { LoiApi, type ThuTuc } from "./api";
+import { goiGateway } from "./goi-api";
 import { docThanhPhan, kiemThanhPhan } from "./thanh-phan";
 
 export interface HoSoMoi {
@@ -20,8 +21,6 @@ export interface HoSoMoi {
   han_xu_ly: string;
 }
 
-const KHONG_KET_NOI = "Không kết nối được tới máy chủ. Vui lòng kiểm tra mạng rồi thử lại.";
-
 async function goiApi<T>(
   cauHinh: CauHinh,
   goi: typeof fetch,
@@ -31,30 +30,7 @@ async function goiApi<T>(
   if (cauHinh.duLieuGia) {
     throw new LoiApi("Chế độ dữ liệu giả không nộp được hồ sơ. Chạy cổng với lõi (make up) để nộp.", null);
   }
-  const { token, headers, ...con } = init;
-  const h = new Headers(headers);
-  h.set("Accept", "application/json");
-  if (token) h.set("Authorization", `Bearer ${token}`);
-  let res: Response;
-  try {
-    res = await goi(cauHinh.gatewayUrl + duong, { ...con, headers: h });
-  } catch {
-    throw new LoiApi(KHONG_KET_NOI, null);
-  }
-  const than = await res.text();
-  const json = than ? (JSON.parse(than) as unknown) : null;
-  if (!res.ok) {
-    // mot-cua-api trả {"loi": "câu tiếng Việt"}; PostgREST trả {"message": …} (không cho người dân xem).
-    const loi = (json as { loi?: unknown } | null)?.loi;
-    const thongDiep =
-      res.status === 401
-        ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
-        : typeof loi === "string" && res.status < 500 && res.status !== 429
-          ? loi
-          : thongDiepLoi(res.status);
-    throw new LoiApi(thongDiep, res.status);
-  }
-  return json as T;
+  return goiGateway<T>(cauHinh, goi, duong, init);
 }
 
 /** id thành phần yêu cầu theo mã (khóa trong JSON Schema của gói), đọc công khai. */

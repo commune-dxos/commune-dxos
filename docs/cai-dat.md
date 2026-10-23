@@ -54,6 +54,7 @@ make bao-import-env       # chuyển mật khẩu từ .env cũ (trước v0.1.0
 | Dịch vụ | Địa chỉ | Ghi chú |
 |---|---|---|
 | **Cổng công dân** | **http://localhost:9080/** | web Tầng 2 (`mot-cua-web`) qua APISIX; đăng nhập `congdan01` |
+| **Cổng cán bộ** | **http://localhost:9080/can-bo** | cùng web, client `mot_cua_can_bo`; đăng nhập `canbo01`, `lanhdao01` (mật khẩu + OTP); luồng: [`cong-can-bo.md`](cong-can-bo.md) |
 | API Gateway – công khai | http://localhost:9080/public/thu_tuc | không token, 60 request/phút/IP |
 | API Gateway – dữ liệu (JWT) | http://localhost:9080/api/ho_so | PostgREST qua APISIX, RLS theo vai trò |
 | API Gateway – quy trình (JWT) | http://localhost:9080/workflow/tasks | API quy trình của `mot-cua` → Flowable |
@@ -70,8 +71,8 @@ OpenBao, Garage, ClamAV, RabbitMQ, PostgREST, `mot-cua-web` không mở cổng r
 | Người dùng | Vai trò | Thử gì |
 |---|---|---|
 | `congdan01`, `congdan02` | `cong_dan` – công dân | nộp hồ sơ, chỉ thấy hồ sơ của mình |
-| `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) | `can_bo` – cán bộ | task theo lĩnh vực phụ trách; **bắt buộc OTP** |
-| `lanhdao01` | `lanh_dao` – lãnh đạo | phê duyệt, chỉ đọc hồ sơ; **bắt buộc OTP** |
+| `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) | `can_bo` – cán bộ | cổng cán bộ `/can-bo`: task theo lĩnh vực phụ trách; **bắt buộc OTP** |
+| `lanhdao01` | `lanh_dao` – lãnh đạo | cổng cán bộ `/can-bo`: phê duyệt, chỉ đọc hồ sơ; **bắt buộc OTP** |
 
 ```bash
 make demo-users                                   # in mật khẩu chung

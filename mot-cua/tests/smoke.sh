@@ -19,6 +19,9 @@
 #      tests/smoke-goi-thu-tuc.sh.
 #   4h. Cổng công dân mot-cua-web qua APISIX /: trang, phông, route SPA, header bảo mật, đăng nhập
 #      PKCE, nộp hồ sơ E2E từ origin của web (#57): tests/smoke-web.sh.
+#   4i. Cổng cán bộ /can-bo: trang, client mot_cua_can_bo (PKCE + OTP), E2E cán bộ hộ tịch tiếp nhận →
+#      thẩm định → lãnh đạo phê duyệt hồ sơ vừa nộp từ web; cán bộ lĩnh vực khác không thấy (#55):
+#      tests/smoke-can-bo.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -365,6 +368,10 @@ fi
 # --- 4h. Cổng công dân qua APISIX (#57) ------------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-web.sh
 . "mot-cua/tests/smoke-web.sh"
+
+# --- 4i. Cổng cán bộ qua APISIX (#55) --------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-can-bo.sh
+. "mot-cua/tests/smoke-can-bo.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
