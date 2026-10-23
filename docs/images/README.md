@@ -20,6 +20,8 @@
 | `logo/mark-64.png`, `logo/mark-32.png`, `logo/favicon.ico` | Biểu tượng 64 px, 32 px và favicon | Thanh đầu trang tài liệu MkDocs (`theme.logo`, `theme.favicon`), web | Như trên |
 | `logo/xem-truoc.png` | Ảnh xem trước 1280×640 khi chia sẻ link repo | Settings → Social preview của repo (tải lên bằng tay) | Như trên; ghép bằng ImageMagick |
 | `cong-cong-dan-may-tinh.webp`, `cong-cong-dan-dien-thoai.webp` | Ảnh chụp trang chủ cổng công dân (#52, giao diện mới #63) trên máy tính (1280 px) và điện thoại (390 px), dữ liệu giả | `mot-cua/web-cong-dan/README.md` | Chụp bằng Chrome headless từ bản build của đội |
+| `cong-cong-dan-chi-tiet.webp`, `cong-cong-dan-nop-ho-so.webp` | Chi tiết thủ tục KS01 (1280 px) và bước Giấy tờ có tóm tắt lỗi (390 px) của cổng công dân (#64), dữ liệu giả | `mot-cua/web-cong-dan/README.md` | Chụp bằng Chrome headless từ bản chạy của đội |
+| `cong-cong-dan-da-nop.webp` | Trang "Đã nộp hồ sơ" sau một lần nộp thật qua APISIX trên máy (lõi `make up`, tài khoản mẫu `congdan01`, tệp giả) (#64) | `mot-cua/web-cong-dan/README.md` | Chụp bằng Chrome headless từ bản chạy của đội |
 
 - **Logo** (`logo/`): màu xanh ngọc `#0F766E` (màu chính), chàm `#4338CA` (màu phụ), đỏ son `#D9480F` (chỉ điểm nhấn). Không đổi màu, kéo méo, thêm bóng hay gradient. Biểu tượng có vùng trong suốt: trên nền tối đặt trong ô nền trắng. Cỡ nhỏ nhất: biểu tượng 32 px, logo ngang rộng 240 px.
 - Ảnh minh họa không chứa người, giấy tờ có thật; không lấy ảnh từ nguồn bên ngoài. Chữ trong ảnh do đội kiểm lại sau khi tạo.

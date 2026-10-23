@@ -4,6 +4,7 @@
 // Danh mục thủ tục: route /public/* (không token, role anon, 60 request/phút/IP), RLS chỉ trả
 // thủ tục cong_khai (mot-cua/db/migrations/002_schema_day_du.sql).
 import { cauHinh as cauHinhMacDinh, type CauHinh } from "./cau-hinh";
+import type { JsonSchemaHoSo } from "./thanh-phan";
 
 export interface ThuTuc {
   id: string;
@@ -17,10 +18,12 @@ export interface ThuTuc {
   /** process id BPMN của gói thu-tuc/<goi>/; null = chưa nhận hồ sơ trực tuyến. */
   quy_trinh: string | null;
   linh_vuc: { ma: string; ten: string } | null;
+  /** thanh-phan-ho-so.schema.json của gói (cột thu_tuc.json_schema); null = thủ tục chưa có gói. */
+  json_schema: JsonSchemaHoSo | null;
 }
 
 export const DUONG_DAN_DANH_MUC =
-  "/public/thu_tuc?select=id,ma,ten,so_ngay_xu_ly,le_phi,ghi_chu_le_phi,quy_trinh," +
+  "/public/thu_tuc?select=id,ma,ten,so_ngay_xu_ly,le_phi,ghi_chu_le_phi,quy_trinh,json_schema," +
   "linh_vuc:linh_vuc_id(ma,ten)&order=ma";
 
 /** Lỗi có câu thông báo dành cho người dân. */
@@ -33,7 +36,7 @@ export class LoiApi extends Error {
   }
 }
 
-function thongDiepLoi(trangThai: number) {
+export function thongDiepLoi(trangThai: number) {
   if (trangThai === 429) return "Có quá nhiều lượt truy cập. Vui lòng đợi một phút rồi thử lại.";
   if (trangThai >= 500) return "Hệ thống đang bận hoặc bảo trì. Vui lòng thử lại sau ít phút.";
   return `Không tải được dữ liệu (mã lỗi ${trangThai}).`;

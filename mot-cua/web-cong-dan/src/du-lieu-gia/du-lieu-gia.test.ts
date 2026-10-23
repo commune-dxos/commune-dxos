@@ -20,10 +20,14 @@ function docYaml(van: string) {
   return kq;
 }
 
-const goi = readdirSync(THU_MUC_GOI, { withFileTypes: true })
+const cacGoi = readdirSync(THU_MUC_GOI, { withFileTypes: true })
   .filter((d) => d.isDirectory() && existsSync(join(THU_MUC_GOI, d.name, "thu-tuc.yaml")))
-  .map((d) => docYaml(readFileSync(join(THU_MUC_GOI, d.name, "thu-tuc.yaml"), "utf8")))
-  .filter((y) => y.cong_khai === "true");
+  .map((d) => ({
+    yaml: docYaml(readFileSync(join(THU_MUC_GOI, d.name, "thu-tuc.yaml"), "utf8")),
+    schema: JSON.parse(readFileSync(join(THU_MUC_GOI, d.name, "thanh-phan-ho-so.schema.json"), "utf8")),
+  }))
+  .filter((g) => g.yaml.cong_khai === "true");
+const goi = cacGoi.map((g) => g.yaml);
 
 describe("dữ liệu giả", () => {
   it("có đúng các thủ tục công khai của thu-tuc/*/", () => {
@@ -40,5 +44,9 @@ describe("dữ liệu giả", () => {
       quy_trinh: y.quy_trinh,
       linh_vuc: { ma: y.linh_vuc, ten: y.ten_linh_vuc },
     });
+  });
+
+  it.each(cacGoi.map((g) => [g.yaml.ma, g.schema] as const))("%s có json_schema giống thanh-phan-ho-so.schema.json", (ma, schema) => {
+    expect((duLieu as ThuTuc[]).find((x) => x.ma === ma)!.json_schema).toEqual(schema);
   });
 });
