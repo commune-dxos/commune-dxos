@@ -83,7 +83,8 @@ jobs:
   test-sql:
     runs-on: ubuntu-24.04
     services:
-      # Cùng image với dịch vụ postgres trong docker-compose.yml (bước đầu tiên kiểm điều này).
+      # Cùng image gốc với docker-compose.yml và nen-tang/postgres/Dockerfile (bước đầu tiên kiểm điều
+      # này). Dịch vụ postgres thêm pgAudit trên image này (#75); migration không cần pgAudit.
       postgres:
         image: postgres:17.6-alpine
         env:
@@ -105,6 +106,7 @@ jobs:
       - name: Image PostgreSQL khớp docker-compose.yml
         run: |
           grep -Eq '^ +image: postgres:17\.6-alpine$' docker-compose.yml
+          grep -Eq '^ARG POSTGRES_IMAGE=postgres:17\.6-alpine$' nen-tang/postgres/Dockerfile
       - name: Migration + test SQL/RLS
         run: |
           psql --version

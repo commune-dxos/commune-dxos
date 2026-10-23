@@ -11,8 +11,9 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/004_su_kien.sql` | sự kiện (#9): role `dich_vu_su_kien`, hộp thư đi `hop_thu_su_kien` (outbox), `nhat_ky_su_kien` chỉ thêm; xem [Sự kiện hồ sơ](#sự-kiện-hồ-sơ-rabbitmq-9) |
 | `db/migrations/005_goi_thu_tuc.sql` | gói thủ tục (D-009): cột `goi`, `quy_trinh`, `bien_theo_buoc`, `json_schema` của `thu_tuc`, hạn 0 ngày (trong ngày), role `dich_vu_danh_muc`, RPC `nap_thu_tuc`, `rut_goi_vang`; `json_schema_thu_tuc` trả schema của gói |
 | `db/migrations/006_trang_thai_theo_quy_trinh.sql` | trạng thái hồ sơ theo bước Flowable (#73): thêm `cho_phe_duyet`, cột `thu_tuc.trang_thai_buoc`, bảng `lich_su_trang_thai` chỉ thêm, RPC `dong_bo_trang_thai` (trạng thái + lịch sử + hộp thư đi một transaction); xem [Trạng thái hồ sơ](#trạng-thái-hồ-sơ) |
+| `db/migrations/007_nhat_ky_kiem_toan.sql` | nhật ký kiểm toán append-only chuỗi băm SHA-256 (#75): bảng `nhat_ky_kiem_toan` + đầu chuỗi `dau_chuoi_kiem_toan`, trigger ghi kiểm toán cho hồ sơ, tệp, thủ tục, phân công; `dong_bo_trang_thai` ghi thêm bước quy trình; RPC `xac_minh_kiem_toan`; GRANT cho role pgAudit `dxos_kiem_toan`; xem [Nhật ký kiểm toán](#nhật-ký-kiểm-toán-75) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), chạy trong một transaction rồi ROLLBACK |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, client `mot_cua_web` (PKCE), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc` (Client Credentials, secret do Keycloak sinh), 6 người dùng mẫu có `id` (= `sub`) cố định; cán bộ và lãnh đạo bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
@@ -42,6 +43,7 @@ erDiagram
   thanh_phan_yeu_cau |o--o{ thanh_phan_ho_so : "loại"
   can_bo |o--o{ thanh_phan_ho_so : "kiểm tra"
   ho_so |o--o{ nhat_ky_tep : "ghi lại"
+  ho_so |o--o{ nhat_ky_kiem_toan : "doi_tuong_id"
 
   linh_vuc {
     uuid id PK
@@ -118,6 +120,17 @@ erDiagram
     text sha256
     text chi_tiet "tên mẫu virus, ttl…"
   }
+  nhat_ky_kiem_toan {
+    bigint stt PK "liền từ 1"
+    timestamptz luc
+    text hanh_dong "ho_so.nop, quy_trinh.xu_ly_buoc…"
+    text doi_tuong "ho_so, thu_tuc, can_bo"
+    text doi_tuong_id "không FK: nhật ký giữ lại"
+    text nguoi_sub
+    jsonb du_lieu
+    text bam_truoc
+    text bam UK "SHA-256"
+  }
   ngay_nghi {
     date ngay PK
     text ten
@@ -163,6 +176,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 | `thanh_phan_ho_so` – thêm | — | không trực tiếp: qua API tệp `/files` (quét ClamAV trước); dòng do tài khoản dịch vụ `dich_vu_tep` ghi, chỉ vào hồ sơ của người tải khi `moi`/`cho_bo_sung`, loại thành phần phải thuộc thủ tục của hồ sơ | — | — |
 | `thanh_phan_ho_so` – sửa | — | — | `trang_thai_kiem_tra`, `ghi_chu_kiem_tra` (CSDL ghi người, giờ kiểm tra) | — |
 | `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
+| `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
 Cán bộ phụ trách lĩnh vực nào được tra từ `can_bo` (theo `sub`) + `can_bo_linh_vuc`, không cần claim riêng trong JWT: đổi phân công có hiệu lực ngay. Hàm tra cứu nằm ở schema `mot_cua_noi_bo` (không phơi ra API), `SECURITY DEFINER`, `search_path` rỗng.
@@ -357,6 +371,34 @@ Một object JSON, `content-type: application/json`; header AMQP `message-id` = 
 | `backend/worker.py` | dịch vụ `mot-cua-worker`: phát, quét sắp trễ hạn, consumer mẫu. Quét tay một lần: `docker compose exec mot-cua-worker python /tang2/backend/worker.py quet-mot-lan` |
 | `tests/smoke-su-kien.sh` | `make smoke`: luồng thật qua `/workflow`, sắp trễ hạn đúng một lần, tin hỏng → queue lỗi, RabbitMQ dừng rồi lên lại |
 
+## Nhật ký kiểm toán (#75)
+
+`nhat_ky_kiem_toan` ghi **mọi thao tác nghiệp vụ quan trọng, trong cùng transaction với thao tác** (trigger hoặc RPC; thao tác lỗi/rollback thì không có bản ghi). Thiết kế và lý do: `docs/architecture.md` §4.6.
+
+| `hanh_dong` | Khi nào | `nguoi_sub` | `du_lieu` (không có họ tên, số điện thoại, tên tệp) |
+|---|---|---|---|
+| `ho_so.nop` | công dân nộp hồ sơ | người nộp | `maHoSo`, `thuTuc`, `denTrangThai` |
+| `ho_so.chuyen_trang_thai` | mọi lần đổi `trang_thai` (theo `lich_su_trang_thai`) | người đổi (cán bộ xử lý bước khi đi theo quy trình) | `tuTrangThai`, `denTrangThai`, `lyDo`, `buoc` |
+| `ho_so.cap_nhat` | đổi thông tin người nộp, hạn, cán bộ xử lý, lý do | người đổi | `cot` (tên cột), `canBoXuLy` |
+| `ho_so.xoa` | xóa hồ sơ (chỉ SQL quản trị) | — | `maHoSo`, `trangThai` |
+| `quy_trinh.xu_ly_buoc`, `quy_trinh.dong_bo` | RPC `dong_bo_trang_thai` có thay đổi (sau khi hoàn thành task Flowable; đối soát của worker) | người hoàn thành task | `buoc`, `trangThaiTruoc`, `trangThai`, `suKien` (id, loại sự kiện vào hộp thư đi) |
+| `tep.tai_len`, `tep.kiem_tra` | tải tệp qua `/files`; cán bộ đổi `trang_thai_kiem_tra` | người tải / cán bộ | `tepId`, `thanhPhan`, `sha256` (nội dung tệp), `kichThuoc`, `ketQua` |
+| `thu_tuc.them`, `thu_tuc.nap_goi`, `thu_tuc.rut_goi` | thêm thủ tục; nạp gói mới hoặc đã đổi (`goi_sha256`); rút gói | tài khoản dịch vụ danh mục | `goi`, `goiSha256`, `goiSha256Truoc`, `quyTrinh` |
+| `can_bo.them_linh_vuc`, `can_bo.bo_linh_vuc` | đổi phân công lĩnh vực (= đổi hồ sơ cán bộ thấy) | — | `linhVuc` |
+| `kiem_toan.khoi_tao` | bản ghi 1, lúc chạy migration 007 | — | số hồ sơ, số thủ tục lúc đó |
+
+Mỗi bản ghi: `stt` (liền từ 1), `luc`, `vai_tro` (role của request), `nguon` (`nop`, `api`, `quy_trinh`, `doi_soat`, `he_thong`), `bam_truoc`, `bam = hex(SHA-256(bam_truoc ‖ nội dung chuẩn))`. Lãnh đạo đọc và xác minh qua APISIX:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN_LANH_DAO" "http://localhost:9080/api/nhat_ky_kiem_toan?doi_tuong_id=eq.<hồ sơ>&order=stt"
+curl -H "Authorization: Bearer $TOKEN_LANH_DAO" http://localhost:9080/api/rpc/xac_minh_kiem_toan
+# → {"hopLe": true, "soBanGhi": 97, "sttCuoi": 97, "bamCuoi": "…", "dauChuoi": {…}, "loi": null}
+# Trình xác minh độc lập (tự tính lại chuỗi từ bản ghi đọc qua API, không tin hàm trong CSDL):
+DXOS_TOKEN=$TOKEN_LANH_DAO python3 mot-cua/backend/kiem_toan.py --api http://localhost:9080/api [--moc 97:<bam>]
+```
+
+Truy cập bảng có dữ liệu cá nhân (`ho_so`, `thanh_phan_ho_so`) và thay đổi cán bộ, phân công còn được pgAudit ghi ở mức câu lệnh vào log PostgreSQL (`docker compose logs postgres | grep 'AUDIT: OBJECT'`), không kèm tham số.
+
 ## Người dùng mẫu
 
 | Người dùng | `sub` | Vai trò | Ghi chú |
@@ -373,9 +415,9 @@ Realm không chứa mật khẩu: đặt bằng `make demo-users` (chạy sau `m
 ## Chạy test
 
 ```bash
-make test-backend               # test đơn vị API tệp, sự kiện (không cần Docker; make check cũng chạy)
-make test-sql                   # migration + rls.sql trên PostgreSQL trống, trước và sau seed (container tạm; CI job test-sql)
-make smoke                      # toàn bộ: nền tảng + bộ máy + gói thủ tục + quy trình Flowable + /workflow + /files + sự kiện
+make test-backend               # test đơn vị API tệp, sự kiện, trình xác minh kiểm toán (không cần Docker; make check cũng chạy)
+make test-sql                   # migration + db/tests/*.sql trên PostgreSQL trống, trước và sau seed (container tạm; CI job test-sql)
+make smoke                      # toàn bộ: nền tảng + bộ máy + gói thủ tục + quy trình Flowable + /workflow + /files + sự kiện + kiểm toán
 docker compose exec -T postgres psql -XqtA -U postgres -d commune < mot-cua/db/tests/rls.sql   # chỉ RLS
 ```
 
