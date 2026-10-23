@@ -24,7 +24,7 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.3.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **đang làm**, ghi tuần dự kiến
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.4.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **đang làm**, ghi tuần dự kiến
 
 | Trước | Sau |
 |---|---|

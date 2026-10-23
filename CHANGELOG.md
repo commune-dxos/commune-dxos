@@ -4,6 +4,48 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-23
+
+### Tính năng mới
+
+- **cong-cong-dan:** Khung cổng công dân React + danh mục thủ tục + đăng nhập Keycloak PKCE ([#52](https://github.com/commune-dxos/commune-dxos/issues/52)) ([#60](https://github.com/commune-dxos/commune-dxos/issues/60))
+    - mot-cua/web-cong-dan/: React 19 + Vite 7 + TypeScript + Tailwind 4 + thành phần theo mẫu shadcn/ui, phiên bản ghim, lockfile
+    - Trang chủ liệt kê thủ tục công khai từ GET /public/thu_tuc qua APISIX (mã, tên, lĩnh vực, thời hạn, lệ phí), tìm không dấu, nút Nộp hồ sơ dẫn tới trang tạm "sắp có"
+    - Đăng nhập công dân Authorization Code + PKCE S256 bằng client public mot_cua_web, không bí mật trong web; realm thêm post.logout.redirect.uris
+    - Chế độ dữ liệu giả (npm run dev:gia), test kiểm khớp thu-tuc/*/thu-tuc.yaml
+    - 19 test Vitest; make check kiểm web ghim phiên bản (scripts/check-web.py); make test-web; workflow CI web (không bắt buộc)
+    - DEPENDENCIES.md mục 2 giấy phép gói npm, NOTICE, trang MkDocs Cổng công dân
+    - Biểu tượng docs/images/logo/ (favicon, mark-64, apple-touch-icon) trong ô trắng ở đầu trang
+    - Màu chính xanh ngọc #0F766E, phụ chàm #4338CA, viền focus đỏ son #D9480F
+    - REUSE.toml khai public/ của web
+- **cong-cong-dan:** Nền giao diện shadcn/ui, phông Be Vietnam Pro, khối dùng chung ([#63](https://github.com/commune-dxos/commune-dxos/issues/63)) ([#65](https://github.com/commune-dxos/commune-dxos/issues/65))
+    - Theme shadcn/ui (biến CSS) theo bộ nhận diện: xanh ngọc #0F766E, chàm #4338CA cho liên kết và
+      vòng focus (7.9:1), đỏ son #D9480F chỉ cho cảnh báo và dấu tích, chữ #0B1220; bo góc 8px;
+      thang chữ không bậc nào dưới 16px.
+    - Phông Be Vietnam Pro (OFL-1.1) tự host qua @fontsource, chỉ bộ latin + vietnamese.
+    - 15 thành phần shadcn/ui lấy bằng shadcn CLI 4.22.1 (new-york-v4, MIT), chỉnh vùng bấm >= 44px;
+      thêm radix-ui 1.8.1 (MIT), lucide-react 1.61.0 (ISC).
+    - Khối thông báo dùng chung ThongBao (dựng trên Empty), khung nội dung Khung, đầu trang trắng một
+      hàng, dải Thử nghiệm, chân trang có logo ngang.
+    - Trang chủ áp kiểu mới: khối tìm thủ tục, danh mục dạng dòng Item, trạng thái tải/lỗi/không thấy
+      dùng ThongBao. Các màn khác và form nộp hồ sơ để cho #64.
+    - NOTICE, DEPENDENCIES.md, REUSE.toml, README cổng, ảnh trang chủ.
+- **cong-cong-dan:** Chi tiết thủ tục, form nộp hồ sơ theo mẫu GOV.UK nộp thật qua APISIX, màn lỗi ([#64](https://github.com/commune-dxos/commune-dxos/issues/64)) ([#66](https://github.com/commune-dxos/commune-dxos/issues/66))
+    - Chi tiết thủ tục /thu-tuc/:ma: các bước, thành phần hồ sơ (Bắt buộc / Nếu có) đọc từ JSON Schema
+      của gói (cột thu_tuc.json_schema qua /public), thẻ tóm tắt + nút Bắt đầu nộp.
+    - Danh mục: tên thủ tục là liên kết tới trang chi tiết, thêm giấy tờ cần có.
+    - Form nộp /nop-ho-so/:ma/:buoc? theo mẫu dịch vụ công GOV.UK (không chép mã): thanh bước, mỗi trang
+      một nhóm câu hỏi, tóm tắt lỗi đầu form nhận focus, Poka-yoke theo JSON Schema, Kiểm tra lại thông
+      tin, Đã nộp. Chưa đăng nhập: thẻ mời đăng nhập (bố cục block login-03).
+    - Nộp thật: POST /api/ho_so → POST /files/ho-so/{id}/tep từng tệp (ClamAV) → POST
+      /workflow/ho-so/{id}/khoi-tao; lỗi giữa chừng thì Thử lại tiếp từ chỗ dở, không tạo trùng hồ sơ.
+    - Màn đăng nhập lỗi, 404, lỗi tải thủ tục dùng khối thông báo chung.
+    - Test: lib/ho-so, thanh-phan, form đi hết các bước, thứ tự gọi API, thử lại sau lỗi.
+
+### Tài liệu
+
+- **logo:** Logo và bộ nhận diện dự án ([#61](https://github.com/commune-dxos/commune-dxos/issues/61)) ([#62](https://github.com/commune-dxos/commune-dxos/issues/62))
+
 ## [0.3.0] - 2026-10-22
 
 > **Giấy phép:** đây là bản đầu tiên phát hành theo GPL-3.0-or-later (D-010, [#47](https://github.com/commune-dxos/commune-dxos/issues/47)). Các bản v0.0.1–v0.2.0 vẫn theo Apache-2.0.
@@ -210,7 +252,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.0.1...v0.1.0
