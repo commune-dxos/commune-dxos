@@ -322,7 +322,7 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 
 | Route | Phương thức | Xác thực | Đích | Giới hạn / ghi chú |
 |---|---|---|---|---|
-| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì bộ máy `GRANT … TO anon` (gồm danh mục thủ tục nạp từ gói) |
+| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì bộ máy `GRANT … TO anon` (gồm danh mục thủ tục nạp từ gói, RPC tra cứu hồ sơ theo mã + 4 số cuối số điện thoại §4.12) |
 | `/api/*` | mọi | JWT Keycloak (APISIX + PostgREST kiểm) | PostgREST, `SET ROLE` theo `resource_access.dxos_api.roles[0]` → RLS | 600 req/phút/IP |
 | `/workflow/*` | mọi (backend chỉ nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000` (API một cửa), bỏ tiền tố `/workflow` | 300 req/phút/IP; endpoint: `mot-cua/README.md` |
 | `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
@@ -868,6 +868,27 @@ API (qua APISIX `/files`, token Keycloak):
 | `GET /api/van_ban?chieu=eq.den` | cán bộ, lãnh đạo, văn thư | danh sách sổ (PostgREST) |
 
 Loại văn bản đi và chữ viết tắt trong ký hiệu: Thông báo TB, Quyết định QĐ, Kế hoạch KH, Báo cáo BC, Tờ trình TTr, Giấy mời GM, Công văn CV, Biên bản BB (ví dụ `12/TB-UBND`). Kiểm bằng `mot-cua/db/tests/van_ban.sql`, `mot-cua/backend/tests/test_van_ban.py`, `so-van-ban.test.tsx` và smoke 4n (`mot-cua/tests/smoke-van-ban.sh`).
+
+### 4.12 Tra cứu tiến độ hồ sơ (#54)
+
+Người dân hỏi "xong chưa" theo hai cách, đều qua APISIX:
+
+| Cách | Đường gọi | Thấy gì |
+|---|---|---|
+| **Không đăng nhập** (trang `/tra-cuu`): mã hồ sơ trên biên nhận + 4 số cuối số điện thoại đã khai khi nộp | `GET /public/rpc/tra_cuu_ho_so?p_ma=&p_so_cuoi=` (role `anon`, 60 request/phút/IP), RPC `SECURITY DEFINER` của migration 012 | thủ tục, trạng thái, ngày nộp, hạn, ngày có kết quả, các mốc chuyển trạng thái. Không họ tên, số điện thoại, lý do, tệp hay giấy tờ |
+| **Đăng nhập** (trang `/ho-so`, `/ho-so/{id}`) | `GET /api/ho_so`, `GET /api/lich_su_trang_thai` (RLS: chỉ hồ sơ của mình), `GET /workflow/ho-so/{id}/tien-do`, `GET /files/ho-so/{id}/tep`, `POST /files/ho-so/{id}/giay-to/{loai}` | như trên, thêm lý do bổ sung/từ chối, bước Flowable đang mở và đã xong, giấy tờ đã nộp, biên nhận và thông báo kết quả có ký số (§4.7) |
+| **Nộp bổ sung** (hồ sơ `cho_bo_sung`, ví dụ KS01) | `POST /files/ho-so/{id}/tep` (ClamAV) → `GET /workflow/tasks` (bước `bo_sung` giao cho người nộp) → `POST /workflow/tasks/{id}/complete` | `mot-cua-api` kiểm lại đủ thành phần (Poka-yoke, #59) rồi trả hồ sơ về bước tiếp nhận, trạng thái `dang_xu_ly` (§4.9 bước 4b) |
+
+| Quyết định | Lý do |
+|---|---|
+| Xác thực nhẹ bằng **4 số cuối số điện thoại**, không bằng CCCD | CSDL không lưu số CCCD (mục Dữ liệu cá nhân của `mot-cua/README.md`); số điện thoại là thông tin người nộp đã khai. Mã hồ sơ đánh số tăng dần nên đoán được: cần thêm một yếu tố chỉ người nộp biết |
+| Sai mã hay sai số đều trả `null` | Không dò được mã nào tồn tại. Kết hợp giới hạn 60 request/phút/IP của `/public`, dò 4 số của một mã mất cỡ 3 giờ cho một IP |
+| Kết quả công khai **không có dữ liệu cá nhân** | Ai cầm biên nhận (người thân, người được nhờ đi nộp) xem được tiến độ; lý do bổ sung/từ chối có thể nhắc tới người hay giấy tờ nên chỉ hiện khi đăng nhập |
+| Hồ sơ không khai số điện thoại thì không tra cứu công khai được | Không có yếu tố thứ hai; người nộp đăng nhập để xem |
+| Các bước người dân thấy (Nộp → Tiếp nhận → Thẩm định → Phê duyệt → Trả kết quả) dựng từ `ho_so.trang_thai` và `lich_su_trang_thai`, không từ BPMN | Trạng thái đã đi theo bước Flowable qua ánh xạ của gói (#73), nên một bảng bước dùng cho mọi thủ tục; tên bước Flowable thật vẫn hiện ở trang chi tiết khi đăng nhập. RPC chỉ đọc (`STABLE`), chạy được qua GET của `/public` mà không sửa route của nền tảng |
+| Truy vấn mang mã và 4 số cuối trên URL (GET) | `/public` của nền tảng chỉ nhận GET; nhật ký truy cập của APISIX chỉ thấy 4 chữ số, không thấy số điện thoại đầy đủ |
+
+Kiểm bằng `mot-cua/db/tests/tra_cuu.sql`, Vitest (`src/lib/tien-do.test.ts`, `src/lib/tra-cuu.test.ts`, `src/pages/ho-so-cua-toi.test.tsx`) và smoke 4o (`mot-cua/tests/smoke-tra-cuu.sh`), thêm một kiểm tra lúc hồ sơ đang chờ bổ sung trong `smoke-can-bo.sh`.
 
 ## 5. MFA cho cán bộ
 

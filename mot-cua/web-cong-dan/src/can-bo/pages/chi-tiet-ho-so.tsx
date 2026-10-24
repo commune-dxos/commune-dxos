@@ -19,11 +19,11 @@ import { ngay } from "@/lib/dinh-dang";
 import { tenTrangThai } from "@/lib/trang-thai";
 import { cn } from "@/lib/utils";
 import { FormXuLy } from "../components/form-xu-ly";
-import { TheHan } from "../components/the-han";
+import { TheHan } from "@/components/the-han";
 import { useDuLieuCanBo } from "../du-lieu";
 import type { HoSoCanBo, KetQuaHoanThanh, LinkTep, TepHoSo, ThanhPhanYeuCau, TienDo } from "../lib/api";
 import { truongCuaBuoc } from "../lib/form-buoc";
-import { danhGiaHan, hanLuc, ngayGio } from "../lib/han";
+import { danhGiaHan, hanLuc, ngayGio } from "@/lib/han";
 
 interface DuLieuHoSo {
   hoSo: HoSoCanBo | null;

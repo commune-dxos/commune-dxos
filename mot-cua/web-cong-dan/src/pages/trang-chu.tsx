@@ -3,6 +3,7 @@
 // Trang chủ cổng công dân: khối tìm thủ tục, danh mục thủ tục công khai, các bước làm thủ tục.
 import { RotateCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { TheThuTuc } from "@/components/the-thu-tuc";
 import { ThongBao } from "@/components/thong-bao";
 import { Button } from "@/components/ui/button";
@@ -17,10 +18,10 @@ type TrangThai =
   | { loai: "loi"; thongDiep: string }
   | { loai: "xong"; danhSach: ThuTuc[] };
 
-const CAC_BUOC = [
+const CAC_BUOC: { so: number; ten: string; moTa: string; lienKet?: string }[] = [
   { so: 1, ten: "Chọn thủ tục", moTa: "Xem thời hạn, lệ phí và giấy tờ cần có." },
   { so: 2, ten: "Nộp hồ sơ trực tuyến", moTa: "Điền thông tin, tải ảnh hoặc bản quét giấy tờ." },
-  { so: 3, ten: "Theo dõi tiến độ", moTa: "Biết hồ sơ đang ở bước nào, khi nào có kết quả." },
+  { so: 3, ten: "Theo dõi tiến độ", moTa: "Biết hồ sơ đang ở bước nào, khi nào có kết quả.", lienKet: "/tra-cuu" },
 ];
 
 export function TrangChu({ taiDanhMuc = layDanhMucThuTuc }: { taiDanhMuc?: () => Promise<ThuTuc[]> }) {
@@ -170,6 +171,11 @@ export function TrangChu({ taiDanhMuc = layDanhMucThuTuc }: { taiDanhMuc?: () =>
                 <span className="flex flex-col gap-1">
                   <strong className="text-lg">{b.ten}</strong>
                   <span className="text-muted-foreground">{b.moTa}</span>
+                  {b.lienKet && (
+                    <Link to={b.lienKet} className="w-fit rounded-sm text-link underline underline-offset-4">
+                      Tra cứu hồ sơ bằng mã
+                    </Link>
+                  )}
                 </span>
               </li>
             ))}

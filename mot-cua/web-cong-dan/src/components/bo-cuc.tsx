@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Khung trang: đầu trang trắng một hàng (biểu tượng, tên cổng, đăng nhập/đăng xuất), dải "bản thử
 // nghiệm", nội dung, chân trang. Bố cục tham khảo shadcn-admin (satnaing, MIT); không chép mã.
-import { LogIn, LogOut, UserRound } from "lucide-react";
-import { Link, Outlet } from "react-router";
+import { FolderOpen, LogIn, LogOut, Search, UserRound } from "lucide-react";
+import { Link, NavLink, Outlet } from "react-router";
 import { tenHienThi, useXacThuc } from "@/auth/xac-thuc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,29 @@ function NutTaiKhoan() {
         Đăng xuất
       </Button>
     </div>
+  );
+}
+
+/** Liên kết đầu trang: tra cứu không cần đăng nhập; "Hồ sơ của tôi" khi đã đăng nhập (#54). */
+function LienKetHoSo() {
+  const { nguoiDung } = useXacThuc();
+  const lop = ({ isActive }: { isActive: boolean }) =>
+    `flex min-h-11 items-center gap-2 rounded-md px-3 font-semibold no-underline ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`;
+  return (
+    <>
+      <NavLink to="/tra-cuu" className={lop}>
+        <Search aria-hidden="true" className="size-5" />
+        <span className="hidden sm:inline">Tra cứu hồ sơ</span>
+        <span className="sr-only sm:hidden">Tra cứu hồ sơ</span>
+      </NavLink>
+      {nguoiDung && (
+        <NavLink to="/ho-so" className={lop}>
+          <FolderOpen aria-hidden="true" className="size-5" />
+          <span className="hidden sm:inline">Hồ sơ của tôi</span>
+          <span className="sr-only sm:hidden">Hồ sơ của tôi</span>
+        </NavLink>
+      )}
+    </>
   );
 }
 
@@ -68,7 +91,8 @@ export function BoCuc() {
               <span className="hidden text-sm text-muted-foreground sm:block">Commune DX-OS · Chính quyền số Cấp xã</span>
             </span>
           </Link>
-          <nav aria-label="Tài khoản" className="flex shrink-0 items-center gap-2">
+          <nav aria-label="Tài khoản" className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <LienKetHoSo />
             <NutTaiKhoan />
           </nav>
         </div>

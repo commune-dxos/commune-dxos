@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Trang "Đã nộp" (mẫu confirmation page của GOV.UK): khung xanh có mã hồ sơ do CSDL cấp, rồi việc
 // tiếp theo. Chỉ hiện sau khi hồ sơ đã tạo, tệp đã tải và quy trình đã khởi tạo. Biên nhận PDF có ký
-// số của xã (#77) tải ngay tại đây.
+// số của xã (#77) tải ngay tại đây; nút theo dõi tiến độ mở trang Hồ sơ của tôi (#54).
 import { Check } from "lucide-react";
 import { Link } from "react-router";
 import { NutGiayTo } from "@/components/nut-giay-to";
@@ -64,6 +64,9 @@ export function DaNop({
         </ol>
       </section>
       <div className="flex flex-wrap gap-3">
+        <Link to={`/ho-so/${hoSo.id}`} className={buttonVariants()}>
+          Theo dõi tiến độ hồ sơ
+        </Link>
         <Link to="/" className={buttonVariants({ variant: "outline" })}>
           Về trang chủ
         </Link>

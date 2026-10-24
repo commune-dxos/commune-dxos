@@ -7,9 +7,11 @@ import { Route, Routes } from "react-router";
 import { DUONG_DAN_XONG } from "@/auth/oidc";
 import { BoCuc } from "@/components/bo-cuc";
 import { ChiTietThuTuc } from "@/pages/chi-tiet-thu-tuc";
+import { ChiTietHoSoCongDan, HoSoCuaToiTrang } from "@/pages/ho-so-cua-toi";
 import { DangNhapXong } from "@/pages/dang-nhap-xong";
 import { KhongThay } from "@/pages/khong-thay";
 import { NopHoSo } from "@/pages/nop-ho-so";
+import { TraCuu } from "@/pages/tra-cuu";
 import { TrangChu } from "@/pages/trang-chu";
 
 const CongCanBo = lazy(() => import("@/can-bo/cong-can-bo"));
@@ -35,6 +37,9 @@ export function App() {
         <Route index element={<TrangChu />} />
         <Route path="thu-tuc/:ma" element={<ChiTietThuTuc />} />
         <Route path="nop-ho-so/:ma/:buoc?" element={<NopHoSo />} />
+        <Route path="tra-cuu" element={<TraCuu />} />
+        <Route path="ho-so" element={<HoSoCuaToiTrang />} />
+        <Route path="ho-so/:id" element={<ChiTietHoSoCongDan />} />
         <Route path={DUONG_DAN_XONG.slice(1)} element={<DangNhapXong />} />
         <Route path="*" element={<KhongThay />} />
       </Route>

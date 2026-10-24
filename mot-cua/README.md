@@ -15,9 +15,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/008_giay_to_ky_so.sql` | giấy tờ có ký số (#77): bảng `giay_to_ky` (biên nhận, kết quả; chỉ `dich_vu_tep` ghi, không sửa), trigger kiểm toán `giay_to.ky` kèm SHA-256; xem [Giấy tờ có ký số](#giấy-tờ-có-ký-số-77) |
 | `db/migrations/009_kho_du_lieu.sql` | kho dữ liệu (#80): role `dich_vu_bao_cao` (chỉ cột không cá nhân của hồ sơ đã đóng), schema `bao_cao` (bảng mart cho Superset), RPC `nap_bao_cao`; xem [Kho dữ liệu lịch sử](#kho-dữ-liệu-lịch-sử-80) |
 | `db/migrations/010_doc_bao_cao.sql` | quyền đọc báo cáo (#82): role `bao_cao_doc` (lõi tạo đăng nhập) chỉ đọc schema `bao_cao`, không đọc `mot_cua` |
+| `db/migrations/012_tra_cuu_ho_so.sql` | tra cứu tiến độ không đăng nhập (#54): RPC `tra_cuu_ho_so(p_ma, p_so_cuoi)` cho `anon`, `cong_dan`, chỉ trả trạng thái và các mốc; xem [Tra cứu tiến độ](#tra-cứu-tiến-độ-hồ-sơ-54) |
 | `db/migrations/011_so_van_ban.sql` | sổ văn bản đến/đi (#78): role `van_thu`, bảng `van_ban` (bất biến sau khi vào sổ hoặc ký), bộ đếm `so_van_ban_dem` cấp số theo năm không trùng, RPC `cap_so_van_ban_di`, trigger kiểm toán `van_ban.*`; xem [Sổ văn bản](#sổ-văn-bản-đếnđi-78) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), chạy trong một transaction rồi ROLLBACK |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
@@ -194,6 +195,7 @@ Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản, không thấy hồ 
 | `nhat_ky_tep` | — | — | — | đọc (không ai sửa/xóa, kể cả superuser) |
 | `giay_to_ky` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ `dich_vu_tep` ghi qua `/files`; không ai sửa, kể cả superuser) |
 | RPC `nap_bao_cao`, schema `bao_cao` | — | — | — | — (chỉ tài khoản dịch vụ `dich_vu_bao_cao` gọi RPC; Superset đọc `bao_cao` bằng role đăng nhập `bao_cao_doc`, lãnh đạo xem qua dashboard `/bao-cao`) |
+| RPC `tra_cuu_ho_so` (#54) | gọi: mã + 4 số cuối số điện thoại → trạng thái, mốc (không dữ liệu cá nhân) | gọi được như anon | — | — |
 | `van_ban` (sổ văn bản đến/đi) | — | — | đọc | đọc; ký văn bản đi qua `/files` (văn thư: đọc, vào sổ đến và soạn dự thảo đi qua `/files`; chỉ `dich_vu_tep` ghi; không ai sửa sau khi vào sổ/ký, kể cả superuser; chỉ xóa được dự thảo) |
 | `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
@@ -206,7 +208,7 @@ Web (cổng công dân, cổng cán bộ) chỉ gọi APISIX `http://localhost:$
 
 | Tiền tố | Dùng cho | Ví dụ |
 |---|---|---|
-| `/public/` (không token, 60 req/phút/IP) | danh mục công khai cho cổng công dân | `GET /public/thu_tuc?select=id,ma,ten,thanh_phan_yeu_cau(ma,ten,bat_buoc)`, `GET /public/rpc/json_schema_thu_tuc?ma=KS01`, `GET /public/linh_vuc` |
+| `/public/` (không token, 60 req/phút/IP) | danh mục công khai cho cổng công dân; tra cứu tiến độ theo mã hồ sơ (#54) | `GET /public/thu_tuc?select=id,ma,ten,thanh_phan_yeu_cau(ma,ten,bat_buoc)`, `GET /public/rpc/json_schema_thu_tuc?ma=KS01`, `GET /public/linh_vuc`, `GET /public/rpc/tra_cuu_ho_so?p_ma=HS20261024-000123&p_so_cuoi=1234` |
 | `/api/` (token) | đọc/ghi bảng `mot_cua` theo cú pháp PostgREST, quyền theo bảng ở mục [Quyền theo vai trò](#quyền-theo-vai-trò) | `GET /api/ho_so?select=*,thu_tuc:thu_tuc_id(ma,ten)&order=ngay_nhan.desc`, `PATCH /api/ho_so?id=eq.<id>` (cán bộ đổi trạng thái), `PATCH /api/thanh_phan_ho_so?id=eq.<id>` (cán bộ kiểm tra giấy tờ) |
 | `/workflow/` (token) | quy trình Flowable của hồ sơ, qua `backend/main.py` | bảng dưới |
 | `/files/` (token, body ≤ 10 MiB) | tải lên, liệt kê, cấp link xem tệp hồ sơ, qua `backend/main.py` | [bảng dưới](#files--tệp-hồ-sơ) |
@@ -444,6 +446,20 @@ curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/pdf' --data
 
 Cổng công dân hiện nút tải biên nhận ở trang "Đã nộp"; cổng cán bộ có thẻ "Giấy tờ có ký số" trong chi tiết hồ sơ (biên nhận, và kết quả khi hồ sơ hoàn tất).
 
+## Tra cứu tiến độ hồ sơ (#54)
+
+Thiết kế và lý do: `docs/architecture.md` §4.12. Không đăng nhập, cổng công dân `/tra-cuu` gọi:
+
+```bash
+curl 'http://localhost:9080/public/rpc/tra_cuu_ho_so?p_ma=HS20261024-000123&p_so_cuoi=1234'
+# → {"ma_ho_so": "HS20261024-000123", "thu_tuc": {"ma": "KS01", "ten": "Đăng ký khai sinh"}, "trang_thai": "cho_bo_sung",
+#    "ngay_nhan": "…", "han_xu_ly": "2026-10-27", "ngay_hoan_tat": null,
+#    "lich_su": [{"trang_thai": "moi", "luc": "…"}, {"trang_thai": "cho_bo_sung", "luc": "…"}]}
+# Sai mã hoặc sai 4 số → null (200). Hồ sơ không khai số điện thoại → null: đăng nhập để xem.
+```
+
+Đăng nhập, trang `/ho-so` (Hồ sơ của tôi) đọc `/api/ho_so` và `/api/lich_su_trang_thai` (RLS: chỉ hồ sơ của mình, mốc kèm lý do), `/workflow/ho-so/{id}/tien-do`, `/files/ho-so/{id}/tep`, tải biên nhận và kết quả có ký số; hồ sơ chờ bổ sung thì tải thêm giấy tờ và nộp lại bằng `POST /workflow/tasks/{id}/complete` trên bước `bo_sung`.
+
 ## Sổ văn bản đến/đi (#78)
 
 Thiết kế và lý do: `docs/architecture.md` §4.11. Văn thư (`van_thu`) vào sổ văn bản đến (tệp quét qua ClamAV, lưu Garage `van-ban/den/<năm>/…`, PDF có chữ ký số thì xác minh và lưu kết quả) và soạn dự thảo văn bản đi; lãnh đạo ký ban hành: cấp số đi, sinh PDF từ [`mau-giay-to/van_ban_di.html`](mau-giay-to/van_ban_di.html) bằng Gotenberg, ký PAdES bằng chứng thư của xã như giấy tờ hồ sơ. Số đến và số đi đánh riêng, bắt đầu lại từ 1 mỗi năm (giờ Việt Nam), không trùng khi nhiều người vào sổ cùng lúc. Văn bản đã vào sổ hoặc đã ký không sửa được; dự thảo xóa được.
@@ -527,4 +543,4 @@ docker compose exec -T postgres psql -XqtA -U postgres -d commune < mot-cua/db/t
 
 Bí mật của bộ máy (khóa S3, secret client `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, thông tin kết nối RabbitMQ, mật khẩu `rest-admin` của Flowable) đọc từ OpenBao của lõi bằng AppRole `tang2` (`backend/bimat.py`, chỉ giữ trong bộ nhớ), xem `docs/architecture.md` §4.4.
 
-Cổng cán bộ (#55) dùng `GET /workflow/tasks`, `GET /api/ho_so?id=in.(…)` (kèm `thu_tuc.bien_theo_buoc` để sinh form từng bước), `/files`, `GET /workflow/ho-so/{id}/tien-do` và `POST /workflow/tasks/{id}/complete`; luồng: [`docs/cong-can-bo.md`](../docs/cong-can-bo.md). Sắp tới: tra cứu tiến độ trên cổng công dân (#54), thông báo sắp trễ hạn tới cán bộ qua RabbitMQ (#56).
+Cổng cán bộ (#55) dùng `GET /workflow/tasks`, `GET /api/ho_so?id=in.(…)` (kèm `thu_tuc.bien_theo_buoc` để sinh form từng bước), `/files`, `GET /workflow/ho-so/{id}/tien-do` và `POST /workflow/tasks/{id}/complete`; luồng: [`docs/cong-can-bo.md`](../docs/cong-can-bo.md). Cổng công dân tra cứu tiến độ (#54): mục [Tra cứu tiến độ hồ sơ](#tra-cứu-tiến-độ-hồ-sơ-54). Sắp tới: thông báo sắp trễ hạn tới cán bộ qua RabbitMQ (#56).

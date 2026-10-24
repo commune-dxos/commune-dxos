@@ -32,6 +32,8 @@
 #      khớp mart, cán bộ bị chặn: tests/smoke-superset.sh. Chỉ khi Superset chạy (make up-bi), không thì BỎ QUA.
 #   4n. Sổ văn bản (#78): văn thư vào sổ văn bản đến (ClamAV, xác minh chữ ký), soạn văn bản đi; lãnh đạo ký
 #      ban hành (số đi, PDF ký PAdES xác minh hợp lệ); quyền theo vai: tests/smoke-van-ban.sh.
+#   4o. Tra cứu tiến độ (#54): không đăng nhập bằng mã + 4 số cuối số điện thoại (không lộ dữ liệu cá nhân);
+#      Hồ sơ của tôi: danh sách, mốc kèm lý do, tiến độ, giấy tờ ký số, RLS giữa hai công dân: tests/smoke-tra-cuu.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -444,6 +446,10 @@ fi
 # --- 4n. Sổ văn bản đến/đi có ký số (#78) ------------------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-van-ban.sh
 . "mot-cua/tests/smoke-van-ban.sh"
+
+# --- 4o. Tra cứu tiến độ hồ sơ: công khai theo mã + 4 số cuối, Hồ sơ của tôi (#54) -----------------------
+# shellcheck source=mot-cua/tests/smoke-tra-cuu.sh
+. "mot-cua/tests/smoke-tra-cuu.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
