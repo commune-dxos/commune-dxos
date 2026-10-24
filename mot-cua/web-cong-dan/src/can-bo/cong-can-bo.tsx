@@ -16,6 +16,7 @@ import { ChiTietHoSo } from "./pages/chi-tiet-ho-so";
 import { ChuaDangNhap, DangNhapXongCanBo, KhongCoQuyen, KhongThayTrang } from "./pages/cong-vao";
 import { HopViec } from "./pages/hop-viec";
 import { SoVanBan } from "./pages/so-van-ban";
+import { HopThongBao } from "./pages/thong-bao";
 
 function CongVao() {
   const { nguoiDung, dangTai } = useXacThuc();
@@ -39,6 +40,7 @@ function CongVao() {
           <Route index element={vaiTro === "van_thu" ? <Navigate to="van-ban" replace /> : <HopViec />} />
           <Route path="ho-so/:id" element={vaiTro === "van_thu" ? <Navigate to="../van-ban" replace /> : <ChiTietHoSo />} />
           <Route path="van-ban" element={<SoVanBan />} />
+          <Route path="thong-bao" element={vaiTro === "van_thu" ? <Navigate to="../van-ban" replace /> : <HopThongBao />} />
           <Route path="*" element={<KhongThayTrang />} />
         </Route>
       </Routes>
