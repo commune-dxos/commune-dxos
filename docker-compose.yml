@@ -540,6 +540,7 @@ services:
       DXOS_SU_KIEN_SAP_TRE_NGAY: ${DXOS_SU_KIEN_SAP_TRE_NGAY:-1}
       DXOS_DOI_SOAT_CHO_GIAY: ${DXOS_DOI_SOAT_CHO_GIAY:-60}
       DXOS_DOI_SOAT_TOI_DA: ${DXOS_DOI_SOAT_TOI_DA:-500}
+      DXOS_THONG_BAO_KENH: ${DXOS_THONG_BAO_KENH-email,sms}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./mot-cua:/mot-cua:ro

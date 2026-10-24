@@ -1,15 +1,21 @@
 {
   "exchanges": [
     {"name": "mot_cua.su_kien", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
-    {"name": "mot_cua.su_kien.loi", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}
+    {"name": "mot_cua.su_kien.loi", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
+    {"name": "mot_cua.thong_bao.loi", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}
   ],
   "queues": [
     {"name": "mot_cua.nhat_ky", "durable": true, "auto_delete": false,
      "arguments": {"x-queue-type": "quorum", "x-dead-letter-exchange": "mot_cua.su_kien.loi", "x-delivery-limit": 5}},
-    {"name": "mot_cua.nhat_ky.loi", "durable": true, "auto_delete": false, "arguments": {"x-queue-type": "classic"}}
+    {"name": "mot_cua.nhat_ky.loi", "durable": true, "auto_delete": false, "arguments": {"x-queue-type": "classic"}},
+    {"name": "mot_cua.thong_bao", "durable": true, "auto_delete": false,
+     "arguments": {"x-queue-type": "quorum", "x-dead-letter-exchange": "mot_cua.thong_bao.loi", "x-delivery-limit": 5}},
+    {"name": "mot_cua.thong_bao.loi", "durable": true, "auto_delete": false, "arguments": {"x-queue-type": "classic"}}
   ],
   "bindings": [
     {"source": "mot_cua.su_kien", "destination": "mot_cua.nhat_ky", "destination_type": "queue", "routing_key": "ho_so.#", "arguments": {}},
-    {"source": "mot_cua.su_kien.loi", "destination": "mot_cua.nhat_ky.loi", "destination_type": "queue", "routing_key": "", "arguments": {}}
+    {"source": "mot_cua.su_kien.loi", "destination": "mot_cua.nhat_ky.loi", "destination_type": "queue", "routing_key": "", "arguments": {}},
+    {"source": "mot_cua.su_kien", "destination": "mot_cua.thong_bao", "destination_type": "queue", "routing_key": "ho_so.sap_tre_han", "arguments": {}},
+    {"source": "mot_cua.thong_bao.loi", "destination": "mot_cua.thong_bao.loi", "destination_type": "queue", "routing_key": "", "arguments": {}}
   ]
 }
