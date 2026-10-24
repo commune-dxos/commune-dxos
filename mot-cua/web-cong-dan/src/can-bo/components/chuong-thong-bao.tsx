@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { GOC_CAN_BO } from "@/auth/oidc";
 import { useDuLieuCanBo } from "../du-lieu";
-import { TheHan } from "./the-han";
+import { TheHan } from "@/components/the-han";
 
 const TOI_DA = 6;
 

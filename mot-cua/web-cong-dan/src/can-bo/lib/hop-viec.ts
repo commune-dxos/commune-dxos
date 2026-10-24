@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Hộp việc: ghép task Flowable với hồ sơ (đọc qua RLS), đánh giá hạn, lọc và sắp xếp. Hồ sơ quá hạn
 // và sắp trễ (≤ 1 ngày) lên đầu.
-import { danhGiaHan, hanLuc, soSanhHan, type DanhGiaHan, type MucHan } from "./han";
+import { danhGiaHan, hanLuc, soSanhHan, type DanhGiaHan, type MucHan } from "@/lib/han";
 import type { HoSoCanBo, Task } from "./api";
 
 export interface Viec {

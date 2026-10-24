@@ -23,7 +23,11 @@ server {
     location = / {
         rewrite ^ /index.html last;
     }
-    location ~ ^/(thu-tuc|nop-ho-so|dang-nhap)/ {
+    location ~ ^/(thu-tuc|nop-ho-so|dang-nhap|ho-so)/ {
+        rewrite ^ /index.html last;
+    }
+    # Tra cứu (#54), danh sách hồ sơ của tôi: không có đường dẫn con.
+    location ~ ^/(tra-cuu|ho-so)$ {
         rewrite ^ /index.html last;
     }
     # Cổng cán bộ: /can-bo, /can-bo/ho-so/{id}, /can-bo/dang-nhap/xong (APISIX route mot-cua-web-can-bo).
