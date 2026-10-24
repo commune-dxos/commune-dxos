@@ -36,7 +36,7 @@ Cách dùng tệp này:
 ## Tuần 3 · 29/10–04/11 · Luồng nghiệp vụ chính
 - [ ] V1 · D-009 hướng 3 – Milestones `Tuần 1` … `Tuần 7`, nhãn thành phần tự gắn theo tệp (`gan-nhan`), mẫu issue "Thủ tục mới"/"Việc trong tuần", Project "Commune DX-OS – Lộ trình", `docs/quy-trinh-lam-viec.md` (#34, PR chờ duyệt)
 - [x] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable – 2 lớp: cổng công dân (#53) + `mot-cua-api` 422 (#59, PR chờ duyệt)
-- [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái – khung + danh mục + đăng nhập (#52, PR chờ duyệt); nộp hồ sơ #53, tra cứu #54
+- [x] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái – khung + danh mục + đăng nhập (#52); nộp hồ sơ #53; tra cứu tiến độ không đăng nhập + Hồ sơ của tôi + nộp bổ sung (#54, PR chờ duyệt)
 - [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác
 - [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `mot-cua/`): sự kiện `ho_so.sap_tre_han` và `mot-cua-worker` đã có (#9); còn consumer thông báo cho cán bộ/công dân
 - [x] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả) (#82, v0.5.0)
