@@ -15,6 +15,10 @@
 # | /files/*      | JWT Keycloak    | mot-cua-api (API tệp, #7)    | 120 req/phút/IP,    |
 # |               |                 |                              | body ≤ 10 MiB       |
 # | /files/s3/*   | chữ ký trong URL| Garage S3, chỉ GET/HEAD      | 120 req/phút/IP     |
+# | /can-bo,      | không (trang)   | mot-cua-web (cổng cán bộ),   | 300 req/phút/IP     |
+# | /can-bo/*     |                 | chỉ GET/HEAD, noindex, #55   |                     |
+# | /* (còn lại)  | không           | mot-cua-web (cổng công dân), | 600 req/phút/IP     |
+# |               |                 | chỉ GET/HEAD, #57            |                     |
 # Đường dẫn API quản trị Flowable (repository, management, identity…) bị chặn 403 ở
 # gateway, kể cả khi sau này Tầng 2 chọn chuyển tiếp thẳng tới Flowable.
 
@@ -41,6 +45,18 @@ upstreams:
     type: roundrobin
     nodes:
       "mot-cua-api:8000": 1
+
+  # Web Tầng 2: bản build tĩnh của cổng công dân (nginx, #57).
+  - id: mot-cua-web
+    type: roundrobin
+    nodes:
+      "mot-cua-web:8080": 1
+
+  # Superset (profile bi, #82): dashboard báo cáo, tự xử lý đăng nhập (SSO Keycloak).
+  - id: superset
+    type: roundrobin
+    nodes:
+      "superset:8088": 1
 
   # API S3 của Garage (object storage của lõi). Chỉ dùng cho link GET đã ký sẵn.
   - id: garage-s3
@@ -202,4 +218,70 @@ routes:
         rejected_code: 429
         policy: local
     upstream_id: mot-cua-api
+
+  # Cổng cán bộ (web Tầng 2, #55): cùng dịch vụ mot-cua-web với cổng công dân (SPA fallback, CSP và
+  # header bảo mật do nginx đặt), route riêng để giới hạn chặt hơn và báo máy tìm kiếm không lập chỉ
+  # mục. Trang tĩnh không cần token: dữ liệu đi qua /api, /workflow, /files bằng token của cán bộ
+  # (client mot_cua_can_bo, mật khẩu + OTP).
+  - id: mot-cua-web-can-bo
+    uris: [/can-bo, /can-bo/*]
+    methods: [GET, HEAD]
+    priority: -5
+    plugins:
+      limit-count:
+        count: 300
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      proxy-rewrite:
+        headers:
+          remove: [Authorization, Cookie]
+      response-rewrite:
+        headers:
+          set:
+            X-Robots-Tag: "noindex, nofollow"
+    upstream_id: mot-cua-web
+
+  # Dashboard Superset (#82, profile bi): Superset chạy dưới tiền tố /bao-cao (SUPERSET_APP_ROOT) nên
+  # không cắt tiền tố. Không kiểm JWT ở gateway: Superset tự đăng nhập bằng SSO Keycloak (phiên cookie)
+  # và chỉ vai được ánh xạ mới xem được dashboard. Chưa chạy make up-bi → 502/503.
+  - id: superset
+    uris: [/bao-cao, /bao-cao/*]
+    priority: -4
+    plugins:
+      limit-count:
+        count: 600
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      response-rewrite:
+        headers:
+          set:
+            X-Robots-Tag: "noindex, nofollow"
+    upstream_id: superset
+
+  # Cổng công dân (web Tầng 2, #57): mọi đường dẫn không thuộc route nào ở trên, ưu tiên thấp nhất
+  # nên không che /public, /api, /workflow, /files. Không cần token (trang tĩnh; dữ liệu vẫn đi qua
+  # các route trên). Chỉ GET/HEAD. nginx của mot-cua-web trả index.html cho route SPA (200) và
+  # đường dẫn lạ (404), đặt CSP và header bảo mật; header Authorization/Cookie không chuyển tiếp.
+  - id: mot-cua-web
+    uri: /*
+    methods: [GET, HEAD]
+    priority: -10
+    plugins:
+      limit-count:
+        count: 600
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+      proxy-rewrite:
+        headers:
+          remove: [Authorization, Cookie]
+    upstream_id: mot-cua-web
 #END

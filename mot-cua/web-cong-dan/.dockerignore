@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Build context của Dockerfile: chỉ mã nguồn, lockfile và cấu hình; không đưa bản build, gói đã
+# cài hay cấu hình riêng trên máy (.env.local) vào image.
+node_modules
+dist
+coverage
+.impeccable
+.env.local
+.env.*.local
+*.log

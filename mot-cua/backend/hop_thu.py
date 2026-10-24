@@ -3,7 +3,9 @@
 """Hộp thư đi sự kiện (transactional outbox, #9) và nhật ký sự kiện qua PostgREST, bằng tài
 khoản dịch vụ Keycloak `mot_cua_su_kien` (role PostgreSQL dich_vu_su_kien,
 db/migrations/004_su_kien.sql). Dùng chung cho mot-cua-api (ghi sự kiện sau khi gọi Flowable
-thành công) và mot-cua-worker (quét sắp trễ hạn, phát lên RabbitMQ, consumer mẫu).
+thành công) và mot-cua-worker (quét sắp trễ hạn, đối soát trạng thái, phát lên RabbitMQ, consumer
+mẫu). Đổi trạng thái hồ sơ + lịch sử + sự kiện cùng một transaction: dong_bo() (RPC
+dong_bo_trang_thai, db/migrations/006_trang_thai_theo_quy_trinh.sql, #73).
 
 Vì sao outbox: ghi sự kiện vào PostgreSQL rồi mot-cua-worker mới phát lên RabbitMQ, nên request
 của người dùng không phụ thuộc broker (RabbitMQ dừng → sự kiện chờ trong bảng, phát khi broker
@@ -123,6 +125,21 @@ def ghi(loai, ho_so_id, du_lieu=None, khoa_chong_trung=None, ho_so=None):
         return None
     log.info("sự kiện %s %s (%s) → hộp thư đi", ev["loai"], ev["maHoSo"], ev["id"])
     return ev
+
+
+def dong_bo(ho_so_id, trang_thai_moi, cac_su_kien, ly_do=None, buoc=None, nguon="quy_trinh", nguoi_sub=None):
+    """RPC mot_cua.dong_bo_trang_thai (#73): đổi trạng thái hồ sơ (None = giữ nguyên), ghi lịch sử
+    và các sự kiện [(sự kiện, khóa chống trùng)] vào hộp thư đi trong MỘT transaction của CSDL.
+    → {"trangThaiTruoc", "trangThai", "daDoi", "soSuKien"}. Lỗi → LoiHopThu (không ghi gì)."""
+    kq = pgrst("POST", "/rpc/dong_bo_trang_thai", {
+        "p_ho_so_id": ho_so_id, "p_trang_thai": trang_thai_moi, "p_ly_do": ly_do, "p_buoc": buoc,
+        "p_nguon": nguon, "p_nguoi_sub": nguoi_sub,
+        "p_su_kien": [su_kien.dong_hop_thu(ev, khoa) for ev, khoa in cac_su_kien]})
+    if not isinstance(kq, dict):
+        raise LoiHopThu("RPC dong_bo_trang_thai trả kết quả lạ")
+    for ev, _ in cac_su_kien:
+        log.info("sự kiện %s %s (%s) → hộp thư đi", ev["loai"], ev["maHoSo"], ev["id"])
+    return kq
 
 
 def chua_phat(gioi_han=50):

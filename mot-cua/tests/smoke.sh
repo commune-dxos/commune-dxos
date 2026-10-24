@@ -5,17 +5,33 @@
 # scripts/lib-smoke.sh: kiem, ma_http, sql, sql_loi, kc, lay_token…), không chạy riêng.
 # Kiểm:
 #   1. Route công khai (role anon): danh mục thủ tục, JSON Schema; không thấy hồ sơ.
-#   2. Test SQL mot-cua/db/tests/*.sql: RLS, danh mục nạp từ gói (mỗi dòng ĐẠT/TRƯỢT là một kiểm tra).
+#   2. Test SQL mot-cua/db/tests/*.sql: RLS, danh mục nạp từ gói, nhật ký kiểm toán (mỗi dòng ĐẠT/TRƯỢT là một kiểm tra).
 #   3. MFA: cán bộ, lãnh đạo bị bắt cài OTP; công dân thì không.
 #   4. Qua APISIX → PostgREST với token thật của từng vai trò: cong_dan (mật khẩu),
 #      can_bo và lanh_dao (mật khẩu + mã TOTP). Cán bộ, lãnh đạo dùng người dùng TẠM có
 #      OTP tạo riêng cho smoke rồi xóa, không đụng người dùng mẫu.
-#   4d. Quy trình qua APISIX /workflow (#6): công dân nộp + khởi tạo, cán bộ/lãnh đạo thấy và
+#   4d. Quy trình qua APISIX /workflow (#6): công dân nộp theo thứ tự tạo hồ sơ → tải tệp → khởi
+#      tạo; Poka-yoke phía máy chủ (#59): thiếu tệp → 422, không khởi tạo; cán bộ/lãnh đạo thấy và
 #      hoàn thành task của nhóm mình, chặn chéo vai trò, backend tự kiểm token.
 #   4e. Tệp hồ sơ qua APISIX /files (#7): tests/smoke-tep.sh.
 #   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh.
 #   4g. Gói thủ tục (D-009): danh mục, cắm–rút gói, hồ sơ chứng thực bản sao qua /workflow:
 #      tests/smoke-goi-thu-tuc.sh.
+#   4h. Cổng công dân mot-cua-web qua APISIX /: trang, phông, route SPA, header bảo mật, đăng nhập
+#      PKCE, nộp hồ sơ E2E từ origin của web (#57): tests/smoke-web.sh.
+#   4i. Cổng cán bộ /can-bo: trang, client mot_cua_can_bo (PKCE + OTP), E2E cán bộ hộ tịch tiếp nhận →
+#      thẩm định → lãnh đạo phê duyệt hồ sơ vừa nộp từ web; cán bộ lĩnh vực khác không thấy (#55):
+#      tests/smoke-can-bo.sh.
+#   4j. Nhật ký kiểm toán chuỗi băm (#75): quyền qua APISIX, dấu vết của hồ sơ vừa xử lý, nộp đồng thời,
+#      trình xác minh độc lập Python, log đối tượng pgAudit: tests/smoke-kiem-toan.sh.
+#   4k. Giấy tờ có ký số (#77): step-ca, ca-init, biên nhận/kết quả PDF ký PAdES phát hành khi nộp/hoàn tất,
+#      tải qua link ngắn hạn, xác minh (sửa 1 byte → không toàn vẹn), quyền: tests/smoke-ky-so.sh.
+#   4l. Kho dữ liệu (#80): xuất Parquet khử định danh, dbt build + lineage, mart khớp SQL trên kho nóng:
+#      tests/smoke-kho-du-lieu.sh.
+#   4m. Dashboard Superset (#82): sống qua /bao-cao, dashboard dựng bằng mã, SSO lãnh đạo (OTP), số liệu chart
+#      khớp mart, cán bộ bị chặn: tests/smoke-superset.sh. Chỉ khi Superset chạy (make up-bi), không thì BỎ QUA.
+#   4n. Sổ văn bản (#78): văn thư vào sổ văn bản đến (ClamAV, xác minh chữ ký), soạn văn bản đi; lãnh đạo ký
+#      ban hành (số đi, PDF ký PAdES xác minh hợp lệ); quyền theo vai: tests/smoke-van-ban.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -54,7 +70,7 @@ done
 # --- 3. MFA: cán bộ, lãnh đạo bị bắt cài OTP; công dân thì không ---------------------
 MK="smoke-$(openssl rand -hex 12)"
 for u in congdan01 canbo01 lanhdao01; do dat_mat_khau "$u" "$MK"; done
-for u in canbo01 canbo02 canbo03 lanhdao01; do
+for u in canbo01 canbo02 canbo03 lanhdao01 vanthu01; do
   kiem "$u có required action CONFIGURE_TOTP" '["CONFIGURE_TOTP"]' \
     "$(kc get users -r dxos -q "username=$u" -q exact=true --fields requiredActions | jq -c '.[0].requiredActions')"
 done
@@ -194,8 +210,9 @@ kiem "lanh_dao nộp hồ sơ → 403" "403" \
   "$(ma_http "${A_LD[@]}" -d "{\"thu_tuc_id\":\"$TT_ID\",\"ho_ten_nguoi_nop\":\"X\"}" "$GW/api/ho_so")"
 
 # --- 4d. Quy trình qua APISIX /workflow (#6) ---------------------------------------------
-# Công dân nộp hồ sơ khai sinh + khởi tạo quy trình bằng MỘT lời gọi; cán bộ, lãnh đạo thấy
-# và hoàn thành task của nhóm mình. Không ai cầm mật khẩu Flowable; backend mot-cua-api tự
+# Công dân nộp hồ sơ khai sinh theo luồng của cổng công dân (#59): tạo hồ sơ → tải tệp → khởi
+# tạo quy trình; mot-cua-api kiểm JSON Schema của gói trước khi gọi Flowable. Cán bộ, lãnh đạo
+# thấy và hoàn thành task của nhóm mình. Không ai cầm mật khẩu Flowable; backend mot-cua-api tự
 # kiểm token và quyền, đọc/ghi hồ sơ bằng token người dùng (RLS).
 # gw <token> <đường dẫn sau /workflow> [JSON] → body response; gw_ma … → mã HTTP
 gw() {
@@ -207,20 +224,77 @@ gw_ma() {
   curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $tk" -H 'Content-Type: application/json' \
     ${1:+-d "$1"} "$GW/workflow$duong"
 }
+# nop_du <token> <body JSON có thu_tuc_id> → JSON {"hoSo", "soTep", "processInstanceId", "quyTrinh",
+# "buocDangMo"} (hoặc {"hoSo", "soTep", "loi"…} nếu khởi tạo lỗi). Luồng nộp chuẩn (#59) như cổng
+# công dân: POST /api/ho_so → một PDF giả cho mỗi tệp tối thiểu của từng thành phần bắt buộc (đọc
+# công khai /public/thanh_phan_yeu_cau) qua /files (ClamAV quét) → POST /workflow/ho-so/{id}/khoi-tao.
+NOP_TD="$(mktemp -d)"
+printf '%%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%%%EOF\n' > "$NOP_TD/giay-to.pdf"
+# tai_giay_to <token> <hồ sơ> <id thành phần yêu cầu> [tên] → mã HTTP
+tai_giay_to() {
+  curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $1" -H 'Content-Type: application/pdf' \
+    --data-binary "@$NOP_TD/giay-to.pdf" "$GW/files/ho-so/$2/tep?ten=${4:-giay-to.pdf}&thanh_phan_yeu_cau_id=$3"
+}
+nop_du() {
+  local tk="$1" body="$2" hs id yc n i so=0
+  hs="$(curl -s -H "Authorization: Bearer $tk" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+    -d "$body" "$GW/api/ho_so?select=id,ma_ho_so,trang_thai,han_xu_ly,nguoi_nop_sub" | jq -c '.[0]? // {}')"
+  id="$(jq -r '.id // "00000000-0000-0000-0000-000000000000"' <<<"$hs")"
+  while read -r yc n; do
+    [ -n "$yc" ] || continue
+    for i in $(seq 1 "$n"); do
+      [ "$(tai_giay_to "$tk" "$id" "$yc" "giay-to-$i.pdf")" = 201 ] && so=$((so + 1))
+    done
+  done < <(curl -s "$GW/public/thanh_phan_yeu_cau?thu_tuc_id=eq.$(jq -r .thu_tuc_id <<<"$body")&bat_buoc=is.true&select=id,so_luong" \
+             | jq -r '.[]? | "\(.id) \(.so_luong)"')
+  gw "$tk" "/ho-so/$id/khoi-tao" '{}' | jq -c --argjson hs "$hs" --argjson so "$so" '{hoSo: $hs, soTep: $so} + .'
+}
+# so_tep_api <token> <hồ sơ> → số tệp thấy qua GET /files/ho-so/{id}/tep
+so_tep_api() { curl -s -H "Authorization: Bearer $1" "$GW/files/ho-so/$2/tep" | jq 'length'; }
 # task_cua <token> <hoSoId> <bước> → id task (rỗng nếu người dùng không thấy)
 task_cua() { gw "$1" /tasks | jq -r --arg h "$2" --arg b "$3" '[.[] | select(.hoSoId == $h and .buoc == $b)][0].id // empty'; }
+# tt_csdl <hồ sơ> → "trạng thái|lý do" trong CSDL (#73: đi theo bước Flowable)
+tt_csdl() { sql "SELECT trang_thai || '|' || coalesce(ly_do, '') FROM mot_cua.ho_so WHERE id = '${1:-00000000-0000-0000-0000-000000000000}'"; }
+# xong_tt <token> <task> <biến JSON> → "bước đang mở trangThai" của response hoàn thành bước
+xong_tt() { gw "$1" "/tasks/$2/complete" "{\"bien\":$3}" | jq -r '"\([.buocDangMo[]?.buoc] | join(",")) \(.trangThai)"'; }
 
 KS_ID="$(sql "SELECT id FROM mot_cua.thu_tuc WHERE ma = 'KS01' AND cong_khai")"
 LV_HT="$(sql "SELECT id FROM mot_cua.linh_vuc WHERE ma = 'ho_tich'")"
 if [ -z "$KS_ID" ] || [ -z "$LV_HT" ]; then
   kiem "có thủ tục KS01, lĩnh vực ho_tich để chạy /workflow (DXOS_SEED=true)" "có" "không"
 else
-  r="$(gw "$TOKEN" /ho-so "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Workflow\",\"so_dien_thoai\":\"0900000098\",\"trang_thai\":\"hoan_tat\"}")"
+  # Poka-yoke phía máy chủ (#59): gọi thẳng API khi chưa đủ tệp thì không khởi tạo được.
+  SO_YC_KS="$(sql "SELECT count(*) FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$KS_ID' AND bat_buoc")"
+  truoc="$(sql "SELECT count(*) FROM mot_cua.ho_so WHERE nguoi_nop_sub = '$SUB'")"
+  ma="$(curl -s -o "$NOP_TD/r.json" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+    -d "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"X\"}" "$GW/workflow/ho-so")"
+  kiem "POST /workflow/ho-so KS01 (cần $SO_YC_KS giấy tờ, chưa có tệp) → 422, không lưu hồ sơ, liệt kê $SO_YC_KS thành phần thiếu" \
+    "422 $truoc $SO_YC_KS" "$ma $(sql "SELECT count(*) FROM mot_cua.ho_so WHERE nguoi_nop_sub = '$SUB'") $(jq '.chiTiet.thanhPhan | length' "$NOP_TD/r.json")"
+  HP="$(curl -s "${AUTH[@]}" "${REP[@]}" -d "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Poka-yoke\"}" \
+    "$GW/api/ho_so" | jq -r '.[0].id // "00000000-0000-0000-0000-000000000000"')"
+  YC_CUOI="$(sql "SELECT ma FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$KS_ID' AND bat_buoc ORDER BY thu_tu DESC LIMIT 1")"
+  loi_tai=0
+  for yc in $(sql "SELECT id FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$KS_ID' AND bat_buoc AND ma <> '$YC_CUOI' ORDER BY thu_tu"); do
+    [ "$(tai_giay_to "$TOKEN" "$HP" "$yc")" = 201 ] || loi_tai=$((loi_tai + 1))
+  done
+  kiem "tải đủ tệp trừ thành phần bắt buộc cuối ($YC_CUOI) → 201 cả" "0" "$loi_tai"
+  ma="$(curl -s -o "$NOP_TD/r.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$GW/workflow/ho-so/$HP/khoi-tao")"
+  kiem "gọi thẳng POST /workflow/ho-so/{id}/khoi-tao khi thiếu tệp → 422, chỉ ra đúng $YC_CUOI, câu tiếng Việt" \
+    "422 $YC_CUOI Thiếu thành phần bắt buộc" \
+    "$ma $(jq -r '[.chiTiet.thanhPhan[]?.thanhPhan] | join(",")' "$NOP_TD/r.json") $(jq -r '.chiTiet.thanhPhan[0].loi // empty' "$NOP_TD/r.json")"
+  kiem "422: không có quy trình trong Flowable, không ghi sự kiện, hồ sơ vẫn moi" "0 0 moi" \
+    "$(wf "history/historic-process-instances?businessKey=$(sql "SELECT ma_ho_so FROM mot_cua.ho_so WHERE id = '$HP'")" | jq .total) $(sql "SELECT count(*) FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HP'") $(sql "SELECT trang_thai FROM mot_cua.ho_so WHERE id = '$HP'")"
+  YC_CUOI_ID="$(sql "SELECT id FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$KS_ID' AND ma = '$YC_CUOI'")"
+  kiem "tải nốt $YC_CUOI rồi khởi tạo lại → 201, bước tiep_nhan" "201 201 tiep_nhan" \
+    "$(tai_giay_to "$TOKEN" "$HP" "$YC_CUOI_ID") $(curl -s -o "$NOP_TD/r.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$GW/workflow/ho-so/$HP/khoi-tao") $(jq -r '[.buocDangMo[]?.buoc] | join(",")' "$NOP_TD/r.json")"
+
+  r="$(nop_du "$TOKEN" "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Workflow\",\"so_dien_thoai\":\"0900000098\"}")"
   WH="$(jq -r '.hoSo.id // empty' <<<"$r")"; WMA="$(jq -r '.hoSo.ma_ho_so // empty' <<<"$r")"
   WPI="$(jq -r '.processInstanceId // empty' <<<"$r")"
-  kiem "cong_dan POST /workflow/ho-so → hồ sơ + quy trình, bước tiep_nhan" "có có tiep_nhan" \
-    "$([ -n "$WH" ] && echo có || echo không) $([ -n "$WPI" ] && echo có || echo không) $(jq -r '[.buocDangMo[]?.buoc] | join(",")' <<<"$r")"
-  kiem "hồ sơ trong CSDL: người nộp = sub token, trạng thái moi (bỏ qua trang_thai client gửi)" "$SUB moi" \
+  kiem "cong_dan nộp KS01 (tạo hồ sơ → tải $SO_YC_KS tệp → khởi tạo) → có mã hồ sơ, quy trình, bước tiep_nhan" "có $SO_YC_KS có tiep_nhan" \
+    "$([ -n "$WMA" ] && echo có || echo không) $(jq -r '.soTep' <<<"$r") $([ -n "$WPI" ] && echo có || echo không) $(jq -r '[.buocDangMo[]?.buoc] | join(",")' <<<"$r")"
+  kiem "KS01: $SO_YC_KS tệp hiện trong GET /files/ho-so/{id}/tep" "$SO_YC_KS" "$(so_tep_api "$TOKEN" "${WH:-00000000-0000-0000-0000-000000000000}")"
+  kiem "hồ sơ trong CSDL: người nộp = sub token, trạng thái moi" "$SUB moi" \
     "$(sql "SELECT nguoi_nop_sub || ' ' || trang_thai FROM mot_cua.ho_so WHERE id = '${WH:-00000000-0000-0000-0000-000000000000}'")"
   kiem "Flowable: quy trình dang_ky_khai_sinh, businessKey = mã hồ sơ, biến lấy từ CSDL" "dang_ky_khai_sinh $WMA $WH $SUB" \
     "$(wf "runtime/process-instances/$WPI" | jq -r '"\(.processDefinitionId | split(":")[0]) \(.businessKey)"') $(wf "runtime/process-instances/$WPI/variables/hoSoId" | jq -r .value) $(wf "runtime/process-instances/$WPI/variables/nguoiNopSub" | jq -r .value)"
@@ -254,29 +328,67 @@ else
   kiem "lãnh đạo không thấy task tiep_nhan" "" "$(task_cua "$TK_LD" "$WH" tiep_nhan)"
   kiem "cán bộ hoàn thành với biến của bước khác → 400" "400" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
   kiem "cán bộ hoàn thành thiếu biến hopLe → 400" "400" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{}}')"
-  kiem "cán bộ: thiếu thành phần (hopLe=false) → bước bo_sung" "bo_sung" \
-    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":false,"ghiChu":"thiếu tờ khai"}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ: thiếu thành phần (hopLe=false) → bước bo_sung, API trả trangThai cho_bo_sung" "bo_sung cho_bo_sung" \
+    "$(xong_tt "$TK_CB" "$TID" '{"hopLe":false,"ghiChu":"thiếu tờ khai"}')"
+  kiem "CSDL: hồ sơ cho_bo_sung, lý do = ghi chú của cán bộ (#73)" "cho_bo_sung|thiếu tờ khai" "$(tt_csdl "$WH")"
+  kiem "chờ bổ sung: công dân sửa số điện thoại qua /api → 1 dòng (RLS cho_bo_sung)" "1" \
+    "$(curl -s -X PATCH "${AUTH[@]}" "${REP[@]}" -d '{"so_dien_thoai":"0900000097"}' "$GW/api/ho_so?id=eq.$WH" | jq length)"
+  kiem "chờ bổ sung: công dân tải thêm giấy tờ → 201" "201" \
+    "$(tai_giay_to "$TOKEN" "$WH" "$(sql "SELECT id FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$KS_ID' AND bat_buoc ORDER BY thu_tu LIMIT 1")" bo-sung.pdf)"
   kiem "Flowable ghi người xử lý tiep_nhan = sub cán bộ" "$SUB_CB" \
     "$(wf "history/historic-task-instances?processInstanceId=$WPI&taskDefinitionKey=tiep_nhan" | jq -r '.data[0].assignee')"
   TID="$(task_cua "$TOKEN" "$WH" bo_sung)"
   kiem "cong_dan thấy task bo_sung của mình" "có" "$([ -n "$TID" ] && echo có || echo không)"
   kiem "cán bộ hoàn thành task bo_sung của công dân → 403" "403" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{}')"
-  kiem "cong_dan bổ sung xong → quay lại tiep_nhan" "tiep_nhan" \
-    "$(gw "$TOKEN" "/tasks/$TID/complete" '{"bien":{"ghiChu":"đã bổ sung"}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cong_dan bổ sung xong → quay lại tiep_nhan, hồ sơ dang_xu_ly (không về moi)" "tiep_nhan dang_xu_ly" \
+    "$(xong_tt "$TOKEN" "$TID" '{"ghiChu":"đã bổ sung"}')"
+  kiem "CSDL sau khi nộp lại: dang_xu_ly; công dân hết sửa được (RLS) → 0 dòng" "dang_xu_ly 0" \
+    "$(tt_csdl "$WH" | cut -d'|' -f1) $(curl -s -X PATCH "${AUTH[@]}" "${REP[@]}" -d '{"so_dien_thoai":"0900000096"}' "$GW/api/ho_so?id=eq.$WH" | jq length)"
   TID="$(task_cua "$TK_CB" "$WH" tiep_nhan)"
-  kiem "cán bộ: đủ thành phần → tham_dinh" "tham_dinh" \
-    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"hopLe":true}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ: đủ thành phần → tham_dinh, hồ sơ dang_xu_ly" "tham_dinh dang_xu_ly" "$(xong_tt "$TK_CB" "$TID" '{"hopLe":true}')"
   TID="$(task_cua "$TK_CB" "$WH" tham_dinh)"
-  kiem "cán bộ: thẩm định đạt → phe_duyet" "phe_duyet" \
-    "$(gw "$TK_CB" "/tasks/$TID/complete" '{"bien":{"datYeuCau":true}}' | jq -r '[.buocDangMo[].buoc] | join(",")')"
+  kiem "cán bộ: thẩm định đạt → phe_duyet, CSDL cho_phe_duyet" "phe_duyet cho_phe_duyet cho_phe_duyet|thiếu tờ khai" \
+    "$(xong_tt "$TK_CB" "$TID" '{"datYeuCau":true}') $(tt_csdl "$WH")"
+  kiem "chờ phê duyệt: cán bộ tự đặt hoan_tat qua /api → bị chặn (chỉ quy trình chuyển)" "400" \
+    "$(ma_http -X PATCH -H "Authorization: Bearer $TK_CB" -H 'Content-Type: application/json' -d '{"trang_thai":"hoan_tat"}' "$GW/api/ho_so?id=eq.$WH")"
   TID="$(wf "runtime/tasks?processInstanceId=$WPI" | jq -r '.data[0].id')"
   kiem "cán bộ hoàn thành phe_duyet (nhóm lanh_dao) → 403" "403" "$(gw_ma "$TK_CB" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
   kiem "lãnh đạo thấy task phe_duyet" "$TID" "$(task_cua "$TK_LD" "$WH" phe_duyet)"
   kiem "lãnh đạo phê duyệt → 200, không còn bước mở" "200" "$(gw_ma "$TK_LD" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+  kiem "CSDL: hoan_tat, có ngày hoàn tất" "hoan_tat true" \
+    "$(sql "SELECT trang_thai || ' ' || (ngay_hoan_tat IS NOT NULL) FROM mot_cua.ho_so WHERE id = '$WH'")"
+  kiem "lịch sử trạng thái WH: nộp → chờ bổ sung → đang xử lý → chờ phê duyệt → hoàn tất" \
+    "moi:nop cho_bo_sung:quy_trinh:tiep_nhan dang_xu_ly:quy_trinh:bo_sung cho_phe_duyet:quy_trinh:tham_dinh hoan_tat:quy_trinh:phe_duyet" \
+    "$(sql "SELECT string_agg(concat_ws(':', den_trang_thai, nguon, buoc), ' ' ORDER BY id) FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$WH'")"
+  kiem "công dân đọc lịch sử trạng thái hồ sơ của mình qua /api (RLS) → 5 dòng" "5" \
+    "$(curl -s "${AUTH[@]}" "$GW/api/lich_su_trang_thai?ho_so_id=eq.$WH&select=den_trang_thai" | jq length)"
   td="$(gw "$TOKEN" "/ho-so/$WH/tien-do")"
+  kiem "tiến độ /workflow trả cùng trạng thái với CSDL" "hoan_tat" "$(jq -r '.hoSo.trang_thai' <<<"$td")"
   kiem "tiến độ: kết thúc Hoàn tất, đi đúng các bước" "ket_thuc_hoan_tat tiep_nhan,bo_sung,tiep_nhan,tham_dinh,phe_duyet" \
     "$(jq -r '.quyTrinh[0] | "\(.diemKetThuc) \([.lichSu[].buoc] | join(","))"' <<<"$td")"
   kiem "task đã xong → hoàn thành lại → 404" "404" "$(gw_ma "$TK_LD" "/tasks/$TID/complete" '{"bien":{"pheDuyet":true}}')"
+
+  # Đối soát (#73): Flowable đi tiếp mà CSDL không được ghi (mô phỏng mot-cua-api lỗi sau khi gọi
+  # Flowable bằng cách hoàn thành task thẳng trên Flowable) → mot-cua-worker sửa theo Flowable.
+  doi_soat() { docker compose exec -T mot-cua-worker python /mot-cua/backend/worker.py doi-soat-mot-lan 2>/dev/null | tail -1; }
+  r="$(nop_du "$TOKEN" "{\"thu_tuc_id\":\"$KS_ID\",\"ho_ten_nguoi_nop\":\"Người Thử Đối Soát\"}")"
+  HDS="$(jq -r '.hoSo.id // empty' <<<"$r")"; PDS="$(jq -r '.processInstanceId // empty' <<<"$r")"
+  ds_xong() { # ds_xong <biến JSON…> : hoàn thành task đang mở trên Flowable (rest-admin), không qua API
+    wf "runtime/tasks/$(wf "runtime/tasks?processInstanceId=$PDS" | jq -r '.data[0].id')" -o /dev/null -w '%{http_code}' \
+      -d "{\"action\":\"complete\",\"variables\":$1}"
+  }
+  kiem "đối soát: Flowable sang tham_dinh ngoài API → CSDL còn moi (lệch)" "200 tham_dinh moi" \
+    "$(ds_xong '[{"name":"hopLe","value":true}]') $(wf "runtime/tasks?processInstanceId=$PDS" | jq -r '.data[0].taskDefinitionKey') $(tt_csdl "$HDS" | cut -d'|' -f1)"
+  kiem "worker doi-soat-mot-lan → sửa ≥ 1 hồ sơ; hồ sơ dang_xu_ly, lịch sử nguồn doi_soat" "có dang_xu_ly doi_soat" \
+    "$([ "$(doi_soat)" -ge 1 ] 2>/dev/null && echo có || echo không) $(tt_csdl "$HDS" | cut -d'|' -f1) $(sql "SELECT nguon FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$HDS' ORDER BY id DESC LIMIT 1")"
+  kiem "đối soát ghi sự kiện ho_so.chuyen_buoc (doiSoat, trangThai dang_xu_ly) vào hộp thư đi" "true dang_xu_ly" \
+    "$(sql "SELECT (noi_dung->'duLieu'->>'doiSoat') || ' ' || (noi_dung->'duLieu'->>'trangThai') FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HDS' AND loai = 'ho_so.chuyen_buoc' ORDER BY tao_luc DESC LIMIT 1")"
+  kiem "đối soát chạy lại: không sửa gì thêm" "0 1" \
+    "$(doi_soat) $(sql "SELECT count(*) FROM mot_cua.lich_su_trang_thai WHERE ho_so_id = '$HDS' AND nguon = 'doi_soat'")"
+  ds_xong '[{"name":"datYeuCau","value":false},{"name":"ghiChu","value":"Không đạt (smoke đối soát)"}]' > /dev/null
+  doi_soat > /dev/null
+  kiem "Flowable kết thúc Từ chối ngoài API → đối soát: tu_choi, lý do từ ghiChu, ho_so.tu_choi" "tu_choi|Không đạt (smoke đối soát) 1" \
+    "$(tt_csdl "$HDS") $(sql "SELECT count(*) FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HDS' AND loai = 'ho_so.tu_choi'")"
 
   # Zero-Trust: backend tự kiểm token, không tin gateway (gọi thẳng trong mạng nội bộ).
   goi_backend() {
@@ -305,12 +417,41 @@ fi
 # shellcheck source=mot-cua/tests/smoke-goi-thu-tuc.sh
 . "mot-cua/tests/smoke-goi-thu-tuc.sh"
 
+# --- 4h. Cổng công dân qua APISIX (#57) ------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-web.sh
+. "mot-cua/tests/smoke-web.sh"
+
+# --- 4i. Cổng cán bộ qua APISIX (#55) --------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-can-bo.sh
+. "mot-cua/tests/smoke-can-bo.sh"
+
+# --- 4j. Nhật ký kiểm toán chuỗi băm + pgAudit (#75) ------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-kiem-toan.sh
+. "mot-cua/tests/smoke-kiem-toan.sh"
+
+# --- 4k. Giấy tờ có ký số: biên nhận, kết quả, xác minh (#77) ----------------------------------------
+# shellcheck source=mot-cua/tests/smoke-ky-so.sh
+. "mot-cua/tests/smoke-ky-so.sh"
+
+# --- 4l. Kho dữ liệu: Parquet + DuckDB + dbt, mart về bao_cao (#80) --------------------------------
+# shellcheck source=mot-cua/tests/smoke-kho-du-lieu.sh
+. "mot-cua/tests/smoke-kho-du-lieu.sh"
+
+# --- 4m. Dashboard Superset qua APISIX /bao-cao, SSO Keycloak (#82; chỉ khi make up-bi) -----------------
+# shellcheck source=mot-cua/tests/smoke-superset.sh
+. "mot-cua/tests/smoke-superset.sh"
+
+# --- 4n. Sổ văn bản đến/đi có ký số (#78) ------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-van-ban.sh
+. "mot-cua/tests/smoke-van-ban.sh"
+
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
 UPDATE mot_cua.thanh_phan_ho_so SET nguoi_kiem_tra_id = NULL WHERE nguoi_kiem_tra_id = '$CB_ID';
 DELETE FROM mot_cua.can_bo_linh_vuc WHERE can_bo_id = '$CB_ID';
 DELETE FROM mot_cua.can_bo WHERE id = '$CB_ID'" > /dev/null
 xoa_nguoi_dung "$U_CB"; xoa_nguoi_dung "$U_LD"
+rm -rf "${NOP_TD:-}"
 kiem "đã xóa người dùng tạm của smoke" "0" \
   "$(kc get users -r dxos -q "search=smoke-" --fields username | jq '[.[] | select(.username | startswith("smoke-"))] | length')"
 
@@ -318,6 +459,9 @@ kiem "đã xóa người dùng tạm của smoke" "0" \
 # Hồ sơ KS01 do công dân nộp qua API → khởi tạo quy trình với biến lấy từ hồ sơ → cán bộ
 # hoàn thành từng bước. Gọi Flowable REST trực tiếp (cổng debug 127.0.0.1) để kiểm riêng
 # engine và BPMN; luồng người dùng qua gateway ở mục 4d.
+# Token công dân lấy ở đầu smoke đã quá hạn 5 phút sau các mục 4a–4n: lấy lại.
+TOKEN="$(lay_token congdan01 "$MK" | jq -r '.access_token // empty')"
+AUTH=(-H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json')
 # wf_bat_dau <businessKey> <hoSoId> <hanXuLyLuc> → id process instance
 wf_bat_dau() {
   wf runtime/process-instances -d "$(jq -nc --arg bk "$1" --arg id "$2" --arg sub "$SUB" --arg han "$3" \

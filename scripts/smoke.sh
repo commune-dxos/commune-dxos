@@ -32,7 +32,7 @@ for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secre
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker; do
+for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker mot-cua-web; do
   for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break
@@ -69,8 +69,10 @@ kiem "Flowable không có cổng nào khác ngoài 127.0.0.1 (cổng debug)" "12
   "$(docker compose port flowable 8080 | cut -d: -f1)"
 # cong_host <dịch vụ> → các cổng container được publish ra host (rỗng nếu không có)
 cong_host() { docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$(docker compose ps -q "$1")"; }
-kiem "mot-cua-api, mot-cua-worker, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "||||||" \
-  "$(cong_host mot-cua-api)|$(cong_host mot-cua-worker)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
+kiem "mot-cua-api, mot-cua-worker, mot-cua-web, PostgREST, Garage, ClamAV, OpenBao, RabbitMQ không mở cổng ra host" "|||||||" \
+  "$(cong_host mot-cua-api)|$(cong_host mot-cua-worker)|$(cong_host mot-cua-web)|$(cong_host postgrest)|$(cong_host garage)|$(cong_host clamav)|$(cong_host openbao)|$(cong_host rabbitmq)"
+kiem "mot-cua-web chạy bằng user không phải root (uid 101), rootfs chỉ đọc" "101 true" \
+  "$(docker compose exec -T mot-cua-web id -u) $(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' "$(docker compose ps -q mot-cua-web)")"
 
 # 2b. CORS theo DXOS_CORS_ORIGINS ------------------------------------------------
 ORIGIN="${DXOS_CORS_ORIGINS:-http://localhost:5173}"; ORIGIN="${ORIGIN%%,*}"
@@ -90,6 +92,25 @@ kiem "schema dxos chỉ có bảng app_migration" "app_migration" \
   "$(sql "SELECT string_agg(tablename, ',') FROM pg_tables WHERE schemaname = 'dxos'")"
 kiem "sổ migration có tệp của $DXOS_TANG2" "có" \
   "$(sql "SELECT CASE WHEN count(*) > 0 THEN 'có' ELSE 'không' END FROM dxos.app_migration WHERE ung_dung = '$DXOS_TANG2'")"
+
+# 4a. pgAudit (#75): nạp sẵn, có extension, log kiểm toán phiên ---------------------------------
+kiem "pgAudit: shared_preload_libraries có pgaudit, extension đã tạo" "pgaudit 17.1" \
+  "$(sql "SHOW shared_preload_libraries") $(sql "SELECT extversion FROM pg_extension WHERE extname = 'pgaudit'")"
+kiem "pgAudit: log phiên theo DXOS_PGAUDIT_LOG, không ghi tham số" "${DXOS_PGAUDIT_LOG:-ddl,role} off" \
+  "$(sql "SHOW pgaudit.log") $(sql "SHOW pgaudit.log_parameter")"
+# Log của container tới `docker compose logs` có độ trễ: thử lại tới 10 giây.
+pga_ddl() {
+  local i log
+  sql "CREATE TEMP TABLE smoke_pgaudit (x int)" > /dev/null
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    # Đọc hết vào biến rồi mới grep: `logs | grep -q` với pipefail trượt vì logs nhận SIGPIPE.
+    log="$(docker compose logs --no-log-prefix --since 2m postgres 2>&1)"
+    grep -q 'AUDIT: SESSION,[0-9]*,[0-9]*,DDL,CREATE TABLE,TABLE,pg_temp.smoke_pgaudit' <<<"$log" && { echo có; return; }
+    sleep 1
+  done
+  echo không
+}
+kiem "pgAudit: DDL được ghi (AUDIT: SESSION …,DDL,CREATE TABLE…)" "có" "$(pga_ddl)"
 
 # 4b. Garage: một nút đã có layout, API quản trị đòi token ------------------------------
 kiem "Garage: nút có vai trò trong layout (zone dxos)" "dxos" \

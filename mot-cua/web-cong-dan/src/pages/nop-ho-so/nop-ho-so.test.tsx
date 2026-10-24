@@ -13,7 +13,30 @@ import { ChiTietThuTuc } from "@/pages/chi-tiet-thu-tuc";
 import { NopHoSo } from "./index";
 
 const DS = duLieuGia as ThuTuc[];
-const tai = () => Promise.resolve(DS);
+const mang = (title: string, minItems: number) => ({ title, type: "array", items: { type: "string", format: "uuid" }, minItems });
+/** Gói thủ tục giả chỉ có trong test: form phải tự sinh từ schema, không sửa mã web. */
+const ZZ01: ThuTuc = {
+  id: "00000000-0000-4000-8000-0000000000f1",
+  ma: "ZZ01",
+  ten: "Thủ tục giả để thử form",
+  so_ngay_xu_ly: 1,
+  le_phi: 0,
+  ghi_chu_le_phi: null,
+  quy_trinh: "zz_gia",
+  linh_vuc: { ma: "thu", ten: "Thử" },
+  json_schema: {
+    title: "Thủ tục giả để thử form",
+    properties: {
+      thanh_phan: {
+        type: "object",
+        additionalProperties: false,
+        required: ["don_de_nghi", "anh_the"],
+        properties: { don_de_nghi: mang("Đơn đề nghị", 1), anh_the: mang("Ảnh thẻ 3x4", 2), khac: mang("Giấy tờ khác", 0) },
+      },
+    },
+  } as ThuTuc["json_schema"],
+};
+const tai = () => Promise.resolve([...DS, ZZ01]);
 
 function quanLyGia(nguoiDung: Partial<User> | null) {
   const suKien = { addUserLoaded: vi.fn(), addUserUnloaded: vi.fn(), addUserSignedOut: vi.fn(), removeUserLoaded: vi.fn(), removeUserUnloaded: vi.fn(), removeUserSignedOut: vi.fn() };
@@ -139,6 +162,9 @@ describe("form nộp hồ sơ (bản mẫu)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Đã nộp hồ sơ" })).toBeInTheDocument();
     expect(screen.getByText("HS20261023-000123")).toBeInTheDocument();
     expect(screen.getByText("26/10/2026")).toBeInTheDocument();
+    // Biên nhận có ký số (#77) tải ngay trên trang đã nộp.
+    expect(screen.getByRole("heading", { level: 2, name: "Biên nhận" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tải biên nhận hồ sơ \(PDF có ký số\)/ })).toBeEnabled();
   });
 
   it("nộp thật theo thứ tự: tạo hồ sơ, tải từng tệp đúng thành phần, rồi mới khởi tạo quy trình", async () => {
@@ -185,5 +211,72 @@ describe("form nộp hồ sơ (bản mẫu)", () => {
   it("không nhảy cóc tới bước kiểm tra khi chưa điền", async () => {
     ve("/nop-ho-so/KS01/kiem-tra");
     expect(await screen.findByRole("heading", { level: 1, name: "Người nộp hồ sơ" })).toBeInTheDocument();
+  });
+});
+
+describe("Poka-yoke phía trình duyệt: thiếu thành phần thì không gửi request nào (#53)", () => {
+  it("KS01 thiếu giấy tờ bắt buộc: bấm Tiếp tục bị chặn, fetch 0 lần", async () => {
+    const u = userEvent.setup();
+    ve("/nop-ho-so/KS01");
+    await screen.findByRole("heading", { level: 1, name: "Người nộp hồ sơ" });
+    await u.type(screen.getByLabelText("Số điện thoại"), "0900000001");
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await screen.findByRole("heading", { level: 1, name: "Giấy tờ kèm theo" });
+    await u.upload(screen.getByLabelText(/Chọn tệp cho Tờ khai/), anh("to-khai.png"));
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Chưa tải giấy chứng sinh");
+    expect(screen.getByRole("heading", { level: 1, name: "Giấy tờ kèm theo" })).toBeInTheDocument();
+    expect(goi).toHaveBeenCalledTimes(0);
+  });
+
+  it("gói giả ZZ01: form tự sinh ô theo schema, thiếu 1 ảnh thẻ (minItems 2) thì chặn, fetch 0 lần; đủ thì nộp đúng thứ tự", async () => {
+    const u = userEvent.setup();
+    ve("/nop-ho-so/ZZ01");
+    await screen.findByRole("heading", { level: 1, name: "Người nộp hồ sơ" });
+    await u.type(screen.getByLabelText("Số điện thoại"), "0900000001");
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await screen.findByRole("heading", { level: 1, name: "Giấy tờ kèm theo" });
+    expect(screen.getByLabelText(/Chọn tệp cho Đơn đề nghị/)).toHaveAttribute("aria-required", "true");
+    expect(screen.getByLabelText(/Chọn tệp cho Giấy tờ khác/)).toHaveAttribute("aria-required", "false");
+    await u.upload(screen.getByLabelText(/Chọn tệp cho Đơn đề nghị/), anh("don.png"));
+    await u.upload(screen.getByLabelText(/Chọn tệp cho Ảnh thẻ/), anh("anh-1.png"));
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Cần ít nhất 2 tệp cho ảnh thẻ 3x4");
+    expect(goi).toHaveBeenCalledTimes(0);
+
+    await u.upload(screen.getByLabelText(/Thêm tệp cho Ảnh thẻ/), anh("anh-2.png"));
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await screen.findByRole("heading", { level: 1, name: "Kiểm tra lại thông tin" });
+    expect(goi).toHaveBeenCalledTimes(0);
+    await u.click(screen.getByRole("button", { name: "Đồng ý và nộp hồ sơ" }));
+    await screen.findByRole("heading", { level: 1, name: "Đã nộp hồ sơ" });
+    expect(goi.mock.calls.map(([url, init]) => `${init?.method} ${new URL(String(url)).pathname.replace(HO_SO.id, "{id}")}`)).toEqual([
+      "POST /api/ho_so",
+      "GET /public/thanh_phan_yeu_cau",
+      "POST /files/ho-so/{id}/tep",
+      "POST /files/ho-so/{id}/tep",
+      "POST /files/ho-so/{id}/tep",
+      "POST /workflow/ho-so/{id}/khoi-tao",
+    ]);
+  });
+
+  it("CT01: chỉ bản chính là bắt buộc, nộp được không cần bản sao", async () => {
+    const u = userEvent.setup();
+    ve("/nop-ho-so/CT01");
+    await screen.findByRole("heading", { level: 1, name: "Người nộp hồ sơ" });
+    await u.type(screen.getByLabelText("Số điện thoại"), "0900000001");
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await screen.findByRole("heading", { level: 1, name: "Giấy tờ kèm theo" });
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Chưa tải bản chính giấy tờ cần chứng thực");
+    expect(goi).toHaveBeenCalledTimes(0);
+    await u.upload(screen.getByLabelText(/Chọn tệp cho Bản chính/), anh("ban-chinh.png"));
+    await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await screen.findByRole("heading", { level: 1, name: "Kiểm tra lại thông tin" });
+    await u.click(screen.getByRole("button", { name: "Đồng ý và nộp hồ sơ" }));
+    await screen.findByRole("heading", { level: 1, name: "Đã nộp hồ sơ" });
+    const lanTai = goi.mock.calls.filter(([url]) => String(url).includes("/files/"));
+    expect(lanTai).toHaveLength(1);
+    expect(goi.mock.calls.at(-1)?.[0]).toMatch(/\/workflow\/ho-so\/.+\/khoi-tao$/);
   });
 });

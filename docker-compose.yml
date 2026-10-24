@@ -26,9 +26,13 @@
 #          + Garage (S3) và ClamAV (quét tệp trước khi lưu) (#7)
 #          + OpenBao giữ mọi bí mật dịch vụ (#10)
 #          + RabbitMQ hàng đợi sự kiện, mot-cua-worker (#9)
-#   docs : Gotenberg, step-ca, Meilisearch CE         (tuần 2–5)
+#          + cổng công dân mot-cua-web, APISIX phục vụ ở route / (#57)
+#          + step-ca (CA nội bộ), ca-init, Gotenberg: biên nhận/kết quả PDF có ký số thuộc luồng
+#            nộp hồ sơ chính nên chạy cùng core (#77)
+#   docs : Meilisearch CE                              (tuần 5)
 #   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
-#   bi   : Apache Superset                            (tuần 4)
+#   bi   : kho-du-lieu (dịch vụ một lần: hồ sơ đã đóng → Parquet → dbt → bảng mart bao_cao, #80;
+#          make kho-du-lieu), Apache Superset (dashboard /bao-cao, SSO Keycloak, #82): make up-bi
 #
 # Bí mật (#10, docs/architecture.md §4.4): KHÔNG có mật khẩu, khóa hay token nào trong repo
 # hay .env. OpenBao (KV v2 `dxos/`) là nguồn duy nhất; bao-init khởi tạo/unseal và nạp bí
@@ -65,11 +69,61 @@ x-bao-agent: &bao-agent
     disable: true
   restart: "no"
 
+# Dashboard (Apache-2.0): image gốc apache/superset bản lean + driver PostgreSQL và Authlib
+# (nen-tang/superset/Dockerfile), không sửa mã. Cấu hình nen-tang/superset/superset_config.py: metadata
+# trong CSDL superset của PostgreSQL lõi, không Redis/Celery, chạy dưới /bao-cao của APISIX, đăng nhập
+# chỉ bằng SSO Keycloak (client public DXOS_SUPERSET_CLIENT, PKCE), vai Superset theo client role của
+# dxos_api. Không mở cổng ra host.
+x-superset: &superset
+  build:
+    context: ./nen-tang/superset
+  image: commune-dxos/superset:6.1.0
+  profiles: [bi]
+  environment: &superset-env
+    SUPERSET_CONFIG_PATH: /nen-tang/superset/superset_config.py
+    SUPERSET_APP_ROOT: /bao-cao
+    DXOS_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8080}
+    DXOS_KEYCLOAK_NOI_BO: http://keycloak:8080
+    DXOS_KEYCLOAK_REALM: dxos
+    DXOS_SUPERSET_CLIENT: bao_cao_superset
+    DXOS_SUPERSET_TEN: Báo cáo một cửa
+    # Client role của dxos_api (do dịch vụ Tầng 2 khai) → vai Superset (do mot-cua/bao-cao/ dựng).
+    DXOS_SUPERSET_VAI_TRO: '{"lanh_dao": ["Lãnh đạo xã"]}'
+    DXOS_BAO_CAO_DB: ${POSTGRES_DB:-commune}
+  volumes:
+    - ./nen-tang/superset:/nen-tang/superset:ro
+    - ./mot-cua:/tang2:ro
+    - superset-secrets:/run/dxos-secrets:ro
+
 services:
   # ---------------------------------------------------------------- core ----
   postgres:
-    image: postgres:17.6-alpine
+    # postgres:17.6-alpine + pgAudit 17.1 biên dịch từ mã nguồn ghim SHA-256 (#75): nen-tang/postgres/Dockerfile.
+    build:
+      context: ./nen-tang/postgres
+    image: commune-dxos/postgres:17.6-pgaudit17.1
     profiles: [core]
+    # pgAudit (#75) ghi vào log PostgreSQL (docker compose logs postgres) các dòng "AUDIT: …":
+    #   SESSION: lớp câu lệnh theo DXOS_PGAUDIT_LOG (mặc định ddl,role: đổi schema, role, quyền);
+    #   OBJECT: câu lệnh chạm bảng mà role dxos_kiem_toan có quyền tương ứng (Tầng 2 tự GRANT bảng
+    #           có dữ liệu cá nhân cho role này, ví dụ mot-cua/db/migrations/007_nhat_ky_kiem_toan.sql).
+    # Không ghi tham số câu lệnh (log_parameter tắt) để log không chứa dữ liệu cá nhân.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pgaudit
+      - -c
+      - pgaudit.log=${DXOS_PGAUDIT_LOG:-ddl,role}
+      - -c
+      - pgaudit.role=dxos_kiem_toan
+      - -c
+      - pgaudit.log_catalog=off
+      - -c
+      - pgaudit.log_relation=on
+      - -c
+      - pgaudit.log_parameter=off
+      - -c
+      - "log_line_prefix=%m [%p] %q%u@%d "
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-commune}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -228,8 +282,9 @@ services:
       PGRST_OPENAPI_MODE: follow-privileges
       # Chặn trên số dòng mỗi response, tránh một request đọc cả bảng lớn.
       PGRST_DB_MAX_ROWS: "1000"
-      # PostgREST mặc định cho mọi origin; giới hạn giống CORS của APISIX.
-      PGRST_SERVER_CORS_ALLOWED_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
+      # PostgREST mặc định cho mọi origin; giới hạn giống CORS của APISIX. PostgREST từ chối request
+      # có Origin lạ, nên luôn kèm origin của gateway (cổng công dân mot-cua-web, #57).
+      PGRST_SERVER_CORS_ALLOWED_ORIGINS: ${DXOS_GATEWAY_URL:-http://localhost:9080},${DXOS_CORS_ORIGINS:-http://localhost:5173}
     env_file:
       - ./mot-cua/postgrest.env
     volumes:
@@ -261,8 +316,9 @@ services:
     # vì entrypoint sẽ ghi đè config.yaml đã mount).
     environment:
       # Nguồn (origin) web của Tầng 2 được gọi API từ trình duyệt, cách nhau bởi dấu phẩy.
-      # Đọc trong nen-tang/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}.
-      DXOS_CORS_ORIGINS: ${DXOS_CORS_ORIGINS:-http://localhost:5173}
+      # Đọc trong nen-tang/apisix/apisix.yaml bằng ${{DXOS_CORS_ORIGINS}}. Luôn kèm origin của
+      # gateway: cổng công dân mot-cua-web được phục vụ ở đó (#57).
+      DXOS_CORS_ORIGINS: ${DXOS_GATEWAY_URL:-http://localhost:9080},${DXOS_CORS_ORIGINS:-http://localhost:5173}
     volumes:
       - ./nen-tang/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ./nen-tang/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
@@ -278,6 +334,8 @@ services:
       mot-cua-api:
         condition: service_healthy
       garage:
+        condition: service_healthy
+      mot-cua-web:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
@@ -366,7 +424,10 @@ services:
   # Bí mật (#10): mật khẩu rest-admin, client secret, khóa S3 đọc từ OpenBao lúc cần bằng
   # AppRole `tang2` (volume tang2-secrets chỉ chứa role_id/secret_id), chỉ giữ trong bộ nhớ.
   mot-cua-api:
-    image: python:3.13.16-alpine3.24
+    # python:3.13.16-alpine3.24 + jsonschema (Poka-yoke phía máy chủ, #59): mot-cua/backend/Dockerfile.
+    build:
+      context: ./mot-cua/backend
+    image: commune-dxos/mot-cua-api:local
     profiles: [core]
     command: ["python", "-u", "/mot-cua/backend/main.py"]
     environment:
@@ -387,6 +448,12 @@ services:
       DXOS_GATEWAY_URL: ${DXOS_GATEWAY_URL:-http://localhost:9080}
       DXOS_FILE_MAX_BYTES: ${DXOS_FILE_MAX_BYTES:-10485760}
       DXOS_FILE_LINK_TTL: ${DXOS_FILE_LINK_TTL:-300}
+      # Ký số giấy tờ (#77): Gotenberg sinh PDF từ mẫu mot-cua/mau-giay-to/, pyHanko ký bằng chứng
+      # thư ca-init ghi vào OpenBao. Tên cơ quan in trên giấy tờ = tên trong chứng thư.
+      DXOS_GOTENBERG_URL: http://gotenberg:3000
+      DXOS_KY_SO_TEN: ${DXOS_KY_SO_TEN:-UBND xã Mẫu – Bộ phận Một cửa}
+      # pyHanko (tzlocal) cần múi giờ hệ thống; giờ Việt Nam trên giấy tờ tính bằng offset cố định.
+      TZ: UTC
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./mot-cua:/mot-cua:ro
@@ -419,6 +486,40 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Cổng công dân (#57): bản build của mot-cua/web-cong-dan/ (React) do nginx không đặc quyền phục
+  # vụ (Dockerfile hai tầng: node build → nginxinc/nginx-unprivileged, uid 101). Không mở cổng ra
+  # host: APISIX phục vụ ở route / (http://localhost:9080/), cùng origin với /public, /api, /files,
+  # /workflow nên web gọi lõi bằng đường dẫn tương đối. Không có bí mật: Keycloak mà trình duyệt
+  # thấy truyền lúc chạy (sinh /cau-hinh.js và CSP). `make up` build lại image khi mã web đổi.
+  mot-cua-web:
+    build:
+      context: ./mot-cua/web-cong-dan
+    image: commune-dxos/mot-cua-web:local
+    profiles: [core]
+    environment:
+      DXOS_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8080}
+      DXOS_KEYCLOAK_REALM: dxos
+      DXOS_OIDC_CLIENT_ID: mot_cua_web
+      # Cổng cán bộ /can-bo (#55): client public riêng, Keycloak bắt OTP với can_bo, lanh_dao.
+      DXOS_OIDC_CLIENT_ID_CAN_BO: mot_cua_can_bo
+      # Entrypoint của nginx chỉ thay biến DXOS_* vào nginx/*.template.
+      NGINX_ENVSUBST_FILTER: ^DXOS_
+    read_only: true
+    tmpfs:
+      - /tmp
+      # Cấu hình nginx sinh từ template lúc khởi động (chủ uid 101).
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   # Tác vụ nền của bộ máy một cửa (#9): mot-cua/backend/worker.py, cùng image và cùng danh
   # tính OpenBao `tang2` với mot-cua-api, không nhận request nào (không có cổng): phát sự kiện
   # trong hộp thư đi (outbox PostgreSQL) lên RabbitMQ, quét hồ sơ sắp trễ hạn, consumer mẫu ghi
@@ -437,6 +538,8 @@ services:
       DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
       DXOS_SU_KIEN_QUET_GIAY: ${DXOS_SU_KIEN_QUET_GIAY:-300}
       DXOS_SU_KIEN_SAP_TRE_NGAY: ${DXOS_SU_KIEN_SAP_TRE_NGAY:-1}
+      DXOS_DOI_SOAT_CHO_GIAY: ${DXOS_DOI_SOAT_CHO_GIAY:-60}
+      DXOS_DOI_SOAT_TOI_DA: ${DXOS_DOI_SOAT_TOI_DA:-500}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./mot-cua:/mot-cua:ro
@@ -637,6 +740,9 @@ services:
       - tang2-secrets:/vol/tang2
       - rabbitmq-secrets:/vol/rabbitmq
       - rabbitmq-init-secrets:/vol/rabbitmq-init
+      - step-ca-secrets:/vol/step-ca
+      - ca-init-secrets:/vol/ca-init
+      - superset-secrets:/vol/superset
     depends_on:
       openbao:
         condition: service_started
@@ -749,14 +855,178 @@ services:
         condition: service_completed_successfully
     restart: "no"
 
-  # ------------------------------------------------- docs – TODO tuần 2–5 ----
-  # gotenberg:   # MIT, gotenberg/gotenberg
-  # step-ca:     # Apache-2.0, smallstep/step-ca
+  # --------------------------------------------- ký số giấy tờ (#77) ----
+  # Mật khẩu khóa CA và mật khẩu provisioner: bao-init sinh trong OpenBao (dxos/core/step-ca/*),
+  # agent này render ra volume step-ca-secrets (quyền 0400, chủ uid 1000 = user step) rồi thoát.
+  step-ca-secrets:
+    <<: *bao-agent
+    user: "1000"
+    command: ["-config=/nen-tang/openbao/agent/step-ca.hcl"]
+    volumes:
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
+      - step-ca-secrets:/run/dxos-secrets
+
+  # CA nội bộ của xã (Apache-2.0): dịch vụ riêng, image gốc smallstep/step-ca, không sửa mã. Lần
+  # đầu tự khởi tạo CA hai tầng trong volume step-ca-data (khóa mã hóa bằng mật khẩu OpenBao), một
+  # provisioner JWK ký tài liệu theo mẫu nen-tang/step-ca/ky-tai-lieu.tpl (nen-tang/scripts/
+  # step-ca-start.sh). Không mở cổng ra host, không có route APISIX: chỉ ca-init gọi.
+  step-ca:
+    image: smallstep/step-ca:0.30.2
+    profiles: [core]
+    entrypoint: ["/bin/bash", "/nen-tang/scripts/step-ca-start.sh"]
+    environment:
+      DXOS_CA_TEN: ${DXOS_CA_TEN:-CA nội bộ Commune DX-OS}
+      DXOS_KY_SO_THOI_HAN: ${DXOS_KY_SO_THOI_HAN:-8760h}
+    volumes:
+      - ./nen-tang/scripts/step-ca-start.sh:/nen-tang/scripts/step-ca-start.sh:ro
+      - ./nen-tang/step-ca:/nen-tang/step-ca:ro
+      - step-ca-secrets:/run/dxos-secrets:ro
+      - step-ca-data:/home/step
+    expose:
+      - "9000"
+    depends_on:
+      step-ca-secrets:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "--cacert", "/home/step/certs/root_ca.crt", "https://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Cấp (hoặc gia hạn khi còn dưới 30 ngày) chứng thư ký tài liệu cho dịch vụ Tầng 2, ghi khóa +
+  # chứng thư vào OpenBao dxos/tang2/<DXOS_TANG2>/ky-so (nen-tang/scripts/ca-init.sh) rồi thoát.
+  # Idempotent. AppRole ca-init (volume ca-init-secrets chỉ có role_id/secret_id); đọc root CA từ
+  # volume step-ca-data chỉ đọc.
+  ca-init:
+    image: smallstep/step-ca:0.30.2
+    profiles: [core]
+    entrypoint: ["/bin/bash", "/nen-tang/scripts/ca-init.sh"]
+    environment:
+      DXOS_TANG2: *tang2
+      DXOS_KY_SO_TEN: ${DXOS_KY_SO_TEN:-UBND xã Mẫu – Bộ phận Một cửa}
+      DXOS_KY_SO_THOI_HAN: ${DXOS_KY_SO_THOI_HAN:-8760h}
+      BAO_ADDR: http://openbao:8200
+    volumes:
+      - ./nen-tang/scripts/ca-init.sh:/nen-tang/scripts/ca-init.sh:ro
+      - ca-init-secrets:/run/dxos-secrets:ro
+      - step-ca-data:/ca:ro
+    depends_on:
+      step-ca:
+        condition: service_healthy
+      bao-init:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  # Sinh PDF từ HTML (MIT): dịch vụ riêng, image gốc bản chỉ có Chromium, không sửa mã. Chỉ
+  # mot-cua-api gọi (không mở cổng, không route APISIX). Chromium không được tải gì từ mạng (mẫu
+  # giấy tờ tự chứa), không chạy JavaScript; tắt webhook và downloadFrom (chống SSRF).
+  gotenberg:
+    image: gotenberg/gotenberg:8.37.0-chromium
+    profiles: [core]
+    command:
+      - gotenberg
+      - --api-timeout=30s
+      - --api-disable-health-check-logging
+      - --api-disable-download-from
+      - --webhook-disable
+      - --chromium-disable-javascript
+      - --chromium-deny-private-ips
+      - --chromium-deny-public-ips
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # ------------------------------------------------- docs – TODO tuần 5 ----
   # meilisearch: # Chỉ Community Edition (MIT), không bật tính năng Enterprise (D-004)
 
-  # --------------------------------------------------- ai / bi – TODO ----
+  # ------------------------------------------- kho dữ liệu lịch sử (#80) ----
+  # Dịch vụ một lần của bộ máy (mot-cua/kho-du-lieu/chay.py), chạy tay hoặc theo lịch máy chủ:
+  # make kho-du-lieu (= docker compose --profile core --profile bi run --rm --no-deps kho-du-lieu). Đọc hồ sơ đã đóng qua
+  # PostgREST bằng tài khoản dịch vụ mot_cua_bao_cao (secret ở OpenBao, AppRole tang2 như
+  # mot-cua-worker) → Parquet khử định danh trong volume kho-du-lieu → dbt-core + DuckDB build mart +
+  # docs (lineage) → RPC nap_bao_cao đẩy mart về schema bao_cao cho Superset. Không mở cổng.
+  kho-du-lieu:
+    build:
+      context: ./mot-cua/kho-du-lieu
+    image: commune-dxos/kho-du-lieu:local
+    profiles: [bi]
+    command: ["python", "-u", "/mot-cua/kho-du-lieu/chay.py"]
+    environment:
+      DXOS_TANG2: *tang2
+      DXOS_POSTGREST_URL: http://postgrest:3000
+      DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
+      DXOS_BAO_ADDR: http://openbao:8200
+      DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
+      DXOS_KHO_DIR: /kho
+    volumes:
+      - ./mot-cua:/mot-cua:ro
+      - tang2-secrets:/run/dxos-secrets:ro
+      - kho-du-lieu:/kho
+    # Không depends_on: dịch vụ của profile core (PostgREST, Keycloak, OpenBao) phải đang chạy
+    # (make up trước); khai phụ thuộc chéo profile thì `--profile bi` một mình không hợp lệ.
+    restart: "no"
+
+  # ---------------------------------------------------- Superset (#82) ----
+  # SECRET_KEY, mật khẩu role metadata `superset` và role đọc báo cáo `bao_cao_doc` (bao-init sinh trong
+  # OpenBao) → volume superset-secrets, quyền 0400, chủ uid 1000 (user superset).
+  superset-secrets:
+    <<: *bao-agent
+    profiles: [bi]
+    user: "1000"
+    command: ["-config=/nen-tang/openbao/agent/superset.hcl"]
+    volumes:
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
+      - superset-secrets:/run/dxos-secrets
+
+  # Một lần (nen-tang/superset/superset-init.sh): nâng lược đồ metadata, vai trò mặc định, rồi dựng
+  # kết nối, dataset, chart, dashboard của Tầng 2 bằng mã (mot-cua/bao-cao/superset_dung.py).
+  superset-init:
+    <<: *superset
+    entrypoint: ["/bin/bash", "/nen-tang/superset/superset-init.sh"]
+    # CSDL superset, role bao_cao_doc (db-init) và schema bao_cao (migration Tầng 2) phải có trước.
+    depends_on:
+      superset-secrets:
+        condition: service_completed_successfully
+      db-init:
+        condition: service_completed_successfully
+      tang2-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  superset:
+    <<: *superset
+    command: ["/usr/bin/run-server.sh"]
+    environment:
+      <<: *superset-env
+      # Một tiến trình (20 luồng): cache trong bộ nhớ (không Redis) dùng chung cho mọi request.
+      SERVER_WORKER_AMOUNT: "1"
+    expose:
+      - "8088"
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8088/bao-cao/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # --------------------------------------------------- ai – TODO ----
   # ollama:      # profile ai; model Qwen2.5 7B/14B (Apache-2.0), không dùng bản 3B (D-004)
-  # superset:    # profile bi; apache/superset
 
 volumes:
   pg-data:
@@ -779,3 +1049,13 @@ volumes:
   rabbitmq-init-secrets:
   # RabbitMQ (#9): CSDL của nút (user, vhost, queue, tin nhắn bền vững).
   rabbitmq-data:
+  # step-ca (#77): cấu hình CA, root + intermediate (khóa đã mã hóa), CSDL chứng thư đã cấp.
+  # Mất volume này = CA mới: ca-init cấp lại chứng thư theo root mới; PDF đã ký bằng CA cũ vẫn
+  # toàn vẹn nhưng không còn tin cậy khi xác minh. Sao lưu volume này cùng OpenBao.
+  step-ca-data:
+  # Kho dữ liệu (#80): Parquet đã khử định danh, kho.duckdb của dbt, target/ (docs, lineage), log dbt.
+  # Dựng lại được hoàn toàn bằng make kho-du-lieu (nguồn đúng là PostgreSQL).
+  kho-du-lieu:
+  superset-secrets:
+  step-ca-secrets:
+  ca-init-secrets:

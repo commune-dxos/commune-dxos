@@ -26,13 +26,14 @@ Clone vào thư mục nào cũng chạy được (không có đường dẫn tuy
 git clone https://github.com/commune-dxos/commune-dxos.git
 cd commune-dxos
 cp .env.example .env      # không có mật khẩu nào cần điền
-make up                   # nền tảng + bộ máy mot-cua + nạp gói thu-tuc/; tự init + unseal OpenBao
+make up                   # nền tảng + bộ máy mot-cua + nạp gói thu-tuc/ + cổng công dân; tự init + unseal OpenBao
 make ps                   # dịch vụ chạy nền "healthy", dịch vụ một lần "Exited (0)"
 make smoke                # kiểm tra đầu-cuối: "== Kết quả: 405 đạt, 0 trượt"
 make demo-users           # đặt mật khẩu cho người dùng mẫu và in ra
 ```
 
 - `make up` tự gọi `bao-init`: lần đầu khởi tạo OpenBao, sinh bí mật ngẫu nhiên cho mọi dịch vụ và ghi **unseal key + root token** vào `.data/openbao/commune.json` (quyền 600, ngoài git). Chỉ cần gọi `make bao-init` riêng khi OpenBao bị seal mà không muốn khởi động lại cả hệ thống (mục 7).
+- Mở cổng công dân ở **http://localhost:9080/** (APISIX phục vụ bản build của `mot-cua/web-cong-dan/`, dịch vụ `mot-cua-web`). `make up` build image web (`docker compose up --build`); lần đầu thêm khoảng 1 phút để `npm ci` + `vite build`, các lần sau dùng cache, chỉ build lại khi mã web đổi.
 - `make up` trả về khi container đã tạo; ClamAV cần thêm 1–2 phút để nạp CSDL virus. `make smoke` tự chờ dịch vụ healthy (tối đa ~3 phút) rồi mới kiểm.
 - `make smoke` không xóa dữ liệu: nó thêm hồ sơ thử và đặt mật khẩu **ngẫu nhiên** cho người dùng mẫu, nên chạy `make demo-users` **sau** `make smoke`.
 - Dừng: `make down` (giữ dữ liệu). Xóa sạch dữ liệu để chạy lại từ đầu: `docker compose --profile '*' down -v` rồi xóa `.data/openbao/commune.json`.
@@ -52,6 +53,8 @@ make bao-import-env       # chuyển mật khẩu từ .env cũ (trước v0.1.0
 
 | Dịch vụ | Địa chỉ | Ghi chú |
 |---|---|---|
+| **Cổng công dân** | **http://localhost:9080/** | web Tầng 2 (`mot-cua-web`) qua APISIX; đăng nhập `congdan01` |
+| **Cổng cán bộ** | **http://localhost:9080/can-bo** | cùng web, client `mot_cua_can_bo`; đăng nhập `canbo01`, `lanhdao01` (mật khẩu + OTP); luồng: [`cong-can-bo.md`](cong-can-bo.md) |
 | API Gateway – công khai | http://localhost:9080/public/thu_tuc | không token, 60 request/phút/IP |
 | API Gateway – dữ liệu (JWT) | http://localhost:9080/api/ho_so | PostgREST qua APISIX, RLS theo vai trò |
 | API Gateway – quy trình (JWT) | http://localhost:9080/workflow/tasks | API quy trình của `mot-cua` → Flowable |
@@ -61,15 +64,15 @@ make bao-import-env       # chuyển mật khẩu từ .env cũ (trước v0.1.0
 | PostgreSQL (debug) | `127.0.0.1:55432` | chỉ localhost |
 | Flowable REST (debug) | `127.0.0.1:8090` | chỉ localhost; Tầng 2 gọi qua APISIX |
 
-OpenBao, Garage, ClamAV, RabbitMQ, PostgREST không mở cổng ra máy host; chỉ truy cập qua gateway hoặc mạng nội bộ Docker.
+OpenBao, Garage, ClamAV, RabbitMQ, PostgREST, `mot-cua-web` không mở cổng ra máy host; chỉ truy cập qua gateway hoặc mạng nội bộ Docker.
 
 **Tài khoản mẫu** (dữ liệu giả, realm `dxos`, mật khẩu do `make demo-users` đặt):
 
 | Người dùng | Vai trò | Thử gì |
 |---|---|---|
 | `congdan01`, `congdan02` | `cong_dan` – công dân | nộp hồ sơ, chỉ thấy hồ sơ của mình |
-| `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) | `can_bo` – cán bộ | task theo lĩnh vực phụ trách; **bắt buộc OTP** |
-| `lanhdao01` | `lanh_dao` – lãnh đạo | phê duyệt, chỉ đọc hồ sơ; **bắt buộc OTP** |
+| `canbo01` (hộ tịch), `canbo02` (chứng thực), `canbo03` (đất đai) | `can_bo` – cán bộ | cổng cán bộ `/can-bo`: task theo lĩnh vực phụ trách; **bắt buộc OTP** |
+| `lanhdao01` | `lanh_dao` – lãnh đạo | cổng cán bộ `/can-bo`: phê duyệt, chỉ đọc hồ sơ; **bắt buộc OTP** |
 
 ```bash
 make demo-users                                   # in mật khẩu chung
@@ -92,8 +95,8 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 | `DXOS_SEED` | `true` | nạp dữ liệu mẫu giả; `false` khi triển khai thật |
 | `APISIX_PORT`, `KEYCLOAK_PORT` | `9080`, `8080` | cổng gateway, SSO trên máy host |
 | `POSTGRES_PORT`, `FLOWABLE_PORT` | `55432`, `8090` | cổng debug, chỉ 127.0.0.1 |
-| `DXOS_CORS_ORIGINS` | `http://localhost:5173` | origin web được gọi API |
-| `DXOS_GATEWAY_URL` | `http://localhost:9080` | địa chỉ gateway trong link tải tệp |
+| `DXOS_CORS_ORIGINS` | `http://localhost:5173` | origin web khác được gọi API (`npm run dev`); origin của gateway luôn được thêm |
+| `DXOS_GATEWAY_URL` | `http://localhost:9080` | địa chỉ gateway trong link tải tệp, origin của cổng công dân |
 | `DXOS_FILE_MAX_BYTES` | `10485760` | cỡ tệp tối đa (≤ 10 MiB) |
 | `BAO_UNSEAL` | `file` | `file` (máy dev) hoặc `manual` (triển khai thật) |
 | `DXOS_SU_KIEN_QUET_GIAY`, `DXOS_SU_KIEN_SAP_TRE_NGAY` | `300`, `1` | chu kỳ quét và ngưỡng cảnh báo sắp trễ hạn |
@@ -145,5 +148,19 @@ CI trên GitHub Actions chạy 6 job bắt buộc cho mỗi PR: `make-check`, `s
 | `make smoke` trượt `clamav healthy` (`starting`) | Lần đầu ClamAV tải CSDL virus (~250 MB); chờ 1–2 phút rồi chạy lại |
 | `/public/…` trả 429 hoặc `{"error_msg":…}` ngay sau `make smoke` | Bước cuối của smoke cố ý dùng hết hạn mức 60 request/phút; đợi 1 phút (lần smoke kế tiếp tự chờ) |
 | `invalid_grant – Account is not fully set up` khi lấy token cán bộ/lãnh đạo | Chưa cài OTP: đăng nhập trang tài khoản một lần (mục 3) |
+| Cổng công dân http://localhost:9080/ báo `Invalid parameter: redirect_uri` khi đăng nhập (máy đã chạy bản v0.4.0 trở về trước, volume cũ) | `tang2-realm` không ghi đè client đã có, nên client `mot_cua_web` cũ chưa có địa chỉ của gateway. Thêm một lần (lệnh bên dưới bảng), không mất dữ liệu |
 | `Thiếu .env` | `cp .env.example .env` |
 | Muốn chạy song song bản thứ hai | Đặt `COMPOSE_PROJECT_NAME=<tên khác>` và đổi 4 cổng trong `.env`; mỗi project có volume và tệp khóa OpenBao riêng (`.data/openbao/<tên>.json`) |
+
+Thêm địa chỉ gateway vào client `mot_cua_web` trên volume cũ (đổi `9080` nếu đặt `APISIX_PORT` khác):
+
+```bash
+docker compose exec -T keycloak bash -c 'k=/opt/keycloak/bin/kcadm.sh; c=/tmp/kc57.config
+$k config credentials --config $c --server http://localhost:8080 --realm master \
+  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$(< /run/dxos-secrets/admin_password)"
+id=$($k get clients --config $c -r dxos -q clientId=mot_cua_web --fields id --format csv --noquotes)
+$k update clients/$id --config $c -r dxos \
+  -s "redirectUris=[\"http://localhost:9080/*\",\"http://localhost:5173/*\"]" \
+  -s "webOrigins=[\"http://localhost:9080\",\"http://localhost:5173\"]" \
+  -s "attributes.\"post.logout.redirect.uris\"=http://localhost:9080/*##http://localhost:5173/*"; rm -f $c'
+```

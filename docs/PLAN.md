@@ -35,20 +35,20 @@ Cách dùng tệp này:
 
 ## Tuần 3 · 29/10–04/11 · Luồng nghiệp vụ chính
 - [ ] V1 · D-009 hướng 3 – Milestones `Tuần 1` … `Tuần 7`, nhãn thành phần tự gắn theo tệp (`gan-nhan`), mẫu issue "Thủ tục mới"/"Việc trong tuần", Project "Commune DX-OS – Lộ trình", `docs/quy-trinh-lam-viec.md` (#34, PR chờ duyệt)
-- [ ] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable
+- [x] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable – 2 lớp: cổng công dân (#53) + `mot-cua-api` 422 (#59, PR chờ duyệt)
 - [ ] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái – khung + danh mục + đăng nhập (#52, PR chờ duyệt); nộp hồ sơ #53, tra cứu #54
 - [ ] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước, lịch công tác
 - [ ] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `mot-cua/`): sự kiện `ho_so.sap_tre_han` và `mot-cua-worker` đã có (#9); còn consumer thông báo cho cán bộ/công dân
-- [ ] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả)
+- [x] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả) (#82, v0.5.0)
 
 ## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0
-- [ ] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit
-- [ ] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF; văn bản đi/đến có ký số
-- [ ] V2 · Hồ sơ hoàn tất → Parquet + DuckDB; `dbt-core` dựng báo cáo + lineage
-- [ ] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn
-- [ ] V1 · **Thuê VPS + tên miền**, HTTPS, CI tự triển khai khi merge `main`
-- [ ] V3 · Cuối tuần mời 3–5 người dùng thật (cán bộ xã, sinh viên) dùng thử, ghi phản hồi thành issue nhãn `user-feedback`
-- [ ] V1 · Release v0.2.0
+- [x] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit (#75, v0.5.0)
+- [x] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF (#77); văn bản đi/đến có ký số (#78) (v0.5.0)
+- [x] V2 · Hồ sơ hoàn tất → Parquet + DuckDB; `dbt-core` dựng báo cáo + lineage (#80, v0.5.0)
+- [x] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn (#82, v0.5.0)
+- [ ] V1 · **Thuê VPS + tên miền**, HTTPS, CI tự triển khai khi merge `main` – **còn mở**, không có trong v0.5.0 (người hướng dẫn lo VPS)
+- [ ] V3 · Cuối tuần mời 3–5 người dùng thật (cán bộ xã, sinh viên) dùng thử, ghi phản hồi thành issue nhãn `user-feedback` – **còn mở**, không có trong v0.5.0 (cần VPS)
+- [ ] V1 · Release v0.5.0 – bản tuần 4: trạng thái theo Flowable, kiểm toán, ký số, kho dữ liệu, Superset, sổ văn bản (#85, PR chờ duyệt). Số bản theo nhịp phát hành mỗi tuần, khác số dự kiến ban đầu (v0.2.0)
 
 ## Tuần 5 · 12–18/11 · Tầng [I] + demo công khai
 - [ ] V3 · OCR (PaddleOCR + VietOCR) giấy tờ mẫu giả → tự điền hồ sơ → cán bộ xác nhận (HITL)

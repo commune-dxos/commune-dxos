@@ -1,0 +1,60 @@
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Mẫu biên nhận hồ sơ (#77): sinh khi hồ sơ được tiếp nhận vào quy trình.
+     mot-cua-api thay $$ten_bien bằng dữ liệu đã thoát HTML (ky_so.dung_html), Gotenberg in ra PDF A4 rồi
+     pyHanko ký. Tự chứa: không tải phông, ảnh hay script từ mạng (Gotenberg chặn mọi truy cập mạng). -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Biên nhận hồ sơ $ma_ho_so</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Noto Serif", "DejaVu Serif", serif; font-size: 13pt; color: #111; line-height: 1.45; }
+    .trang { padding: 18mm 20mm 20mm 25mm; }
+    .dau { display: flex; justify-content: space-between; text-align: center; font-size: 12pt; }
+    .dau .trai { width: 45%; font-weight: bold; text-transform: uppercase; }
+    .dau .phai { width: 55%; }
+    .dau .phai b { display: block; }
+    .gach { display: block; width: 40%; margin: 2px auto 0; border-top: 1px solid #111; }
+    h1 { text-align: center; font-size: 15pt; margin: 14mm 0 2mm; text-transform: uppercase; }
+    .so { text-align: center; font-style: italic; margin: 0 0 8mm; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 4px 0; vertical-align: top; }
+    td.nhan { width: 38%; }
+    ul { margin: 2px 0 0; padding-left: 20px; }
+    .ghi-chu { margin-top: 8mm; font-size: 11.5pt; }
+    .ky { margin-top: 12mm; margin-left: 50%; text-align: center; }
+    .ky .chuc { font-weight: bold; text-transform: uppercase; }
+    .ky .so-hoa { margin-top: 6mm; border: 1px solid #b91c1c; color: #b91c1c; padding: 4px 8px; font-size: 10.5pt; display: inline-block; }
+    .chan { position: fixed; bottom: 10mm; left: 25mm; right: 20mm; font-size: 9.5pt; color: #555; border-top: 1px solid #ccc; padding-top: 2mm; }
+  </style>
+</head>
+<body>
+<div class="trang">
+  <div class="dau">
+    <div class="trai">$co_quan</div>
+    <div class="phai"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><b>Độc lập – Tự do – Hạnh phúc</b><span class="gach"></span></div>
+  </div>
+  <h1>Giấy tiếp nhận hồ sơ và hẹn trả kết quả</h1>
+  <p class="so">Mã hồ sơ: <b>$ma_ho_so</b></p>
+  <table>
+    <tr><td class="nhan">Bộ phận tiếp nhận:</td><td>$co_quan</td></tr>
+    <tr><td class="nhan">Đã tiếp nhận hồ sơ của:</td><td><b>$nguoi_nop</b></td></tr>
+    <tr><td class="nhan">Thủ tục:</td><td>$thu_tuc ($ma_thu_tuc)</td></tr>
+    <tr><td class="nhan">Thời điểm nộp:</td><td>$ngay_nhan</td></tr>
+    <tr><td class="nhan">Thành phần hồ sơ đã nhận:</td><td><ul>$thanh_phan</ul></td></tr>
+    <tr><td class="nhan">Lệ phí:</td><td>$le_phi</td></tr>
+    <tr><td class="nhan">Hẹn trả kết quả:</td><td><b>trước 17:00 ngày $han_xu_ly</b></td></tr>
+  </table>
+  <p class="ghi-chu">Công dân theo dõi tiến độ hồ sơ bằng mã hồ sơ trên cổng Một cửa. Khi có yêu cầu bổ sung, hồ sơ được thông báo trên cổng và thời hạn giải quyết tính lại theo quy định.</p>
+  <div class="ky">
+    <div><i>Lập lúc $ngay_lap</i></div>
+    <div class="chuc">$co_quan</div>
+    <div class="so-hoa">Đã ký số – $co_quan</div>
+  </div>
+</div>
+<div class="chan">Mã hồ sơ $ma_ho_so · Văn bản điện tử có chữ ký số PAdES của $co_quan. Kiểm tra chữ ký bằng phần mềm đọc PDF có hỗ trợ chữ ký số hoặc nhờ bộ phận Một cửa xác minh.</div>
+</body>
+</html>

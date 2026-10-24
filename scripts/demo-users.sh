@@ -18,7 +18,7 @@ export COMPOSE_PROFILES=core
 # shellcheck source=scripts/lib-smoke.sh
 . scripts/lib-smoke.sh
 
-[ "$#" -gt 0 ] || set -- congdan01 congdan02 canbo01 canbo02 canbo03 lanhdao01
+[ "$#" -gt 0 ] || set -- congdan01 congdan02 canbo01 canbo02 canbo03 lanhdao01 vanthu01
 pw="${DXOS_DEMO_PASSWORD:-}"
 in_mat_khau=0
 if [ -z "$pw" ]; then

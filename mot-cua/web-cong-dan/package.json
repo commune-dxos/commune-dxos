@@ -1,6 +1,6 @@
 {
   "name": "commune-dxos-web-cong-dan",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Cổng công dân của Commune DX-OS (Tầng 2, một cửa)",
   "license": "GPL-3.0-or-later",
@@ -17,6 +17,7 @@
     "kiem-kieu": "tsc --noEmit"
   },
   "dependencies": {
+    "@cfworker/json-schema": "4.1.1",
     "@fontsource/be-vietnam-pro": "5.3.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

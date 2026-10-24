@@ -120,8 +120,9 @@ def kiem(tep_list, goc):
 
 def buoc_nguoi_xu_ly(process):
     """→ {id userTask: {"ten", "nhom": [candidateGroups], "assignee", "bien": {tên: {"kieu",
-    "bat_buoc"}}}} của mọi userTask trong process (kể cả trong subProcess). Biến lấy từ
-    flowable:formProperty; API một cửa chỉ nhận đúng các biến này khi hoàn thành bước."""
+    "bat_buoc", "ten"}}}} của mọi userTask trong process (kể cả trong subProcess). Biến lấy từ
+    flowable:formProperty; API một cửa chỉ nhận đúng các biến này khi hoàn thành bước, cổng cán bộ
+    dựng form của bước từ đó (nhãn = thuộc tính name, #55)."""
     ket_qua = {}
     for n in process.iter(f"{{{BPMN}}}userTask"):
         nhom = n.get(f"{{{FLOWABLE}}}candidateGroups") or ""
@@ -129,7 +130,8 @@ def buoc_nguoi_xu_ly(process):
         for fp in n.iter(f"{{{FLOWABLE}}}formProperty"):
             if fp.get("id"):
                 bien[fp.get("id")] = {"kieu": fp.get("type", "string"),
-                                      "bat_buoc": fp.get("required") == "true"}
+                                      "bat_buoc": fp.get("required") == "true",
+                                      "ten": fp.get("name") or fp.get("id")}
         ket_qua[n.get("id")] = {"ten": n.get("name") or n.get("id"),
                                 "nhom": [g.strip() for g in nhom.split(",") if g.strip()],
                                 "assignee": n.get(f"{{{FLOWABLE}}}assignee"), "bien": bien}

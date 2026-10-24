@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Form nộp hồ sơ nhiều bước theo mẫu dịch vụ công của GOV.UK (học cách thiết kế, không chép mã):
 // mỗi trang một nhóm câu hỏi, thanh bước, tóm tắt lỗi đầu form, "Kiểm tra lại thông tin", "Đã nộp".
-// Poka-yoke phía trình duyệt theo JSON Schema của gói: thiếu thành phần bắt buộc thì không sang
-// bước sau. Bấm nộp thì tạo hồ sơ, tải tệp, khởi tạo quy trình thật qua APISIX (lib/ho-so.ts);
-// máy chủ kiểm lại schema trước khi khởi tạo ở #59.
+// Poka-yoke phía trình duyệt theo JSON Schema 2020-12 của gói (lib/thanh-phan.ts): thiếu thành phần
+// bắt buộc thì không sang bước sau, và lib/ho-so.ts nopHoSo kiểm lại trước khi gửi request đầu tiên.
+// Bấm nộp thì tạo hồ sơ, tải tệp, khởi tạo quy trình thật qua APISIX; máy chủ kiểm lại schema với
+// tệp đã quét sạch trước khi khởi tạo (#59).
 import { ArrowLeft, ArrowRight, CircleAlert, LogIn } from "lucide-react";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
@@ -16,7 +17,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoiApi, type ThuTuc } from "@/lib/api";
-import { khoiTaoQuyTrinh, layIdThanhPhan, taiTep, taoHoSo, type HoSoMoi } from "@/lib/ho-so";
+import { phatHanhGiayTo } from "@/lib/giay-to";
+import { nopHoSo, tienDoMoi, type HoSoMoi, type TienDoNop } from "@/lib/ho-so";
 import { docThanhPhan, kiemThanhPhan } from "@/lib/thanh-phan";
 import { BuocGiayTo } from "./buoc-giay-to";
 import { BuocKiemTra } from "./buoc-kiem-tra";
@@ -32,20 +34,13 @@ const TIEU_DE: Record<DuongBuoc, string> = {
   "kiem-tra": "Kiểm tra lại thông tin",
 };
 
-function kiemTep(ds: ReturnType<typeof docThanhPhan>, tep: Record<string, File[]>): Loi {
-  const thieu = kiemThanhPhan(ds, tep);
+function kiemTep(thuTuc: ThuTuc, ds: ReturnType<typeof docThanhPhan>, tep: Record<string, File[]>): Loi {
+  const thieu = kiemThanhPhan(thuTuc.json_schema, tep);
   return ds.flatMap((tp) => {
     if (thieu[tp.ma]) return [{ id: tp.ma, thongDiep: thieu[tp.ma] }];
     const sai = (tep[tp.ma] ?? []).map(kiemMotTep).find(Boolean);
     return sai ? [{ id: tp.ma, thongDiep: sai }] : [];
   });
-}
-
-/** Tiến độ nộp, giữ qua các lần "Thử lại" để không tạo trùng hồ sơ hay tải trùng tệp. */
-interface TienDo {
-  hoSo: HoSoMoi | null;
-  daTai: Set<File>;
-  daKhoiTao: boolean;
 }
 
 function Form({ thuTuc }: { thuTuc: ThuTuc }) {
@@ -59,7 +54,7 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
   const [tep, datTep] = useState<Record<string, File[]>>({});
   const [loi, datLoi] = useState<Loi>([]);
   const [lanKiem, datLanKiem] = useState(0);
-  const tienDo = useRef<TienDo>({ hoSo: null, daTai: new Set(), daKhoiTao: false });
+  const tienDo = useRef<TienDoNop>(tienDoMoi());
   const [dangGui, datDangGui] = useState(false);
   const [loiGui, datLoiGui] = useState<string | null>(null);
   const [daNop, datDaNop] = useState<HoSoMoi | null>(null);
@@ -68,7 +63,16 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
     if (!daNop) return <Navigate to={goc} replace />;
     return (
       <Khung>
-        <DaNop thuTuc={thuTuc} hoSo={daNop} nguoiNop={nguoiNop} />
+        <DaNop
+          thuTuc={thuTuc}
+          hoSo={daNop}
+          nguoiNop={nguoiNop}
+          layBienNhan={() => {
+            const token = nguoiDung?.access_token;
+            if (!token) return Promise.reject(new LoiApi("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401));
+            return phatHanhGiayTo(token, daNop.id, "bien_nhan");
+          }}
+        />
       </Khung>
     );
   }
@@ -77,7 +81,7 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
   if (chiSo < 0) return <Navigate to={goc} replace />;
   // Không nhảy cóc qua bước chưa hợp lệ (vd mở thẳng /kiem-tra).
   if (chiSo >= 1 && kiemNguoiNop(nguoiNop).length) return <Navigate to={`${goc}/nguoi-nop`} replace />;
-  if (chiSo >= 2 && kiemTep(thanhPhan, tep).length) return <Navigate to={`${goc}/giay-to`} replace />;
+  if (chiSo >= 2 && kiemTep(thuTuc, thanhPhan, tep).length) return <Navigate to={`${goc}/giay-to`} replace />;
 
   const duong = CAC_BUOC[chiSo].duong;
   const daTaoHoSo = tienDo.current.hoSo;
@@ -95,26 +99,15 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
     }
     datDangGui(true);
     datLoiGui(null);
-    const td = tienDo.current;
     try {
-      td.hoSo ??= await taoHoSo(token, {
-        thu_tuc_id: thuTuc.id,
-        ho_ten_nguoi_nop: nguoiNop.hoTen.trim(),
-        so_dien_thoai: chuanSoDienThoai(nguoiNop.soDienThoai),
-      });
-      const idThanhPhan = await layIdThanhPhan(thuTuc.id);
-      for (const tp of thanhPhan) {
-        for (const f of tep[tp.ma] ?? []) {
-          if (td.daTai.has(f)) continue;
-          await taiTep(token, td.hoSo.id, f, idThanhPhan[tp.ma]);
-          td.daTai.add(f);
-        }
-      }
-      if (!td.daKhoiTao) {
-        await khoiTaoQuyTrinh(token, td.hoSo.id);
-        td.daKhoiTao = true;
-      }
-      datDaNop(td.hoSo);
+      const hoSo = await nopHoSo(
+        token,
+        thuTuc,
+        { ho_ten_nguoi_nop: nguoiNop.hoTen.trim(), so_dien_thoai: chuanSoDienThoai(nguoiNop.soDienThoai) },
+        tep,
+        tienDo.current,
+      );
+      datDaNop(hoSo);
       sang(`${goc}/da-nop`);
     } catch (e) {
       datLoiGui(e instanceof LoiApi ? e.message : "Chưa nộp được hồ sơ. Vui lòng thử lại.");
@@ -129,7 +122,7 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
       void nop();
       return;
     }
-    const l = duong === "nguoi-nop" ? kiemNguoiNop(nguoiNop) : kiemTep(thanhPhan, tep);
+    const l = duong === "nguoi-nop" ? kiemNguoiNop(nguoiNop) : kiemTep(thuTuc, thanhPhan, tep);
     datLoi(l);
     datLanKiem((n) => n + 1);
     if (!l.length) sang(`${goc}/${CAC_BUOC[chiSo + 1].duong}`);

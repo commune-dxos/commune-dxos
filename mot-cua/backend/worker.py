@@ -10,12 +10,16 @@
   quet     mỗi DXOS_SU_KIEN_QUET_GIAY giây: hồ sơ còn quy trình đang chạy và còn
            ≤ DXOS_SU_KIEN_SAP_TRE_NGAY ngày làm việc tới hạn (chưa quá giờ hết hạn) → ghi sự
            kiện ho_so.sap_tre_han, khóa chống trùng theo (hồ sơ, hạn xử lý): mỗi hạn một lần.
+           Rồi đối soát trạng thái (#73): hồ sơ chưa đóng có quy trình mà ho_so.trang_thai lệch
+           với bước đang mở / kết quả trong Flowable (mot-cua-api không ghi được CSDL sau khi
+           Flowable đã chạy, quy trình đi tiếp ngoài API…) → sửa qua RPC dong_bo_trang_thai,
+           nguồn doi_soat, kèm sự kiện. Hồ sơ giấy (không có quy trình) không đụng tới.
   nhan     consumer mẫu: nhận từ queue mot_cua.nhat_ky, kiểm định dạng, ghi
            mot_cua.nhat_ky_su_kien (chống trùng theo id) rồi ACK. Tin sai định dạng → NACK,
            RabbitMQ chuyển sang queue lỗi mot_cua.nhat_ky.loi. Lỗi ghi CSDL → không ACK, kết
            nối lại; RabbitMQ giao lại tin. Nền cho thông báo (tuần 3).
 
-Chạy tay một lần quét (vận hành, smoke):  python worker.py quet-mot-lan
+Chạy tay một lần (vận hành, smoke):  python worker.py quet-mot-lan | doi-soat-mot-lan
 
 Bí mật (OpenBao, AppRole `tang2`, chỉ trong bộ nhớ): thông tin kết nối RabbitMQ của user Tầng
 2 (dxos/tang2/mot-cua/rabbitmq, do rabbitmq-init của nền tảng ghi), client secret
@@ -38,6 +42,7 @@ import bimat
 import hop_thu
 import stomp
 import su_kien
+import trang_thai
 
 TANG2 = os.environ.get("DXOS_TANG2", "mot-cua")
 FLOWABLE_URL = os.environ.get("DXOS_FLOWABLE_URL", "http://flowable:8080/flowable-rest/service")
@@ -46,6 +51,9 @@ QUET_GIAY = int(os.environ.get("DXOS_SU_KIEN_QUET_GIAY", "300"))
 SAP_TRE_NGAY = int(os.environ.get("DXOS_SU_KIEN_SAP_TRE_NGAY", "1"))
 # Chỉ xét hồ sơ có hạn trong khoảng này (ngày lịch) rồi tính chính xác theo ngày làm việc.
 CUA_SO_NGAY = 14
+# Đối soát bỏ qua hồ sơ vừa đổi bước trong khoảng này: mot-cua-api có thể đang ghi CSDL.
+DOI_SOAT_CHO_GIAY = int(os.environ.get("DXOS_DOI_SOAT_CHO_GIAY", "60"))
+DOI_SOAT_TOI_DA = int(os.environ.get("DXOS_DOI_SOAT_TOI_DA", "500"))
 TEP_SONG = "/tmp/song"
 
 log = logging.getLogger("mot-cua-worker")
@@ -135,12 +143,77 @@ def quet_mot_lan(luc=None):
     return moi
 
 
+# --- doi_soat (#73) ---------------------------------------------------------------------
+def _luc(chuoi):
+    try:
+        return datetime.datetime.fromisoformat(chuoi)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bien_lich_su(pi, ten):
+    v = flowable(f"/history/historic-variable-instances?processInstanceId={pi}&variableName={ten}")
+    return ((v or {}).get("data") or [{}])[0].get("variable", {}).get("value")
+
+
+def doi_soat_ho_so(hs, bang, luc, cho_giay):
+    """Một hồ sơ chưa đóng → trạng thái mới đã ghi, hoặc None nếu không cần/không được sửa."""
+    pis = flowable("/history/historic-process-instances?size=10&businessKey="
+                   + urllib.parse.quote(hs["ma_ho_so"])).get("data", [])
+    if not pis:
+        return None  # hồ sơ giấy, xử lý tại quầy
+    p = max(pis, key=lambda x: x.get("startTime") or "")
+    pi, key = p["id"], (p.get("processDefinitionId") or "").split(":")[0]
+    gan_nhat = luc - datetime.timedelta(seconds=cho_giay)
+    if p.get("endTime"):
+        if (_luc(p["endTime"]) or luc) > gan_nhat:
+            return None
+        ket_qua = _bien_lich_su(pi, "ketQua")
+        moi = trang_thai.tinh(hs["trang_thai"], [], bang.get(key), ket_qua, da_ket_thuc=True)
+        ds = [(f"ho_so.{ket_qua}", {"processInstanceId": pi, "ketQua": ket_qua, "diemKetThuc": p.get("endActivityId"),
+                                    "doiSoat": True}, f"ho_so.ket_thuc:{pi}")] if moi else []
+    else:
+        tasks = flowable(f"/runtime/tasks?processInstanceId={pi}").get("data", [])
+        if any((_luc(t.get("createTime")) or luc) > gan_nhat for t in tasks):
+            return None
+        buoc = [t["taskDefinitionKey"] for t in tasks]
+        moi = trang_thai.tinh(hs["trang_thai"], buoc, bang.get(key))
+        ds = [("ho_so.chuyen_buoc", {"processInstanceId": pi, "tuBuoc": None, "denBuoc": buoc, "doiSoat": True}, None)]
+    if not moi:
+        return None
+    ly_do = trang_thai.ly_do(moi, _bien_lich_su(pi, "ghiChu") if moi in ("cho_bo_sung", "tu_choi") else None, None)
+    kq = hop_thu.dong_bo(hs["id"], moi, [(su_kien.tao(loai, hs, du_lieu), khoa) for loai, du_lieu, khoa in ds],
+                         ly_do=ly_do, nguon="doi_soat")
+    if not kq.get("daDoi"):
+        return None
+    log.warning("đối soát: hồ sơ %s lệch Flowable, %s → %s", hs["ma_ho_so"], kq.get("trangThaiTruoc"), kq.get("trangThai"))
+    return kq.get("trangThai")
+
+
+def doi_soat_mot_lan(cho_giay=DOI_SOAT_CHO_GIAY, luc=None):
+    """→ số hồ sơ đã sửa trạng thái cho khớp Flowable."""
+    luc = luc or su_kien.bay_gio()
+    bang = {r["quy_trinh"]: r.get("trang_thai_buoc")
+            for r in hop_thu.pgrst("GET", "/thu_tuc?quy_trinh=not.is.null&select=quy_trinh,trang_thai_buoc")}
+    ds = hop_thu.pgrst("GET", f"/ho_so?trang_thai=not.in.(hoan_tat,tu_choi)&select={hop_thu.COT_HO_SO}"
+                              f"&order=han_xu_ly.asc.nullslast,id&limit={DOI_SOAT_TOI_DA}")
+    sua = 0
+    for hs in ds:
+        try:
+            sua += doi_soat_ho_so(hs, bang, luc, cho_giay) is not None
+        except (hop_thu.LoiHopThu, ValueError) as e:
+            log.warning("đối soát hồ sơ %s lỗi: %s", hs["ma_ho_so"], e)
+    log.info("đối soát trạng thái: %d hồ sơ chưa đóng, %d hồ sơ sửa theo Flowable", len(ds), sua)
+    return sua
+
+
 def vong_quet():
     while True:
-        try:
-            quet_mot_lan()
-        except Exception as e:  # noqa: BLE001
-            log.warning("quét sắp trễ hạn lỗi: %s", e)
+        for ten, ham in (("quét sắp trễ hạn", quet_mot_lan), ("đối soát trạng thái", doi_soat_mot_lan)):
+            try:
+                ham()
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s lỗi: %s", ten, e)
         time.sleep(QUET_GIAY)
 
 
@@ -199,5 +272,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(threadName)s %(message)s")
     if sys.argv[1:] == ["quet-mot-lan"]:
         print(quet_mot_lan())
+    elif sys.argv[1:] == ["doi-soat-mot-lan"]:
+        print(doi_soat_mot_lan(cho_giay=0))
     else:
         main()

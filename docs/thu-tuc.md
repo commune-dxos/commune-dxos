@@ -43,6 +43,9 @@ cong_khai: true
 quy_trinh: xac_nhan_cu_tru
 can_cu_phap_ly:
   - Luật Cư trú 2020
+# Không bắt buộc: trạng thái hồ sơ ở từng bước (mục "Trạng thái hồ sơ theo bước" bên dưới).
+trang_thai_theo_buoc:
+  - tiep_nhan: moi
 ```
 
 | Khóa | Bắt buộc | Kiểu | Ý nghĩa |
@@ -56,6 +59,7 @@ can_cu_phap_ly:
 | `quy_trinh` | có | process id | phải trùng `id` của `<process>` trong BPMN |
 | `ghi_chu_le_phi`, `mo_ta` | không | chuỗi | |
 | `cong_khai` | không | `true`/`false` | mặc định `true`; `false` thì người ngoài và công dân không thấy |
+| `trang_thai_theo_buoc` | không | danh sách `- <bước>: <trạng thái>` | đổi trạng thái mặc định của hồ sơ khi đang ở bước đó ([Trạng thái hồ sơ theo bước](#trạng-thái-hồ-sơ-theo-bước)) |
 
 Tệp dùng **tập con của YAML** (bộ nạp chỉ dùng thư viện chuẩn Python): mỗi dòng `khóa: giá trị`, hoặc `khóa:` rồi các dòng `  - mục`. Không dùng mapping lồng nhau, chuỗi nhiều dòng hay anchor; khóa lạ (gõ sai tên) bị báo lỗi.
 
@@ -78,6 +82,8 @@ Tệp dùng **tập con của YAML** (bộ nạp chỉ dùng thư viện chuẩn
   Kiểu nhận: `boolean`, `string`, `long`.
 - **Biến bộ máy đặt sẵn khi khởi tạo**: `hoSoId`, `maHoSo` (businessKey), `nguoiNopSub`, `hanXuLyLuc` (17:00 ngày hạn, dùng cho hẹn giờ quá hạn).
 - **Kết thúc**: đặt `ketQua` = `hoan_tat` hoặc `tu_choi` ở `endEvent` (xem gói mẫu) để bộ máy phát sự kiện `ho_so.hoan_tat` / `ho_so.tu_choi`.
+
+- **Trạng thái hồ sơ** đi theo bước, không phải khai gì nếu dùng mặc định: xem mục [Trạng thái hồ sơ theo bước](#trạng-thái-hồ-sơ-theo-bước).
 
 Cách viết BPMN không có modeler: [`docs/architecture.md` §7](architecture.md#7-viết-bpmn-khi-không-có-modeler). Sửa luôn sơ đồ Mermaid trong `README.md` của gói.
 
@@ -133,9 +139,37 @@ nap-thu-tuc: gói xac-nhan-cu-tru LỖI, bỏ qua:
   - quy-trinh.bpmn20.xml: process id 'chung_thuc_ban_sao' khác quy_trinh 'xac_nhan_cu_tru' trong thu-tuc.yaml
 ```
 
-Nộp thử một hồ sơ qua `/workflow` (token công dân lấy như `docs/architecture.md` §8): `POST /workflow/ho-so` với `thu_tuc_id` của thủ tục mới. Muốn smoke kiểm luôn thủ tục mới, xem mẫu ở `mot-cua/tests/smoke-goi-thu-tuc.sh` (mục 4 chạy hết quy trình chứng thực bằng `du-lieu-mau.json`).
+Nộp thử một hồ sơ (token công dân lấy như `docs/architecture.md` §8) theo luồng tạo hồ sơ `POST /api/ho_so` → tải tệp cho từng thành phần bắt buộc `POST /files/ho-so/{id}/tep` → `POST /workflow/ho-so/{id}/khoi-tao` (ví dụ lệnh: `mot-cua/README.md` mục `/workflow`). Cổng công dân tự sinh form từ `thanh-phan-ho-so.schema.json` của gói mới, không sửa mã web; cả cổng và `mot-cua-api` kiểm đủ thành phần theo đúng schema này (Poka-yoke 2 lớp, #53/#59). Muốn smoke kiểm luôn thủ tục mới, xem mẫu ở `mot-cua/tests/smoke-goi-thu-tuc.sh` (mục 4 chạy hết quy trình chứng thực bằng `du-lieu-mau.json`).
 
 Mở PR theo [`CONTRIBUTING.md`](../CONTRIBUTING.md): job CI `make-check` chạy bộ kiểm gói, job `bpmn` kiểm cấu trúc mọi `thu-tuc/*/quy-trinh.bpmn20.xml`.
+
+## Trạng thái hồ sơ theo bước
+
+Cột `mot_cua.ho_so.trang_thai` đi theo bước Flowable (#73): cổng công dân, cổng cán bộ, báo cáo và RLS đọc cùng một giá trị trong CSDL. Bộ nạp tính trạng thái cho **mọi** `userTask` của gói và ghi vào `mot_cua.thu_tuc.trang_thai_buoc`; gói mới không phải sửa mã.
+
+Mặc định theo người nhận của bước trong BPMN:
+
+| Bước giao cho | Trạng thái khi hồ sơ đang ở bước đó |
+|---|---|
+| công dân (`flowable:assignee="${nguoiNopSub}"`) | `cho_bo_sung` – công dân sửa hồ sơ, tải thêm tệp được |
+| `flowable:candidateGroups` có `lanh_dao` | `cho_phe_duyet` – cán bộ không tự chuyển trạng thái được |
+| nhóm lĩnh vực của thủ tục | `dang_xu_ly` |
+
+Quy trình kết thúc ở `endEvent` đặt `ketQua` → `hoan_tat` hoặc `tu_choi` (ngày hoàn tất do CSDL ghi). Đổi mặc định của bước nào thì khai trong `thu-tuc.yaml`, ví dụ để hồ sơ còn "mới nộp" tới khi cán bộ tiếp nhận (hai gói mẫu đều khai):
+
+```yaml
+trang_thai_theo_buoc:
+  - tiep_nhan: moi
+```
+
+Nhận `moi`, `dang_xu_ly`, `cho_bo_sung`, `cho_phe_duyet`. Bước không có trong BPMN, trạng thái lạ, khai hai lần hay khai `hoan_tat`/`tu_choi` cho một bước → bộ nạp báo lỗi và bỏ qua gói. Quy tắc lúc chạy (`mot-cua/backend/trang_thai.py`):
+
+- `moi` chỉ có trước lần tiếp nhận đầu: quay lại bước khai `moi` (ví dụ công dân vừa nộp lại sau bổ sung) thì hồ sơ là `dang_xu_ly`.
+- Nhiều bước mở cùng lúc: `cho_bo_sung` > `dang_xu_ly` > `cho_phe_duyet` > `moi`.
+- Không còn bước mở mà quy trình chưa kết thúc (đang ở hẹn giờ, service task) thì giữ nguyên trạng thái. Hẹn giờ quá hạn chỉ đặt `quaHan`, không đổi trạng thái.
+- Chuyển sang `cho_bo_sung`/`tu_choi` thì `ly_do` = biến `ghiChu` người xử lý nhập ở bước đó (không có thì câu mặc định).
+
+Mỗi lần đổi có một dòng trong `mot_cua.lich_su_trang_thai` (ai, bước nào, nguồn) và sự kiện `ho_so.*` mang `duLieu.trangThai`. Cách cập nhật và xử lý lỗi: [`mot-cua/README.md`](../mot-cua/README.md#trạng-thái-hồ-sơ).
 
 ## Bộ nạp làm gì
 
@@ -143,7 +177,7 @@ Mở PR theo [`CONTRIBUTING.md`](../CONTRIBUTING.md): job CI `make-check` chạy
 
 1. **Kiểm gói** (`mot-cua/backend/goi_thu_tuc.py`): đủ tệp, YAML, JSON Schema, BPMN (cùng luật với CI), dữ liệu mẫu.
 2. **Deploy BPMN** lên Flowable qua REST; BPMN không đổi thì không deploy lại.
-3. **Ghi danh mục** qua PostgREST (RPC `mot_cua.nap_thu_tuc`) bằng tài khoản dịch vụ `mot_cua_danh_muc`, chỉ có quyền gọi RPC nạp/rút gói.
+3. **Ghi danh mục** qua PostgREST (RPC `mot_cua.nap_thu_tuc`) bằng tài khoản dịch vụ `mot_cua_danh_muc`, chỉ có quyền gọi RPC nạp/rút gói. Kèm biến từng bước (`bien_theo_buoc`) và trạng thái hồ sơ từng bước (`trang_thai_buoc`).
 4. **Rút** thủ tục có gói mà thư mục đã bị xóa: thôi nhận hồ sơ mới, hồ sơ đang chạy vẫn chạy tới khi xong.
 
 Chi tiết thiết kế: [`docs/architecture.md` §2.4](architecture.md#24-hợp-đồng-giữa-các-lớp).

@@ -16,3 +16,7 @@ can_cu_phap_ly:
   - Nghị định 23/2015/NĐ-CP, Điều 7 và Điều 20
   - Thông tư 01/2020/TT-BTP
   - Thông tư 226/2016/TT-BTC (lệ phí chứng thực)
+# Trạng thái hồ sơ theo bước (docs/thu-tuc.md): ký chứng thực (lanh_dao) → cho_phe_duyet, các
+# bước khác → dang_xu_ly theo mặc định. Yêu cầu còn "mới" tới khi cán bộ tiếp nhận.
+trang_thai_theo_buoc:
+  - tiep_nhan: moi

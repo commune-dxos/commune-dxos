@@ -68,10 +68,17 @@ LV_CT="$(sql "SELECT id FROM mot_cua.linh_vuc WHERE ma = 'chung_thuc'")"
 if [ -z "$CT_ID" ] || [ -z "$LV_CT" ]; then
   kiem "có thủ tục CT01 đã nạp từ gói để chạy /workflow" "có" "không"
 else
-  r="$(gw "$TOKEN" /ho-so "$(jq -c --arg t "$CT_ID" '.ho_so + {thu_tuc_id: $t}' "$MAU_CT")")"
+  # Poka-yoke phía máy chủ (#59): chưa có bản chính thì khởi tạo → 422.
+  CH0="$(curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+    -d "$(jq -c --arg t "$CT_ID" '.ho_so + {thu_tuc_id: $t}' "$MAU_CT")" "$GW/api/ho_so" | jq -r '.[0].id // "00000000-0000-0000-0000-000000000000"')"
+  kiem "CT01: gọi thẳng khoi-tao khi chưa có bản chính → 422, thiếu ban_chinh" "422 ban_chinh" \
+    "$(curl -s -o "$NOP_TD/ct.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$GW/workflow/ho-so/$CH0/khoi-tao") $(jq -r '[.chiTiet.thanhPhan[]?.thanhPhan] | join(",")' "$NOP_TD/ct.json")"
+  r="$(nop_du "$TOKEN" "$(jq -c --arg t "$CT_ID" '.ho_so + {thu_tuc_id: $t}' "$MAU_CT")")"
   CH="$(jq -r '.hoSo.id // empty' <<<"$r")"; CPI="$(jq -r '.processInstanceId // empty' <<<"$r")"
-  kiem "cong_dan nộp CT01 (dữ liệu mẫu của gói) → quy trình chung_thuc_ban_sao, bước tiep_nhan" \
-    "chung_thuc_ban_sao tiep_nhan" "$(jq -r '"\(.quyTrinh) \([.buocDangMo[]?.buoc] | join(","))"' <<<"$r")"
+  kiem "cong_dan nộp CT01 (dữ liệu mẫu của gói; tạo hồ sơ → tải bản chính → khởi tạo) → có mã hồ sơ, quy trình chung_thuc_ban_sao, bước tiep_nhan" \
+    "có chung_thuc_ban_sao tiep_nhan" "$(jq -r '"\(if .hoSo.ma_ho_so then "có" else "không" end) \(.quyTrinh) \([.buocDangMo[]?.buoc] | join(","))"' <<<"$r")"
+  kiem "CT01: tệp bản chính hiện trong GET /files/ho-so/{id}/tep" "$(jq -r '.soTep' <<<"$r") 1" \
+    "$(so_tep_api "$TOKEN" "${CH:-00000000-0000-0000-0000-000000000000}") $(jq -r '.soTep' <<<"$r")"
   kiem "CT01: hạn xử lý trong ngày tiếp nhận (ngày làm việc kế tiếp nếu nộp ngày nghỉ)" "t" \
     "$(sql "SELECT han_xu_ly = mot_cua_noi_bo.cong_ngay_lam_viec((ngay_nhan AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 0)
             FROM mot_cua.ho_so WHERE id = '${CH:-00000000-0000-0000-0000-000000000000}'")"

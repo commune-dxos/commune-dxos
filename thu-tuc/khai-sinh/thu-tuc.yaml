@@ -17,3 +17,7 @@ quy_trinh: dang_ky_khai_sinh
 can_cu_phap_ly:
   - Luật Hộ tịch 2014, Điều 16
   - Nghị định 123/2015/NĐ-CP
+# Trạng thái hồ sơ theo bước (docs/thu-tuc.md): mặc định bước của công dân → cho_bo_sung, của
+# lanh_dao → cho_phe_duyet, còn lại → dang_xu_ly. Hồ sơ còn "mới" tới khi cán bộ tiếp nhận.
+trang_thai_theo_buoc:
+  - tiep_nhan: moi

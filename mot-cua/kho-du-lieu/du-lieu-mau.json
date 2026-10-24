@@ -1,0 +1,261 @@
+{
+  "ho_so": [
+    {
+      "id": "00000001-6d6f-4000-8000-000000000001",
+      "ma_ho_so": "HSMAU-001",
+      "trang_thai": "hoan_tat",
+      "ngay_nhan": "2026-09-28T01:00:00+00:00",
+      "han_xu_ly": "2026-10-01",
+      "ngay_hoan_tat": "2026-09-30T03:00:00+00:00",
+      "thu_tuc": {
+        "ma": "KS01",
+        "ten": "Đăng ký khai sinh",
+        "so_ngay_xu_ly": 3,
+        "linh_vuc": {
+          "ma": "ho_tich",
+          "ten": "Hộ tịch"
+        }
+      }
+    },
+    {
+      "id": "00000002-6d6f-4000-8000-000000000002",
+      "ma_ho_so": "HSMAU-002",
+      "trang_thai": "hoan_tat",
+      "ngay_nhan": "2026-09-29T02:00:00+00:00",
+      "han_xu_ly": "2026-10-02",
+      "ngay_hoan_tat": "2026-10-02T10:30:00+00:00",
+      "thu_tuc": {
+        "ma": "KS01",
+        "ten": "Đăng ký khai sinh",
+        "so_ngay_xu_ly": 3,
+        "linh_vuc": {
+          "ma": "ho_tich",
+          "ten": "Hộ tịch"
+        }
+      }
+    },
+    {
+      "id": "00000003-6d6f-4000-8000-000000000003",
+      "ma_ho_so": "HSMAU-003",
+      "trang_thai": "hoan_tat",
+      "ngay_nhan": "2026-10-05T01:00:00+00:00",
+      "han_xu_ly": "2026-10-05",
+      "ngay_hoan_tat": "2026-10-05T07:00:00+00:00",
+      "thu_tuc": {
+        "ma": "CT01",
+        "ten": "Chứng thực bản sao từ bản chính",
+        "so_ngay_xu_ly": 0,
+        "linh_vuc": {
+          "ma": "chung_thuc",
+          "ten": "Chứng thực"
+        }
+      }
+    },
+    {
+      "id": "00000004-6d6f-4000-8000-000000000004",
+      "ma_ho_so": "HSMAU-004",
+      "trang_thai": "tu_choi",
+      "ngay_nhan": "2026-10-06T01:00:00+00:00",
+      "han_xu_ly": "2026-10-06",
+      "ngay_hoan_tat": "2026-10-07T02:00:00+00:00",
+      "thu_tuc": {
+        "ma": "CT01",
+        "ten": "Chứng thực bản sao từ bản chính",
+        "so_ngay_xu_ly": 0,
+        "linh_vuc": {
+          "ma": "chung_thuc",
+          "ten": "Chứng thực"
+        }
+      }
+    },
+    {
+      "id": "00000005-6d6f-4000-8000-000000000005",
+      "ma_ho_so": "HSMAU-005",
+      "trang_thai": "hoan_tat",
+      "ngay_nhan": "2026-08-31T01:00:00+00:00",
+      "han_xu_ly": "2026-09-04",
+      "ngay_hoan_tat": "2026-09-04T09:00:00+00:00",
+      "thu_tuc": {
+        "ma": "KS01",
+        "ten": "Đăng ký khai sinh",
+        "so_ngay_xu_ly": 3,
+        "linh_vuc": {
+          "ma": "ho_tich",
+          "ten": "Hộ tịch"
+        }
+      }
+    }
+  ],
+  "lich_su_trang_thai": [
+    {
+      "id": 1,
+      "ho_so_id": "00000001-6d6f-4000-8000-000000000001",
+      "tu_trang_thai": null,
+      "den_trang_thai": "moi",
+      "buoc": null,
+      "nguon": "nop",
+      "luc": "2026-09-28T01:00:00+00:00"
+    },
+    {
+      "id": 2,
+      "ho_so_id": "00000001-6d6f-4000-8000-000000000001",
+      "tu_trang_thai": "moi",
+      "den_trang_thai": "dang_xu_ly",
+      "buoc": "tiep_nhan",
+      "nguon": "quy_trinh",
+      "luc": "2026-09-28T01:30:00+00:00"
+    },
+    {
+      "id": 3,
+      "ho_so_id": "00000001-6d6f-4000-8000-000000000001",
+      "tu_trang_thai": "dang_xu_ly",
+      "den_trang_thai": "hoan_tat",
+      "buoc": "phe_duyet",
+      "nguon": "quy_trinh",
+      "luc": "2026-09-30T03:00:00+00:00"
+    },
+    {
+      "id": 4,
+      "ho_so_id": "00000002-6d6f-4000-8000-000000000002",
+      "tu_trang_thai": null,
+      "den_trang_thai": "moi",
+      "buoc": null,
+      "nguon": "nop",
+      "luc": "2026-09-29T02:00:00+00:00"
+    },
+    {
+      "id": 5,
+      "ho_so_id": "00000002-6d6f-4000-8000-000000000002",
+      "tu_trang_thai": "moi",
+      "den_trang_thai": "dang_xu_ly",
+      "buoc": "tiep_nhan",
+      "nguon": "quy_trinh",
+      "luc": "2026-09-29T02:30:00+00:00"
+    },
+    {
+      "id": 6,
+      "ho_so_id": "00000002-6d6f-4000-8000-000000000002",
+      "tu_trang_thai": "dang_xu_ly",
+      "den_trang_thai": "cho_bo_sung",
+      "buoc": "tham_dinh",
+      "nguon": "quy_trinh",
+      "luc": "2026-09-30T02:00:00+00:00"
+    },
+    {
+      "id": 7,
+      "ho_so_id": "00000002-6d6f-4000-8000-000000000002",
+      "tu_trang_thai": "cho_bo_sung",
+      "den_trang_thai": "dang_xu_ly",
+      "buoc": "bo_sung",
+      "nguon": "quy_trinh",
+      "luc": "2026-10-01T02:00:00+00:00"
+    },
+    {
+      "id": 8,
+      "ho_so_id": "00000002-6d6f-4000-8000-000000000002",
+      "tu_trang_thai": "dang_xu_ly",
+      "den_trang_thai": "hoan_tat",
+      "buoc": "phe_duyet",
+      "nguon": "quy_trinh",
+      "luc": "2026-10-02T10:30:00+00:00"
+    },
+    {
+      "id": 9,
+      "ho_so_id": "00000003-6d6f-4000-8000-000000000003",
+      "tu_trang_thai": null,
+      "den_trang_thai": "moi",
+      "buoc": null,
+      "nguon": "nop",
+      "luc": "2026-10-05T01:00:00+00:00"
+    },
+    {
+      "id": 10,
+      "ho_so_id": "00000003-6d6f-4000-8000-000000000003",
+      "tu_trang_thai": "moi",
+      "den_trang_thai": "dang_xu_ly",
+      "buoc": "tiep_nhan",
+      "nguon": "quy_trinh",
+      "luc": "2026-10-05T01:30:00+00:00"
+    },
+    {
+      "id": 11,
+      "ho_so_id": "00000003-6d6f-4000-8000-000000000003",
+      "tu_trang_thai": "dang_xu_ly",
+      "den_trang_thai": "hoan_tat",
+      "buoc": "phe_duyet",
+      "nguon": "quy_trinh",
+      "luc": "2026-10-05T07:00:00+00:00"
+    },
+    {
+      "id": 12,
+      "ho_so_id": "00000004-6d6f-4000-8000-000000000004",
+      "tu_trang_thai": null,
+      "den_trang_thai": "moi",
+      "buoc": null,
+      "nguon": "nop",
+      "luc": "2026-10-06T01:00:00+00:00"
+    },
+    {
+      "id": 13,
+      "ho_so_id": "00000004-6d6f-4000-8000-000000000004",
+      "tu_trang_thai": "moi",
+      "den_trang_thai": "dang_xu_ly",
+      "buoc": "tiep_nhan",
+      "nguon": "quy_trinh",
+      "luc": "2026-10-06T01:30:00+00:00"
+    },
+    {
+      "id": 14,
+      "ho_so_id": "00000004-6d6f-4000-8000-000000000004",
+      "tu_trang_thai": "dang_xu_ly",
+      "den_trang_thai": "tu_choi",
+      "buoc": "phe_duyet",
+      "nguon": "quy_trinh",
+      "luc": "2026-10-07T02:00:00+00:00"
+    },
+    {
+      "id": 15,
+      "ho_so_id": "00000005-6d6f-4000-8000-000000000005",
+      "tu_trang_thai": null,
+      "den_trang_thai": "moi",
+      "buoc": null,
+      "nguon": "nop",
+      "luc": "2026-08-31T01:00:00+00:00"
+    },
+    {
+      "id": 16,
+      "ho_so_id": "00000005-6d6f-4000-8000-000000000005",
+      "tu_trang_thai": "moi",
+      "den_trang_thai": "dang_xu_ly",
+      "buoc": "tiep_nhan",
+      "nguon": "quy_trinh",
+      "luc": "2026-08-31T01:30:00+00:00"
+    },
+    {
+      "id": 17,
+      "ho_so_id": "00000005-6d6f-4000-8000-000000000005",
+      "tu_trang_thai": "dang_xu_ly",
+      "den_trang_thai": "hoan_tat",
+      "buoc": "phe_duyet",
+      "nguon": "quy_trinh",
+      "luc": "2026-09-04T09:00:00+00:00"
+    },
+    {
+      "id": 999,
+      "ho_so_id": "00000009-6d6f-4000-8000-000000000009",
+      "tu_trang_thai": null,
+      "den_trang_thai": "moi",
+      "buoc": null,
+      "nguon": "nop",
+      "luc": "2026-10-20T01:00:00+00:00"
+    }
+  ],
+  "ngay_nghi": [
+    {
+      "ngay": "2026-09-01"
+    },
+    {
+      "ngay": "2026-09-02"
+    }
+  ]
+}

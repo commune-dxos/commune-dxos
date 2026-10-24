@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.4.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.5.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -103,11 +103,15 @@ flowchart TB
 nen-tang/                       Tầng 1 – không có tên bảng, vai trò hay thủ tục nghiệp vụ
   postgres/initdb/10-core.sql   role authenticator + anon; schema dxos: dxos.jwt_claims(),
                                 dxos.jwt_claim(ten), dxos.jwt_sub(); sổ dxos.app_migration
+  postgres/Dockerfile           postgres:17.6-alpine + pgAudit 17.1 (§4.6); role dxos_kiem_toan
+                                của log đối tượng do db-init tạo, Tầng 2 GRANT bảng cần theo dõi
+  step-ca/ky-tai-lieu.tpl       mẫu chứng thư ký tài liệu của CA nội bộ (§4.7); scripts/step-ca-start.sh,
+                                scripts/ca-init.sh: khởi tạo CA, cấp chứng thư cho dịch vụ Tầng 2
   keycloak/realm-dxos.json      realm dxos: khóa ký RS256, chính sách OTP, chống dò mật khẩu,
                                 client dxos_api (audience, không có role) và dxos_cli (dev)
   apisix/                       /public/* → role anon (chỉ GET, 60 req/phút/IP); /api/* → PostgREST,
                                 /workflow/*, /files/* → mot-cua-api: bắt buộc JWT realm dxos;
-                                /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD);
+                                /files/s3/* → Garage (link ký sẵn, chỉ GET/HEAD); /* còn lại → web Tầng 2;
                                 chặn API quản trị Flowable; CORS theo DXOS_CORS_ORIGINS (§4.1)
   garage/garage.toml            Garage một nút (S3 :3900, Admin API :3903), bí mật đọc từ tệp (§4.3)
   openbao/config.hcl            OpenBao server (raft, không UI, audit ra stdout) (§4.4)
@@ -262,7 +266,7 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`mot-cua
 |---|---|---|
 | Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do bộ máy một cửa nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `nen-tang/keycloak/realm-dxos.json`, `mot-cua/keycloak/realm.json` |
 | API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `nen-tang/apisix/config.yaml`, `nen-tang/apisix/apisix.yaml`, §4.1, §8.5 |
-| Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của bộ máy; migration theo dịch vụ Tầng 2; pgAudit (tuần 2) | `nen-tang/postgres/initdb/10-core.sql`, `nen-tang/scripts/tang2-migrate.sh`, `mot-cua/db/` |
+| Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của bộ máy; migration theo dịch vụ Tầng 2; pgAudit 17.1 (log DDL, quyền, truy cập bảng dữ liệu cá nhân) và nhật ký kiểm toán chuỗi băm SHA-256 của bộ máy (§4.6) | `nen-tang/postgres/`, `nen-tang/scripts/tang2-migrate.sh`, `mot-cua/db/` |
 | Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `nen-tang/garage/`, `nen-tang/scripts/garage-init.py`, `mot-cua/backend/`, §4.3, §8.6 |
 | Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong gói `thu-tuc/<ma>/quy-trinh.bpmn20.xml`, bộ nạp `nap-thu-tuc` kiểm và deploy qua REST; Tầng 2 dùng qua `/workflow` (API một cửa) | `docker-compose.yml` (`flowable`, `db-init`, `nap-thu-tuc`, `mot-cua-api`), `thu-tuc/`, `mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
@@ -324,10 +328,12 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 | `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
 | `/files/*` | mọi (backend nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000`, giữ nguyên đường dẫn | 120 req/phút/IP; body ≤ 10 MiB (`client-control`, vượt → 413); endpoint: `mot-cua/README.md` |
 | `/files/s3/*` | GET, HEAD | chữ ký SigV4 trong URL (Garage kiểm chữ ký và hạn) | Garage S3 `garage:3900`, bỏ tiền tố, Host viết lại `garage:3900` | 120 req/phút/IP; bỏ header `Authorization`, `Cookie`; thêm `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store` |
+| `/can-bo`, `/can-bo/*` (ưu tiên -5) | GET, HEAD | không (trang tĩnh) | `mot-cua-web:8080`: cổng cán bộ, cùng bản build với cổng công dân (#55) | 300 req/phút/IP; bỏ `Authorization`, `Cookie`; `X-Robots-Tag: noindex, nofollow`. Dữ liệu đi qua `/api`, `/workflow`, `/files` bằng token client `mot_cua_can_bo` (mật khẩu + OTP); luồng: [`cong-can-bo.md`](cong-can-bo.md) |
+| `/*` (còn lại, ưu tiên thấp nhất) | GET, HEAD | không (trang tĩnh) | `mot-cua-web:8080`: cổng công dân, nginx không đặc quyền phục vụ bản build React (#57) | 600 req/phút/IP; bỏ `Authorization`, `Cookie`. nginx trả `index.html` cho route SPA (`/thu-tuc/…`, `/nop-ho-so/…`, `/dang-nhap/…`, 200) và đường dẫn lạ (404); CSP không `unsafe-inline`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: same-origin`; `/cau-hinh.js` (Keycloak, realm, client) sinh từ biến môi trường lúc chạy |
 
-- Toàn cục: plugin `cors` với `allow_origins` lấy từ biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
+- Toàn cục: plugin `cors` với `allow_origins` = origin của gateway (`DXOS_GATEWAY_URL`, nơi cổng công dân được phục vụ) + biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
 - Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
-- Không mở cổng ra host: PostgREST, `mot-cua-api`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+- Không mở cổng ra host: PostgREST, `mot-cua-api`, `mot-cua-web`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
 ### 4.2 Luồng `/workflow`: API quy trình mỏng của bộ máy một cửa
 
@@ -342,7 +348,7 @@ Flowable REST chỉ có Basic auth bằng tài khoản của chính nó, không 
 | Cách | Vì sao không/có chọn |
 |---|---|
 | APISIX proxy thẳng `/workflow/*` → Flowable, lọc đường dẫn, gateway gắn Basic auth | **Không chọn**: mọi người dùng thành `rest-admin` trong mắt Flowable; lọc đường dẫn không ngăn công dân liệt kê task của người khác, hoàn thành task tiếp nhận hay khởi tạo quy trình với biến tùy ý |
-| API mỏng `mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; ~300 dòng Python thư viện chuẩn, không build image |
+| API mỏng `mot-cua/backend/main.py` gọi Flowable thay người dùng | **Chọn**: kiểm quyền theo `sub`, vai trò và lĩnh vực trước mỗi lời gọi; Python thư viện chuẩn, chỉ thêm `jsonschema` (MIT) cho Poka-yoke phía máy chủ (#59; image `python` gốc + `requirements.txt`, mã mount chỉ đọc) |
 
 ```mermaid
 sequenceDiagram
@@ -353,13 +359,16 @@ sequenceDiagram
   participant API as PostgREST
   participant FL as Flowable REST
 
-  App->>GW: POST /workflow/ho-so<br/>Bearer TOKEN công dân
+  Note over App: Poka-yoke lớp 1: tệp đã chọn khớp JSON Schema<br/>của gói, thiếu → không gửi request nào
+  App->>GW: POST /api/ho_so → hồ sơ moi (RLS: người nộp = sub)
+  App->>GW: POST /files/ho-so/{id}/tep × n (ClamAV quét, Garage)
+  App->>GW: POST /workflow/ho-so/{id}/khoi-tao<br/>Bearer TOKEN công dân
   GW->>GW: openid-connect (JWKS). Sai → 401
-  GW->>BE: POST /ho-so (giữ Authorization)
+  GW->>BE: POST /ho-so/{id}/khoi-tao (giữ Authorization)
   BE->>BE: kiểm lại RS256, exp, iss, aud = dxos_api
-  BE->>API: GET /thu_tuc?id=… (token người dùng)<br/>quy_trinh của gói thủ tục?
-  BE->>API: POST /ho_so (token người dùng) → RLS: người nộp = sub
-  API-->>BE: hồ sơ (mã, hạn xử lý do CSDL tính)
+  BE->>API: GET /ho_so?id=… kèm thu_tuc(quy_trinh, json_schema)<br/>(token người dùng, RLS)
+  BE->>API: GET /thanh_phan_ho_so?ho_so_id=… (tệp đã quét sạch)
+  BE->>BE: Poka-yoke lớp 2: jsonschema Draft 2020-12<br/>thiếu → 422, không khởi tạo, không ghi sự kiện
   BE->>FL: POST runtime/process-instances (Basic rest-admin)<br/>businessKey = mã hồ sơ, biến lấy từ CSDL
   FL-->>BE: process instance, task tiep_nhan (nhóm ho_tich)
   BE-->>App: 201 hồ sơ + processInstanceId + bước đang mở
@@ -370,8 +379,9 @@ sequenceDiagram
 - **Hồ sơ** luôn đọc/ghi qua PostgREST bằng token người dùng: khởi tạo quy trình hay xem tiến độ hồ sơ người khác → 404 vì RLS không trả dòng. Thủ tục chưa có gói (`thu_tuc.quy_trinh` rỗng) → 422 trước khi lưu hồ sơ.
 - **Bí mật**: mật khẩu `rest-admin` chỉ nằm trong biến môi trường của `flowable` và `mot-cua-api` (sau này lấy từ OpenBao, #10); client không bao giờ cầm.
 - **Zero-Trust**: backend tự kiểm chữ ký RS256 theo JWKS của Keycloak (tải lại khi gặp `kid` lạ), hạn, issuer, audience; token sửa chữ ký hoặc sửa payload (đổi role) gọi thẳng vào backend trong mạng nội bộ → 401.
-- **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện.
-- Chưa làm: đồng bộ `ho_so.trang_thai` theo bước quy trình; Poka-yoke đủ thành phần trước khi khởi tạo (tuần 3).
+- **Sự kiện** (#9, §4.5): khởi tạo quy trình thành công → `ho_so.moi`; hoàn thành task → `ho_so.chuyen_buoc`, và `ho_so.hoan_tat` | `ho_so.tu_choi` nếu quy trình vừa kết thúc. Gọi thẳng Flowable REST (cổng debug, smoke mục 5) không qua API này nên không phát sự kiện ngay; vòng đối soát của `mot-cua-worker` sửa trạng thái theo Flowable và ghi sự kiện sau (#73).
+- **Poka-yoke 2 lớp** (#53, #59): cổng công dân kiểm tệp đã chọn theo JSON Schema 2020-12 của gói (`@cfworker/json-schema`, không cần `unsafe-eval` nên hợp CSP của cổng), thiếu thì không gửi request nào; `mot-cua-api` kiểm lại cùng schema với tệp **đã lưu và quét sạch** trong CSDL (`jsonschema`, `mot-cua/backend/poka_yoke.py`) trước khi gọi Flowable, nên gọi thẳng API khi thiếu giấy tờ → 422 kèm lỗi từng thành phần, không khởi tạo quy trình. `POST /workflow/ho-so` (nộp gộp) chỉ còn dùng được cho thủ tục không có thành phần bắt buộc. Chi tiết: [`mot-cua/README.md`](../mot-cua/README.md) mục `/workflow`.
+- **Trạng thái hồ sơ** (#73): sau mỗi lời gọi Flowable thành công, `mot-cua-api` tra ánh xạ bước → trạng thái của gói (`thu_tuc.trang_thai_buoc`) và gọi một RPC `mot_cua.dong_bo_trang_thai`: đổi `ho_so.trang_thai`, ghi `lich_su_trang_thai` và sự kiện vào hộp thư đi trong cùng transaction. Flowable trước, CSDL sau; CSDL lỗi thì request vẫn thành công và `mot-cua-worker` đối soát lại. Bảng trạng thái, thứ tự gọi, xử lý lỗi: [`mot-cua/README.md`](../mot-cua/README.md#trạng-thái-hồ-sơ); cách khai trong gói: [`docs/thu-tuc.md`](thu-tuc.md#trạng-thái-hồ-sơ-theo-bước).
 
 ### 4.3 Dữ liệu phi cấu trúc: tải tệp, quét ClamAV, link ký ngắn hạn (#7)
 
@@ -607,6 +617,258 @@ Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `h
 - `hostname: rabbitmq` cố định trong compose: tên nút `rabbit@rabbitmq` quyết định thư mục dữ liệu, tạo lại container không mất queue và tin bền vững.
 - Xem nhanh: `docker compose exec rabbitmq rabbitmqctl -q list_queues -p mot-cua name type messages`.
 
+### 4.6 Nhật ký kiểm toán chuỗi băm và pgAudit (#75)
+
+Hai lớp, bổ sung cho nhau:
+
+| Lớp | Ở đâu | Ghi gì | Chống gì |
+|---|---|---|---|
+| **Nhật ký kiểm toán nghiệp vụ** `mot_cua.nhat_ky_kiem_toan` | bộ máy `mot-cua` (migration 007): nghiệp vụ nên không nằm ở `nen-tang/` | mỗi thao tác quan trọng một bản ghi: nộp hồ sơ, chuyển trạng thái, cập nhật hồ sơ, xử lý bước quy trình (người xử lý), tải tệp (SHA-256 nội dung tệp), kiểm tra tệp, nạp/rút gói thủ tục, phân công lĩnh vực cán bộ | sửa, xóa, chèn lặng lẽ: chuỗi băm SHA-256 + xác minh được qua API |
+| **pgAudit 17.1** (PostgreSQL License) | nền tảng: image `nen-tang/postgres/Dockerfile`, tham số khởi động của dịch vụ `postgres` | log PostgreSQL dòng `AUDIT: SESSION,…` cho lớp lệnh `DXOS_PGAUDIT_LOG` (mặc định `ddl,role`: đổi schema, role, quyền) và `AUDIT: OBJECT,…` cho mọi câu lệnh chạm bảng mà role `dxos_kiem_toan` có quyền (Tầng 2 tự GRANT bảng có dữ liệu cá nhân: `ho_so`, `thanh_phan_ho_so`, `can_bo`, `can_bo_linh_vuc`) | thao tác ngoài API (SQL quản trị, đổi quyền), truy cập dữ liệu cá nhân ở mức câu lệnh |
+
+#### 4.6.1 Thiết kế và lý do
+
+| Quyết định | Lý do |
+|---|---|
+| Ghi kiểm toán **bằng trigger và trong RPC**, cùng transaction với thao tác | Không đường nào (API, quy trình, đối soát, SQL tay) đổi hồ sơ mà thiếu bản ghi; thao tác rollback thì bản ghi cũng không có. Không cần sửa `mot-cua-api`: RPC `dong_bo_trang_thai` (#73) đã nhận người xử lý và bước, nay ghi thêm `quy_trinh.xu_ly_buoc` kèm các sự kiện vừa vào hộp thư đi |
+| `bam = hex(SHA-256(bam_truoc ‖ nội dung chuẩn))`, nội dung chuẩn là văn bản `jsonb` của bản ghi, giờ UTC micro giây | `jsonb::text` ổn định (khóa sắp theo độ dài rồi byte), không phụ thuộc múi giờ hay cấu hình phiên, dựng lại được ngoài CSDL. Dùng `sha256()` có sẵn của PostgreSQL, không cần `pgcrypto` |
+| **Khóa tuần tự** bằng dòng duy nhất `dau_chuoi_kiem_toan` (`SELECT … FOR UPDATE`) | Hai transaction ghi đồng thời không thể cùng đọc một `bam_truoc`: người sau chờ người trước commit rồi nối tiếp, `stt` liền, không trùng. Ở mức cô lập cao hơn READ COMMITTED thì báo lỗi tuần tự hóa thay vì làm đứt chuỗi. Đổi lại các transaction có ghi kiểm toán xếp hàng ở bước commit; request PostgREST ngắn nên chấp nhận được ở quy mô xã |
+| Chặn `UPDATE`/`DELETE`/`TRUNCATE` bằng trigger, không role nào có quyền ghi | Trigger chặn cả superuser và chủ bảng. Superuser vẫn tắt được trigger: không ngăn được, nhưng **phát hiện được** (mục 4.6.2). Đầu chuỗi chỉ tiến đúng một bước tới bản ghi vừa thêm |
+| Không ghi dữ liệu cá nhân vào nhật ký | `du_lieu` chỉ có mã hồ sơ, mã thủ tục, trạng thái, bước, **tên** cột đã đổi, SHA-256 tệp; không họ tên, số điện thoại, tên tệp. pgAudit tắt `log_parameter` nên log không chứa giá trị |
+| Trình xác minh độc lập `mot-cua/backend/kiem_toan.py` | Người kiểm tra không phải tin hàm chạy trong chính CSDL được kiểm: công cụ (chỉ thư viện chuẩn Python) đọc bản ghi qua `/api` bằng token lãnh đạo, tự tính lại chuỗi, báo cùng định dạng với RPC |
+| pgAudit biên dịch từ mã nguồn ghim SHA-256, chép sang image gốc `postgres:17.6-alpine` | Image gốc không có pgAudit; gói Alpine không khớp bản PostgreSQL tự biên dịch của image. Không sửa PostgreSQL, image cuối không có công cụ biên dịch. `test-sql` và CI vẫn dùng image gốc: migration không phụ thuộc pgAudit |
+
+#### 4.6.2 Xác minh toàn vẹn
+
+`GET /api/rpc/xac_minh_kiem_toan` (chỉ `lanh_dao`; công dân, cán bộ → 403) duyệt cả chuỗi theo `stt`, dừng ở chỗ hỏng đầu tiên:
+
+```json
+{"hopLe": false, "soBanGhi": 41, "sttCuoi": 41, "bamCuoi": "…", "dauChuoi": {"stt": 97, "bam": "…"},
+ "loi": {"stt": 42, "loai": "noi_dung_bi_sua", "moTa": "Nội dung bản ghi 42 không khớp bam đã lưu"}}
+```
+
+| `loi.loai` | Nghĩa |
+|---|---|
+| `noi_dung_bi_sua` | bản ghi `stt` bị sửa (băm tính lại khác băm đã lưu) |
+| `lien_ket_dut` | bản ghi trước bị sửa **và** tính lại băm (bản ghi `stt` không còn trỏ đúng), hoặc bản ghi `stt` bị thay |
+| `thieu_ban_ghi` | bản ghi `stt` bị xóa (hở số thứ tự) |
+| `dau_chuoi_lech` | bản ghi cuối bị xóa, hoặc có bản ghi chèn ngoài chuỗi |
+| `moc_khong_khop` | chuỗi bị viết lại toàn bộ từ trước mốc: bản ghi `stt` khác mốc `p_stt_moc`/`p_bam_moc` đã lưu ở ngoài |
+
+Kẻ có quyền superuser có thể viết lại toàn bộ chuỗi và đầu chuỗi cho khớp. Cách chặn: định kỳ lưu `sttCuoi:bamCuoi` ra ngoài hệ thống (biên bản, email, kho khác) rồi xác minh kèm mốc:
+
+```bash
+# Token lãnh đạo (có OTP) lấy như §8; mốc từ lần xác minh trước
+DXOS_TOKEN=<token> python3 mot-cua/backend/kiem_toan.py --api http://localhost:9080/api --moc 41:<bam>
+curl -H "Authorization: Bearer <token>" "http://localhost:9080/api/rpc/xac_minh_kiem_toan?p_stt_moc=41&p_bam_moc=<bam>"
+# Log pgAudit
+docker compose logs postgres | grep 'AUDIT:'
+```
+
+### 4.7 Giấy tờ có ký số: step-ca + Gotenberg + pyHanko (#77)
+
+Hồ sơ được tiếp nhận vào quy trình thì có **biên nhận** (giấy tiếp nhận hồ sơ và hẹn trả kết quả), hoàn tất thì có **thông báo kết quả**: PDF ký số PAdES bằng chứng thư của xã, lưu trên Garage, SHA-256 vào nhật ký kiểm toán (§4.6). Sổ văn bản đến/đi dùng lại lớp này (§4.11, #78).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant BAO as OpenBao
+  participant CA as step-ca<br/>(CA nội bộ)
+  participant CI as ca-init<br/>(một lần, mỗi make up)
+  participant API as mot-cua-api
+  participant GT as Gotenberg<br/>(Chromium)
+  participant S3 as Garage
+  participant PG as PostgreSQL
+  CI->>BAO: AppRole ca-init: đọc mật khẩu provisioner
+  CI->>CA: xin chứng thư ký tài liệu (JWK provisioner, mẫu ky-tai-lieu.tpl)
+  CI->>BAO: ghi khóa + chuỗi chứng thư + root → dxos/tang2/mot-cua/ky-so
+  Note over API: khởi tạo quy trình xong (biên nhận) / bước cuối hoàn tất (kết quả): luồng nền
+  API->>BAO: AppRole tang2: đọc ky-so
+  API->>GT: HTML từ mot-cua/mau-giay-to/ → PDF A4
+  API->>API: pyHanko ký PAdES B-B (chuỗi chứng thư tới root)
+  API->>S3: PUT ho-so/<id>/giay-to/<loai>-<uuid>.pdf
+  API->>PG: INSERT giay_to_ky (dich_vu_tep) → trigger kiểm toán giay_to.ky + SHA-256
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **step-ca làm CA nội bộ hai tầng** (root + intermediate), một provisioner JWK chỉ để ký tài liệu | Xã có CA riêng, không phụ thuộc dịch vụ ngoài; khóa CA mã hóa trong volume `step-ca-data`, mật khẩu ở OpenBao (`dxos/core/step-ca/ca`), không có khóa nào trong git. Mẫu `nen-tang/step-ca/ky-tai-lieu.tpl`: Key Usage `digitalSignature` + `contentCommitment` (chống chối bỏ), không phải CA, không có tên miền (không dùng được cho TLS), hạn 1 năm |
+| **ca-init** cấp chứng thư rồi ghi vào OpenBao; backend chỉ đọc | Giống `garage-init` ghi khóa S3: danh tính `ca-init` chỉ đọc mật khẩu provisioner (không đọc mật khẩu khóa CA) và chỉ ghi `ky-so` của dịch vụ Tầng 2; `tang2` chỉ đọc. Chạy mỗi `make up`: còn hạn hơn 30 ngày, cùng tên và cùng root thì giữ; không thì cấp mới (khóa RSA 3072 mới) |
+| **Gotenberg** bản chỉ có Chromium, không mở ra host, chặn mạng | Sinh PDF đúng bố cục giấy tờ hành chính từ HTML/CSS, phông Noto Serif có tiếng Việt sẵn trong image. Chromium bị cấm truy cập mọi địa chỉ mạng (`--chromium-deny-private-ips`, `--chromium-deny-public-ips`), tắt JavaScript, webhook, downloadFrom: mẫu tự chứa, không SSRF được qua nội dung hồ sơ |
+| Mẫu trong **bộ máy** `mot-cua/mau-giay-to/`, nền tảng không biết giấy tờ nào | `nen-tang/` chỉ có dịch vụ (CA, Gotenberg). Dữ liệu đưa vào mẫu đã thoát HTML (họ tên người nộp không chèn được thẻ) |
+| **pyHanko** ký trong `mot-cua-api`, PAdES B-B, một chữ ký phủ toàn bộ tệp | Thư viện MIT thuần Python; Adobe Reader và các phần mềm đọc PDF có hỗ trợ chữ ký số nhận ra chữ ký, tin cậy khi người dùng tin root của xã. Chưa có dấu thời gian (TSA) hay LTV: hiệu lực dựa vào thời hạn chứng thư và SHA-256 trong nhật ký kiểm toán |
+| Phát hành **trong luồng nền** ngay sau Flowable, cộng endpoint "phát hành nếu chưa có" | Request nộp/xử lý không chậm thêm 1–3 giây và không lỗi khi Gotenberg hay CA tạm dừng; bấm tải sau đó phát hành lại. Mỗi hồ sơ một giấy tờ mỗi loại (`UNIQUE`), phát hành trùng thì xóa object thừa |
+| Metadata ghi bằng tài khoản dịch vụ tệp, không sửa được, SHA-256 vào chuỗi kiểm toán | Người dùng không tự khai giấy tờ; thay tệp trên Garage thì SHA-256 không khớp CSDL và nhật ký kiểm toán; RLS: ai xem được hồ sơ thì xem được giấy tờ |
+
+API (qua APISIX `/files`, token Keycloak):
+
+| Endpoint | Làm gì |
+|---|---|
+| `POST /files/ho-so/{id}/giay-to/{bien_nhan\|ket_qua}` | phát hành nếu chưa có (201) hoặc trả bản đã có (200), kèm link tải ký sẵn ngắn hạn; hồ sơ chưa vào quy trình → 409 biên nhận; chưa hoàn tất → 409 kết quả; không xem được hồ sơ → 404 |
+| `GET /files/ho-so/{id}/giay-to`, `GET /files/giay-to/{id}` | danh sách, metadata + link |
+| `POST /files/xac-minh` (body PDF) | pyHanko kiểm chữ ký theo root của xã: `hopLe` = toàn vẹn + chữ ký đúng + tin cậy + phủ toàn bộ tệp; `phatHanh` = giấy tờ đã phát hành có cùng SHA-256 (nếu có) |
+
+Kết quả xác minh mẫu (một byte bị sửa sau khi ký):
+
+```json
+{"hopLe": false, "coChuKy": true, "toanVen": false, "chuKyDung": true, "tinCay": true, "phuToanBo": true,
+ "nguoiKy": "UBND xã Mẫu – Bộ phận Một cửa", "loi": "Nội dung đã bị sửa sau khi ký", "phatHanh": null, "sha256": "…"}
+```
+
+Vận hành: đổi tên cơ quan (`DXOS_KY_SO_TEN`) rồi `make up` → chứng thư mới. Mất volume `step-ca-data` = CA mới: giấy tờ đã ký trước đó vẫn toàn vẹn nhưng không còn tin cậy khi xác minh, nên sao lưu volume này cùng OpenBao. Mật khẩu khóa CA chỉ dùng lúc khởi tạo; đổi trong OpenBao sau đó thì step-ca không mở được khóa.
+
+### 4.8 Kho dữ liệu lịch sử: Parquet + DuckDB + dbt-core (#80)
+
+Tách **dữ liệu nóng** (PostgreSQL: hồ sơ đang xử lý, RLS theo người dùng) khỏi **dữ liệu lịch sử phân tích** (Parquet: hồ sơ đã đóng, khử định danh), dựng báo cáo bằng dbt có test và phả hệ (lineage). Đây là nền cho dashboard Superset.
+
+```mermaid
+flowchart LR
+  PG[("PostgreSQL<br/>mot_cua (nóng)")] -->|"PostgREST, tài khoản dich_vu_bao_cao<br/>chỉ hồ sơ đã đóng, chỉ cột không cá nhân"| X["chay.py: khử định danh<br/>(backend/kho_du_lieu.py)"]
+  X -->|"DuckDB COPY … PARTITION_BY"| PQ[["Parquet<br/>thang=YYYY-MM/thu_tuc=…"]]
+  PQ --> S["dbt staging<br/>(view)"] --> I["intermediate<br/>lịch làm việc"] --> M["mart<br/>fct_ho_so, hieu_suat_thang"]
+  M -->|"RPC nap_bao_cao<br/>(một transaction)"| BC[("PostgreSQL<br/>schema bao_cao")]
+  BC --> SS["Superset (việc kế tiếp)"]
+  M -. "dbt docs generate" .-> L["lineage, mô tả cột<br/>make kho-du-lieu-tai-lieu"]
+```
+
+| Quyết định | Lý do |
+|---|---|
+| Dịch vụ một lần `kho-du-lieu` (profile `bi`), chạy tay `make kho-du-lieu` hoặc theo lịch máy chủ (cron gọi cùng lệnh); không trong `mot-cua-worker` | dbt-core và gói kéo theo ~170 MB, không cần thời gian thực; worker giữ nhẹ (chỉ thư viện chuẩn). Image riêng `python:…-slim` vì DuckDB có wheel dựng sẵn cho glibc |
+| Đọc qua **PostgREST bằng tài khoản dịch vụ `mot_cua_bao_cao`**, không đọc thẳng CSDL | Cùng khuôn với các dịch vụ khác của Tầng 2. Role `dich_vu_bao_cao` chỉ có quyền cột không phải dữ liệu cá nhân và RLS chỉ cho hồ sơ đã đóng: họ tên, số điện thoại, sub người nộp, lý do, người đổi trạng thái bị chặn ở CSDL (42501). Bộ xuất còn có danh sách trắng cột và dừng nếu gặp khóa cá nhân (lớp thứ hai) |
+| **Ghi lại toàn bộ** Parquet mỗi lần, vào thư mục mới rồi đổi tên một lần | Hồ sơ đã đóng không đổi, quy mô xã nhỏ: đơn giản và idempotent (cùng dữ liệu → cùng tệp, `_manifest.json` ghi SHA-256); dbt không bao giờ đọc nửa cũ nửa mới |
+| Parquet trong **volume** `kho-du-lieu`, không trên Garage | DuckDB đọc S3 cần extension `httpfs` tải từ mạng lúc chạy (không ghim được như gói pip). Kho dựng lại được hoàn toàn từ PostgreSQL bằng `make kho-du-lieu` |
+| Giờ Việt Nam không múi giờ trong Parquet | dbt tính ngày, tháng, trễ hạn (đóng sau 17:00 ngày hạn) mà không cần dữ liệu múi giờ trong DuckDB |
+| Mart **nạp ngược về PostgreSQL** schema `bao_cao` (RPC `nap_bao_cao`, một transaction) | Superset đọc PostgreSQL bằng driver có sẵn; đọc thẳng DuckDB cần cài thêm driver vào image Superset và tranh khóa tệp với lần build sau. `bao_cao` không phơi ra PostgREST, chỉ có bảng tổng hợp đã khử định danh |
+| dbt test: `unique`, `not_null`, `accepted_values`, `relationships` + test riêng (khóa tháng × thủ tục, tổng khớp `fct_ho_so`, thời gian hợp lý, **không có cột cá nhân**) | Test trượt → `dbt build` lỗi → không nạp gì về `bao_cao` |
+
+Model: `stg_ho_so`, `stg_lich_su_trang_thai`, `stg_ngay_nghi` (view) → `int_lich_lam_viec` (ngày làm việc = thứ Hai–Sáu, không phải ngày nghỉ) → `fct_ho_so` (một dòng mỗi hồ sơ: số giờ, số ngày làm việc, số lần bổ sung, trễ hạn) → `hieu_suat_thang` (tháng × thủ tục: số hồ sơ, hoàn tất, từ chối, trễ hạn, tỷ lệ trễ hạn, trung bình ngày làm việc). Xem lineage và mô tả cột: `make kho-du-lieu-tai-lieu` rồi mở http://127.0.0.1:8580 (dbt docs; `target/` nằm trong volume, không vào git).
+
+### 4.9 Luồng hồ sơ một cửa từ nộp tới trả kết quả (#82)
+
+Tổng hợp các mục §4.2–§4.8 theo đúng thứ tự một hồ sơ đi qua hệ thống, lấy thủ tục **đăng ký khai sinh** (gói `thu-tuc/khai-sinh/`) làm ví dụ. Thủ tục khác chỉ khác quy trình BPMN và ánh xạ bước → trạng thái trong gói của nó; bộ máy giữ nguyên. Mọi lời gọi của người dùng đi qua APISIX bằng token Keycloak; mọi ghi vào CSDL đều chịu RLS.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor CD as Công dân<br/>(cổng /)
+  actor CB as Cán bộ hộ tịch<br/>(cổng /can-bo, OTP)
+  actor LD as Lãnh đạo<br/>(OTP)
+  participant GW as APISIX
+  participant API as mot-cua-api
+  participant PG as PostgreSQL<br/>(RLS, kiểm toán)
+  participant FL as Flowable
+  participant WK as mot-cua-worker
+  participant MQ as RabbitMQ
+  CD->>GW: POST /api/ho_so
+  GW->>PG: PostgREST (role cong_dan): ho_so "moi", mã HS…, hạn theo ngày làm việc
+  CD->>GW: POST /files/ho-so/{id}/tep (từng thành phần)
+  GW->>API: ClamAV quét → magic bytes → Garage → thanh_phan_ho_so
+  CD->>GW: POST /workflow/ho-so/{id}/khoi-tao
+  API->>API: Poka-yoke: JSON Schema của gói trên tệp đã quét sạch (thiếu → 422, dừng)
+  API->>FL: start dang_ky_khai_sinh (businessKey = mã hồ sơ, hanXuLyLuc)
+  API->>PG: RPC dong_bo_trang_thai: trạng thái + lịch sử + outbox ho_so.moi + kiểm toán
+  API-->>PG: (nền) biên nhận PDF ký số → Garage → giay_to_ky
+  CB->>GW: POST /workflow/tasks/{id}/complete (tiep_nhan: hopLe)
+  GW->>API: kiểm nhóm lĩnh vực, biến của bước
+  API->>FL: complete → thiếu: bo_sung (công dân) / đủ: tham_dinh
+  API->>PG: dong_bo_trang_thai (cho_bo_sung | dang_xu_ly) + ho_so.chuyen_buoc
+  CB->>GW: complete tham_dinh (dat)
+  API->>FL: → phe_duyet (nhóm lanh_dao) / không đạt: kết thúc từ chối
+  API->>PG: dong_bo_trang_thai (cho_phe_duyet)
+  LD->>GW: complete phe_duyet (pheDuyet)
+  API->>FL: → ket_thuc_hoan_tat (ketQua = hoan_tat) / trả lại: tham_dinh
+  API->>PG: dong_bo_trang_thai (hoan_tat, ngay_hoan_tat) + ho_so.hoan_tat
+  API-->>PG: (nền) thông báo kết quả PDF ký số
+  loop mỗi vài giây
+    WK->>PG: đọc outbox chưa phát
+    WK->>MQ: STOMP SEND (chờ RECEIPT) → đánh dấu đã phát
+  end
+```
+
+| # | Bước | Ai, qua đâu | Dữ liệu thay đổi (PostgreSQL) | Trạng thái `ho_so` | Sự kiện (outbox → RabbitMQ) | Kiểm toán (§4.6) |
+|---|---|---|---|---|---|---|
+| 1 | Nộp hồ sơ | công dân, `POST /api/ho_so` (PostgREST, role `cong_dan`) | `ho_so` (trigger: mã `HSYYYYMMDD-…`, `han_xu_ly` = ngày nhận + số ngày làm việc của thủ tục, bỏ thứ Bảy, Chủ nhật, ngày nghỉ), `lich_su_trang_thai` (nguồn `nop`) | `moi` | – | `ho_so.nop`; pgAudit `OBJECT WRITE INSERT mot_cua.ho_so` |
+| 2 | Tải thành phần | công dân, `POST /files/ho-so/{id}/tep` → `mot-cua-api` (§4.3) | tệp lên Garage sau khi ClamAV quét sạch và kiểm magic bytes; `thanh_phan_ho_so` (tài khoản dịch vụ `dich_vu_tep`), `nhat_ky_tep` | `moi` | – | `tep.tai_len` kèm SHA-256 nội dung tệp |
+| 3 | Khởi tạo quy trình | công dân, `POST /workflow/ho-so/{id}/khoi-tao` (§4.2) | Poka-yoke (JSON Schema 2020-12 của gói) trước khi gọi Flowable; thiếu → 422, không gì thay đổi. Đủ → Flowable `start`, rồi RPC `dong_bo_trang_thai` trong **một transaction**: trạng thái + lịch sử + outbox | `moi` (bước `tiep_nhan` ánh xạ `moi` trong gói) | `ho_so.moi` | `quy_trinh.dong_bo` |
+| 3b | Biên nhận | `mot-cua-api`, luồng nền ngay sau bước 3 (§4.7) | Gotenberg sinh PDF từ `mot-cua/mau-giay-to/bien_nhan.html`, pyHanko ký PAdES bằng chứng thư step-ca của xã, Garage, `giay_to_ky` | – | – | `giay_to.ky` kèm SHA-256 PDF |
+| 4 | Tiếp nhận | cán bộ hộ tịch (nhóm `ho_tich` = lĩnh vực phụ trách), `POST /workflow/tasks/{id}/complete` `{hopLe}` | Flowable hoàn thành `tiep_nhan`; RPC đồng bộ; cán bộ vừa xử lý được giao hồ sơ nếu chưa giao | thiếu → `cho_bo_sung` (bước `bo_sung` giao công dân); đủ → `dang_xu_ly` (`tham_dinh`) | `ho_so.chuyen_buoc` | `quy_trinh.xu_ly_buoc` (người xử lý = cán bộ), `ho_so.chuyen_trang_thai`, `ho_so.cap_nhat` (cán bộ xử lý) |
+| 4b | Bổ sung (nếu thiếu) | công dân: sửa hồ sơ (`PATCH /api/ho_so`, RLS chỉ cho khi `cho_bo_sung`), tải thêm tệp, `complete` bước `bo_sung` (Poka-yoke lại) | như bước 2 và 4; quay về `tiep_nhan` | `cho_bo_sung` → `dang_xu_ly` (`moi` chỉ có trước lần tiếp nhận đầu tiên) | `ho_so.chuyen_buoc` | như trên |
+| 5 | Thẩm định | cán bộ hộ tịch, `complete` `tham_dinh` `{dat}` | đạt → `phe_duyet`; không đạt → quy trình kết thúc `ket_thuc_tu_choi` | đạt → `cho_phe_duyet`; không đạt → `tu_choi` (`ngay_hoan_tat`, lý do) | `ho_so.chuyen_buoc` (+ `ho_so.tu_choi`) | `quy_trinh.xu_ly_buoc`, `ho_so.chuyen_trang_thai` |
+| 6 | Phê duyệt | lãnh đạo (nhóm `lanh_dao`, OTP), `complete` `phe_duyet` `{pheDuyet}`; cán bộ không tự phê duyệt được (403) | duyệt → `ket_thuc_hoan_tat` (`ketQua = hoan_tat`); trả lại → `tham_dinh` | duyệt → `hoan_tat` (`ngay_hoan_tat`); trả lại → `dang_xu_ly` | `ho_so.chuyen_buoc`, `ho_so.hoan_tat` | `quy_trinh.xu_ly_buoc` (người xử lý = lãnh đạo), `ho_so.chuyen_trang_thai` |
+| 6b | Trả kết quả | `mot-cua-api`, luồng nền khi trạng thái thành `hoan_tat`; công dân/cán bộ tải ở cổng | thông báo kết quả PDF ký số (`ket_qua.html`), Garage, `giay_to_ky` | `hoan_tat` | – | `giay_to.ky` |
+| – | Hạn xử lý | Flowable: hẹn giờ `den_han` lúc 17:00 ngày hạn đặt biến `quaHan` (cổng cán bộ hiện "Quá hạn"); `mot-cua-worker` quét hồ sơ còn ≤ 1 ngày làm việc | `hop_thu_su_kien` (khóa chống trùng theo hồ sơ + hạn) | không đổi | `ho_so.sap_tre_han` | – |
+| – | Phát sự kiện | `mot-cua-worker` (§4.5) | `hop_thu_su_kien.da_phat_luc` sau khi RabbitMQ xác nhận; consumer mẫu ghi `nhat_ky_su_kien` | – | exchange `mot_cua.su_kien` → queue `mot_cua.nhat_ky` | – |
+| – | Đối soát | `mot-cua-worker` định kỳ: CSDL lỗi sau khi Flowable đã chạy → sửa trạng thái cho khớp Flowable | như RPC đồng bộ, nguồn `doi_soat` | theo Flowable | sự kiện còn thiếu | `quy_trinh.dong_bo` |
+| 7 | Kho dữ liệu | `make kho-du-lieu` (tay hoặc cron, §4.8) | hồ sơ đã đóng → Parquet khử định danh → dbt → `bao_cao.fct_ho_so`, `bao_cao.hieu_suat_thang` | đã đóng | – | `bao_cao.lan_nap` ghi invocation dbt |
+| 8 | Báo cáo | lãnh đạo, `/bao-cao` (Superset, SSO + OTP, §4.10) | Superset đọc `bao_cao` bằng role chỉ đọc `bao_cao_doc` | – | – | – |
+
+Bất biến của luồng: **Flowable trước, CSDL sau** (Flowable lỗi → không ghi gì; CSDL lỗi sau Flowable → request vẫn thành công, worker đối soát); trạng thái, lịch sử, sự kiện và bản ghi kiểm toán của một bước luôn **cùng một transaction**; công dân chỉ thấy hồ sơ của mình, cán bộ chỉ hồ sơ thuộc lĩnh vực phụ trách, lãnh đạo thấy tất cả (RLS); dữ liệu cá nhân không đi vào sự kiện, nhật ký kiểm toán, Parquet hay báo cáo. Kiểm bằng smoke: `mot-cua/tests/smoke.sh` mục 4d (luồng qua `/workflow`), `smoke-can-bo.sh` (đầu cuối từ web: nộp → bổ sung → thẩm định → phê duyệt), `smoke-su-kien.sh`, `smoke-kiem-toan.sh`, `smoke-ky-so.sh`, `smoke-kho-du-lieu.sh`, `smoke-superset.sh`.
+
+### 4.10 Dashboard Superset (#82)
+
+Apache Superset 6.1 (Apache-2.0) chạy như **dịch vụ riêng** bằng image gốc `apache/superset:6.1.0` bản lean, thêm driver `psycopg2-binary` và `Authlib` (`nen-tang/superset/Dockerfile`), profile `bi` (`make up-bi`), không mở cổng ra host, đi qua APISIX ở `/bao-cao`.
+
+| Quyết định | Lý do |
+|---|---|
+| Metadata trong CSDL riêng `superset` của PostgreSQL lõi (db-init), **không Redis, không Celery** | Không thêm dịch vụ cho quy mô xã: một worker, cache metadata trong tiến trình (`SimpleCache`), không cache kết quả truy vấn (dashboard thấy số liệu mới ngay sau `make kho-du-lieu`), tắt báo cáo/alert theo lịch |
+| Đọc schema `bao_cao` (mart của §4.8) bằng role đăng nhập **`bao_cao_doc`**: lõi tạo role và mật khẩu (OpenBao), bộ máy GRANT đúng schema `bao_cao` (migration 010) | Superset không đọc được `mot_cua`, không ghi, không gọi RPC (test SQL); mật khẩu kết nối lưu mã hóa bằng `SECRET_KEY` trong metadata |
+| Đăng nhập **chỉ SSO Keycloak**: client public `bao_cao_superset`, Authorization Code + PKCE, trình duyệt đi tới Keycloak công khai, Superset đổi code qua mạng nội bộ; vai Superset theo client role `dxos_api` (`DXOS_SUPERSET_VAI_TRO`: `lanh_dao` → "Lãnh đạo xã") | Một danh tính cho mọi cổng, lãnh đạo bị bắt OTP như ở cổng cán bộ; không có tài khoản mật khẩu Superset nào (kể cả quản trị). Vai khác đăng nhập được nhưng chỉ có vai Public (không xem được gì) |
+| Dashboard **dựng bằng mã** (`mot-cua/bao-cao/superset_dung.py`, chạy trong `superset-init` mỗi `make up-bi`, uuid cố định nên idempotent) | Không ai phải bấm tay; dashboard nằm trong git, dựng lại được trên máy sạch. Nền tảng chỉ chạy tệp mà dịch vụ Tầng 2 khai báo, không biết nội dung |
+| `SECRET_KEY`, mật khẩu `superset`, `bao_cao_doc` sinh trong OpenBao (`dxos/core/superset`, `dxos/core/db/…`), agent `superset-secrets` render ra tệp 0400 | Như mọi dịch vụ khác (§4.4) |
+| Chạy dưới tiền tố `/bao-cao` (`SUPERSET_APP_ROOT`, Superset 6) sau proxy (`ENABLE_PROXY_FIX`) | Cùng origin với các cổng; không cần tên miền riêng |
+
+Dashboard "Hiệu suất một cửa" (`/bao-cao/superset/dashboard/hieu-suat-mot-cua/`, liên kết "Báo cáo hiệu suất" trong cổng cán bộ khi đăng nhập vai lãnh đạo): số hồ sơ đã đóng, tỷ lệ trễ hạn, số hồ sơ theo lĩnh vực, tỷ lệ trễ hạn theo tháng × thủ tục, bảng thời gian giải quyết trung bình và trung vị (ngày làm việc, số giờ) theo thủ tục × tháng. Số liệu mới sau mỗi `make kho-du-lieu`.
+
+### 4.11 Sổ văn bản đến/đi có ký số (#78)
+
+Bộ phận văn thư của xã giữ **sổ văn bản đến** (công văn, quyết định… cơ quan khác gửi, đã quét) và **sổ văn bản đi** (văn bản xã ban hành). Đây là việc của bộ máy (`mot-cua/`), không thuộc gói thủ tục nào; dùng lại lớp tệp (§4.3), ký số (§4.7) và nhật ký kiểm toán (§4.6).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor VT as Văn thư<br/>(cổng /can-bo, OTP)
+  actor LD as Lãnh đạo<br/>(OTP)
+  participant API as mot-cua-api<br/>(/files/van-ban)
+  participant PG as PostgreSQL<br/>(RLS, kiểm toán)
+  participant GT as Gotenberg
+  participant S3 as Garage
+  VT->>API: POST /files/van-ban/den?… (tệp quét + số, ký hiệu, ngày, trích yếu, nơi gửi)
+  API->>API: ClamAV → magic bytes → PDF có chữ ký: pyHanko xác minh
+  API->>S3: PUT van-ban/den/<năm>/<uuid>.<ext>
+  API->>PG: INSERT van_ban (dich_vu_tep) → trigger cấp số đến kế tiếp, kiểm toán van_ban.vao_so
+  VT->>API: POST /files/van-ban/di (dự thảo: loại, trích yếu, nơi nhận, nội dung)
+  API->>PG: INSERT van_ban du_thao (chưa số) → kiểm toán van_ban.du_thao
+  LD->>API: POST /files/van-ban/{id}/ky
+  API->>PG: RPC cap_so_van_ban_di → số đi kế tiếp, ký hiệu <số>/<loại>-UBND
+  API->>GT: mau-giay-to/van_ban_di.html → PDF
+  API->>API: pyHanko ký PAdES (chứng thư của xã)
+  API->>S3: PUT van-ban/di/<năm>/<uuid>.pdf
+  API->>PG: UPDATE … WHERE trang_thai = du_thao → da_ky, kiểm toán van_ban.ky + SHA-256
+```
+
+| Quyết định | Lý do |
+|---|---|
+| Vai **`van_thu`** riêng (client role Keycloak, nhóm `/van-thu`, role PostgreSQL), bắt OTP như mọi cán bộ | Văn thư nhập sổ nhưng không xử lý hồ sơ: vai đầu tiên trong token quyết định role PostgreSQL, nên vai riêng giữ được RLS hồ sơ hiện có (văn thư không thấy hồ sơ nào). Người dùng mẫu `vanthu01` |
+| **Đọc** sổ qua `/api/van_ban` (PostgREST, RLS: cán bộ, lãnh đạo, văn thư; công dân 403); **ghi** chỉ qua `mot-cua-api` bằng tài khoản dịch vụ `dich_vu_tep` sau khi kiểm vai | Ghi luôn đi kèm tệp (quét, Garage) hoặc ký số, không làm được trong một lời gọi PostgREST; người dùng không tự khai SHA-256 hay đường dẫn tệp |
+| Đánh số **theo năm, theo chiều** bằng bảng đếm `so_van_ban_dem` (UPSERT `… RETURNING`, khóa dòng) và `UNIQUE (chieu, nam, so)` | Không trùng, không nhảy số khi nhiều người vào sổ cùng lúc (test SQL 6 kết nối đồng thời qua dblink); `max()+1` sẽ trùng số dưới tải đồng thời. Người dùng không tự đặt số (42501) |
+| Văn bản đến: số cấp **khi vào sổ**; văn bản đi: số cấp **khi lãnh đạo ký**, trước khi sinh PDF | Dự thảo bị bỏ không làm thủng sổ; PDF in đúng số và ký hiệu đã cấp. Ký lỗi giữa chừng (Gotenberg, CA) → số đã cấp được giữ cho văn bản đó, ký lại dùng lại số (503 có thông báo), không cấp số mới |
+| **Bất biến sau khi vào sổ hoặc ký**: trigger chặn mọi UPDATE (kể cả superuser), chỉ xóa được dự thảo, chặn TRUNCATE; số không đổi sau khi cấp | Sổ văn bản là sổ pháp lý; sửa là phải ban hành văn bản mới. Kết hợp với SHA-256 trong nhật ký kiểm toán: thay tệp trên Garage thì phát hiện được |
+| Ký bằng **chứng thư của cơ quan** (§4.7, như con dấu số); danh tính lãnh đạo ký ghi ở `nguoi_ky_sub`, tên in trên văn bản và nhật ký kiểm toán | Chứng thư cá nhân cho từng lãnh đạo (USB token, ký từ xa) ngoài phạm vi; ai ký được là quyền vai `lanh_dao` + OTP |
+| Văn bản đến là PDF có chữ ký số → xác minh khi vào sổ, lưu kết quả (`xac_minh_chu_ky`) | Văn thư biết ngay văn bản nhận được còn toàn vẹn và do ai ký; ảnh quét (JPEG, PNG) vẫn vào sổ được |
+| `POST /files/xac-minh` nhận ra văn bản đi đã phát hành (`phatHanh.loai = van_ban_di`, ký hiệu, trích yếu) | Người nhận văn bản (hoặc cán bộ) kiểm được bản PDF là đúng bản xã đã ban hành |
+
+API (qua APISIX `/files`, token Keycloak):
+
+| Endpoint | Ai | Làm gì |
+|---|---|---|
+| `POST /files/van-ban/den?ten=&loai=&ky_hieu=&ngay_van_ban=&noi_gui=&trich_yeu=` (body tệp) | văn thư | quét, lưu, vào sổ, trả số đến (201); mã độc → 422, không vào sổ |
+| `POST /files/van-ban/di` (JSON `loai`, `trich_yeu`, `noi_nhan`, `noi_dung`) | văn thư | lưu dự thảo (201), chưa có số |
+| `POST /files/van-ban/{id}/ky` | lãnh đạo | cấp số, sinh PDF, ký, lưu (200, kèm link); đã ký → 409 |
+| `GET /files/van-ban/{id}` | cán bộ, lãnh đạo, văn thư | metadata + link tải ký sẵn ngắn hạn |
+| `GET /api/van_ban?chieu=eq.den` | cán bộ, lãnh đạo, văn thư | danh sách sổ (PostgREST) |
+
+Loại văn bản đi và chữ viết tắt trong ký hiệu: Thông báo TB, Quyết định QĐ, Kế hoạch KH, Báo cáo BC, Tờ trình TTr, Giấy mời GM, Công văn CV, Biên bản BB (ví dụ `12/TB-UBND`). Kiểm bằng `mot-cua/db/tests/van_ban.sql`, `mot-cua/backend/tests/test_van_ban.py`, `so-van-ban.test.tsx` và smoke 4n (`mot-cua/tests/smoke-van-ban.sh`).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -624,11 +886,13 @@ Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `h
 | `core` | Garage (+ dịch vụ một lần `garage-secrets`, `garage-init`), ClamAV | chạy thử 21/10/2026 (#7) | Garage ~30 MB RAM; ClamAV ~1–1,5 GB RAM cho CSDL virus |
 | `core` | OpenBao (+ dịch vụ một lần `bao-init`, 5 agent `*-secrets`) | chạy thử 21/10/2026 (#10) | agent chạy khoảng 1 giây rồi thoát, không giữ RAM |
 | `core` | RabbitMQ (+ dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`), `mot-cua-worker` | chạy thử 21/10/2026 (#9) | RabbitMQ ~150 MB RAM, chặn publisher ở 40% RAM; `mot-cua-worker` ~20 MB |
-| `docs` | Gotenberg, step-ca, Meilisearch CE | TODO tuần 2–5 | |
+| `core` | step-ca (+ dịch vụ một lần `step-ca-secrets`, `ca-init`), Gotenberg | chạy thử 23/10/2026 (#77) | đo 23/10/2026: step-ca ~70 MB RAM; Gotenberg (Chromium) ~470 MB sau khi sinh PDF, image ~1,7 GB; image `mot-cua-api` 157 MB (thêm pyHanko ~55 MB) |
+| `docs` | Meilisearch CE | TODO tuần 5 | |
 | `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
-| `bi` | Apache Superset | TODO tuần 4 | |
+| `bi` | `kho-du-lieu` (dịch vụ một lần, `make kho-du-lieu`) | chạy thử 23/10/2026 (#80) | image 399 MB (python slim 206 MB + dbt, DuckDB ~190 MB); một lần chạy ~4 giây trên dữ liệu smoke rồi thoát |
+| `bi` | Superset (+ dịch vụ một lần `superset-secrets`, `superset-init`), `make up-bi` | chạy thử 23/10/2026 (#82) | image 1,28 GB; một worker gunicorn 20 luồng, ~230 MB RAM (đo 23/10/2026) |
 
-Chạy: `make up` (= `docker compose --profile core up -d`), kiểm tra: `make smoke`. Thêm profile: `docker compose --profile core --profile docs up -d`.
+Chạy: `make up` (= `docker compose --profile core up -d`), thêm Superset: `make up-bi` (= `--profile core --profile bi`), kiểm tra: `make smoke` (mục Superset chỉ chạy khi profile `bi` đang chạy). Thêm profile: `docker compose --profile core --profile docs up -d`.
 Mọi image ghim phiên bản cụ thể, lấy từ dự án gốc (bảng ở `DEPENDENCIES.md`). Cấu hình qua `.env` (mẫu `.env.example`).
 
 ## 7. Viết BPMN khi không có modeler
@@ -784,7 +1048,7 @@ Docker Desktop, macOS arm64. Ba lần chạy, mỗi lần `make smoke` **199 đ�
 | `/api/*` | token công dân, cán bộ (mật khẩu + TOTP), lãnh đạo (mật khẩu + TOTP) | đúng quyền theo RLS (§8.3) |
 | `/public/*` | không token: danh mục thủ tục, JSON Schema; hồ sơ, cán bộ | 200; 401 |
 | `/public/*` | dùng hết 60 request/phút | 429; `/api` không bị ảnh hưởng |
-| `/workflow/ho-so` | công dân nộp hồ sơ KS01 | 201, quy trình `dang_ky_khai_sinh` ở `tiep_nhan`, hồ sơ trong CSDL có người nộp = `sub`, trạng thái `moi` (bỏ qua `trang_thai` client gửi); khởi tạo lại → 409; thủ tục chưa có quy trình → 422, không lưu hồ sơ; cán bộ, lãnh đạo nộp → 403 |
+| `/workflow/ho-so` | công dân nộp hồ sơ KS01, CT01 theo luồng tạo hồ sơ → tải tệp → `…/khoi-tao` | 201, quy trình ở `tiep_nhan`, tệp hiện trong `GET /files/ho-so/{id}/tep`, hồ sơ trong CSDL có người nộp = `sub`, trạng thái `moi`; khởi tạo lại → 409; gọi thẳng `…/khoi-tao` khi thiếu tệp → 422 nêu đúng thành phần thiếu, Flowable không có quy trình, không có sự kiện; `POST /workflow/ho-so` KS01 (cần giấy tờ) → 422, không lưu hồ sơ; thủ tục chưa có quy trình → 422; cán bộ, lãnh đạo nộp → 403 |
 | `/workflow/ho-so/{id}/…` | công dân với hồ sơ người khác | 404 (RLS) |
 | `/workflow/tasks` | cán bộ chưa/đã được giao lĩnh vực hộ tịch; lãnh đạo; công dân | không thấy/thấy task `tiep_nhan`; số task = số task của các nhóm lĩnh vực phụ trách; lãnh đạo chỉ thấy `phe_duyet`; công dân chỉ thấy `bo_sung` của mình |
 | `/workflow/tasks/{id}/complete` | đi hết quy trình bằng token thật | tiep_nhan (thiếu) → bo_sung (công dân) → tiep_nhan → tham_dinh → phe_duyet (lãnh đạo) → `ket_thuc_hoan_tat`; Flowable ghi người xử lý = `sub` cán bộ; biến sai bước hoặc thiếu biến → 400; công dân làm bước của cán bộ, cán bộ làm bước của công dân/lãnh đạo → 403; task đã xong → 404 |
@@ -868,12 +1132,11 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 
 ## 9. Việc tiếp theo (tuần 2)
 
-- pgAudit: image `postgres` gốc không có sẵn; build image từ Dockerfile của đội (cài gói `pgaudit` của PGDG) và bật `shared_preload_libraries`.
+- ~~pgAudit~~: xong ở #75 (§4.6), biên dịch pgAudit từ mã nguồn trên image `postgres:17.6-alpine` gốc.
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.
-- Đồng bộ `mot_cua.ho_so.trang_thai` theo bước quy trình (có thể làm bằng một consumer của sự kiện `ho_so.*`, §4.5); khởi tạo quy trình sau Poka-yoke (tuần 3).
 - Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
-- Tệp: giao diện tải/xem (tuần 3); Poka-yoke kiểm đủ thành phần theo JSON Schema dựa trên `thanh_phan_ho_so` đã quét (tuần 3); OCR đọc tệp đã lưu (tuần 5).
+- Tệp: giao diện xem tệp cho cán bộ (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

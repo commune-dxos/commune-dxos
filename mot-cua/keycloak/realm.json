@@ -15,6 +15,10 @@
           "description": "mot-cua: lãnh đạo xã. Bắt buộc MFA (OTP). Trùng role PostgreSQL lanh_dao"
         },
         {
+          "name": "van_thu",
+          "description": "mot-cua: văn thư xã (#78): vào sổ văn bản đến, soạn dự thảo văn bản đi; xem sổ văn bản. Không xem hồ sơ công dân. Trùng role PostgreSQL van_thu"
+        },
+        {
           "name": "dich_vu_tep",
           "description": "mot-cua: tài khoản dịch vụ của API tệp (backend), chỉ ghi metadata tệp đã quét và nhật ký tệp. Không gán cho người. Trùng role PostgreSQL dich_vu_tep"
         },
@@ -25,6 +29,10 @@
         {
           "name": "dich_vu_danh_muc",
           "description": "mot-cua: tài khoản dịch vụ của bộ nạp gói thủ tục (nap-thu-tuc, D-009): chỉ gọi RPC nạp/rút gói vào danh mục thủ tục. Không gán cho người. Trùng role PostgreSQL dich_vu_danh_muc"
+        },
+        {
+          "name": "dich_vu_bao_cao",
+          "description": "mot-cua: tài khoản dịch vụ của kho dữ liệu (#80): chỉ đọc cột không phải dữ liệu cá nhân của hồ sơ đã đóng, lịch sử trạng thái, danh mục; gọi RPC nạp bảng mart. Không gán cho người. Trùng role PostgreSQL dich_vu_bao_cao"
         }
       ]
     }
@@ -56,12 +64,21 @@
           "lanh_dao"
         ]
       }
+    },
+    {
+      "name": "van-thu",
+      "path": "/van-thu",
+      "clientRoles": {
+        "dxos_api": [
+          "van_thu"
+        ]
+      }
     }
   ],
   "clients": [
     {
       "clientId": "mot_cua_web",
-      "name": "mot-cua: cổng công dân và cổng cán bộ (React)",
+      "name": "mot-cua: cổng công dân (React)",
       "description": "Public client, Authorization Code + PKCE.",
       "enabled": true,
       "publicClient": true,
@@ -69,14 +86,60 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "redirectUris": [
+        "http://localhost:9080/*",
         "http://localhost:5173/*"
       ],
       "webOrigins": [
+        "http://localhost:9080",
         "http://localhost:5173"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5173/*"
+        "post.logout.redirect.uris": "http://localhost:9080/*##http://localhost:5173/*"
+      },
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "mot_cua_can_bo",
+      "name": "mot-cua: cổng cán bộ (React, /can-bo)",
+      "description": "Public client, Authorization Code + PKCE, chỉ cho cổng cán bộ (#55). Tài khoản can_bo, lanh_dao bị bắt OTP (required action CONFIGURE_TOTP); web từ chối người không có hai vai này, API kiểm lại bằng RLS và mot-cua-api.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9080/can-bo/*",
+        "http://localhost:5173/can-bo/*"
+      ],
+      "webOrigins": [
+        "http://localhost:9080",
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:9080/can-bo*##http://localhost:5173/can-bo*"
+      },
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "bao_cao_superset",
+      "name": "mot-cua: dashboard báo cáo (Superset, /bao-cao)",
+      "description": "Public client, Authorization Code + PKCE, chỉ cho Superset (#82). Superset ánh xạ client role lanh_dao của dxos_api sang vai Lãnh đạo xã; lãnh đạo bị bắt OTP như ở cổng cán bộ. Vai khác đăng nhập được nhưng không có quyền xem gì.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9080/bao-cao/oauth-authorized/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:9080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:9080/bao-cao/*"
       },
       "protocol": "openid-connect"
     },
@@ -97,6 +160,19 @@
       "clientId": "mot_cua_su_kien",
       "name": "mot-cua: sự kiện hồ sơ (backend, tài khoản dịch vụ)",
       "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; tang2-realm ghi secret vào OpenBao (dxos/tang2/mot-cua/keycloak/mot_cua_su_kien) cho mot-cua-api, mot-cua-worker.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "mot_cua_bao_cao",
+      "name": "mot-cua: kho dữ liệu (tài khoản dịch vụ)",
+      "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; tang2-realm ghi secret vào OpenBao (dxos/tang2/mot-cua/keycloak/mot_cua_bao_cao) cho dịch vụ một lần kho-du-lieu.",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
@@ -206,6 +282,21 @@
       ]
     },
     {
+      "id": "00000000-0000-0000-0000-00000000e001",
+      "username": "vanthu01",
+      "enabled": true,
+      "email": "vanthu01@xa-mau.example",
+      "emailVerified": true,
+      "firstName": "Thị Văn Thư",
+      "lastName": "Phạm",
+      "groups": [
+        "/van-thu"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
+    },
+    {
       "username": "service-account-mot_cua_tep",
       "enabled": true,
       "serviceAccountClientId": "mot_cua_tep",
@@ -222,6 +313,16 @@
       "clientRoles": {
         "dxos_api": [
           "dich_vu_su_kien"
+        ]
+      }
+    },
+    {
+      "username": "service-account-mot_cua_bao_cao",
+      "enabled": true,
+      "serviceAccountClientId": "mot_cua_bao_cao",
+      "clientRoles": {
+        "dxos_api": [
+          "dich_vu_bao_cao"
         ]
       }
     },
