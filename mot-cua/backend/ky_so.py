@@ -26,7 +26,10 @@ import uuid
 LOAI = {
     "bien_nhan": "Biên nhận hồ sơ",
     "ket_qua": "Thông báo kết quả giải quyết hồ sơ",
+    "van_ban_di": "Văn bản đi",  # #78, sổ văn bản
 }
+# Biến thành các đoạn văn <p> (mỗi dòng không rỗng một đoạn) thay vì danh sách <li>.
+BIEN_DOAN = {"noi_dung"}
 THU_MUC_MAU = os.environ.get("DXOS_MAU_GIAY_TO", os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                               "..", "mau-giay-to"))
 VN = datetime.timezone(datetime.timedelta(hours=7))
@@ -43,7 +46,8 @@ class LoiKySo(Exception):
 
 # --- Mẫu HTML --------------------------------------------------------------------------
 def dung_html(loai, du_lieu):
-    """Thay $bien trong mẫu bằng giá trị đã thoát HTML; giá trị dạng list → các dòng <li>.
+    """Thay $bien trong mẫu bằng giá trị đã thoát HTML; giá trị dạng list → các dòng <li>, biến trong
+    BIEN_DOAN → các đoạn <p> theo dòng.
     Thiếu biến trong du_lieu → KeyError (mẫu và mã phải khớp)."""
     if loai not in LOAI:
         raise ValueError(f"loại giấy tờ không hỗ trợ: {loai}")
@@ -51,7 +55,9 @@ def dung_html(loai, du_lieu):
         mau = string.Template(f.read())
     gia_tri = {}
     for k, v in du_lieu.items():
-        if isinstance(v, (list, tuple)):
+        if k in BIEN_DOAN:
+            gia_tri[k] = "".join(f"<p>{html.escape(d.strip())}</p>" for d in str(v or "").splitlines() if d.strip())
+        elif isinstance(v, (list, tuple)):
             gia_tri[k] = "".join(f"<li>{html.escape(str(x))}</li>" for x in v) or "<li>(không có)</li>"
         else:
             gia_tri[k] = html.escape("" if v is None else str(v))

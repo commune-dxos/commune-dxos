@@ -30,6 +30,8 @@
 #      tests/smoke-kho-du-lieu.sh.
 #   4m. Dashboard Superset (#82): sống qua /bao-cao, dashboard dựng bằng mã, SSO lãnh đạo (OTP), số liệu chart
 #      khớp mart, cán bộ bị chặn: tests/smoke-superset.sh. Chỉ khi Superset chạy (make up-bi), không thì BỎ QUA.
+#   4n. Sổ văn bản (#78): văn thư vào sổ văn bản đến (ClamAV, xác minh chữ ký), soạn văn bản đi; lãnh đạo ký
+#      ban hành (số đi, PDF ký PAdES xác minh hợp lệ); quyền theo vai: tests/smoke-van-ban.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -68,7 +70,7 @@ done
 # --- 3. MFA: cán bộ, lãnh đạo bị bắt cài OTP; công dân thì không ---------------------
 MK="smoke-$(openssl rand -hex 12)"
 for u in congdan01 canbo01 lanhdao01; do dat_mat_khau "$u" "$MK"; done
-for u in canbo01 canbo02 canbo03 lanhdao01; do
+for u in canbo01 canbo02 canbo03 lanhdao01 vanthu01; do
   kiem "$u có required action CONFIGURE_TOTP" '["CONFIGURE_TOTP"]' \
     "$(kc get users -r dxos -q "username=$u" -q exact=true --fields requiredActions | jq -c '.[0].requiredActions')"
 done
@@ -439,6 +441,10 @@ fi
 # shellcheck source=mot-cua/tests/smoke-superset.sh
 . "mot-cua/tests/smoke-superset.sh"
 
+# --- 4n. Sổ văn bản đến/đi có ký số (#78) ------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-van-ban.sh
+. "mot-cua/tests/smoke-van-ban.sh"
+
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
 UPDATE mot_cua.thanh_phan_ho_so SET nguoi_kiem_tra_id = NULL WHERE nguoi_kiem_tra_id = '$CB_ID';
@@ -453,6 +459,9 @@ kiem "đã xóa người dùng tạm của smoke" "0" \
 # Hồ sơ KS01 do công dân nộp qua API → khởi tạo quy trình với biến lấy từ hồ sơ → cán bộ
 # hoàn thành từng bước. Gọi Flowable REST trực tiếp (cổng debug 127.0.0.1) để kiểm riêng
 # engine và BPMN; luồng người dùng qua gateway ở mục 4d.
+# Token công dân lấy ở đầu smoke đã quá hạn 5 phút sau các mục 4a–4n: lấy lại.
+TOKEN="$(lay_token congdan01 "$MK" | jq -r '.access_token // empty')"
+AUTH=(-H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json')
 # wf_bat_dau <businessKey> <hoSoId> <hanXuLyLuc> → id process instance
 wf_bat_dau() {
   wf runtime/process-instances -d "$(jq -nc --arg bk "$1" --arg id "$2" --arg sub "$SUB" --arg han "$3" \

@@ -43,7 +43,7 @@ Cách dùng tệp này:
 
 ## Tuần 4 · 05–11/11 · Tầng [D] + bảo mật + VPS → v0.2.0
 - [ ] V1 · Log kiểm toán append-only + chuỗi băm SHA-256 + endpoint xác minh toàn vẹn; bật pgAudit (#75, PR chờ duyệt)
-- [ ] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF (#77, PR chờ duyệt); văn bản đi/đến có ký số (#78)
+- [ ] V1 · step-ca + pyHanko: ký số biên nhận và kết quả PDF; Gotenberg sinh PDF (#77); văn bản đi/đến có ký số (#78, PR chờ duyệt)
 - [ ] V2 · Hồ sơ hoàn tất → Parquet + DuckDB; `dbt-core` dựng báo cáo + lineage (#80, PR chờ duyệt)
 - [ ] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn (#82, PR chờ duyệt)
 - [ ] V1 · **Thuê VPS + tên miền**, HTTPS, CI tự triển khai khi merge `main`

@@ -10,6 +10,12 @@
 //   GET  /files/ho-so/{id}/tep              tệp đã nộp (metadata, theo RLS)
 //   GET  /files/tep/{id}?ttl=…              link GET ký sẵn ngắn hạn (/files/s3/…), mot-cua-api ghi nhật ký
 //   POST /files/ho-so/{id}/giay-to/{loai}   biên nhận / thông báo kết quả PDF có ký số (#77)
+//   GET  /api/van_ban?chieu=eq.…            sổ văn bản đến/đi (#78, RLS: cán bộ, lãnh đạo, văn thư)
+//   POST /files/van-ban/den?…               văn thư vào sổ văn bản đến (body = tệp quét)
+//   POST /files/van-ban/di                  văn thư soạn dự thảo văn bản đi
+//   POST /files/van-ban/{id}/ky             lãnh đạo ký ban hành (cấp số, PDF ký PAdES)
+//   GET  /files/van-ban/{id}                link tải ngắn hạn
+//   POST /files/xac-minh                    xác minh chữ ký số một PDF
 //   GET  /workflow/ho-so/{id}/tien-do       bước đang mở và lịch sử các bước
 //   POST /workflow/tasks/{id}/complete      nhận + hoàn thành bước với biến khai báo cho bước đó
 // Không gọi thẳng PostgREST, Flowable hay Garage; không cầm mật khẩu hay khóa nào.
@@ -106,6 +112,61 @@ export interface KetQuaHoanThanh {
   buocDangMo: { id: string; buoc: string; ten: string }[];
 }
 
+export type ChieuVanBan = "den" | "di";
+
+export interface VanBan {
+  id: string;
+  chieu: ChieuVanBan;
+  trang_thai: "da_vao_so" | "du_thao" | "da_ky";
+  nam: number | null;
+  so: number | null;
+  ky_hieu: string | null;
+  loai: string;
+  ngay_van_ban: string | null;
+  trich_yeu: string;
+  noi_gui: string | null;
+  noi_nhan: string | null;
+  nguoi_ky: string | null;
+  ten_tep: string | null;
+  kich_thuoc: number | null;
+  sha256: string | null;
+  xac_minh_chu_ky: { coChuKy?: boolean; hopLe?: boolean; nguoiKy?: string | null; loi?: string | null } | null;
+  ky_luc: string | null;
+  created_at: string;
+}
+
+export interface VanBanDen {
+  loai: string;
+  ky_hieu: string;
+  ngay_van_ban: string;
+  trich_yeu: string;
+  noi_gui: string;
+  nguoi_ky?: string;
+}
+
+export interface DuThaoDi {
+  loai: string;
+  trich_yeu: string;
+  noi_nhan: string;
+  noi_dung: string;
+}
+
+export interface KetQuaXacMinh {
+  hopLe: boolean;
+  coChuKy: boolean;
+  toanVen?: boolean;
+  tinCay?: boolean;
+  nguoiKy?: string | null;
+  kyLuc?: string | null;
+  loi?: string;
+  sha256: string;
+  phatHanh: { loai: string; kyHieu?: string; maHoSo?: string; kyLuc: string } | null;
+}
+
+/** Loại văn bản đi mot-cua-api nhận (khớp KY_HIEU_LOAI trong main.py). */
+export const LOAI_VAN_BAN_DI = ["Thông báo", "Công văn", "Quyết định", "Kế hoạch", "Báo cáo", "Tờ trình", "Giấy mời",
+  "Biên bản"] as const;
+
 const COT_HO_SO =
   "id,ma_ho_so,trang_thai,han_xu_ly,ho_ten_nguoi_nop,so_dien_thoai,ngay_nhan," +
   "thu_tuc:thu_tuc_id(id,ma,ten,so_ngay_xu_ly,bien_theo_buoc,linh_vuc:linh_vuc_id(ma,ten))";
@@ -160,6 +221,54 @@ export class ApiCanBo {
 
   phatHanhGiayTo(hoSoId: string, loai: LoaiGiayTo) {
     return phatHanhGiayTo(this.token, hoSoId, loai, this.cauHinh, this.goi);
+  }
+
+  laySoVanBan(chieu: ChieuVanBan) {
+    return this.lay<VanBan[]>(
+      `/api/van_ban?chieu=eq.${chieu}&select=*&order=nam.desc.nullsfirst,so.desc.nullsfirst,created_at.desc`,
+    );
+  }
+
+  vaoSoDen(tep: File, meta: VanBanDen) {
+    const q = new URLSearchParams({ ten: tep.name, ...meta });
+    if (!meta.nguoi_ky) q.delete("nguoi_ky");
+    return goiGateway<VanBan>(this.cauHinh, this.goi, `/files/van-ban/den?${q.toString()}`, {
+      method: "POST",
+      token: this.token,
+      headers: { "Content-Type": tep.type || "application/octet-stream" },
+      body: tep,
+    });
+  }
+
+  duThaoDi(duLieu: DuThaoDi) {
+    return goiGateway<VanBan>(this.cauHinh, this.goi, "/files/van-ban/di", {
+      method: "POST",
+      token: this.token,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(duLieu),
+    });
+  }
+
+  kyVanBan(id: string) {
+    return goiGateway<VanBan & LinkTep>(this.cauHinh, this.goi, `/files/van-ban/${encodeURIComponent(id)}/ky`, {
+      method: "POST",
+      token: this.token,
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+  }
+
+  layLinkVanBan(id: string) {
+    return this.lay<VanBan & LinkTep>(`/files/van-ban/${encodeURIComponent(id)}`);
+  }
+
+  xacMinh(tep: File) {
+    return goiGateway<KetQuaXacMinh>(this.cauHinh, this.goi, "/files/xac-minh", {
+      method: "POST",
+      token: this.token,
+      headers: { "Content-Type": "application/pdf" },
+      body: tep,
+    });
   }
 
   layTienDo(hoSoId: string) {

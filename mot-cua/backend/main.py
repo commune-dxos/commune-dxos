@@ -50,6 +50,19 @@ trigger ghi kiểm toán giay_to.ky kèm SHA-256):
   GET  /files/giay-to/{id}                  metadata + link tải ngắn hạn
   POST /files/xac-minh                      body = PDF bất kỳ (application/pdf): kiểm chữ ký số
                                             theo CA của xã, đối chiếu SHA-256 với giấy tờ đã phát hành
+                                            và văn bản đi đã ký
+
+Sổ văn bản đến/đi của xã (#78), cùng lớp tệp (ClamAV, Garage) và lớp ký số; ghi bằng tài khoản dịch vụ
+tệp sau khi kiểm vai người gọi, đọc sổ qua /api (RLS: cán bộ, lãnh đạo, văn thư):
+  POST /files/van-ban/den?ten=…&loai=…&ky_hieu=…&ngay_van_ban=…&trich_yeu=…&noi_gui=…[&nguoi_ky=…]
+                                            văn thư vào sổ văn bản đến (body = tệp quét PDF/JPG/PNG):
+                                            quét ClamAV → magic bytes → Garage; PDF thì xác minh chữ ký số;
+                                            CSDL cấp số đến
+  POST /files/van-ban/di                    văn thư soạn dự thảo văn bản đi (JSON: loai, trich_yeu,
+                                            noi_nhan, noi_dung)
+  POST /files/van-ban/{id}/ky               lãnh đạo ký ban hành: CSDL cấp số đi → PDF từ mẫu
+                                            van_ban_di.html → ký PAdES → Garage → đã ký (không sửa được)
+  GET  /files/van-ban/{id}                  metadata + link tải ngắn hạn
 
 Sự kiện (#9, hop_thu.py) và trạng thái hồ sơ (#73, trang_thai.py): sau mỗi lời gọi Flowable
 thành công, đọc bước đang mở, tra ánh xạ bước → trạng thái của gói (thu_tuc.trang_thai_buoc) rồi
@@ -874,8 +887,177 @@ def xac_minh(token, claims, req):
                  "&select=loai,ky_luc,ho_so:ho_so_id(ma_ho_so)")
     kq["phatHanh"] = ({"loai": rows[0]["loai"], "kyLuc": rows[0]["ky_luc"], "maHoSo": rows[0]["ho_so"]["ma_ho_so"]}
                       if rows else None)
-    log.info("xác minh PDF sha256 %s: hợp lệ %s, đã phát hành %s", kq["sha256"], kq["hopLe"], bool(rows))
+    if not rows:
+        vb = pgrst(DICH_VU_TEP.lay(), "GET", f"/van_ban?sha256=eq.{kq['sha256']}&chieu=eq.di&trang_thai=eq.da_ky"
+                   "&select=ky_hieu,ky_luc,trich_yeu")
+        if vb:
+            kq["phatHanh"] = {"loai": "van_ban_di", "kyLuc": vb[0]["ky_luc"], "kyHieu": vb[0]["ky_hieu"],
+                              "trichYeu": vb[0]["trich_yeu"]}
+    log.info("xác minh PDF sha256 %s: hợp lệ %s, đã phát hành %s", kq["sha256"], kq["hopLe"], bool(kq["phatHanh"]))
     return 200, kq
+
+
+# --- Sổ văn bản đến/đi (#78) ----------------------------------------------------------------
+# Loại văn bản → ký hiệu viết tắt trong số ký hiệu văn bản đi (theo thói quen công văn hành chính).
+KY_HIEU_LOAI = {"Thông báo": "TB", "Quyết định": "QĐ", "Kế hoạch": "KH", "Báo cáo": "BC", "Tờ trình": "TTr",
+                "Giấy mời": "GM", "Công văn": "CV", "Biên bản": "BB"}
+_COT_VAN_BAN = ("id,chieu,trang_thai,nam,so,ky_hieu,loai,ngay_van_ban,trich_yeu,noi_gui,noi_nhan,nguoi_ky,"
+                "ten_tep,kich_thuoc,sha256,xac_minh_chu_ky,ky_luc,created_at")
+
+
+def _can_vai(claims, *vai):
+    if vai_tro(claims) not in vai:
+        raise Loi(403, "Vai trò không được làm việc này với sổ văn bản")
+
+
+def _chu(gia_tri, ten, toi_da, bat_buoc=True):
+    v = (gia_tri or "").strip() if isinstance(gia_tri, str) or gia_tri is None else None
+    if v is None:
+        raise Loi(400, f"{ten} phải là chuỗi")
+    if bat_buoc and not v:
+        raise Loi(400, f"Thiếu {ten}")
+    if len(v) > toi_da:
+        raise Loi(400, f"{ten} dài quá {toi_da} ký tự")
+    return v or None
+
+
+def _ngay(gia_tri):
+    try:
+        return datetime.date.fromisoformat(gia_tri or "").isoformat()
+    except ValueError:
+        raise Loi(400, "ngay_van_ban phải dạng YYYY-MM-DD") from None
+
+
+def vao_so_den(token, claims, req):
+    _can_vai(claims, "van_thu")
+    q = req.query
+    meta = {"loai": _chu(q.get("loai"), "loai", 60), "ky_hieu": _chu(q.get("ky_hieu"), "ky_hieu", 60),
+            "ngay_van_ban": _ngay(q.get("ngay_van_ban")), "trich_yeu": _chu(q.get("trich_yeu"), "trich_yeu", 500),
+            "noi_gui": _chu(q.get("noi_gui"), "noi_gui", 300), "nguoi_ky": _chu(q.get("nguoi_ky"), "nguoi_ky", 200, False)}
+    ten, duoi = tep.kiem_ten_tep(q.get("ten"))
+    mime = tep.kiem_loai_khai_bao(duoi, req.headers.get("Content-Type"))
+    n = _so(req.headers.get("Content-Length"), "Content-Length")
+    if n > FILE_MAX_BYTES:
+        raise Loi(413, f"Tệp vượt {FILE_MAX_BYTES // (1024 * 1024)} MB")
+    if n <= 0:
+        raise Loi(400, "Tệp rỗng")
+    du_lieu = req.rfile.read(n)
+    sach, ma_doc = tep.quet_clamav(CLAMAV_HOST, CLAMAV_PORT, du_lieu)
+    if not sach:
+        log.warning("chặn văn bản đến nhiễm %s của %s", ma_doc, claims["sub"])
+        raise Loi(422, "Tệp chứa mã độc, đã từ chối và không lưu", {"maDoc": ma_doc})
+    tep.kiem_magic(duoi, du_lieu)
+    xac_minh_ck = None
+    if duoi == "pdf":
+        kq = ky_so.xac_minh_pdf(du_lieu, chung_thu_ky()["goc_pem"])
+        xac_minh_ck = {k: kq.get(k) for k in ("coChuKy", "hopLe", "toanVen", "tinCay", "nguoiKy", "kyLuc", "loi")}
+    nam = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).year
+    key = f"van-ban/den/{nam}/{uuid.uuid4()}.{'jpg' if duoi == 'jpeg' else duoi}"
+    s3_goi("PUT", key, du_lieu, {"Content-Type": mime})
+    dong = {**meta, "chieu": "den", "ten_tep": ten, "loai_mime": mime, "kich_thuoc": n,
+            "sha256": hashlib.sha256(du_lieu).hexdigest(), "object_key": key, "xac_minh_chu_ky": xac_minh_ck,
+            "nguoi_tao_sub": claims["sub"]}
+    try:
+        moi = pgrst(DICH_VU_TEP.lay(), "POST", f"/van_ban?select={_COT_VAN_BAN}", dong, prefer="return=representation")[0]
+    except Loi:
+        try:
+            s3_goi("DELETE", key)
+        except Loi:
+            log.error("không xóa được object mồ côi %s", key)
+        raise
+    log.info("vào sổ văn bản đến số %s/%s (%d byte)", moi["so"], moi["nam"], n)
+    return 201, moi
+
+
+def du_thao_di(token, claims, body):
+    _can_vai(claims, "van_thu")
+    dong = {"chieu": "di", "loai": _chu(body.get("loai"), "loai", 60),
+            "trich_yeu": _chu(body.get("trich_yeu"), "trich_yeu", 500),
+            "noi_nhan": _chu(body.get("noi_nhan"), "noi_nhan", 1000),
+            "noi_dung": _chu(body.get("noi_dung"), "noi_dung", 20000), "nguoi_tao_sub": claims["sub"]}
+    if dong["loai"] not in KY_HIEU_LOAI:
+        raise Loi(400, "Loại văn bản đi không hỗ trợ", {"loai": sorted(KY_HIEU_LOAI)})
+    return 201, pgrst(DICH_VU_TEP.lay(), "POST", f"/van_ban?select={_COT_VAN_BAN}", dong,
+                      prefer="return=representation")[0]
+
+
+def _co_quan(ky):
+    """Tên cơ quan ban hành: phần trước " – " trong tên chứng thư ("UBND xã Mẫu – Bộ phận Một cửa")."""
+    return ky["ten"].split(" – ")[0].strip()
+
+
+def ky_van_ban(token, claims, van_ban_id):
+    _can_vai(claims, "lanh_dao")
+    svc = DICH_VU_TEP.lay()
+    rows = pgrst(svc, "GET", f"/van_ban?id=eq.{van_ban_id}&select=id,chieu,trang_thai,loai,trich_yeu,noi_nhan,noi_dung")
+    if not rows or rows[0]["chieu"] != "di":
+        raise Loi(404, "Không thấy văn bản đi")
+    vb = rows[0]
+    if vb["trang_thai"] != "du_thao":
+        raise Loi(409, "Văn bản đã ký ban hành")
+    ky = chung_thu_ky()
+    with _KHOA_PHAT_HANH:
+        so = pgrst(svc, "POST", "/rpc/cap_so_van_ban_di",
+                   {"p_id": van_ban_id, "p_ky_hieu_loai": KY_HIEU_LOAI.get(vb["loai"], "CV"), "p_co_quan": "UBND"})
+        ngay = datetime.date.fromisoformat(so["ngayVanBan"])
+        nguoi_ky = " ".join(x for x in (claims.get("family_name"), claims.get("given_name")) if x) \
+            or claims.get("preferred_username") or claims["sub"]
+        co_quan = _co_quan(ky)
+        du_lieu = {"co_quan": co_quan, "ky_hieu": so["kyHieu"], "loai": vb["loai"].upper(), "trich_yeu": vb["trich_yeu"],
+                   "noi_dung": vb["noi_dung"], "noi_nhan": vb["noi_nhan"], "nguoi_ky": nguoi_ky,
+                   "chuc_vu": "TM. " + co_quan.upper(), "dia_danh": "Xã " + co_quan.split(" xã ")[-1] if " xã " in co_quan else co_quan,
+                   "ngay_van_ban": f"{ngay.day:02d} tháng {ngay.month:02d} năm {ngay.year}"}
+        try:
+            pdf = ky_so.html_sang_pdf(GOTENBERG_URL, ky_so.dung_html("van_ban_di", du_lieu))
+            da_ky = ky_so.ky_pdf(pdf, ky, ly_do=f"Ký ban hành văn bản {so['kyHieu']}", noi_ky=co_quan)
+        except ky_so.LoiKySo as e:
+            log.error("không ký được văn bản %s: %s", so["kyHieu"], e)
+            raise Loi(503, "Chưa sinh/ký được văn bản, thử lại sau (số đã cấp được giữ)") from None
+        key = f"van-ban/di/{so['nam']}/{uuid.uuid4()}.pdf"
+        s3_goi("PUT", key, da_ky, {"Content-Type": "application/pdf"})
+        cap_nhat = {"trang_thai": "da_ky", "nguoi_ky": nguoi_ky, "nguoi_ky_sub": claims["sub"],
+                    "ten_tep": f"{so['kyHieu'].replace('/', '-')}.pdf", "loai_mime": "application/pdf",
+                    "kich_thuoc": len(da_ky), "sha256": hashlib.sha256(da_ky).hexdigest(), "object_key": key,
+                    "chung_thu_so_hieu": ky["so_hieu"],
+                    "ky_luc": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        try:
+            moi = pgrst(svc, "PATCH", f"/van_ban?id=eq.{van_ban_id}&trang_thai=eq.du_thao&select={_COT_VAN_BAN}",
+                        cap_nhat, prefer="return=representation")
+        except Loi:
+            moi = []
+        if not moi:
+            try:
+                s3_goi("DELETE", key)
+            except Loi:
+                log.error("không xóa được object mồ côi %s", key)
+            raise Loi(409, "Văn bản vừa được ký ở nơi khác hoặc không ghi được, tải lại sổ")
+    log.info("ký ban hành văn bản %s (%d byte)", so["kyHieu"], len(da_ky))
+    return 200, _kem_link_van_ban(moi[0])
+
+
+def _kem_link_van_ban(dong, ttl=FILE_LINK_TTL):
+    c = s3()
+    rows = pgrst(DICH_VU_TEP.lay(), "GET", f"/van_ban?id=eq.{dong['id']}&select=object_key,loai_mime,ten_tep")
+    if not rows or not rows[0]["object_key"]:
+        raise Loi(404, "Văn bản chưa có tệp (dự thảo chưa ký)")
+    r = rows[0]
+    url = tep.presign("GET", _url_object(r["object_key"]), c["region"], c["accessKeyId"], c["secretAccessKey"], ttl,
+                      query_them={"response-content-type": r["loai_mime"],
+                                  "response-content-disposition": tep.content_disposition(r["ten_tep"])})
+    het_han = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
+    return {**dong, "link": GATEWAY_URL + "/files/s3" + url[len(c["endpoint"]):],
+            "hetHanLuc": het_han.isoformat(timespec="seconds")}
+
+
+def xem_van_ban(token, claims, req, van_ban_id):
+    _can_vai(claims, "can_bo", "lanh_dao", "van_thu")
+    rows = pgrst(token, "GET", f"/van_ban?id=eq.{van_ban_id}&select={_COT_VAN_BAN}")  # RLS của người gọi
+    if not rows:
+        raise Loi(404, "Không thấy văn bản")
+    ttl = _so(req.query.get("ttl", FILE_LINK_TTL), "ttl")
+    if not 1 <= ttl <= FILE_LINK_TTL:
+        raise Loi(400, f"ttl phải trong 1–{FILE_LINK_TTL} giây")
+    return 200, _kem_link_van_ban(rows[0], ttl)
 
 
 # --- HTTP --------------------------------------------------------------------------
@@ -896,6 +1078,11 @@ ROUTES = [
      lambda tk, c, r, m: tao_giay_to(tk, c, m[1], m[2])),
     ("GET", re.compile(rf"/files/giay-to/({UUID})"), False, lambda tk, c, r, m: xem_giay_to(tk, c, r, m[1])),
     ("POST", re.compile(r"/files/xac-minh"), False, lambda tk, c, r, m: xac_minh(tk, c, r)),
+    # Sổ văn bản (#78).
+    ("POST", re.compile(r"/files/van-ban/den"), False, lambda tk, c, r, m: vao_so_den(tk, c, r)),
+    ("POST", re.compile(r"/files/van-ban/di"), True, lambda tk, c, b, m: du_thao_di(tk, c, b)),
+    ("POST", re.compile(rf"/files/van-ban/({UUID})/ky"), True, lambda tk, c, b, m: ky_van_ban(tk, c, m[1])),
+    ("GET", re.compile(rf"/files/van-ban/({UUID})"), False, lambda tk, c, r, m: xem_van_ban(tk, c, r, m[1])),
 ]
 
 
