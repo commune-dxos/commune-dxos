@@ -4,6 +4,94 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-24
+
+### Tính năng mới
+
+- **cong-can-bo:** Cổng cán bộ /can-bo – SSO + OTP, hộp việc theo lĩnh vực, xử lý bước ([#55](https://github.com/commune-dxos/commune-dxos/issues/55)) ([#72](https://github.com/commune-dxos/commune-dxos/issues/72))
+    - Cổng cán bộ là route /can-bo trong cùng ứng dụng web Tầng 2 (mot-cua/web-cong-dan/src/can-bo/),
+      nạp lười thành gói JS riêng; dùng chung theme, phông, thành phần shadcn/ui, lớp gọi APISIX.
+    - Đăng nhập Keycloak client public riêng mot_cua_can_bo (PKCE S256, redirect chỉ /can-bo/*);
+      Keycloak tự đòi OTP với can_bo, lanh_dao; token không có hai vai này → trang "không có quyền".
+    - Hộp việc: GET /workflow/tasks ghép GET /api/ho_so (RLS), hạn xử lý ghi còn bao lâu, sắp trễ
+      (≤ 1 ngày) và quá hạn đổi màu, lên đầu; lọc trạng thái nhận, thủ tục, hạn trên URL; chuông và
+      ô số liệu đếm từ dữ liệu có sẵn (realtime là #56).
+    - Chi tiết hồ sơ: người nộp, thành phần và tệp (link ký sẵn /files/tep/{id}), lịch sử bước.
+    - Form xử lý bước sinh từ thu_tuc.bien_theo_buoc (formProperty của BPMN); bộ nạp gói thêm nhãn
+      "ten" (thuộc tính name) cho mỗi biến. Gửi POST /workflow/tasks/{id}/complete, lỗi 400/403/409
+      hiện nguyên câu của mot-cua-api.
+    - APISIX route mot-cua-web-can-bo (GET/HEAD, 300 req/phút/IP, X-Robots-Tag noindex); nginx SPA
+      fallback /can-bo, /cau-hinh.js thêm clientIdCanBo (DXOS_OIDC_CLIENT_ID_CAN_BO).
+    - Thành phần shadcn/ui mới (CLI 4.22.1, MIT): avatar, dropdown-menu, select, sheet, sidebar,
+      table, tooltip; tách goiGateway dùng chung cho nộp hồ sơ và cổng cán bộ.
+    - Vitest: hạn xử lý, form theo bước (đọc BPMN thật của thu-tuc/), quyền, lọc hộp việc, màn
+      cổng vào, hộp việc, chi tiết, gửi bước (85 test).
+    - Trang /can-bo 200 (route riêng, noindex, CSP), route SPA sâu, /cau-hinh.js có
+      mot_cua_can_bo, gói JS tách riêng không có bí mật.
+    - Keycloak: mot_cua_can_bo chỉ nhận redirect /can-bo/*, bắt PKCE; sau mật khẩu vẫn đòi OTP;
+      Authorization Code + PKCE + OTP bằng curl như trình duyệt.
+    - E2E trên hồ sơ KS01 vừa nộp từ cổng công dân: cán bộ hộ tịch thấy hồ sơ, xem tệp (link ký
+      sẵn), tiến độ → tiếp nhận → thẩm định đạt (chuyển lãnh đạo) → không tự phê duyệt được →
+      lãnh đạo phê duyệt → kết thúc Hoàn tất; cán bộ lĩnh vực khác không thấy, không xử lý được;
+      công dân đăng nhập client cán bộ chỉ có vai cong_dan.
+    - docs/cong-can-bo.md: đăng nhập và quyền, luồng KS01 (sơ đồ), form sinh từ gói, hạn xử lý,
+      hạ tầng, tài khoản mẫu; thêm vào mục "Người dân / cán bộ" của trang tài liệu.
+    - README (chạy thử: URL cổng cán bộ, tài khoản mẫu), docs/cai-dat.md, docs/architecture.md
+      (route /can-bo), mot-cua/README.md, mot-cua/web-cong-dan/README.md.
+    - NOTICE, DEPENDENCIES.md: thành phần shadcn/ui mới, bố cục tham khảo satnaing/shadcn-admin (MIT).
+    - Ảnh chụp từ bản chạy thật: hộp việc 1440 px, chi tiết hồ sơ, xử lý bước, điện thoại 390 px.
+- **cong-cong-dan:** Web Tầng 2 trong compose, phục vụ qua APISIX route / và smoke web ([#57](https://github.com/commune-dxos/commune-dxos/issues/57)) ([#70](https://github.com/commune-dxos/commune-dxos/issues/70))
+    - Dockerfile hai tầng cho mot-cua/web-cong-dan: node 22.23.4 build theo lockfile → nginxinc/nginx-unprivileged
+      1.30.6 (uid 101), không bí mật trong image; /cau-hinh.js và CSP sinh từ biến môi trường lúc chạy,
+      web gọi lõi bằng đường dẫn tương đối (cùng origin với gateway).
+    - Dịch vụ mot-cua-web (profile core): không mở cổng ra host, rootfs chỉ đọc, cap_drop ALL,
+      no-new-privileges, healthcheck; make up build lại image (--build).
+    - APISIX: route /* ưu tiên thấp nhất, chỉ GET/HEAD, 600 req/phút/IP; không che /public, /api, /files, /workflow.
+    - nginx: route SPA (/thu-tuc, /nop-ho-so, /dang-nhap) tải lại 200, đường dẫn lạ 404; CSP không
+      unsafe-inline, frame-ancestors 'none', nosniff, Referrer-Policy, X-Frame-Options.
+    - Keycloak client mot_cua_web: redirect URI, web origin, post logout của http://localhost:9080.
+    - CORS APISIX/PostgREST luôn kèm origin của gateway (DXOS_GATEWAY_URL).
+    - Smoke mot-cua/tests/smoke-web.sh (make smoke mục 4h): trang, tài nguyên, phông, route SPA, header,
+      cấu hình lúc chạy, đăng nhập Authorization Code + PKCE, nộp hồ sơ E2E từ origin của web.
+    - Tài liệu: README, docs/cai-dat.md (kèm lệnh cập nhật client trên volume cũ), docs/architecture.md,
+      README web, NOTICE, DEPENDENCIES.md.
+- **mot-cua:** Poka-yoke 2 lớp – máy chủ kiểm JSON Schema trước khi khởi tạo quy trình, form không gửi request khi thiếu thành phần ([#59](https://github.com/commune-dxos/commune-dxos/issues/59)) ([#71](https://github.com/commune-dxos/commune-dxos/issues/71))
+    - mot-cua-api dựng tài liệu hồ sơ từ tệp đã quét sạch trong CSDL (đọc bằng token người gọi, RLS)
+      và kiểm bằng jsonschema (MIT, Draft 2020-12) với thu_tuc.json_schema của gói trước khi gọi
+      Flowable. Thiếu/sai → 422 kèm lỗi từng thành phần tiếng Việt, không khởi tạo quy trình, không
+      ghi sự kiện. 409 (gọi trùng, hồ sơ không còn moi) vẫn kiểm trước.
+    - POST /workflow/ho-so (nộp gộp) kiểm schema trước khi lưu: thủ tục cần giấy tờ → 422, không lưu.
+    - Image mot-cua-api build từ mot-cua/backend/Dockerfile (python gốc + requirements.txt ghim);
+      CI make-check, test-backend cài requirements; make test-backend báo rõ nếu thiếu jsonschema.
+    - Test: test_poka_yoke.py (đủ → 201, thiếu → 422, tệp chưa sạch → 422, 404, 409, schema hỏng).
+    - Smoke theo thứ tự tạo hồ sơ → tải tệp → khởi tạo cho KS01 và CT01; thêm ca gọi thẳng
+      khoi-tao khi thiếu tệp → 422.
+    - Tài liệu: mot-cua/README.md mục /workflow, docs/architecture.md §4.2, docs/thu-tuc.md.
+    - src/lib/thanh-phan.ts kiểm tệp đã chọn bằng @cfworker/json-schema (MIT) với đúng schema của
+      gói (required, minItems, maxItems, format uuid). Không dùng Ajv: Ajv biên dịch schema bằng
+      new Function, bị CSP script-src 'self' của cổng chặn.
+    - src/lib/ho-so.ts nopHoSo: Poka-yoke trước request đầu tiên, rồi tạo hồ sơ → tải tệp → khởi tạo;
+      form dùng nopHoSo, lỗi 422 của máy chủ hiện nguyên câu.
+    - Vitest: thiếu thành phần (KS01, CT01, gói giả ZZ01) → fetch 0 lần; đủ → đúng thứ tự 3 bước;
+      form tự sinh cho gói giả, nộp được CT01 chỉ với bản chính.
+    - DEPENDENCIES.md (npm + pip), de-thi-mapping [P], PLAN tuần 3 V2.
+- **mot-cua:** Đồng bộ trạng thái hồ sơ theo bước Flowable – ánh xạ trong gói, lịch sử và outbox cùng transaction, đối soát ([#73](https://github.com/commune-dxos/commune-dxos/issues/73)) ([#74](https://github.com/commune-dxos/commune-dxos/issues/74))
+    - Ánh xạ bước → trạng thái khai trong gói: mặc định theo người nhận userTask (công dân → cho_bo_sung,
+      lanh_dao → cho_phe_duyet, còn lại → dang_xu_ly), ghi đè bằng trang_thai_theo_buoc của thu-tuc.yaml;
+      bộ nạp ghi thu_tuc.trang_thai_buoc. Hai gói mẫu khai tiep_nhan: moi.
+    - Migration 006: trạng thái cho_phe_duyet (chỉ quy trình chuyển), bảng lich_su_trang_thai chỉ thêm
+      (trigger, RLS theo quyền xem hồ sơ), RPC dong_bo_trang_thai đổi trạng thái + lịch sử + hộp thư đi
+      trong một transaction (chỉ dich_vu_su_kien).
+    - mot-cua-api: Flowable trước, một lời gọi RPC sau; CSDL lỗi thì request vẫn thành công, response có
+      trangThai. Công dân nộp lại bước bo_sung phải đủ thành phần (Poka-yoke).
+    - mot-cua-worker: đối soát trạng thái lệch Flowable mỗi vòng quét (doi-soat-mot-lan).
+    - Test: test_trang_thai.py, db/tests/trang_thai.sql (50 kiểm tra).
+- **mot-cua:** Nhật ký kiểm toán append-only chuỗi băm SHA-256, endpoint xác minh toàn vẹn, bật pgAudit ([#75](https://github.com/commune-dxos/commune-dxos/issues/75)) ([#76](https://github.com/commune-dxos/commune-dxos/issues/76))
+- **mot-cua:** Ký số biên nhận và kết quả PDF – step-ca, Gotenberg, pyHanko PAdES, xác minh ([#77](https://github.com/commune-dxos/commune-dxos/issues/77)) ([#79](https://github.com/commune-dxos/commune-dxos/issues/79))
+- **mot-cua:** Kho dữ liệu lịch sử – Parquet + DuckDB, dbt-core dựng mart và lineage, nạp bao_cao ([#80](https://github.com/commune-dxos/commune-dxos/issues/80)) ([#81](https://github.com/commune-dxos/commune-dxos/issues/81))
+- **mot-cua:** Sổ văn bản đến/đi có ký số – văn thư vào sổ, lãnh đạo ký ban hành, đánh số theo năm ([#78](https://github.com/commune-dxos/commune-dxos/issues/78)) ([#84](https://github.com/commune-dxos/commune-dxos/issues/84))
+- **nen-tang:** Dashboard Superset qua /bao-cao với SSO Keycloak, mô tả luồng hồ sơ một cửa ([#82](https://github.com/commune-dxos/commune-dxos/issues/82)) ([#83](https://github.com/commune-dxos/commune-dxos/issues/83))
+
 ## [0.4.0] - 2026-10-23
 
 ### Tính năng mới
@@ -252,7 +340,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.1.0...v0.2.0
