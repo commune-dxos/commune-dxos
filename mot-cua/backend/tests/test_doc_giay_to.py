@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Test đọc giấy tờ bằng OCR + cán bộ xác nhận (#93): tệp loại giấy tờ của repo hợp lệ; trích trường từ kết quả OCR
-THẬT của hai ảnh mẫu giả (tests/du-lieu/ocr-*.json, chạy PaddleOCR + VietOCR ngày 26/10/2026); nhãn đọc sai dấu,
+THẬT của hai ảnh mẫu giả (tests/du-lieu/ocr-*.json, dịch vụ nen-tang/ocr chạy PP-OCRv5_mobile_det + VietOCR trên ONNX
+Runtime ngày 26/10/2026, trùng từng dòng với bản PaddleX + PyTorch trước đó); nhãn đọc sai dấu,
 thiếu dấu ':', dòng tiêu đề không bị nhận nhầm; chuẩn hóa ngày, số định danh, giới tính; kiểm giá trị người dùng gửi;
 endpoint của main.py (đọc thử không lưu, công dân khai, cán bộ đọc lại/xác nhận, quyền theo vai, OCR chưa bật → 503)
 với PostgREST, Garage, ClamAV, dịch vụ OCR giả. Không cần Docker.

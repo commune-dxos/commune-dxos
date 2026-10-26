@@ -123,7 +123,8 @@
   ],
   "mo_hinh": {
     "phat_hien": "PaddleOCR PP-OCRv5_mobile_det",
-    "nhan_dang": "VietOCR vgg_transformer"
+    "nhan_dang": "VietOCR vgg_transformer",
+    "chay": "ONNX Runtime 1.31.0"
   },
   "kich_thuoc": [
     1400,

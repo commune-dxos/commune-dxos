@@ -4,10 +4,13 @@
 # Smoke đọc giấy tờ bằng OCR + cán bộ xác nhận (#93), được mot-cua/tests/smoke.sh `source` ở mục 4q, trước khi xóa
 # người dùng tạm (dùng cán bộ tạm $U_CB/$OTP_CB/$CB_ID, mật khẩu $MK, hàm kt_token_otp của smoke-kiem-toan.sh, nop_du,
 # tai_giay_to, gw của smoke.sh). Ảnh là ảnh mẫu GIẢ của cổng công dân (public/mau-gia/, scripts/sinh_giay_to_gia.py).
-# Dịch vụ ocr (profile ai) chưa chạy thì mục này tự bật (build image, lần đầu tải ~150 MB mô hình) rồi để chạy tiếp.
+# Dịch vụ ocr (profile ai) chưa chạy thì mục này tự bật (lần đầu build image: tải PyTorch CPU + trọng số cho stage
+# xuất ONNX, vài phút) rồi để chạy tiếp.
 # Kiểm:
 #   - OCR tắt: đọc thử → 503 có lời giải thích, tải ảnh lên vẫn 201 (nộp hồ sơ không phụ thuộc OCR), máy ghi lý do chưa đọc;
-#   - dịch vụ ocr: healthy, không mở cổng, user không phải root, rootfs chỉ đọc, mô hình nằm trong volume;
+#   - dịch vụ ocr: healthy, không mở cổng, user không phải root, rootfs chỉ đọc; mô hình ONNX nằm sẵn trong image và
+#     khớp SHA-256 lúc build, image không có PyTorch/PaddlePaddle/VietOCR; không ra được Internet; tắt số liệu sử dụng
+#     của ONNX Runtime;
 #   - đọc thử ảnh giấy tờ tùy thân và giấy chứng sinh mẫu → đúng các trường; ClamAV chặn EICAR, PDF/ảnh lạ → 415; không
 #     lưu gì;
 #   - nộp KS01 với ảnh thật: máy đọc tệp đã lưu ở luồng nền (truong_may), công dân khai (truong_cong_dan);
@@ -50,7 +53,7 @@ kiem "OCR tắt: máy ghi chưa đọc được kèm lý do, chờ cán bộ nh�
   "$(sql "SELECT trang_thai || ' ' || CASE WHEN loi_doc LIKE '%chưa bật%' THEN 'có' ELSE 'không' END FROM mot_cua.doc_giay_to WHERE tep_id = '$TEP_TAT'")"
 
 # --- Bật dịch vụ OCR --------------------------------------------------------------------------------------
-echo "  (bật dịch vụ ocr, lần đầu build image và tải mô hình có thể mất vài phút)"
+echo "  (bật dịch vụ ocr, lần đầu build image có thể mất vài phút)"
 gioi_han 1800 "${AI[@]}" up -d --build --no-deps ocr > "$DG_TD/up.log" 2>&1 || tail -5 "$DG_TD/up.log"
 for _ in $(seq 1 180); do
   st="$(docker inspect -f '{{.State.Health.Status}}' "$("${AI[@]}" ps -q ocr)" 2>/dev/null || echo khong-chay)"
@@ -60,8 +63,25 @@ done
 kiem "ocr healthy (mô hình đã nạp)" "healthy" "$st"
 kiem "ocr: không mở cổng ra host, user 1000, rootfs chỉ đọc" "| 1000 true" \
   "$(docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{$p}} {{end}}' "$("${AI[@]}" ps -q ocr)")| $("${AI[@]}" exec -T ocr id -u) $(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' "$("${AI[@]}" ps -q ocr)")"
-kiem "ocr: trọng số trong volume (PaddleOCR + VietOCR), không trong image" "có có" \
-  "$("${AI[@]}" exec -T ocr sh -c 'test -s /models/vietocr/vgg_transformer.pth && echo có || echo không; test -d /models/paddlex/official_models/PP-OCRv5_mobile_det && echo có || echo không' | tr '\n' ' ' | sed 's/ $//')"
+# Mô hình: 3 tệp .onnx khớp SHA-256 ghi lúc build; image chạy thật không có thư viện nào của stage xuất mô hình.
+kiem "ocr: mô hình ONNX (PP-OCRv5_mobile_det, VietOCR encoder/decoder) khớp SHA-256; không có torch, paddle, vietocr" \
+  "3 khop | khong-co" \
+  "$(gioi_han 60 "${AI[@]}" exec -T ocr python -c '
+import hashlib, importlib.util, json, os
+d = os.environ["OCR_THU_MUC_MO_HINH"]; g = json.load(open(os.path.join(d, "mo-hinh.json")))
+onnx = [t for t in g["sha256"] if t.endswith(".onnx")]
+ok = all(hashlib.sha256(open(os.path.join(d, t), "rb").read()).hexdigest() == g["sha256"][t] for t in g["sha256"])
+co = [m for m in ("torch", "torchvision", "paddle", "paddlex", "vietocr", "ujson") if importlib.util.find_spec(m)]
+print(len(onnx), "khop" if ok else "sai", "|", "khong-co" if not co else ",".join(co))' 2>/dev/null)"
+kiem "ocr: không ra được Internet (mạng ocr-noi-bo internal), không gắn volume" "chan 0" \
+  "$(gioi_han 30 "${AI[@]}" exec -T ocr python -c '
+import socket
+try:
+    socket.create_connection(("1.1.1.1", 443), timeout=3).close(); print("ra-duoc")
+except OSError:
+    print("chan")' 2>/dev/null) $(docker inspect -f '{{len .Mounts}}' "$("${AI[@]}" ps -q ocr)")"
+kiem "ocr: tắt số liệu sử dụng của ONNX Runtime (ORT_DISABLE_TELEMETRY=1, log không có telemetry)" "1 0" \
+  "$("${AI[@]}" exec -T ocr printenv ORT_DISABLE_TELEMETRY) $("${AI[@]}" logs --no-log-prefix ocr 2>&1 | grep -ci telemetry || true)"
 
 # --- Đọc thử (tự điền form, không lưu) ---------------------------------------------------------------------
 DT_TRUOC="$(sql "SELECT count(*) FROM mot_cua.doc_giay_to")"
