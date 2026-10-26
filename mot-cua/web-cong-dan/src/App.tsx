@@ -12,6 +12,7 @@ import { DangNhapXong } from "@/pages/dang-nhap-xong";
 import { KhongThay } from "@/pages/khong-thay";
 import { NopHoSo } from "@/pages/nop-ho-so";
 import { TraCuu } from "@/pages/tra-cuu";
+import { TroLy } from "@/pages/tro-ly";
 import { TrangChu } from "@/pages/trang-chu";
 
 const CongCanBo = lazy(() => import("@/can-bo/cong-can-bo"));
@@ -38,6 +39,7 @@ export function App() {
         <Route path="thu-tuc/:ma" element={<ChiTietThuTuc />} />
         <Route path="nop-ho-so/:ma/:buoc?" element={<NopHoSo />} />
         <Route path="tra-cuu" element={<TraCuu />} />
+        <Route path="hoi-dap" element={<TroLy />} />
         <Route path="ho-so" element={<HoSoCuaToiTrang />} />
         <Route path="ho-so/:id" element={<ChiTietHoSoCongDan />} />
         <Route path={DUONG_DAN_XONG.slice(1)} element={<DangNhapXong />} />

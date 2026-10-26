@@ -55,6 +55,8 @@ DANH_TINH = {
     "step-ca": 1000,    # smallstep/step-ca chạy user step (#77)
     "ca-init": 1000,    # dịch vụ một lần ca-init, cùng image step-ca
     "superset": 1000,   # apache/superset chạy user superset; superset, superset-init (#82)
+    "meilisearch": 0,   # getmeili/meilisearch chạy root (#91)
+    "meili-init": 0,
 }
 # Thời hạn token theo danh tính: agent một lần chỉ cần vài giây; backend chạy lâu thì
 # đăng nhập lại khi token hết hạn.
@@ -89,6 +91,8 @@ BI_MAT_LOI = {
     "core/db/superset": {"password": (None, _mat_khau)},
     "core/db/bao_cao_doc": {"password": (None, _mat_khau)},
     "core/superset": {"secret_key": (None, lambda: secrets.token_urlsafe(48))},
+    # Meilisearch (#91): khóa chủ (≥ 16 byte); chỉ meili-init dùng để cấp khóa API riêng cho Tầng 2.
+    "core/meilisearch": {"master_key": (None, _hex32)},
 }
 
 

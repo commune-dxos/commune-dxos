@@ -78,6 +78,16 @@ MA_TRAN=(
   "superset:read:$A/s3 403"
   "superset:write:core/superset 403"
   "tang2:read:core/superset 403"
+  "meilisearch:read:core/meilisearch 200"
+  "meilisearch:read:$A/meilisearch 403"
+  "meilisearch:write:core/meilisearch 403"
+  "meili-init:read:core/meilisearch 200"
+  "meili-init:write:$A/meilisearch 400"
+  "meili-init:read:core/db/postgres 403"
+  "meili-init:read:$A/s3 403"
+  "tang2:read:$A/meilisearch 200"
+  "tang2:read:core/meilisearch 403"
+  "tang2:write:$A/meilisearch 403"
 )
 muc=(); for m in "${MA_TRAN[@]}"; do muc+=("${m% *}"); done
 kq="$(docker compose run --rm --no-deps --entrypoint python bao-init /nen-tang/openbao/kiem-quyen.py "${muc[@]}" 2>&1)"
@@ -89,7 +99,7 @@ done
 # (cho phép *_FILE, *_URL và giá trị "@/đường dẫn tệp" như PGRST_JWT_SECRET=@/jwks/jwks.json là
 # khóa CÔNG KHAI). bao-init chỉ nhận biến LEGACY_* khi .env cũ còn mật khẩu.
 for svc in postgres keycloak postgrest flowable mot-cua-api tang2-realm garage-init db-init tang2-migrate \
-           rabbitmq rabbitmq-init mot-cua-worker step-ca ca-init gotenberg; do
+           rabbitmq rabbitmq-init mot-cua-worker step-ca ca-init gotenberg meilisearch meili-init nap-tri-thuc tro-ly; do
   id="$(docker compose ps -aq "$svc" | head -1)"
   kiem "$svc: không có mật khẩu/secret trong biến môi trường" "0" \
     "$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$id" \

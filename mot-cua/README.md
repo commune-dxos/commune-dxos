@@ -17,9 +17,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/010_doc_bao_cao.sql` | quyền đọc báo cáo (#82): role `bao_cao_doc` (lõi tạo đăng nhập) chỉ đọc schema `bao_cao`, không đọc `mot_cua` |
 | `db/migrations/012_tra_cuu_ho_so.sql` | tra cứu tiến độ không đăng nhập (#54): RPC `tra_cuu_ho_so(p_ma, p_so_cuoi)` cho `anon`, `cong_dan`, chỉ trả trạng thái và các mốc; xem [Tra cứu tiến độ](#tra-cứu-tiến-độ-hồ-sơ-54) |
 | `db/migrations/011_so_van_ban.sql` | sổ văn bản đến/đi (#78): role `van_thu`, bảng `van_ban` (bất biến sau khi vào sổ hoặc ký), bộ đếm `so_van_ban_dem` cấp số theo năm không trùng, RPC `cap_so_van_ban_di`, trigger kiểm toán `van_ban.*`; xem [Sổ văn bản](#sổ-văn-bản-đếnđi-78) |
+| `db/migrations/014_tro_ly.sql` | trợ lý thủ tục (#91): `CREATE EXTENSION vector` (pgvector của nền tảng), role `dich_vu_tro_ly`, bảng `tri_thuc_doan` (đoạn kho tri thức + `vector(1024)`), RPC `tim_doan_gan` (cosin, chỉ vector cùng mô hình nhúng); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), chạy trong một transaction rồi ROLLBACK |
-| `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql`, `db/tests/tro_ly.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), kho tri thức trợ lý (17 kiểm tra: pgvector, chỉ tài khoản dịch vụ, cosin cùng mô hình, ràng buộc vector), chạy trong một transaction rồi ROLLBACK |
+| `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80), `mot_cua_tro_ly` (#91) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
 | `backend/nap_thu_tuc.py`, `goi_thu_tuc.py`, `kiem_bpmn.py` | bộ nạp gói thủ tục (D-009): dịch vụ một lần `nap-thu-tuc`, `make nap-thu-tuc`; phần kiểm gói chạy cả trong `make check` (`--chi-kiem`); xem [Gói thủ tục](#gói-thủ-tục-d-009) |
@@ -30,6 +31,7 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `bao-cao/superset_dung.py` | dashboard Superset dựng bằng mã (#82): kết nối `bao_cao`, dataset, 5 chart, dashboard "Hiệu suất một cửa", vai "Lãnh đạo xã"; superset-init của lõi chạy ở mỗi `make up-bi` |
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền), bộ nạp gói và test đơn vị: `make test` |
 | `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
+| `backend/tro_ly.py`, `rag.py`, `mo_hinh.py`, `tri_thuc.py`, `nap_tri_thuc.py`; `tro-ly/kho-tri-thuc/` | trợ lý thủ tục hành chính (#91): dịch vụ `tro-ly` (APISIX `/tro-ly/*`, công khai), dịch vụ một lần `nap-tri-thuc` (`make nap-tri-thuc`); kho tri thức Markdown, định dạng ở [README](tro-ly/kho-tri-thuc/README.md); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
 | `web-cong-dan/` | web Tầng 2: cổng công dân `/` (#52, đăng nhập `mot_cua_web`) và cổng cán bộ `/can-bo` (#55, đăng nhập `mot_cua_can_bo` + OTP; hộp việc, xử lý bước). React + Vite + Tailwind + shadcn/ui, PKCE; xem [README](web-cong-dan/README.md) |
 
 Sửa schema: thêm tệp `db/migrations/007_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`tang2-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
@@ -479,6 +481,38 @@ curl 'http://localhost:9080/public/rpc/tra_cuu_ho_so?p_ma=HS20261024-000123&p_so
 ```
 
 Đăng nhập, trang `/ho-so` (Hồ sơ của tôi) đọc `/api/ho_so` và `/api/lich_su_trang_thai` (RLS: chỉ hồ sơ của mình, mốc kèm lý do), `/workflow/ho-so/{id}/tien-do`, `/files/ho-so/{id}/tep`, tải biên nhận và kết quả có ký số; hồ sơ chờ bổ sung thì tải thêm giấy tờ và nộp lại bằng `POST /workflow/tasks/{id}/complete` trên bước `bo_sung`.
+
+## Trợ lý thủ tục hành chính (#91)
+
+Thiết kế và lý do: `docs/architecture.md` §4.14. Không đăng nhập, trang **Hỏi đáp** (`/hoi-dap`) của cổng công dân gọi:
+
+```bash
+curl http://localhost:9080/tro-ly/thong-tin
+# → {"che_do": "tat", "co_mo_hinh_ngon_ngu": false, "mo_hinh": null, "mo_hinh_nhung": null}
+curl -H 'Content-Type: application/json' -d '{"cau_hoi": "Đăng ký kết hôn cần giấy tờ gì?"}' http://localhost:9080/tro-ly/hoi
+# → {"cau_tra_loi": "Cần tờ khai đăng ký kết hôn theo mẫu… [1]", "nguon": [{"so": 1, "id": "HT02-2", "ma_thu_tuc": "HT02",
+#    "tieu_de": "Đăng ký kết hôn – Giấy tờ cần nộp và xuất trình", "trich": "…", "lien_ket": null, "duoc_trich": true}, …],
+#    "che_do": "ollama", "tim_kiem": {"tu_khoa": true, "ngu_nghia": true}, "thong_bao": null, "trich_tu_dong": false}
+# LLM_PROVIDER=tat: cau_tra_loi = null, thong_bao giải thích, nguon = các đoạn liên quan nhất.
+# "ma_thu_tuc": "KS01" trong body: chỉ tìm trong tài liệu của thủ tục đó.
+curl 'http://localhost:9080/tro-ly/tim?q=ket+hon'   # chỉ tìm từ khóa (Meilisearch), không gọi mô hình
+```
+
+| Biến (`.env`) | Mặc định | Ý nghĩa |
+|---|---|---|
+| `LLM_PROVIDER` | `tat` | `tat` chỉ tìm kiếm · `ollama` (Qwen2.5 7B + bge-m3, `make up-ai`) · `openai-compatible` (API ngoài) · `gia-lap` (CI, smoke) |
+| `LLM_BASE_URL` | trống | `ollama`: mặc định `http://ollama:11434`; Ollama trên máy: `http://host.docker.internal:11434`. `openai-compatible`: bắt buộc, ví dụ `https://…/v1` |
+| `LLM_MODEL`, `LLM_EMBED_MODEL` | `qwen2.5:7b`, `bge-m3` | Qwen2.5 3B/72B, Llama, Gemma bị từ chối (giấy phép). Mô hình nhúng phải ra vector 1024 chiều |
+| `LLM_TIMEOUT`, `TRO_LY_DONG_THOI` | `170`, `2` | giây tối đa mỗi lần gọi mô hình (dưới 180 giây chờ của APISIX); số câu sinh cùng lúc |
+
+Khóa API của `openai-compatible` (nếu nhà cung cấp cần) đặt trong OpenBao, không đặt trong `.env`:
+
+```bash
+read -rs KHOA && printf '%s' "$KHOA" | docker compose exec -T -e BAO_TOKEN="$(jq -r .root_token .data/openbao/commune.json)" \
+  openbao bao kv put -mount=dxos tang2/mot-cua/llm api_key=- && unset KHOA
+```
+
+Sửa kho tri thức (`tro-ly/kho-tri-thuc/*.md`) hay gói thủ tục rồi `make nap-tri-thuc`: chỉ đoạn đổi được nhúng lại. Đổi `LLM_PROVIDER`/mô hình nhúng: `make up` (tạo lại `tro-ly`) rồi `make nap-tri-thuc`.
 
 ## Sổ văn bản đến/đi (#78)
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Khung trang: đầu trang trắng một hàng (biểu tượng, tên cổng, đăng nhập/đăng xuất), dải "bản thử
 // nghiệm", nội dung, chân trang. Bố cục tham khảo shadcn-admin (satnaing, MIT); không chép mã.
-import { FolderOpen, LogIn, LogOut, Search, UserRound } from "lucide-react";
+import { FolderOpen, LogIn, LogOut, MessageCircleQuestionMark, Search, UserRound } from "lucide-react";
 import { Link, NavLink, Outlet } from "react-router";
 import { tenHienThi, useXacThuc } from "@/auth/xac-thuc";
 import { Badge } from "@/components/ui/badge";
@@ -33,13 +33,18 @@ function NutTaiKhoan() {
   );
 }
 
-/** Liên kết đầu trang: tra cứu không cần đăng nhập; "Hồ sơ của tôi" khi đã đăng nhập (#54). */
+/** Liên kết đầu trang: hỏi đáp (#91) và tra cứu không cần đăng nhập; "Hồ sơ của tôi" khi đã đăng nhập (#54). */
 function LienKetHoSo() {
   const { nguoiDung } = useXacThuc();
   const lop = ({ isActive }: { isActive: boolean }) =>
     `flex min-h-11 items-center gap-2 rounded-md px-3 font-semibold no-underline ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`;
   return (
     <>
+      <NavLink to="/hoi-dap" className={lop}>
+        <MessageCircleQuestionMark aria-hidden="true" className="size-5" />
+        <span className="hidden sm:inline">Hỏi đáp</span>
+        <span className="sr-only sm:hidden">Hỏi đáp thủ tục</span>
+      </NavLink>
       <NavLink to="/tra-cuu" className={lop}>
         <Search aria-hidden="true" className="size-5" />
         <span className="hidden sm:inline">Tra cứu hồ sơ</span>

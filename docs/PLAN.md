@@ -52,7 +52,7 @@ Cách dùng tệp này:
 
 ## Tuần 5 · 12–18/11 · Tầng [I] + demo công khai
 - [ ] V3 · OCR (PaddleOCR + VietOCR) giấy tờ mẫu giả → tự điền hồ sơ → cán bộ xác nhận (HITL)
-- [ ] V3 · Nạp thủ tục hành chính công khai → Meilisearch CE + pgvector; trợ lý RAG (Qwen2.5 7B/14B + bge-m3 + LlamaIndex); chọn nhà cung cấp mô hình qua `LLM_PROVIDER`
+- [x] V3 · Nạp thủ tục hành chính công khai → Meilisearch CE + pgvector; trợ lý RAG (Qwen2.5 7B/14B + bge-m3; không dùng LlamaIndex, luồng RAG tự viết); chọn nhà cung cấp mô hình qua `LLM_PROVIDER` (#91, PR chờ duyệt)
 - [ ] V1 · Demo công khai trên tên miền, theo dõi lỗi và tài nguyên VPS
 - [ ] V2 · Wiki văn bản cho cán bộ (tra cứu văn bản nội bộ)
 
