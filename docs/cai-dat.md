@@ -100,6 +100,7 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 | `DXOS_FILE_MAX_BYTES` | `10485760` | cỡ tệp tối đa (≤ 10 MiB) |
 | `BAO_UNSEAL` | `file` | `file` (máy dev) hoặc `manual` (triển khai thật) |
 | `DXOS_SU_KIEN_QUET_GIAY`, `DXOS_SU_KIEN_SAP_TRE_NGAY` | `300`, `1` | chu kỳ quét và ngưỡng cảnh báo sắp trễ hạn |
+| `DXOS_THONG_BAO_KENH` | `email,sms` | kênh ngoài của thông báo sắp trễ hạn tới cán bộ (#56), để trống = chỉ trong cổng cán bộ; **chỉ giả lập**: ghi CSDL và log, không gửi thật |
 
 Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng).
 

@@ -17,7 +17,13 @@
   nhan     consumer mẫu: nhận từ queue mot_cua.nhat_ky, kiểm định dạng, ghi
            mot_cua.nhat_ky_su_kien (chống trùng theo id) rồi ACK. Tin sai định dạng → NACK,
            RabbitMQ chuyển sang queue lỗi mot_cua.nhat_ky.loi. Lỗi ghi CSDL → không ACK, kết
-           nối lại; RabbitMQ giao lại tin. Nền cho thông báo (tuần 3).
+           nối lại; RabbitMQ giao lại tin.
+  thong_bao  consumer thông báo (#56): nhận ho_so.sap_tre_han từ queue mot_cua.thong_bao, ghi mỗi
+           cán bộ phụ trách lĩnh vực của hồ sơ một thông báo (RPC ghi_thong_bao_sap_tre, chống trùng
+           theo cán bộ + hồ sơ + mốc hạn) rồi ACK; kênh ngoài DXOS_THONG_BAO_KENH (email, sms) chỉ
+           giả lập: ghi CSDL và log, không gửi gì ra ngoài. Sai định dạng/sai loại → NACK (queue lỗi
+           mot_cua.thong_bao.loi). Cổng cán bộ đọc qua /api/thong_bao, chuông nhận qua luồng
+           /workflow/thong-bao/luong của mot-cua-api.
 
 Chạy tay một lần (vận hành, smoke):  python worker.py quet-mot-lan | doi-soat-mot-lan
 
@@ -54,6 +60,8 @@ CUA_SO_NGAY = 14
 # Đối soát bỏ qua hồ sơ vừa đổi bước trong khoảng này: mot-cua-api có thể đang ghi CSDL.
 DOI_SOAT_CHO_GIAY = int(os.environ.get("DXOS_DOI_SOAT_CHO_GIAY", "60"))
 DOI_SOAT_TOI_DA = int(os.environ.get("DXOS_DOI_SOAT_TOI_DA", "500"))
+# Kênh ngoài của thông báo (#56), chế độ giả lập. Kênh lạ → dừng ngay lúc khởi động.
+KENH_THONG_BAO = su_kien.kenh_thong_bao(os.environ.get("DXOS_THONG_BAO_KENH", "email,sms"))
 TEP_SONG = "/tmp/song"
 
 log = logging.getLogger("mot-cua-worker")
@@ -234,33 +242,74 @@ def xu_ly_tin(ket_noi, headers, body):
     return lan_dau
 
 
-def vong_nhan():
+# --- thong_bao (#56) -----------------------------------------------------------------------
+def xu_ly_thong_bao(ket_noi, headers, body, kenh=None):
+    """Một tin từ queue mot_cua.thong_bao: ho_so.sap_tre_han hợp lệ → ghi thông báo rồi ACK; sai định
+    dạng, sai loại, CSDL từ chối dữ liệu (400) → NACK (sang queue lỗi). Lỗi tạm thời của CSDL →
+    LoiHopThu (không ACK, tin được giao lại). → số thông báo mới."""
+    kenh = KENH_THONG_BAO if kenh is None else kenh
+    try:
+        ev = su_kien.giai_ma(body)
+        if ev["loai"] != "ho_so.sap_tre_han":
+            raise ValueError(f"queue thông báo chỉ nhận ho_so.sap_tre_han, nhận {ev['loai']}")
+    except ValueError as e:
+        log.warning("tin thông báo sai (message-id %s): %s → queue lỗi", headers.get("message-id"), e)
+        ket_noi.nack(headers["ack"])
+        return 0
+    try:
+        kq = hop_thu.ghi_thong_bao(ev, kenh)
+    except hop_thu.LoiHopThu as e:
+        if e.status == 400:
+            log.warning("CSDL từ chối sự kiện %s: %s → queue lỗi", ev["id"], e)
+            ket_noi.nack(headers["ack"])
+            return 0
+        raise
+    ket_noi.ack(headers["ack"])
+    moi = int(kq.get("moi", 0))
+    log.info("thông báo sắp trễ hạn %s: %d mới / %d cán bộ phụ trách%s", ev["maHoSo"], moi, kq.get("nguoiNhan", 0),
+             f" ({kq['boQua']})" if kq.get("boQua") else "")
+    for k in kenh if moi else ():
+        log.info("giả lập gửi %s: %d thông báo hồ sơ %s (không gửi ra ngoài)", k, moi, ev["maHoSo"])
+    return moi
+
+
+def vong_nghe(queue, xu_ly, ten):
+    """Consumer một queue: nhận tin, gọi xu_ly(kết nối, header, body); lỗi thì kết nối lại sau 5 giây."""
     while True:
         ket_noi = None
         try:
             ket_noi = rabbitmq()
-            ket_noi.dang_ky(f"/amq/queue/{su_kien.QUEUE_NHAT_KY}", prefetch=20)
-            log.info("consumer mẫu đang nhận từ queue %s", su_kien.QUEUE_NHAT_KY)
+            ket_noi.dang_ky(f"/amq/queue/{queue}", prefetch=20)
+            log.info("%s đang nhận từ queue %s", ten, queue)
             while True:
                 try:
                     lenh, h, body = ket_noi.nhan(timeout=30)
                 except socket.timeout:
                     continue
                 if lenh == "MESSAGE":
-                    xu_ly_tin(ket_noi, h, body)
+                    xu_ly(ket_noi, h, body)
         except Exception as e:  # noqa: BLE001
-            log.warning("consumer lỗi, kết nối lại sau 5s: %s", e)
+            log.warning("%s lỗi, kết nối lại sau 5s: %s", ten, e)
             if ket_noi:
                 ket_noi.dong()
             time.sleep(5)
 
 
+def vong_nhan():
+    vong_nghe(su_kien.QUEUE_NHAT_KY, xu_ly_tin, "consumer mẫu")
+
+
+def vong_thong_bao():
+    vong_nghe(su_kien.QUEUE_THONG_BAO, xu_ly_thong_bao, "consumer thông báo")
+
+
 def main():
-    luong = [threading.Thread(target=f, name=f.__name__, daemon=True) for f in (vong_phat, vong_quet, vong_nhan)]
+    luong = [threading.Thread(target=f, name=f.__name__, daemon=True)
+             for f in (vong_phat, vong_quet, vong_nhan, vong_thong_bao)]
     for t in luong:
         t.start()
-    log.info("mot-cua-worker mot-cua: phát outbox, quét sắp trễ hạn mỗi %ds (ngưỡng %d ngày làm việc), consumer mẫu",
-             QUET_GIAY, SAP_TRE_NGAY)
+    log.info("mot-cua-worker mot-cua: phát outbox, quét sắp trễ hạn mỗi %ds (ngưỡng %d ngày làm việc), consumer mẫu, "
+             "consumer thông báo (kênh giả lập: %s)", QUET_GIAY, SAP_TRE_NGAY, ", ".join(KENH_THONG_BAO) or "không")
     while all(t.is_alive() for t in luong):
         with open(TEP_SONG, "w", encoding="utf-8") as f:
             f.write(str(time.time()))

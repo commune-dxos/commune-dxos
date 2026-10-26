@@ -24,7 +24,7 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
 | `backend/nap_thu_tuc.py`, `goi_thu_tuc.py`, `kiem_bpmn.py` | bộ nạp gói thủ tục (D-009): dịch vụ một lần `nap-thu-tuc`, `make nap-thu-tuc`; phần kiểm gói chạy cả trong `make check` (`--chi-kiem`); xem [Gói thủ tục](#gói-thủ-tục-d-009) |
 | `rabbitmq/definitions.json` | exchange, queue, binding của sự kiện hồ sơ (#9); nền tảng tạo vhost `mot-cua`, user riêng rồi nạp tệp này |
-| `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `mot-cua-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, đối soát trạng thái với Flowable (#73), consumer mẫu |
+| `backend/worker.py`, `su_kien.py`, `hop_thu.py`, `stomp.py` | sự kiện (#9): dịch vụ `mot-cua-worker` phát hộp thư đi lên RabbitMQ, quét sắp trễ hạn, đối soát trạng thái với Flowable (#73), consumer mẫu, consumer thông báo (#56) |
 | `backend/trang_thai.py` | ánh xạ bước → trạng thái hồ sơ (mặc định theo người nhận, ghi đè của gói) và quy tắc tính trạng thái mới (hàm thuần, #73) |
 | `kho-du-lieu/` (`chay.py`, `dbt/`, `du-lieu-mau.json`, `tests/`), `backend/kho_du_lieu.py` | kho dữ liệu lịch sử (#80): dịch vụ một lần `kho-du-lieu`, `make kho-du-lieu`; khử định danh là hàm thuần trong `backend/` |
 | `bao-cao/superset_dung.py` | dashboard Superset dựng bằng mã (#82): kết nối `bao_cao`, dataset, 5 chart, dashboard "Hiệu suất một cửa", vai "Lãnh đạo xã"; superset-init của lõi chạy ở mỗi `make up-bi` |
@@ -394,6 +394,26 @@ Một object JSON, `content-type: application/json`; header AMQP `message-id` = 
 | `backend/worker.py` | dịch vụ `mot-cua-worker`: phát, quét sắp trễ hạn, consumer mẫu. Quét tay một lần: `docker compose exec mot-cua-worker python /tang2/backend/worker.py quet-mot-lan` |
 | `tests/smoke-su-kien.sh` | `make smoke`: luồng thật qua `/workflow`, sắp trễ hạn đúng một lần, tin hỏng → queue lỗi, RabbitMQ dừng rồi lên lại |
 
+## Thông báo sắp trễ hạn tới cán bộ (#56)
+
+Thiết kế và lý do: `docs/architecture.md` §4.13. Sự kiện `ho_so.sap_tre_han` vào queue riêng `mot_cua.thong_bao` (quorum, dead-letter `mot_cua.thong_bao.loi`); consumer thông báo của `mot-cua-worker` gọi RPC `ghi_thong_bao_sap_tre` bằng token dịch vụ sự kiện: **mỗi cán bộ đang làm việc phụ trách lĩnh vực của hồ sơ một thông báo**, chống trùng theo (cán bộ, hồ sơ, loại, mốc hạn). Hồ sơ đã đóng thì bỏ qua; gia hạn sang ngày khác thì báo lại một lần.
+
+| Đường gọi (qua APISIX) | Ai | Làm gì |
+|---|---|---|
+| `GET /api/thong_bao?select=*,thong_bao_kenh(kenh,trang_thai)&order=tao_luc.desc` | `can_bo`, `lanh_dao` | thông báo của chính mình (RLS); công dân → 403 |
+| `PATCH /api/thong_bao?id=in.(…)&da_doc_luc=is.null` body `{"da_doc_luc": "…"}` | như trên | đánh dấu đã đọc; giờ đọc do CSDL đặt, chỉ sửa được cột này, đọc rồi không bỏ đọc được |
+| `GET /workflow/thong-bao/luong` | như trên | Server-Sent Events: `event: thong-bao` `data: {"chuaDoc": 2, "moiNhat": "<id>"}` mỗi khi số chưa đọc hoặc thông báo mới nhất đổi (đọc lại mỗi 3 giây), `: nhip` mỗi 15 giây, `event: het-han` khi token hết hạn rồi đóng |
+
+Kênh ngoài (`DXOS_THONG_BAO_KENH`, mặc định `email,sms`, để trống = chỉ trong cổng) **chỉ giả lập**: mỗi thông báo ghi một dòng `thong_bao_kenh` trạng thái `gia_lap` và worker ghi log "giả lập gửi …", không gửi email/SMS ra ngoài. Nội dung thông báo chỉ có mã hồ sơ, tên thủ tục và hạn, không có dữ liệu cá nhân người nộp.
+
+| Tệp | Nội dung |
+|---|---|
+| `db/migrations/013_thong_bao.sql` | bảng `thong_bao`, `thong_bao_kenh`, RLS, trigger chỉ cho đánh dấu đã đọc, RPC `ghi_thong_bao_sap_tre` |
+| `backend/worker.py` (`xu_ly_thong_bao`, `vong_thong_bao`), `backend/hop_thu.py` (`ghi_thong_bao`) | consumer thông báo |
+| `backend/thong_bao.py`, `backend/main.py` (`_luong_thong_bao`) | luồng SSE cho chuông cổng cán bộ |
+| `web-cong-dan/src/can-bo/lib/luong-thong-bao.ts`, `components/chuong-thong-bao.tsx`, `pages/thong-bao.tsx` | chuông, trang `/can-bo/thong-bao` |
+| `db/tests/thong_bao.sql`, `backend/tests/test_thong_bao.py`, `src/can-bo/thong-bao.test.tsx`, `tests/smoke-thong-bao.sh` | test |
+
 ## Nhật ký kiểm toán (#75)
 
 `nhat_ky_kiem_toan` ghi **mọi thao tác nghiệp vụ quan trọng, trong cùng transaction với thao tác** (trigger hoặc RPC; thao tác lỗi/rollback thì không có bản ghi). Thiết kế và lý do: `docs/architecture.md` §4.6.
@@ -543,4 +563,4 @@ docker compose exec -T postgres psql -XqtA -U postgres -d commune < mot-cua/db/t
 
 Bí mật của bộ máy (khóa S3, secret client `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, thông tin kết nối RabbitMQ, mật khẩu `rest-admin` của Flowable) đọc từ OpenBao của lõi bằng AppRole `tang2` (`backend/bimat.py`, chỉ giữ trong bộ nhớ), xem `docs/architecture.md` §4.4.
 
-Cổng cán bộ (#55) dùng `GET /workflow/tasks`, `GET /api/ho_so?id=in.(…)` (kèm `thu_tuc.bien_theo_buoc` để sinh form từng bước), `/files`, `GET /workflow/ho-so/{id}/tien-do` và `POST /workflow/tasks/{id}/complete`; luồng: [`docs/cong-can-bo.md`](../docs/cong-can-bo.md). Cổng công dân tra cứu tiến độ (#54): mục [Tra cứu tiến độ hồ sơ](#tra-cứu-tiến-độ-hồ-sơ-54). Sắp tới: thông báo sắp trễ hạn tới cán bộ qua RabbitMQ (#56).
+Cổng cán bộ (#55) dùng `GET /workflow/tasks`, `GET /api/ho_so?id=in.(…)` (kèm `thu_tuc.bien_theo_buoc` để sinh form từng bước), `/files`, `GET /workflow/ho-so/{id}/tien-do` và `POST /workflow/tasks/{id}/complete`; luồng: [`docs/cong-can-bo.md`](../docs/cong-can-bo.md). Cổng công dân tra cứu tiến độ (#54): mục [Tra cứu tiến độ hồ sơ](#tra-cứu-tiến-độ-hồ-sơ-54). Thông báo sắp trễ hạn tới cán bộ (#56): mục [Thông báo sắp trễ hạn tới cán bộ](#thông-báo-sắp-trễ-hạn-tới-cán-bộ-56).

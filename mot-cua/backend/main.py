@@ -21,6 +21,8 @@ Endpoint (đường dẫn sau khi bỏ /workflow):
   GET  /ho-so/{id}/tien-do      bước đang mở và các bước đã qua (ai thấy hồ sơ thì xem được)
   GET  /tasks                   task của người đang gọi (được giao hoặc thuộc nhóm của mình)
   POST /tasks/{id}/complete     nhận và hoàn thành task; chỉ nhận biến khai báo cho bước đó
+  GET  /thong-bao/luong         Server-Sent Events cho chuông cổng cán bộ (#56): số thông báo chưa đọc
+                                đổi thì đẩy `thong-bao` (thong_bao.py); cán bộ, lãnh đạo
 
 Bộ máy không biết thủ tục nào: thủ tục → quy trình (thu_tuc.quy_trinh) và biến được phép ở
 từng bước (thu_tuc.bien_theo_buoc, từ flowable:formProperty của BPMN) đều đọc từ danh mục mà
@@ -109,6 +111,7 @@ import ky_so
 import poka_yoke
 import su_kien
 import tep
+import thong_bao
 import trang_thai
 
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
@@ -1105,6 +1108,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if method == "GET" and path == "/healthz":
                 return self._tra(200, {"ok": True})
+            if method == "GET" and path == "/thong-bao/luong":
+                return self._luong_thong_bao(*kiem_token(self.headers.get("Authorization")))
             ham, khop_duong = None, False
             for m_route, mau, json_body, fn in ROUTES:
                 m = mau.fullmatch(path)
@@ -1133,6 +1138,35 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:  # noqa: BLE001 – không để lộ chi tiết lỗi nội bộ ra client
             log.exception("lỗi không lường trước")
             self._tra(500, {"loi": "Lỗi nội bộ"})
+
+    def _luong_thong_bao(self, token, claims):
+        """SSE (#56): giữ kết nối tới khi token hết hạn hoặc trình duyệt đóng. Lỗi trước khi gửi header →
+        JSON như mọi endpoint; sau đó chỉ còn đóng kết nối."""
+        if vai_tro(claims) not in ("can_bo", "lanh_dao"):
+            raise Loi(403, "Chỉ cán bộ, lãnh đạo nhận thông báo")
+
+        def lay():
+            return thong_bao.trang_thai(pgrst(token, "GET", "/thong_bao?da_doc_luc=is.null&select=id"
+                                                            "&order=tao_luc.desc,id&limit=100"))
+
+        dau = lay()  # lỗi quyền/CSDL → trả JSON trước khi mở luồng
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Accel-Buffering", "no")  # nginx của APISIX không gom phản hồi
+        self.end_headers()
+
+        def gui(b):
+            self.wfile.write(b)
+            self.wfile.flush()
+
+        try:
+            thong_bao.theo_doi(lay, gui, float(claims.get("exp", 0)), dau=dau)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # trình duyệt đóng tab
+        except Loi as e:
+            log.warning("luồng thông báo dừng: %s", e.thong_diep)
+        self.close_connection = True
 
     def do_GET(self):
         self._xu_ly("GET")

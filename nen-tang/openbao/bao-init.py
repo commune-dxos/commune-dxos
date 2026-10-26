@@ -206,8 +206,15 @@ def cau_hinh(tk):
         goi("POST", f"sys/mounts/{MOUNT}", {"type": "kv", "options": {"version": "2"},
                                              "description": "Bí mật Commune DX-OS"}, tk)
         log(f"đã bật KV v2 ở {MOUNT}/")
-    # Giữ 5 phiên bản gần nhất của mỗi bí mật (khôi phục khi đổi nhầm).
-    goi("POST", f"{MOUNT}/config", {"max_versions": 5}, tk)
+    # Giữ 5 phiên bản gần nhất của mỗi bí mật (khôi phục khi đổi nhầm). Mount KV v2 vừa bật còn đang
+    # nâng cấp nội bộ vài giây, trong lúc đó OpenBao trả 400: thử lại tối đa 30 giây.
+    for _ in range(30):
+        status, _ = goi("POST", f"{MOUNT}/config", {"max_versions": 5}, tk, cho_phep=(400,))
+        if status < 400:
+            break
+        time.sleep(1)
+    else:
+        dung(f"POST {MOUNT}/config → HTTP 400 sau 30 giây")
     _, auths = goi("GET", "sys/auth", token=tk)
     if "approle/" not in auths["data"]:
         goi("POST", "sys/auth/approle", {"type": "approle"}, tk)

@@ -608,7 +608,7 @@ flowchart LR
   DLX --> QL[["mot_cua.nhat_ky.loi"]]
 ```
 
-Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `ho_so.sap_tre_han`, `ho_so.chuyen_buoc`) vào `definitions.json`, `make up` (rabbitmq-init nạp), viết vòng nhận theo mẫu `worker.vong_nhan`. Mỗi consumer một queue riêng nên không lấy tin của nhau.
+Consumer thông báo sắp trễ hạn tới cán bộ (#56) có queue riêng `mot_cua.thong_bao` (§4.13). Thêm consumer mới: thêm queue + binding (ví dụ `ho_so.sap_tre_han`, `ho_so.chuyen_buoc`) vào `definitions.json`, `make up` (rabbitmq-init nạp), viết vòng nhận theo mẫu `worker.vong_nhan`. Mỗi consumer một queue riêng nên không lấy tin của nhau.
 
 #### 4.5.3 Bí mật và quản trị
 
@@ -890,6 +890,42 @@ Người dân hỏi "xong chưa" theo hai cách, đều qua APISIX:
 
 Kiểm bằng `mot-cua/db/tests/tra_cuu.sql`, Vitest (`src/lib/tien-do.test.ts`, `src/lib/tra-cuu.test.ts`, `src/pages/ho-so-cua-toi.test.tsx`) và smoke 4o (`mot-cua/tests/smoke-tra-cuu.sh`), thêm một kiểm tra lúc hồ sơ đang chờ bổ sung trong `smoke-can-bo.sh`.
 
+### 4.13 Thông báo sắp trễ hạn tới cán bộ (#56)
+
+```mermaid
+sequenceDiagram
+  participant WK as mot-cua-worker (quét)
+  participant MQ as RabbitMQ
+  participant TB as mot-cua-worker (consumer thông báo)
+  participant PG as PostgreSQL
+  participant API as mot-cua-api
+  participant W as Cổng cán bộ
+  WK->>MQ: ho_so.sap_tre_han (§4.5)
+  MQ->>TB: queue mot_cua.thong_bao
+  TB->>PG: RPC ghi_thong_bao_sap_tre (token dịch vụ sự kiện)
+  PG-->>TB: mỗi cán bộ phụ trách lĩnh vực 1 dòng thong_bao (+ kênh giả lập)
+  TB->>MQ: ACK
+  W->>API: GET /workflow/thong-bao/luong (SSE, qua APISIX)
+  loop mỗi 3 giây
+    API->>PG: GET /thong_bao?da_doc_luc=is.null (PostgREST, token cán bộ, RLS)
+  end
+  API-->>W: event: thong-bao {chuaDoc, moiNhat}
+  W->>PG: GET /api/thong_bao, PATCH đã đọc (qua APISIX)
+```
+
+| Quyết định | Lý do |
+|---|---|
+| Queue riêng `mot_cua.thong_bao`, binding chỉ `ho_so.sap_tre_han` | Không lấy tin của consumer nhật ký; tin hỏng hay CSDL từ chối (400) → NACK sang `mot_cua.thong_bao.loi`, lỗi tạm thời thì không ACK để RabbitMQ giao lại |
+| Người nhận do **CSDL** chọn (RPC `SECURITY DEFINER`): cán bộ đang làm việc phụ trách lĩnh vực của thủ tục | Cùng quy tắc với RLS của hộp việc (#5, #55): ai xử lý được hồ sơ thì được báo. Worker không cần quyền đọc danh sách cán bộ |
+| Chống trùng bằng `UNIQUE (cán bộ, hồ sơ, loại, mốc hạn)` | RabbitMQ giao ít nhất một lần; nhận lại tin, chạy lại worker hay quét lại đều không thêm dòng. Hạn đổi (gia hạn) là mốc mới nên được báo lại |
+| Trình duyệt nhận qua **SSE của `mot-cua-api`**, không nối thẳng RabbitMQ | Không mở cổng STOMP/WebSocket của broker ra ngoài; vẫn đi qua APISIX và JWT như mọi API. Luồng đọc CSDL bằng **token của chính cán bộ** qua PostgREST nên RLS quyết định thấy gì. Token hết hạn → `het-han`, trình duyệt mở lại bằng token mới |
+| Trình duyệt đọc SSE bằng `fetch` (không dùng `EventSource`) | `EventSource` không gửi được header `Authorization`; token không được nằm trên URL (lọt vào log truy cập) |
+| Email/SMS ở **chế độ giả lập** | Chưa có máy chủ thư và nhà mạng SMS; ghi `thong_bao_kenh` trạng thái `gia_lap` để thấy được kênh nào sẽ gửi. Thêm kênh thật: một consumer khác đọc các dòng này |
+| Nội dung chỉ có mã hồ sơ, thủ tục, hạn | Giữ nguyên tắc sự kiện không có dữ liệu cá nhân (§4.5); cán bộ mở hồ sơ để xem người nộp, theo quyền của mình |
+| Cán bộ chỉ được **đánh dấu đã đọc** | Quyền cột `UPDATE (da_doc_luc)` + trigger: giờ đọc do CSDL đặt, đọc rồi không bỏ đọc, không sửa tiêu đề/nội dung |
+
+Kiểm bằng `mot-cua/db/tests/thong_bao.sql`, `mot-cua/backend/tests/test_thong_bao.py`, Vitest `src/can-bo/thong-bao.test.tsx` và smoke 4f (`mot-cua/tests/smoke-thong-bao.sh`: queue, mỗi cán bộ một thông báo, RLS qua `/api`, luồng SSE qua APISIX đẩy số mới khi đánh dấu đã đọc, phát lại không trùng, tin hỏng → queue lỗi).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -1157,7 +1193,7 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.
-- Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
+- Thông báo tới công dân (khi có `ho_so.chuyen_buoc`, kết quả), gửi email/SMS thật (hiện giả lập, §4.13): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
 - Tệp: giao diện xem tệp cho cán bộ (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

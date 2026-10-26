@@ -14,7 +14,8 @@
 #      tạo; Poka-yoke phía máy chủ (#59): thiếu tệp → 422, không khởi tạo; cán bộ/lãnh đạo thấy và
 #      hoàn thành task của nhóm mình, chặn chéo vai trò, backend tự kiểm token.
 #   4e. Tệp hồ sơ qua APISIX /files (#7): tests/smoke-tep.sh.
-#   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh.
+#   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh. Thông báo sắp trễ hạn tới cán bộ: queue,
+#      consumer, RLS và quyền đã đọc qua /api, luồng SSE qua APISIX (#56): tests/smoke-thong-bao.sh.
 #   4g. Gói thủ tục (D-009): danh mục, cắm–rút gói, hồ sơ chứng thực bản sao qua /workflow:
 #      tests/smoke-goi-thu-tuc.sh.
 #   4h. Cổng công dân mot-cua-web qua APISIX /: trang, phông, route SPA, header bảo mật, đăng nhập
@@ -413,6 +414,8 @@ fi
 if [ -n "${WH:-}" ]; then
   # shellcheck source=mot-cua/tests/smoke-su-kien.sh
   . "mot-cua/tests/smoke-su-kien.sh"
+  # shellcheck source=mot-cua/tests/smoke-thong-bao.sh
+  . "mot-cua/tests/smoke-thong-bao.sh"
 fi
 
 # --- 4g. Gói thủ tục (D-009) ---------------------------------------------------------------
