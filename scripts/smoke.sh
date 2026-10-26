@@ -19,6 +19,8 @@ export COMPOSE_PROFILES=core
 DXOS_TANG2=mot-cua
 # shellcheck source=scripts/lib-smoke.sh
 . scripts/lib-smoke.sh
+# Phiên kcadm của lần smoke trước (lưu trong container keycloak) có thể đã hết hạn: đăng nhập lại từ đầu.
+docker compose exec -T keycloak rm -f /tmp/smoke-kcadm.config > /dev/null 2>&1 || true
 
 echo "== Nền tảng Tầng 1 (nen-tang/, Tầng 2 = $DXOS_TANG2)"
 

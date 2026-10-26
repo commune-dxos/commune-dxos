@@ -16,6 +16,8 @@
 //   POST /files/van-ban/{id}/ky             lãnh đạo ký ban hành (cấp số, PDF ký PAdES)
 //   GET  /files/van-ban/{id}                link tải ngắn hạn
 //   POST /files/xac-minh                    xác minh chữ ký số một PDF
+//   GET  /api/thong_bao                     thông báo sắp trễ hạn của mình (#56, RLS); PATCH đánh dấu đã đọc
+//   GET  /workflow/thong-bao/luong          luồng SSE cho chuông (lib/luong-thong-bao.ts)
 //   GET  /workflow/ho-so/{id}/tien-do       bước đang mở và lịch sử các bước
 //   POST /workflow/tasks/{id}/complete      nhận + hoàn thành bước với biến khai báo cho bước đó
 // Không gọi thẳng PostgREST, Flowable hay Garage; không cầm mật khẩu hay khóa nào.
@@ -172,15 +174,49 @@ const COT_HO_SO =
   "thu_tuc:thu_tuc_id(id,ma,ten,so_ngay_xu_ly,bien_theo_buoc,linh_vuc:linh_vuc_id(ma,ten))";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Thông báo tới cán bộ (#56, mot_cua.thong_bao): consumer RabbitMQ ghi khi hồ sơ sắp trễ hạn. */
+export interface ThongBao {
+  id: string;
+  ho_so_id: string;
+  loai: "sap_tre_han";
+  /** Hạn xử lý mà thông báo nói tới (YYYY-MM-DD). */
+  moc: string;
+  tieu_de: string;
+  noi_dung: string;
+  tao_luc: string;
+  da_doc_luc: string | null;
+  /** Kênh ngoài đã gửi ở chế độ giả lập. */
+  thong_bao_kenh: { kenh: "email" | "sms"; trang_thai: "gia_lap" }[];
+}
+
 export class ApiCanBo {
   constructor(
-    private readonly token: string,
-    private readonly cauHinh: CauHinh = cauHinhMacDinh,
-    private readonly goi: typeof fetch = (...a) => fetch(...a),
+    readonly token: string,
+    readonly cauHinh: CauHinh = cauHinhMacDinh,
+    readonly goi: typeof fetch = (...a) => fetch(...a),
   ) {}
 
   private lay<T>(duong: string) {
     return goiGateway<T>(this.cauHinh, this.goi, duong, { method: "GET", token: this.token });
+  }
+
+  layThongBao() {
+    return this.lay<ThongBao[]>(
+      "/api/thong_bao?select=id,ho_so_id,loai,moc,tieu_de,noi_dung,tao_luc,da_doc_luc,thong_bao_kenh(kenh,trang_thai)" +
+        "&order=tao_luc.desc,id&limit=100",
+    );
+  }
+
+  /** Đánh dấu đã đọc; CSDL tự đặt giờ đọc (trigger), thông báo đã đọc giữ nguyên giờ cũ. */
+  async danhDauDaDoc(ids: string[]) {
+    const hopLe = [...new Set(ids)].filter((id) => UUID.test(id));
+    if (hopLe.length === 0) return;
+    await goiGateway(this.cauHinh, this.goi, `/api/thong_bao?id=in.(${hopLe.join(",")})&da_doc_luc=is.null`, {
+      method: "PATCH",
+      token: this.token,
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ da_doc_luc: new Date().toISOString() }),
+    });
   }
 
   layTask() {

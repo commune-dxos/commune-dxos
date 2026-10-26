@@ -76,7 +76,7 @@ SS_C2="$(ss_sql "SELECT id FROM slices WHERE slice_name = 'Thời gian giải qu
 SS_C3="$(ss_sql "SELECT id FROM slices WHERE slice_name = 'Tỷ lệ trễ hạn'")"
 kiem "chart 'Hồ sơ đã đóng' → số hồ sơ = bao_cao.fct_ho_so" "200 $(sql "SELECT count(*) FROM bao_cao.fct_ho_so")" \
   "$(ss_api ld "/api/v1/chart/$SS_C1/data/") $(jq -r '.result[0].data[0].so_ho_so' "$SS_TD/b" 2>/dev/null)"
-kiem "chart 'Tỷ lệ trễ hạn' → khớp bao_cao.fct_ho_so (4 chữ số)" "200 $(sql "SELECT round(avg(CASE WHEN tre_han THEN 1.0 ELSE 0 END), 4) FROM bao_cao.fct_ho_so")" \
+kiem "chart 'Tỷ lệ trễ hạn' → khớp bao_cao.fct_ho_so (4 chữ số)" "200 $(sql "SELECT trim_scale(round(avg(CASE WHEN tre_han THEN 1.0 ELSE 0 END), 4)) FROM bao_cao.fct_ho_so")" \
   "$(ss_api ld "/api/v1/chart/$SS_C3/data/") $(jq -r '.result[0].data[0].ty_le_tre_han * 10000 | round / 10000' "$SS_TD/b" 2>/dev/null)"
 kiem "chart 'Thời gian giải quyết…': tổng số hồ sơ theo thủ tục × tháng = mart hieu_suat_thang" \
   "200 $(sql "SELECT coalesce(sum(so_ho_so), 0) FROM bao_cao.hieu_suat_thang")" \

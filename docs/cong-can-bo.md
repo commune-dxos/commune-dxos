@@ -84,7 +84,8 @@ Chi tiết hồ sơ hiện huy hiệu **Trạng thái hồ sơ** đọc từ `ho
 
 - Hạn lấy từ biến `hanXuLyLuc` của quy trình (`mot-cua-api` đặt lúc khởi tạo = `ho_so.han_xu_ly` 17:00 giờ Việt Nam); biến `quaHan` (hẹn giờ trong BPMN) đặt `true` khi tới hạn.
 - Thẻ hạn ghi **còn bao lâu** ("Còn 5 giờ", "Quá hạn 1 ngày") và hạn chính xác; **sắp trễ** = còn ≤ 1 ngày (viền đỏ son, nền nhạt), **quá hạn** = nền đỏ son. Mức phân biệt bằng biểu tượng và chữ, không chỉ bằng màu.
-- Hộp việc xếp quá hạn, sắp trễ lên đầu; ô số liệu và chuông ở đầu trang đếm từ dữ liệu đã có, tải lại mỗi phút. Đẩy cảnh báo realtime qua RabbitMQ là #56.
+- Hộp việc xếp quá hạn, sắp trễ lên đầu; ô số liệu đếm từ dữ liệu đã có, tải lại mỗi phút.
+- **Thông báo sắp trễ hạn (#56):** hồ sơ còn ≤ 1 ngày làm việc tới hạn → `mot-cua-worker` phát `ho_so.sap_tre_han` lên RabbitMQ → consumer thông báo ghi cho mỗi cán bộ phụ trách lĩnh vực một thông báo. Chuông ở đầu trang hiện số thông báo mới và cập nhật ngay qua luồng `GET /workflow/thong-bao/luong` (Server-Sent Events); mục **Thông báo** ở thanh bên (`/can-bo/thong-bao`) liệt kê thông báo, nhãn "Mới" cho thông báo chưa đọc, nút "Đánh dấu đã đọc". Email/SMS chỉ giả lập, trang ghi rõ "giả lập, không gửi thật". Thiết kế: `architecture.md` §4.13.
 - Bộ lọc (trạng thái nhận, thủ tục, hạn) nằm trên URL: `/can-bo?han=qua_han`, `/can-bo?han=sap_tre`, `/can-bo?trang_thai=cua_toi`, `/can-bo?thu_tuc=KS01`.
 
 ## Sổ văn bản đến/đi (#78)

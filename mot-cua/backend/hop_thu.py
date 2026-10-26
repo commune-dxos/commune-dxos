@@ -37,7 +37,12 @@ log = logging.getLogger("mot-cua-su-kien")
 
 
 class LoiHopThu(Exception):
-    """Không đọc/ghi được hộp thư hay nhật ký sự kiện (thông điệp không chứa bí mật)."""
+    """Không đọc/ghi được hộp thư hay nhật ký sự kiện (thông điệp không chứa bí mật). status = mã HTTP
+    của PostgREST nếu có (400: dữ liệu sai, gửi lại cũng không được)."""
+
+    def __init__(self, thong_diep, status=None):
+        super().__init__(thong_diep)
+        self.status = status
 
 
 def _goi(method, url, body=None, headers=None, form=None):
@@ -98,7 +103,7 @@ def pgrst(method, path, body=None, prefer=None):
         TOKEN.bo()
     if status >= 400:
         msg = data.get("message") if isinstance(data, dict) else None
-        raise LoiHopThu(f"PostgREST {method} {path.split('?')[0]} → {status} {msg or ''}".rstrip())
+        raise LoiHopThu(f"PostgREST {method} {path.split('?')[0]} → {status} {msg or ''}".rstrip(), status)
     return data
 
 
@@ -164,3 +169,13 @@ def ghi_nhat_ky(ev):
     rows = pgrst("POST", "/nhat_ky_su_kien?on_conflict=su_kien_id&select=su_kien_id", su_kien.dong_nhat_ky(ev),
                  prefer="resolution=ignore-duplicates,return=representation")
     return bool(rows)
+
+
+def ghi_thong_bao(ev, kenh=()):
+    """Consumer thông báo (#56): RPC ghi_thong_bao_sap_tre (migration 013) ghi mỗi cán bộ phụ trách lĩnh
+    vực của hồ sơ một thông báo, chống trùng theo (cán bộ, hồ sơ, mốc hạn); kênh ngoài chỉ ghi giả lập.
+    → {"moi", "nguoiNhan"[, "boQua"]}. Lỗi → LoiHopThu (sự kiện sai: HTTP 400)."""
+    kq = pgrst("POST", "/rpc/ghi_thong_bao_sap_tre", {"p_su_kien": ev, "p_kenh": list(kenh)})
+    if not isinstance(kq, dict):
+        raise LoiHopThu("RPC ghi_thong_bao_sap_tre trả kết quả lạ")
+    return kq
