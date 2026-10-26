@@ -32,7 +32,7 @@
 #          + Meilisearch CE (tìm kiếm), meili-init, nap-tri-thuc, trợ lý thủ tục tro-ly (RAG, #91): chạy cùng
 #            core để ô hỏi đáp của cổng công dân luôn tìm được, kể cả khi không có mô hình (LLM_PROVIDER=tat)
 #   ai   : Ollama (Qwen2.5 7B + bge-m3, tải lúc chạy) cho LLM_PROVIDER=ollama (#91): make up-ai
-#          + ocr: đọc chữ trên ảnh giấy tờ, PaddleOCR + VietOCR (#93): make up-ocr
+#          + ocr: đọc chữ trên ảnh giấy tờ, PaddleOCR + VietOCR trên ONNX Runtime (#93): make up-ocr
 #   bi   : kho-du-lieu (dịch vụ một lần: hồ sơ đã đóng → Parquet → dbt → bảng mart bao_cao, #80;
 #          make kho-du-lieu), Apache Superset (dashboard /bao-cao, SSO Keycloak, #82): make up-bi
 #
@@ -435,6 +435,8 @@ services:
     image: commune-dxos/mot-cua-api:local
     profiles: [core]
     command: ["python", "-u", "/mot-cua/backend/main.py"]
+    # default: mạng chung của lõi; ocr-noi-bo: chỉ để gọi dịch vụ ocr (#93).
+    networks: [default, ocr-noi-bo]
     environment:
       DXOS_TANG2: *tang2
       DXOS_POSTGREST_URL: http://postgrest:3000
@@ -1186,26 +1188,26 @@ services:
       retries: 30
     restart: unless-stopped
 
-  # Đọc chữ trên ảnh giấy tờ (#93): PaddleOCR (phát hiện dòng) + VietOCR (nhận dạng tiếng Việt), cả hai Apache-2.0,
-  # image build từ nen-tang/ocr/Dockerfile (python gốc + thư viện ghim, không sửa mã). Không biết nghiệp vụ: nhận ảnh,
-  # trả dòng chữ + độ tin cậy; mot-cua-api trích trường và cho cán bộ xác nhận. Trọng số (~150 MB: PP-OCRv5_mobile_det
-  # 4,8 MB từ Hugging Face PaddlePaddle, VietOCR vgg_transformer 145 MB từ vocr.vn, kiểm SHA-256) tải lần đầu vào volume
-  # ocr-models. Không mở cổng ra host, không route APISIX; không lưu ảnh. Chạy user 1000, rootfs chỉ đọc.
+  # Đọc chữ trên ảnh giấy tờ (#93): PP-OCRv5_mobile_det của PaddleOCR (phát hiện dòng) + VietOCR vgg_transformer
+  # (nhận dạng tiếng Việt), cả hai Apache-2.0, chạy bằng ONNX Runtime (MIT). Image build từ nen-tang/ocr/Dockerfile:
+  # stage build tải trọng số (kiểm SHA-256), xuất VietOCR sang ONNX, biên dịch OpenCV tối giản rồi bị bỏ; image cuối
+  # chỉ có onnxruntime, numpy, pillow, cv2 + tệp .onnx (~158 MB), không tải gì lúc chạy. Không biết nghiệp vụ: nhận ảnh,
+  # trả dòng chữ + độ tin cậy; mot-cua-api trích trường và cho cán bộ xác nhận. Không mở cổng ra host, không route
+  # APISIX, không lưu ảnh; chỉ ở mạng ocr-noi-bo (không ra Internet). Chạy user 1000, rootfs chỉ đọc.
   ocr:
     build:
       context: ./nen-tang/ocr
     image: commune-dxos/ocr:local
     profiles: [ai]
     environment:
-      # PaddlePaddle/PyTorch dùng bấy nhiêu luồng CPU (laptop 16 GB chạy cùng lõi).
+      # ONNX Runtime dùng bấy nhiêu luồng CPU (laptop 16 GB chạy cùng lõi).
       OMP_NUM_THREADS: ${DXOS_OCR_LUONG:-4}
     read_only: true
     tmpfs:
       - /tmp
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    volumes:
-      - ocr-models:/models
+    networks: [ocr-noi-bo]
     expose:
       - "8000"
     healthcheck:
@@ -1213,10 +1215,10 @@ services:
         - CMD-SHELL
         - >-
           python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 60
-      start_period: 60s
+      retries: 30
+      start_period: 20s
     restart: unless-stopped
 
   # Tải mô hình sinh và mô hình nhúng (LLM_MODEL, LLM_EMBED_MODEL) vào volume ollama-models rồi thoát; đã có thì
@@ -1273,5 +1275,9 @@ volumes:
   meili-init-secrets:
   # Ollama (#91, profile ai): trọng số mô hình tải lúc chạy (khoảng 6 GB), không nằm trong repo.
   ollama-models:
-  # OCR (#93, profile ai): trọng số PaddleOCR + VietOCR tải lúc chạy (~150 MB).
-  ocr-models:
+
+networks:
+  # Mạng riêng của dịch vụ đọc giấy tờ (#93): chỉ ocr và mot-cua-api; internal nên ocr không ra được Internet (ảnh
+  # giấy tờ có dữ liệu cá nhân, ONNX Runtime có mô-đun gửi số liệu sử dụng đã tắt).
+  ocr-noi-bo:
+    internal: true

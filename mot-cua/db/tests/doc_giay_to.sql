@@ -114,7 +114,23 @@ UPDATE mot_cua.doc_giay_to SET truong_may = '{"ho_ten_me": {"gia_tri": "Nguyễn
  WHERE tep_id = :T1;
 SELECT pg_temp.kiem('máy đọc → cho_xac_nhan, có giờ đọc', 'cho_xac_nhan true',
   (SELECT trang_thai || ' ' || (doc_luc IS NOT NULL) FROM mot_cua.doc_giay_to WHERE tep_id = :T1));
-SELECT pg_temp.kiem('dịch vụ tệp không đổi được loại giấy tờ (không có quyền cột)', 'chặn 42501',
+-- Upsert như PostgREST (on_conflict=tep_id, resolution=merge-duplicates): SET lại mọi cột có trong body.
+SELECT pg_temp.kiem('upsert như mot-cua-api: máy chưa đọc được (tệp mới) → 1 dòng', '1 dòng',
+  pg_temp.thu($q$INSERT INTO mot_cua.doc_giay_to (tep_id, ho_so_id, loai, loi_doc)
+                VALUES ('7e593000-0000-4000-8000-0000000000f2', '7e593000-0000-4000-8000-000000000001', 'giay_to_tuy_than', 'OCR chưa bật')
+                ON CONFLICT (tep_id) DO UPDATE SET tep_id = EXCLUDED.tep_id, ho_so_id = EXCLUDED.ho_so_id,
+                  loai = EXCLUDED.loai, loi_doc = EXCLUDED.loi_doc$q$));
+SELECT pg_temp.kiem('upsert như mot-cua-api: công dân khai lại tệp đã có dòng → 1 dòng', '1 dòng',
+  pg_temp.thu($q$INSERT INTO mot_cua.doc_giay_to (tep_id, ho_so_id, loai, truong_cong_dan)
+                VALUES ('7e593000-0000-4000-8000-0000000000f1', '7e593000-0000-4000-8000-000000000001', 'giay_chung_sinh', '{"ten_con": "A"}')
+                ON CONFLICT (tep_id) DO UPDATE SET tep_id = EXCLUDED.tep_id, ho_so_id = EXCLUDED.ho_so_id,
+                  loai = EXCLUDED.loai, truong_cong_dan = EXCLUDED.truong_cong_dan$q$));
+SELECT pg_temp.kiem('upsert đổi loại giấy tờ của tệp đã có dòng → chặn 42501', 'chặn 42501',
+  pg_temp.thu($q$INSERT INTO mot_cua.doc_giay_to (tep_id, ho_so_id, loai, truong_cong_dan)
+                VALUES ('7e593000-0000-4000-8000-0000000000f1', '7e593000-0000-4000-8000-000000000001', 'giay_to_tuy_than', '{}')
+                ON CONFLICT (tep_id) DO UPDATE SET tep_id = EXCLUDED.tep_id, ho_so_id = EXCLUDED.ho_so_id,
+                  loai = EXCLUDED.loai, truong_cong_dan = EXCLUDED.truong_cong_dan$q$));
+SELECT pg_temp.kiem('dịch vụ tệp không đổi được loại giấy tờ (trigger chặn)', 'chặn 42501',
   pg_temp.thu($q$UPDATE mot_cua.doc_giay_to SET loai = 'giay_to_tuy_than' WHERE tep_id = '7e593000-0000-4000-8000-0000000000f1'$q$));
 SELECT pg_temp.kiem('xác nhận thiếu người xác nhận → chặn 23514', 'chặn 23514',
   pg_temp.thu($q$UPDATE mot_cua.doc_giay_to SET trang_thai = 'da_xac_nhan', truong_xac_nhan = '{}' WHERE tep_id = '7e593000-0000-4000-8000-0000000000f1'$q$));
@@ -137,20 +153,39 @@ RESET ROLE;
 
 -- 3. Cán bộ xác nhận (qua dịch vụ tệp) -------------------------------------------------------------
 SELECT pg_temp.vai('dich_vu_tep', 'service-account-mot_cua_tep');
+SELECT pg_temp.kiem('upsert như mot-cua-api: cán bộ xác nhận tệp đã có dòng → 1 dòng', '1 dòng',
+  pg_temp.thu($q$INSERT INTO mot_cua.doc_giay_to (tep_id, ho_so_id, loai, trang_thai, truong_xac_nhan, xac_nhan_boi_sub)
+                VALUES ('7e593000-0000-4000-8000-0000000000f1', '7e593000-0000-4000-8000-000000000001', 'giay_chung_sinh',
+                        'da_xac_nhan', '{"ten_con": "A"}', 'test-ocr-cb-a')
+                ON CONFLICT (tep_id) DO UPDATE SET tep_id = EXCLUDED.tep_id, ho_so_id = EXCLUDED.ho_so_id, loai = EXCLUDED.loai,
+                  trang_thai = EXCLUDED.trang_thai, truong_xac_nhan = EXCLUDED.truong_xac_nhan,
+                  xac_nhan_boi_sub = EXCLUDED.xac_nhan_boi_sub$q$));
+SELECT pg_temp.kiem('upsert như mot-cua-api: cán bộ nhập tay xác nhận tệp chưa có dòng → 1 dòng', '1 dòng',
+  pg_temp.thu($q$INSERT INTO mot_cua.doc_giay_to (tep_id, ho_so_id, loai, trang_thai, truong_xac_nhan, xac_nhan_boi_sub)
+                VALUES ('7e593000-0000-4000-8000-0000000000f2', '7e593000-0000-4000-8000-000000000001', 'giay_to_tuy_than',
+                        'da_xac_nhan', '{"ho_ten": "A"}', 'test-ocr-cb-a')
+                ON CONFLICT (tep_id) DO UPDATE SET tep_id = EXCLUDED.tep_id, ho_so_id = EXCLUDED.ho_so_id, loai = EXCLUDED.loai,
+                  trang_thai = EXCLUDED.trang_thai, truong_xac_nhan = EXCLUDED.truong_xac_nhan,
+                  xac_nhan_boi_sub = EXCLUDED.xac_nhan_boi_sub$q$));
 UPDATE mot_cua.doc_giay_to SET trang_thai = 'da_xac_nhan', xac_nhan_boi_sub = 'test-ocr-cb-a',
   truong_xac_nhan = '{"ho_ten_me": "Nguyễn Thị Mẫu", "nam_sinh_me": "1995", "gioi_tinh_con": "Nam"}' WHERE tep_id = :T1;
 SELECT pg_temp.kiem('xác nhận: CSDL tính trường cán bộ sửa so với máy (sửa họ tên, thêm giới tính)', '{gioi_tinh_con,ho_ten_me} true',
   (SELECT truong_da_sua::text || ' ' || (xac_nhan_luc IS NOT NULL) FROM mot_cua.doc_giay_to WHERE tep_id = :T1));
 SELECT pg_temp.kiem('đã xác nhận → không sửa được nữa', 'chặn 42501',
   pg_temp.thu($q$UPDATE mot_cua.doc_giay_to SET truong_may = '{}' WHERE tep_id = '7e593000-0000-4000-8000-0000000000f1'$q$));
+SELECT pg_temp.kiem('upsert công dân khai sau khi đã xác nhận → chặn 42501 (API trả 409)', 'chặn 42501',
+  pg_temp.thu($q$INSERT INTO mot_cua.doc_giay_to (tep_id, ho_so_id, loai, truong_cong_dan)
+                VALUES ('7e593000-0000-4000-8000-0000000000f1', '7e593000-0000-4000-8000-000000000001', 'giay_chung_sinh', '{"ten_con": "B"}')
+                ON CONFLICT (tep_id) DO UPDATE SET tep_id = EXCLUDED.tep_id, ho_so_id = EXCLUDED.ho_so_id,
+                  loai = EXCLUDED.loai, truong_cong_dan = EXCLUDED.truong_cong_dan$q$));
 SELECT pg_temp.kiem('dịch vụ tệp xóa kết quả → chặn (không có quyền DELETE)', 'chặn 42501',
   pg_temp.thu($q$DELETE FROM mot_cua.doc_giay_to WHERE tep_id = '7e593000-0000-4000-8000-0000000000f1'$q$));
 RESET ROLE;
 
 -- 4. Kiểm toán ----------------------------------------------------------------------------------
 SELECT pg_temp.kiem('nhật ký: khai → đọc → xác nhận (theo thứ tự), xác nhận ghi người xác nhận',
-  'giay_to.khai,giay_to.doc,giay_to.xac_nhan|test-ocr-cb-a',
-  (SELECT string_agg(hanh_dong, ',' ORDER BY stt) || '|' || max(nguoi_sub) FILTER (WHERE hanh_dong = 'giay_to.xac_nhan')
+  'giay_to.khai,giay_to.doc,giay_to.xac_nhan / test-ocr-cb-a',
+  (SELECT string_agg(hanh_dong, ',' ORDER BY stt) || ' / ' || max(nguoi_sub) FILTER (WHERE hanh_dong = 'giay_to.xac_nhan')
      FROM mot_cua.nhat_ky_kiem_toan WHERE stt > :dau_truoc AND du_lieu ->> 'tepId' = '7e593000-0000-4000-8000-0000000000f1'));
 SELECT pg_temp.kiem('nhật ký đọc: số trường, số trường cần kiểm tra', '2 1',
   (SELECT (du_lieu ->> 'soTruong') || ' ' || (du_lieu ->> 'canKiemTra') FROM mot_cua.nhat_ky_kiem_toan

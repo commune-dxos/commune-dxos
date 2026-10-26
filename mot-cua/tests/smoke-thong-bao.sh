@@ -28,7 +28,7 @@ kiem "vhost $VH có queue mot_cua.thong_bao (quorum, dead-letter mot_cua.thong_b
       | "\(.type) \(.arguments | if type == "array" then map({(.[0]): .[-1]}) | add else . end | .["x-dead-letter-exchange"])"),
      (.[] | select(.name == "mot_cua.thong_bao.loi") | .type)' | paste -sd' ' -)"
 kiem "binding mot_cua.su_kien → mot_cua.thong_bao chỉ khóa ho_so.sap_tre_han" "ho_so.sap_tre_han" \
-  "$(rmq list_bindings -p "$VH" source_name destination_name routing_key --formatter json |
+  "$(rmq_lai list_bindings -p "$VH" source_name destination_name routing_key --formatter json |
      jq -r '[.[] | select(.source_name == "mot_cua.su_kien" and .destination_name == "mot_cua.thong_bao") | .routing_key] | join(",")')"
 
 # --- 2. Consumer thông báo ghi cho cán bộ phụ trách ----------------------------------------

@@ -109,11 +109,13 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 
 ### Bật đọc giấy tờ bằng OCR (tùy chọn)
 
-Chức năng "Đọc thông tin từ ảnh" khi nộp hồ sơ và thẻ "Thông tin đọc từ giấy tờ" cho cán bộ xác nhận (#93) cần dịch vụ `ocr` (PaddleOCR + VietOCR, profile `ai`):
+Chức năng "Đọc thông tin từ ảnh" khi nộp hồ sơ và thẻ "Thông tin đọc từ giấy tờ" cho cán bộ xác nhận (#93) cần dịch vụ `ocr` (PP-OCRv5 của PaddleOCR + VietOCR, chạy bằng ONNX Runtime, profile `ai`):
 
 ```bash
-make up-ocr       # lần đầu build image (~3 GB) và tải mô hình (~150 MB) vào volume ocr-models
+make up-ocr       # lần đầu build image: ~3 phút trên máy arm64, cần mạng để tải mô hình và mã nguồn OpenCV
 ```
+
+Đo ngày 26/10/2026 trên arm64: image ~450 MB giải nén (Docker Desktop/OrbStack hiện ~714 MB vì tính cả bản nén 241 MB), trong đó mô hình ONNX 158 MB nằm sẵn trong image; lúc build cần thêm ~1,5 GB cho stage tạm (PyTorch CPU xuất VietOCR sang ONNX, biên dịch OpenCV), xong thì bỏ (`docker builder prune` để thu hồi). Dịch vụ dùng khoảng 0,5 GB RAM, đọc một trang mất 2–4 giây trên CPU. Không tải gì lúc chạy, không ra Internet.
 
 Thử bằng ảnh mẫu GIẢ: http://localhost:9080/mau-gia/giay-to-tuy-than.png, http://localhost:9080/mau-gia/giay-chung-sinh.png (lưu về máy rồi chọn ở bước Giấy tờ khi nộp thủ tục Đăng ký khai sinh). Không bật thì hồ sơ vẫn nộp bình thường.
 

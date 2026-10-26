@@ -27,8 +27,9 @@ up-ai:         ## Như make up, thêm Ollama + Qwen2.5 7B + bge-m3 cho trợ lý
 	$(AI) up --no-deps ollama-pull
 	$(AI) run --rm --no-deps nap-tri-thuc
 
-# Chỉ dịch vụ OCR của profile ai (#93), không Ollama: build image (~3 GB, lần đầu vài phút), lần đầu tải mô hình ~150 MB.
-up-ocr:        ## Như make up, thêm dịch vụ đọc giấy tờ (PaddleOCR + VietOCR) cho chức năng tự điền + cán bộ xác nhận
+# Chỉ dịch vụ OCR của profile ai (#93), không Ollama. Lần đầu build image (đo 26/10/2026, arm64: ~3 phút; image tải
+# 241 MB, giải nén ~450 MB gồm mô hình ONNX 158 MB); stage build tạm cần ~1,5 GB (PyTorch CPU) rồi bỏ.
+up-ocr:        ## Như make up, thêm dịch vụ đọc giấy tờ (PaddleOCR + VietOCR trên ONNX Runtime) cho tự điền + cán bộ xác nhận
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
 	docker compose --profile core up -d --build
 	$(AI) up -d --build --no-deps ocr

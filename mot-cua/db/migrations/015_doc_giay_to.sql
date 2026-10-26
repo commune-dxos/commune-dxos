@@ -135,9 +135,16 @@ COMMENT ON COLUMN mot_cua.nhat_ky_kiem_toan.hanh_dong IS
 
 -- 4. Quyền và RLS ----------------------------------------------------------------------------
 GRANT SELECT ON mot_cua.doc_giay_to TO cong_dan, can_bo, lanh_dao, dich_vu_tep;
-GRANT INSERT (tep_id, ho_so_id, loai, truong_may, dong_may, mo_hinh, loi_doc, truong_cong_dan)
+-- mot-cua-api ghi bằng upsert của PostgREST (on_conflict=tep_id, merge-duplicates) = INSERT … ON CONFLICT DO UPDATE SET
+-- mọi cột có trong body. PostgreSQL kiểm quyền INSERT trên mọi cột của câu INSERT (kể cả khi trùng khóa, ví dụ cán bộ
+-- xác nhận: trang_thai, truong_xac_nhan, xac_nhan_boi_sub; tệp chưa có dòng khi cán bộ nhập tay theo ảnh gốc) và quyền
+-- UPDATE trên mọi cột được SET, kể cả tep_id, ho_so_id, loai. Trigger truoc_ghi vẫn chặn đổi tệp hay loại giấy tờ, luôn
+-- lấy ho_so_id theo tệp; CHECK bắt xác nhận phải có người xác nhận.
+GRANT INSERT (tep_id, ho_so_id, loai, trang_thai, truong_may, dong_may, mo_hinh, loi_doc, truong_cong_dan,
+              truong_xac_nhan, xac_nhan_boi_sub)
   ON mot_cua.doc_giay_to TO dich_vu_tep;
-GRANT UPDATE (trang_thai, truong_may, dong_may, mo_hinh, loi_doc, truong_cong_dan, truong_xac_nhan, xac_nhan_boi_sub)
+GRANT UPDATE (tep_id, ho_so_id, loai, trang_thai, truong_may, dong_may, mo_hinh, loi_doc, truong_cong_dan,
+              truong_xac_nhan, xac_nhan_boi_sub)
   ON mot_cua.doc_giay_to TO dich_vu_tep;
 
 ALTER TABLE mot_cua.doc_giay_to ENABLE ROW LEVEL SECURITY;

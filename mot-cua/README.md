@@ -520,6 +520,8 @@ Sửa kho tri thức (`tro-ly/kho-tri-thuc/*.md`) hay gói thủ tục rồi `ma
 
 Thiết kế và lý do: `docs/architecture.md` §4.15. Cần dịch vụ `ocr` của nền tảng (profile `ai`): `make up-ocr` (chỉ OCR) hoặc `make up-ai`. Không chạy thì đọc thử trả 503, hồ sơ vẫn nộp và xử lý bình thường.
 
+Dịch vụ `ocr` (`nen-tang/ocr/`) chạy PP-OCRv5_mobile_det (tìm dòng chữ) và VietOCR `vgg_transformer` (đọc tiếng Việt có dấu) bằng ONNX Runtime; image chỉ có `onnxruntime`, `numpy`, `pillow` và OpenCV 4.10 tự biên dịch (core + imgproc), không có PyTorch hay PaddlePaddle. Mô hình nằm sẵn trong image (tải và kiểm SHA-256 lúc build, `nen-tang/ocr/xuat_mo_hinh.py`), dịch vụ ở mạng nội bộ `ocr-noi-bo` không ra Internet. Trên hai ảnh mẫu giả, kết quả trùng từng dòng với bản PaddleX + PyTorch trước đó (14/14 trường đúng).
+
 ```bash
 # Ảnh mẫu GIẢ có sẵn trên cổng: http://localhost:9080/mau-gia/giay-to-tuy-than.png, /mau-gia/giay-chung-sinh.png
 curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/files/doc-giay-to/loai     # loại giấy tờ + trường
