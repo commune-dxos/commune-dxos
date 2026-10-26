@@ -98,25 +98,9 @@ jobs:
 
   test-sql:
     runs-on: ubuntu-24.04
-    services:
-      # Cùng image gốc với docker-compose.yml và nen-tang/postgres/Dockerfile (bước đầu tiên kiểm điều
-      # này). Dịch vụ postgres thêm pgAudit trên image này (#75); migration không cần pgAudit.
-      postgres:
-        image: postgres:17.6-alpine
-        env:
-          POSTGRES_PASSWORD: test-sql
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 30
-    env:
-      PGHOST: localhost
-      PGPORT: "5432"
-      PGUSER: postgres
-      PGPASSWORD: test-sql
+    # Không dùng service container: migration của mot-cua cần pgvector (#91), image postgres gốc không có.
+    # make test-sql tự build image PostgreSQL của nền tảng (nen-tang/postgres/Dockerfile: pgAudit + pgvector,
+    # đúng tag trong docker-compose.yml) rồi chạy migration + test trong container tạm.
     steps:
       - uses: actions/checkout@v5.0.0
       - name: Image PostgreSQL khớp docker-compose.yml
@@ -124,6 +108,4 @@ jobs:
           grep -Eq '^ +image: postgres:17\.6-alpine$' docker-compose.yml
           grep -Eq '^ARG POSTGRES_IMAGE=postgres:17\.6-alpine$' nen-tang/postgres/Dockerfile
       - name: Migration + test SQL/RLS
-        run: |
-          psql --version
-          make test-sql
+        run: make test-sql

@@ -33,6 +33,10 @@
         {
           "name": "dich_vu_bao_cao",
           "description": "mot-cua: tài khoản dịch vụ của kho dữ liệu (#80): chỉ đọc cột không phải dữ liệu cá nhân của hồ sơ đã đóng, lịch sử trạng thái, danh mục; gọi RPC nạp bảng mart. Không gán cho người. Trùng role PostgreSQL dich_vu_bao_cao"
+        },
+        {
+          "name": "dich_vu_tro_ly",
+          "description": "mot-cua: tài khoản dịch vụ của trợ lý thủ tục (#91): đọc/ghi đoạn kho tri thức công khai (mot_cua.tri_thuc_doan) và gọi RPC tìm ngữ nghĩa tim_doan_gan. Không đọc hồ sơ hay dữ liệu cá nhân. Không gán cho người. Trùng role PostgreSQL dich_vu_tro_ly"
         }
       ]
     }
@@ -183,6 +187,19 @@
       "protocol": "openid-connect"
     },
     {
+      "clientId": "mot_cua_tro_ly",
+      "name": "mot-cua: trợ lý thủ tục (tài khoản dịch vụ)",
+      "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; tang2-realm ghi secret vào OpenBao (dxos/tang2/mot-cua/keycloak/mot_cua_tro_ly) cho dịch vụ tro-ly và dịch vụ một lần nap-tri-thuc.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect"
+    },
+    {
       "clientId": "mot_cua_danh_muc",
       "name": "mot-cua: bộ nạp gói thủ tục (tài khoản dịch vụ)",
       "description": "Confidential client, chỉ Client Credentials. Keycloak sinh client secret khi nạp; tang2-realm ghi secret vào OpenBao (dxos/tang2/mot-cua/keycloak/mot_cua_danh_muc) cho nap-thu-tuc.",
@@ -323,6 +340,16 @@
       "clientRoles": {
         "dxos_api": [
           "dich_vu_bao_cao"
+        ]
+      }
+    },
+    {
+      "username": "service-account-mot_cua_tro_ly",
+      "enabled": true,
+      "serviceAccountClientId": "mot_cua_tro_ly",
+      "clientRoles": {
+        "dxos_api": [
+          "dich_vu_tro_ly"
         ]
       }
     },
