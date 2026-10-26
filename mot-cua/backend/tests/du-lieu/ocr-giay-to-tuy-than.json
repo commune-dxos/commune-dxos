@@ -1,0 +1,132 @@
+{
+  "dong": [
+    {
+      "chu": "TÀI LIỆU MẤU - DỮ LIỆU GIẢ ? KHÔNG CÓ GIÁ TRỊ PHÁP LÝ",
+      "tin_cay": 0.914,
+      "khung": [
+        304,
+        0,
+        1095,
+        42
+      ]
+    },
+    {
+      "chu": "GIẤY TỜ TÙY THÂN MẪU DÙNG ĐỂ THỬ CHƯƠNG TRÌNH",
+      "tin_cay": 0.919,
+      "khung": [
+        301,
+        49,
+        1096,
+        100
+      ]
+    },
+    {
+      "chu": "COMMUNE DX-OS - DỮ LIỆU GIẢ",
+      "tin_cay": 0.928,
+      "khung": [
+        73,
+        121,
+        541,
+        172
+      ]
+    },
+    {
+      "chu": "GIẤY TỜ TÙY THÂN (MẪU)",
+      "tin_cay": 0.914,
+      "khung": [
+        378,
+        168,
+        1012,
+        245
+      ]
+    },
+    {
+      "chu": "Số định danh cá nhân: 000090001234",
+      "tin_cay": 0.915,
+      "khung": [
+        78,
+        339,
+        704,
+        409
+      ]
+    },
+    {
+      "chu": "Họ và tên: Trần Văn Mẫu",
+      "tin_cay": 0.93,
+      "khung": [
+        80,
+        271,
+        477,
+        328
+      ]
+    },
+    {
+      "chu": "EUGIA",
+      "tin_cay": 0.927,
+      "khung": [
+        667,
+        233,
+        1068,
+        449
+      ]
+    },
+    {
+      "chu": "Ngày sinh: 01/01/1990",
+      "tin_cay": 0.931,
+      "khung": [
+        82,
+        417,
+        444,
+        469
+      ]
+    },
+    {
+      "chu": "Giới tính: Nam",
+      "tin_cay": 0.929,
+      "khung": [
+        82,
+        486,
+        315,
+        538
+      ]
+    },
+    {
+      "chu": "Quê quán: Xã Mẫu, tỉnh Thử Nghiệm",
+      "tin_cay": 0.932,
+      "khung": [
+        83,
+        555,
+        646,
+        608
+      ]
+    },
+    {
+      "chu": "Nơi thường trú: Thôn Một, xã Mẫu, tỉnh Thử Nghiệm",
+      "tin_cay": 0.922,
+      "khung": [
+        79,
+        624,
+        880,
+        678
+      ]
+    },
+    {
+      "chu": "Ảnh sinh bằng scripts/sinh giay to.gia.py ? chỉ dùng thứ OCR",
+      "tin_cay": 0.904,
+      "khung": [
+        276,
+        753,
+        1124,
+        800
+      ]
+    }
+  ],
+  "mo_hinh": {
+    "phat_hien": "PaddleOCR PP-OCRv5_mobile_det",
+    "nhan_dang": "VietOCR vgg_transformer"
+  },
+  "kich_thuoc": [
+    1400,
+    800
+  ]
+}

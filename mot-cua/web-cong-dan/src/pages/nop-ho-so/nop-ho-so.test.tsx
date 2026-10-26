@@ -88,7 +88,11 @@ beforeEach(() => {
     if (u.includes("/khoi-tao")) return json(201, { processInstanceId: "p1" });
     return json(404, {});
   });
-  vi.stubGlobal("fetch", goi);
+  // Danh sách loại giấy tờ đọc được (#93) là lời gọi đọc siêu dữ liệu, không thuộc luồng nộp: trả rỗng (ẩn tự điền) và
+  // không đếm vào `goi`, để các kiểm tra "0 request khi thiếu giấy tờ" và thứ tự nộp giữ nguyên ý nghĩa.
+  vi.stubGlobal("fetch", (url: RequestInfo | URL, init?: RequestInit) =>
+    String(url).includes("/files/doc-giay-to/loai") ? Promise.resolve(new Response("{}", { status: 200 })) : goi(url, init),
+  );
 });
 afterEach(() => vi.unstubAllGlobals());
 

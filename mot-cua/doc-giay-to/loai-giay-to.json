@@ -1,0 +1,27 @@
+{
+  "$comment": "Loại giấy tờ đọc được bằng OCR (#93). Khóa = mã thành phần hồ sơ trong thanh-phan-ho-so.schema.json của gói thủ tục: gói nào có thành phần trùng mã thì tệp của thành phần đó được đọc. Mỗi trường: ma, nhan (hiện cho người dùng), nhan_khop (nhãn in trên giấy, so khớp không dấu ở đầu dòng), kieu (chu | ho_ten | ngay | nam | so_dinh_danh | gioi_tinh | so). Định dạng: mot-cua/backend/doc_giay_to.py.",
+  "giay_chung_sinh": {
+    "ten": "Giấy chứng sinh",
+    "truong": [
+      {"ma": "ho_ten_me", "nhan": "Họ và tên mẹ", "nhan_khop": ["họ và tên mẹ", "họ tên mẹ"], "kieu": "ho_ten"},
+      {"ma": "nam_sinh_me", "nhan": "Năm sinh của mẹ", "nhan_khop": ["năm sinh"], "kieu": "nam"},
+      {"ma": "so_dinh_danh_me", "nhan": "Số định danh cá nhân của mẹ", "nhan_khop": ["số định danh cá nhân", "số định danh", "số cccd"], "kieu": "so_dinh_danh"},
+      {"ma": "ngay_sinh_con", "nhan": "Ngày sinh của con", "nhan_khop": ["đã sinh con vào lúc", "sinh con vào lúc", "ngày sinh"], "kieu": "ngay"},
+      {"ma": "noi_sinh", "nhan": "Nơi sinh", "nhan_khop": ["tại", "nơi sinh"], "kieu": "chu"},
+      {"ma": "gioi_tinh_con", "nhan": "Giới tính của con", "nhan_khop": ["giới tính của con", "giới tính"], "kieu": "gioi_tinh"},
+      {"ma": "can_nang_gam", "nhan": "Cân nặng (gam)", "nhan_khop": ["cân nặng"], "kieu": "so"},
+      {"ma": "ten_con", "nhan": "Tên dự định đặt cho con", "nhan_khop": ["dự định đặt tên con là", "dự định đặt tên con", "tên con"], "kieu": "ho_ten"}
+    ]
+  },
+  "giay_to_tuy_than": {
+    "ten": "Giấy tờ tùy thân",
+    "truong": [
+      {"ma": "ho_ten", "nhan": "Họ và tên", "nhan_khop": ["họ và tên", "họ tên"], "kieu": "ho_ten"},
+      {"ma": "so_dinh_danh", "nhan": "Số định danh cá nhân", "nhan_khop": ["số định danh cá nhân", "số định danh", "số cccd", "số"], "kieu": "so_dinh_danh"},
+      {"ma": "ngay_sinh", "nhan": "Ngày sinh", "nhan_khop": ["ngày sinh", "ngày, tháng, năm sinh"], "kieu": "ngay"},
+      {"ma": "gioi_tinh", "nhan": "Giới tính", "nhan_khop": ["giới tính"], "kieu": "gioi_tinh"},
+      {"ma": "que_quan", "nhan": "Quê quán", "nhan_khop": ["quê quán"], "kieu": "chu"},
+      {"ma": "noi_thuong_tru", "nhan": "Nơi thường trú", "nhan_khop": ["nơi thường trú", "nơi cư trú"], "kieu": "chu"}
+    ]
+  }
+}
