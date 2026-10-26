@@ -9,7 +9,6 @@
 # Không in mật khẩu.
 
 echo "== RabbitMQ (#9)"
-rmq() { docker compose exec -T rabbitmq rabbitmqctl -q "$@"; }
 VH="$DXOS_TANG2"; TANG2_USER="tang2-$DXOS_TANG2"
 
 kiem "plugin rabbitmq_stomp và rabbitmq_management đang chạy" "rabbitmq_management rabbitmq_stomp" \

@@ -26,6 +26,17 @@ tong_ket() {
   [ "$SMOKE_TRUOT" -eq 0 ]
 }
 
+# Không lệnh nào được treo smoke: curl tối đa SMOKE_CURL_GIAY (120) giây (--max-time đặt sau trong lời gọi
+# thì thắng), lệnh khác bọc bằng gioi_han. Hết giờ → lệnh lỗi, kiểm tra liên quan báo TRƯỢT.
+curl() { command curl --max-time "${SMOKE_CURL_GIAY:-120}" "$@"; }
+# gioi_han <giây> <lệnh…>: timeout của coreutils (máy không có thì chạy thẳng)
+gioi_han() {
+  if command -v timeout > /dev/null; then timeout "$@"; else shift; "$@"; fi
+}
+# rmq <lệnh rabbitmqctl…>: trong container rabbitmq, tối đa 30 giây. list_queues mặc định không có hạn và
+# có lúc treo ngay sau khi broker khởi động lại (queue quorum đang bầu leader).
+rmq() { gioi_han 45 docker compose exec -T rabbitmq rabbitmqctl -q --timeout 30 "$@" < /dev/null; }
+
 # ma_http [tham số curl…] <url> → mã HTTP
 ma_http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
