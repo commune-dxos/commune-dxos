@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up up-bi down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
+.PHONY: up up-bi down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -103,6 +103,11 @@ XUAT_PY ?= python3
 
 xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-truc-dong.gif và docs/media/kien-truc-dong.mp4
 	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/xuat_kien_truc.py
+
+# GIF demo cho README (#58): cùng venv, ffmpeg như trên; cần hệ thống đang chạy (make up). Tài khoản mẫu
+# congdan01, canbo01 được đặt mật khẩu + OTP ngẫu nhiên (không in ra), quay xong trả lại như realm.json.
+quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif. Cần make up
+	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py
 
 # CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
 # Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
