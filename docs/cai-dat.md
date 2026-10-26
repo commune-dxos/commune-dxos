@@ -54,6 +54,7 @@ make bao-import-env       # chuyển mật khẩu từ .env cũ (trước v0.1.0
 | Dịch vụ | Địa chỉ | Ghi chú |
 |---|---|---|
 | **Cổng công dân** | **http://localhost:9080/** | web Tầng 2 (`mot-cua-web`) qua APISIX; đăng nhập `congdan01` |
+| **Hỏi đáp thủ tục** | **http://localhost:9080/hoi-dap** | trợ lý thủ tục hành chính (#91), không cần đăng nhập; mặc định chỉ tìm kiếm, thêm mô hình: mục 4 |
 | **Cổng cán bộ** | **http://localhost:9080/can-bo** | cùng web, client `mot_cua_can_bo`; đăng nhập `canbo01`, `lanhdao01` (mật khẩu + OTP); luồng: [`cong-can-bo.md`](cong-can-bo.md) |
 | API Gateway – công khai | http://localhost:9080/public/thu_tuc | không token, 60 request/phút/IP |
 | API Gateway – dữ liệu (JWT) | http://localhost:9080/api/ho_so | PostgREST qua APISIX, RLS theo vai trò |
@@ -64,7 +65,7 @@ make bao-import-env       # chuyển mật khẩu từ .env cũ (trước v0.1.0
 | PostgreSQL (debug) | `127.0.0.1:55432` | chỉ localhost |
 | Flowable REST (debug) | `127.0.0.1:8090` | chỉ localhost; Tầng 2 gọi qua APISIX |
 
-OpenBao, Garage, ClamAV, RabbitMQ, PostgREST, `mot-cua-web` không mở cổng ra máy host; chỉ truy cập qua gateway hoặc mạng nội bộ Docker.
+OpenBao, Garage, ClamAV, RabbitMQ, Meilisearch, Ollama, PostgREST, `mot-cua-web`, `tro-ly` không mở cổng ra máy host; chỉ truy cập qua gateway hoặc mạng nội bộ Docker.
 
 **Tài khoản mẫu** (dữ liệu giả, realm `dxos`, mật khẩu do `make demo-users` đặt):
 
@@ -102,7 +103,20 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 | `DXOS_SU_KIEN_QUET_GIAY`, `DXOS_SU_KIEN_SAP_TRE_NGAY` | `300`, `1` | chu kỳ quét và ngưỡng cảnh báo sắp trễ hạn |
 | `DXOS_THONG_BAO_KENH` | `email,sms` | kênh ngoài của thông báo sắp trễ hạn tới cán bộ (#56), để trống = chỉ trong cổng cán bộ; **chỉ giả lập**: ghi CSDL và log, không gửi thật |
 
+| `LLM_PROVIDER` | `tat` | trợ lý thủ tục (#91): `tat` chỉ tìm kiếm · `ollama` (Qwen2.5 7B + bge-m3) · `openai-compatible` (API ngoài) · `gia-lap` (CI, smoke); chi tiết ở [`mot-cua/README.md`](../mot-cua/README.md#trợ-lý-thủ-tục-hành-chính-91) |
+
 Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng).
+
+### Bật mô hình ngôn ngữ cho trợ lý thủ tục (tùy chọn)
+
+Mặc định (`LLM_PROVIDER=tat`) trang Hỏi đáp trả các đoạn tài liệu liên quan nhất, không cần mô hình. Để trợ lý soạn câu trả lời có dẫn nguồn bằng Qwen2.5 7B (Apache-2.0) và tìm theo nghĩa bằng bge-m3 (MIT):
+
+```bash
+# .env: LLM_PROVIDER=ollama
+make up-ai        # thêm Ollama (profile ai), tải qwen2.5:7b (4,7 GB) + bge-m3 (1,2 GB) lần đầu, nhúng lại kho tri thức
+```
+
+Cần thêm khoảng **6,5 GB RAM** cho Docker (đo được Ollama 6,2 GB khi nạp cả hai mô hình) và **13 GB ổ** (image Ollama giải nén 7,0 GB + mô hình 5,84 GB trong volume `ollama-models`). Trọng số tải lúc chạy, không nằm trong repo. Docker trên macOS không dùng được GPU nên Qwen2.5 7B chạy CPU khá chậm (khoảng nửa phút đến một phút mỗi câu trả lời). Nhanh hơn trên Mac: cài Ollama trên máy (dùng GPU Apple), `ollama pull qwen2.5:7b && ollama pull bge-m3`, đặt trong `.env` `LLM_PROVIDER=ollama` và `LLM_BASE_URL=http://host.docker.internal:11434`, rồi `make up && make nap-tri-thuc` (không cần profile `ai`). Dùng API ngoài theo chuẩn OpenAI: `LLM_PROVIDER=openai-compatible`, `LLM_BASE_URL=https://…/v1`, khóa API đặt vào OpenBao như [`mot-cua/README.md`](../mot-cua/README.md#trợ-lý-thủ-tục-hành-chính-91).
 
 ## 5. Thêm một thủ tục vào `thu-tuc/`
 
