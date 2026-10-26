@@ -36,6 +36,16 @@ gioi_han() {
 # rmq <lệnh rabbitmqctl…>: trong container rabbitmq, tối đa 30 giây. list_queues mặc định không có hạn và
 # có lúc treo ngay sau khi broker khởi động lại (queue quorum đang bầu leader).
 rmq() { gioi_han 45 docker compose exec -T rabbitmq rabbitmqctl -q --timeout 30 "$@" < /dev/null; }
+# rmq_lai <lệnh rabbitmqctl…>: như rmq, thử lại tối đa 3 lần (cách 2 giây) khi lỗi hoặc ra rỗng. Dùng cho lệnh
+# đọc (list_*): rabbitmqctl đôi khi trả rỗng một lần ngay sau khi broker khởi động.
+rmq_lai() {
+  local kq=""
+  for _ in 1 2 3; do
+    kq="$(rmq "$@")" && [ -n "$kq" ] && break
+    sleep 2
+  done
+  printf '%s' "$kq"
+}
 
 # ma_http [tham số curl…] <url> → mã HTTP
 ma_http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
