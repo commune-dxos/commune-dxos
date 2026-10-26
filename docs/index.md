@@ -6,6 +6,18 @@
 
 ![Luồng hồ sơ 5 bước: nộp hồ sơ, quét virus, thẩm định, phê duyệt, hoàn tất; cảnh báo trễ hạn gắn vào bước thẩm định](images/luong-ho-so.webp)
 
+## Xem nhanh
+
+Người dân nộp hồ sơ đăng ký khai sinh (thiếu giấy tờ bị chặn, đủ thì nộp được), rồi tra cứu tiến độ bằng mã hồ sơ:
+
+![Demo cổng công dân: danh mục thủ tục, nộp hồ sơ đăng ký khai sinh, lỗi thiếu giấy chứng sinh, nộp thành công có mã hồ sơ, tra cứu tiến độ bằng mã và 4 số cuối điện thoại](media/demo-cong-dan.gif)
+
+Cán bộ hộ tịch đăng nhập mật khẩu + OTP, xử lý bước tiếp nhận của hồ sơ vừa nộp ([luồng chi tiết](cong-can-bo.md)):
+
+![Demo cổng cán bộ: đăng nhập mật khẩu và OTP, hộp việc, chi tiết hồ sơ, hoàn thành bước tiếp nhận, hồ sơ chuyển sang thẩm định](media/demo-can-bo.gif)
+
+Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make quay-demo`).
+
 ## Bạn cần gì?
 
 | Bạn là | Đọc |
