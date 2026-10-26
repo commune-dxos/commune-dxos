@@ -18,8 +18,9 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/012_tra_cuu_ho_so.sql` | tra cứu tiến độ không đăng nhập (#54): RPC `tra_cuu_ho_so(p_ma, p_so_cuoi)` cho `anon`, `cong_dan`, chỉ trả trạng thái và các mốc; xem [Tra cứu tiến độ](#tra-cứu-tiến-độ-hồ-sơ-54) |
 | `db/migrations/011_so_van_ban.sql` | sổ văn bản đến/đi (#78): role `van_thu`, bảng `van_ban` (bất biến sau khi vào sổ hoặc ký), bộ đếm `so_van_ban_dem` cấp số theo năm không trùng, RPC `cap_so_van_ban_di`, trigger kiểm toán `van_ban.*`; xem [Sổ văn bản](#sổ-văn-bản-đếnđi-78) |
 | `db/migrations/014_tro_ly.sql` | trợ lý thủ tục (#91): `CREATE EXTENSION vector` (pgvector của nền tảng), role `dich_vu_tro_ly`, bảng `tri_thuc_doan` (đoạn kho tri thức + `vector(1024)`), RPC `tim_doan_gan` (cosin, chỉ vector cùng mô hình nhúng); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
+| `db/migrations/015_doc_giay_to.sql` | đọc giấy tờ bằng OCR + cán bộ xác nhận (#93): bảng `doc_giay_to` (máy đọc, công dân khai, cán bộ xác nhận; xác nhận rồi không sửa), CSDL tính trường bị sửa, kiểm toán `giay_to.khai|doc|xac_nhan`; xem [Đọc giấy tờ](#đọc-giấy-tờ-bằng-ocr-cán-bộ-xác-nhận-93) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql`, `db/tests/tro_ly.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), kho tri thức trợ lý (17 kiểm tra: pgvector, chỉ tài khoản dịch vụ, cosin cùng mô hình, ràng buộc vector), chạy trong một transaction rồi ROLLBACK |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql`, `db/tests/tro_ly.sql`, `db/tests/doc_giay_to.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), kho tri thức trợ lý (17 kiểm tra: pgvector, chỉ tài khoản dịch vụ, cosin cùng mô hình, ràng buộc vector), đọc giấy tờ (20 kiểm tra: chỉ dịch vụ tệp ghi, RLS theo hồ sơ, xác nhận rồi không sửa, kiểm toán không chứa giá trị), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80), `mot_cua_tro_ly` (#91) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
@@ -32,6 +33,7 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền), bộ nạp gói và test đơn vị: `make test` |
 | `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
 | `backend/tro_ly.py`, `rag.py`, `mo_hinh.py`, `tri_thuc.py`, `nap_tri_thuc.py`; `tro-ly/kho-tri-thuc/` | trợ lý thủ tục hành chính (#91): dịch vụ `tro-ly` (APISIX `/tro-ly/*`, công khai), dịch vụ một lần `nap-tri-thuc` (`make nap-tri-thuc`); kho tri thức Markdown, định dạng ở [README](tro-ly/kho-tri-thuc/README.md); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
+| `backend/doc_giay_to.py`, `doc-giay-to/loai-giay-to.json` | đọc giấy tờ bằng OCR (#93): trích trường từ chữ do dịch vụ `ocr` của nền tảng đọc; loại giấy tờ và trường khai bằng JSON (khóa = mã thành phần hồ sơ của gói); endpoint trong `main.py` |
 | `web-cong-dan/` | web Tầng 2: cổng công dân `/` (#52, đăng nhập `mot_cua_web`) và cổng cán bộ `/can-bo` (#55, đăng nhập `mot_cua_can_bo` + OTP; hộp việc, xử lý bước). React + Vite + Tailwind + shadcn/ui, PKCE; xem [README](web-cong-dan/README.md) |
 
 Sửa schema: thêm tệp `db/migrations/007_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`tang2-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
@@ -513,6 +515,28 @@ read -rs KHOA && printf '%s' "$KHOA" | docker compose exec -T -e BAO_TOKEN="$(jq
 ```
 
 Sửa kho tri thức (`tro-ly/kho-tri-thuc/*.md`) hay gói thủ tục rồi `make nap-tri-thuc`: chỉ đoạn đổi được nhúng lại. Đổi `LLM_PROVIDER`/mô hình nhúng: `make up` (tạo lại `tro-ly`) rồi `make nap-tri-thuc`.
+
+## Đọc giấy tờ bằng OCR, cán bộ xác nhận (#93)
+
+Thiết kế và lý do: `docs/architecture.md` §4.15. Cần dịch vụ `ocr` của nền tảng (profile `ai`): `make up-ocr` (chỉ OCR) hoặc `make up-ai`. Không chạy thì đọc thử trả 503, hồ sơ vẫn nộp và xử lý bình thường.
+
+```bash
+# Ảnh mẫu GIẢ có sẵn trên cổng: http://localhost:9080/mau-gia/giay-to-tuy-than.png, /mau-gia/giay-chung-sinh.png
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/files/doc-giay-to/loai     # loại giấy tờ + trường
+curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: image/png' --data-binary @giay-to-tuy-than.png \
+  'http://localhost:9080/files/doc-giay-to?loai=giay_to_tuy_than'
+# → {"loai": "giay_to_tuy_than", "truong": {"ho_ten": {"gia_tri": "Trần Văn Mẫu", "tin_cay": 0.93, "can_kiem_tra": false, …}, …}}
+# Công dân gửi các trường đã xem/sửa cho tệp vừa tải lên (hồ sơ mới nộp hoặc chờ bổ sung):
+curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"truong": {"ho_ten": "Trần Văn Mẫu"}}' http://localhost:9080/files/tep/<TEP>/khai
+# Cán bộ phụ trách lĩnh vực (token có OTP) xem kết quả, cho máy đọc lại, xác nhận (sau đó không sửa được):
+curl -H "Authorization: Bearer $TK_CB" "http://localhost:9080/api/doc_giay_to?ho_so_id=eq.<HS>"
+curl -H "Authorization: Bearer $TK_CB" -H 'Content-Type: application/json' -d '{}' http://localhost:9080/files/tep/<TEP>/doc
+curl -H "Authorization: Bearer $TK_CB" -H 'Content-Type: application/json' \
+  -d '{"truong": {"ho_ten": "Trần Văn Mẫu", "ngay_sinh": "01/01/1990"}}' http://localhost:9080/files/tep/<TEP>/xac-nhan
+```
+
+Thêm loại giấy tờ: thêm một mục trong `doc-giay-to/loai-giay-to.json` có khóa trùng mã thành phần hồ sơ trong `thanh-phan-ho-so.schema.json` của gói (ví dụ `giay_to_tuy_than`), khai `nhan_khop` (nhãn in trên giấy) và `kieu` của từng trường; `make check` + `make test-backend`, khởi động lại `mot-cua-api`.
 
 ## Sổ văn bản đến/đi (#78)
 

@@ -54,6 +54,16 @@ trigger ghi kiểm toán giay_to.ky kèm SHA-256):
                                             theo CA của xã, đối chiếu SHA-256 với giấy tờ đã phát hành
                                             và văn bản đi đã ký
 
+Đọc giấy tờ bằng OCR, cán bộ xác nhận (#93, phần thuần ở doc_giay_to.py; dịch vụ OCR của nền tảng ở profile ai):
+  GET  /files/doc-giay-to/loai              loại giấy tờ đọc được và các trường (mot-cua/doc-giay-to/loai-giay-to.json)
+  POST /files/doc-giay-to?loai=…            đọc thử một ảnh (body = PNG/JPEG) để tự điền form: ClamAV → magic bytes
+                                            → OCR → trích trường. Không lưu gì
+  POST /files/tep/{id}/khai                 công dân gửi các trường đã xem/sửa cho tệp của hồ sơ mình (JSON {truong})
+  POST /files/tep/{id}/doc                  cán bộ cho máy đọc lại tệp đã lưu
+  POST /files/tep/{id}/xac-nhan             cán bộ chốt giá trị sau khi so ảnh gốc (JSON {truong}); sau đó không sửa được
+  Tải ảnh giấy tờ có mẫu đọc lên (POST /files/ho-so/{id}/tep) → máy đọc tệp đã lưu ở luồng nền. Đọc kết quả:
+  /api/doc_giay_to (RLS theo hồ sơ). Mọi ghi bằng tài khoản dịch vụ tệp, CSDL ghi kiểm toán giay_to.khai|doc|xac_nhan.
+
 Sổ văn bản đến/đi của xã (#78), cùng lớp tệp (ClamAV, Garage) và lớp ký số; ghi bằng tài khoản dịch vụ
 tệp sau khi kiểm vai người gọi, đọc sổ qua /api (RLS: cán bộ, lãnh đạo, văn thư):
   POST /files/van-ban/den?ten=…&loai=…&ky_hieu=…&ngay_van_ban=…&trich_yeu=…&noi_gui=…[&nguoi_ky=…]
@@ -106,6 +116,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bimat
+import doc_giay_to
 import hop_thu
 import ky_so
 import poka_yoke
@@ -130,6 +141,10 @@ GATEWAY_URL = os.environ.get("DXOS_GATEWAY_URL", "http://localhost:9080").rstrip
 FILE_MAX_BYTES = int(os.environ.get("DXOS_FILE_MAX_BYTES", str(10 * 1024 * 1024)))
 FILE_LINK_TTL = int(os.environ.get("DXOS_FILE_LINK_TTL", "300"))
 GOTENBERG_URL = os.environ.get("DXOS_GOTENBERG_URL", "http://gotenberg:3000")
+# Dịch vụ OCR của nền tảng (#93, profile ai). Không chạy profile ai thì không gọi được: chức năng đọc giấy tờ trả
+# 503, nộp và xử lý hồ sơ vẫn bình thường.
+OCR_URL = os.environ.get("DXOS_OCR_URL", "http://ocr:8000").rstrip("/")
+OCR_TIMEOUT = int(os.environ.get("DXOS_OCR_TIMEOUT", "120"))
 
 # --- Quy ước giữa bộ máy và gói thủ tục ------------------------------------------------
 # Kiểu của flowable:formProperty → kiểu JSON nhận khi hoàn thành bước. Biến không khai báo
@@ -632,6 +647,24 @@ def s3_goi(method, key, du_lieu=b"", tieu_de=None):
         raise Loi(502, "Kho tệp không phản hồi") from None
 
 
+def s3_doc(key):
+    """Nội dung object của bộ máy trên Garage (đọc lại tệp đã lưu để OCR, #93)."""
+    c = s3()
+    url = _url_object(key)
+    sha_rong = hashlib.sha256(b"").hexdigest()
+    req = urllib.request.Request(url, method="GET",
+                                 headers=tep.ky_header("GET", url, c["region"], c["accessKeyId"], c["secretAccessKey"], sha_rong))
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        log.error("Garage GET %s → %s", key, e.code)
+        raise Loi(502, "Kho tệp trả lỗi") from None
+    except (urllib.error.URLError, TimeoutError) as e:
+        log.error("không gọi được Garage: %s", e)
+        raise Loi(502, "Kho tệp không phản hồi") from None
+
+
 def nhat_ky_tep(hanh_dong, claims, **cot):
     """Ghi một dòng nhật ký tệp (bảng chỉ thêm). Lỗi ghi không che kết quả cho người dùng."""
     dong = {"hanh_dong": hanh_dong, "nguoi_sub": claims["sub"], "vai_tro": vai_tro(claims) or "", **cot}
@@ -703,6 +736,8 @@ def tai_len(token, claims, req, ho_so_id):
         raise
     nhat_ky_tep("tai_len", claims, **vet, thanh_phan_ho_so_id=moi["id"])
     log.info("lưu tệp %s (%d byte) vào hồ sơ %s", moi["id"], n, ho_so_id)
+    if yc_id and duoi != "pdf":
+        doc_nen(moi["id"], du_lieu)  # ảnh giấy tờ có mẫu đọc (#93): máy đọc ở luồng nền
     return 201, moi
 
 
@@ -1063,6 +1098,185 @@ def xem_van_ban(token, claims, req, van_ban_id):
     return 200, _kem_link_van_ban(rows[0], ttl)
 
 
+# --- Đọc giấy tờ bằng OCR, cán bộ xác nhận (#93) ------------------------------------------
+LOAI_GIAY_TO = doc_giay_to.doc_loai()
+_COT_DOC = ("tep_id,ho_so_id,loai,trang_thai,truong_may,mo_hinh,doc_luc,loi_doc,truong_cong_dan,khai_luc,"
+            "truong_xac_nhan,truong_da_sua,xac_nhan_boi_sub,xac_nhan_luc")
+_ANH = {"image/png": "png", "image/jpeg": "jpeg"}
+
+
+def goi_ocr(du_lieu):
+    """Ảnh → {"dong": [...], "mo_hinh": …} từ dịch vụ OCR của nền tảng. Chưa bật/chưa sẵn sàng → 503."""
+    req = urllib.request.Request(OCR_URL + "/doc", data=du_lieu, method="POST",
+                                 headers={"Content-Type": "application/octet-stream"})
+    try:
+        with urllib.request.urlopen(req, timeout=OCR_TIMEOUT) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        if e.code == 503:
+            raise Loi(503, "Dịch vụ đọc giấy tờ đang nạp mô hình, vui lòng thử lại sau ít phút") from None
+        if e.code in (413, 415, 422):
+            raise Loi(422, "Không đọc được chữ trên ảnh này. Hãy chụp lại rõ, thẳng, đủ sáng") from None
+        log.error("dịch vụ OCR → %s", e.code)
+        raise Loi(502, "Dịch vụ đọc giấy tờ trả lỗi") from None
+    except (urllib.error.URLError, TimeoutError, ValueError) as e:
+        log.warning("không gọi được dịch vụ OCR: %s", e)
+        raise Loi(503, "Chức năng đọc giấy tờ chưa bật trên máy chủ này (dịch vụ OCR, profile ai)") from None
+
+
+def _doc_va_trich(du_lieu, loai):
+    kq = goi_ocr(du_lieu)
+    dong = [{"chu": d.get("chu", ""), "tin_cay": d.get("tin_cay")} for d in kq.get("dong") or []]
+    return doc_giay_to.trich_truong(dong, LOAI_GIAY_TO[loai]), dong, kq.get("mo_hinh")
+
+
+def _ghi_doc(dong):
+    """Upsert một dòng doc_giay_to bằng tài khoản dịch vụ tệp; chỉ đụng cột có trong dong."""
+    rows = pgrst(DICH_VU_TEP.lay(), "POST", f"/doc_giay_to?on_conflict=tep_id&select={_COT_DOC}", dong,
+                 prefer="resolution=merge-duplicates,return=representation")
+    return rows[0]
+
+
+def _tep_cua(token, tep_id):
+    """Tệp theo RLS của người gọi + mã thành phần + hồ sơ. Không thấy → 403/404 như xem tệp."""
+    rows = pgrst(token, "GET", f"/thanh_phan_ho_so?id=eq.{tep_id}&select=id,ho_so_id,loai_mime,object_key,"
+                               "thanh_phan_yeu_cau:thanh_phan_yeu_cau_id(ma),ho_so:ho_so_id(trang_thai,nguoi_nop_sub)")
+    return rows[0] if rows else None
+
+
+def _loai_cua(r):
+    loai = (r.get("thanh_phan_yeu_cau") or {}).get("ma")
+    if loai not in LOAI_GIAY_TO:
+        raise Loi(422, "Thành phần hồ sơ này không có mẫu đọc giấy tờ")
+    return loai
+
+
+def doc_nen(tep_id, du_lieu=None):
+    """Máy đọc tệp đã lưu ở luồng nền (sau khi tải lên): không làm chậm hay hỏng request. Thành phần không có
+    mẫu đọc thì bỏ qua; OCR chưa bật thì chỉ ghi log, cán bộ vẫn nhập tay khi xác nhận."""
+    def chay():
+        try:
+            svc = DICH_VU_TEP.lay()
+            r = pgrst(svc, "GET", f"/thanh_phan_ho_so?id=eq.{tep_id}&select=id,ho_so_id,object_key,loai_mime,"
+                                  "thanh_phan_yeu_cau:thanh_phan_yeu_cau_id(ma)")[0]
+            loai = (r.get("thanh_phan_yeu_cau") or {}).get("ma")
+            if loai not in LOAI_GIAY_TO or r["loai_mime"] not in _ANH:
+                return
+            noi_dung = du_lieu if du_lieu is not None else s3_doc(r["object_key"])
+            try:
+                truong, dong, mo_hinh = _doc_va_trich(noi_dung, loai)
+                _ghi_doc({"tep_id": tep_id, "ho_so_id": r["ho_so_id"], "loai": loai, "truong_may": truong,
+                          "dong_may": dong, "mo_hinh": mo_hinh})
+                log.info("máy đọc tệp %s (%s): %d trường", tep_id, loai, len(truong))
+            except Loi as e:
+                _ghi_doc({"tep_id": tep_id, "ho_so_id": r["ho_so_id"], "loai": loai, "loi_doc": e.thong_diep})
+                log.warning("máy chưa đọc được tệp %s: %s", tep_id, e.thong_diep)
+        except Loi as e:
+            log.error("đọc nền tệp %s lỗi: %s", tep_id, e.thong_diep)
+        except Exception:  # noqa: BLE001
+            log.exception("đọc nền tệp %s lỗi", tep_id)
+    threading.Thread(target=chay, name="doc-giay-to", daemon=True).start()
+
+
+def ds_loai_giay_to(token, claims, req):
+    return 200, doc_giay_to.cong_khai(LOAI_GIAY_TO)
+
+
+def doc_thu(token, claims, req):
+    """Đọc thử một ảnh để tự điền form (công dân ở bước nộp): quét ClamAV, kiểm loại, OCR, trích trường. KHÔNG
+    lưu ảnh hay kết quả; giá trị chỉ có hiệu lực khi công dân gửi (khai) và cán bộ xác nhận."""
+    loai = req.query.get("loai") or ""
+    if loai not in LOAI_GIAY_TO:
+        raise Loi(404, "Không có mẫu đọc cho loại giấy tờ này")
+    duoi = _ANH.get((req.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower())
+    if not duoi:
+        raise Loi(415, "Chỉ đọc được ảnh JPG hoặc PNG")
+    n = _so(req.headers.get("Content-Length") or 0, "Content-Length")
+    if n > FILE_MAX_BYTES:
+        raise Loi(413, f"Ảnh vượt {FILE_MAX_BYTES // (1024 * 1024)} MB")
+    if n <= 0:
+        raise Loi(400, "Ảnh rỗng")
+    du_lieu = req.rfile.read(n)
+    sach, ma_doc = tep.quet_clamav(CLAMAV_HOST, CLAMAV_PORT, du_lieu)
+    if not sach:
+        log.warning("chặn ảnh nhiễm %s gửi đọc thử của %s", ma_doc, claims["sub"])
+        raise Loi(422, "Tệp chứa mã độc, đã từ chối", {"maDoc": ma_doc})
+    tep.kiem_magic(duoi, du_lieu)
+    truong, _, mo_hinh = _doc_va_trich(du_lieu, loai)
+    return 200, {"loai": loai, "truong": truong, "mo_hinh": mo_hinh}
+
+
+def khai_giay_to(token, claims, body, tep_id):
+    """Công dân gửi các trường đã xem/sửa cho tệp của hồ sơ mình (khi mới nộp hoặc chờ bổ sung)."""
+    if vai_tro(claims) != "cong_dan":
+        raise Loi(403, "Chỉ công dân khai thông tin giấy tờ")
+    r = _tep_cua(token, tep_id)
+    if not r:
+        raise Loi(404, "Không thấy tệp")
+    hs = r.get("ho_so") or {}
+    if hs.get("nguoi_nop_sub") != claims["sub"]:
+        raise Loi(403, "Chỉ người nộp được khai thông tin giấy tờ")
+    if hs.get("trang_thai") not in tep.TRANG_THAI_NHAN_TEP:
+        raise Loi(409, "Hồ sơ không còn nhận thay đổi (chỉ khi mới nộp hoặc chờ bổ sung)")
+    loai = _loai_cua(r)
+    try:
+        truong = doc_giay_to.kiem_truong_gui(LOAI_GIAY_TO[loai], body.get("truong"))
+    except doc_giay_to.LoiDuLieu as e:
+        raise Loi(400, str(e)) from None
+    try:
+        return 200, _ghi_doc({"tep_id": tep_id, "ho_so_id": r["ho_so_id"], "loai": loai, "truong_cong_dan": truong})
+    except Loi as e:
+        if e.status == 403:
+            raise Loi(409, "Cán bộ đã xác nhận thông tin giấy tờ này, không khai lại được") from None
+        raise
+
+
+def _can_bo_xem_tep(token, claims, tep_id):
+    if vai_tro(claims) not in ("can_bo", "lanh_dao"):
+        raise Loi(403, "Chỉ cán bộ, lãnh đạo xác nhận giấy tờ")
+    r = _tep_cua(token, tep_id)
+    if not r:
+        raise Loi(403, "Không có quyền với tệp này") if _ton_tai("thanh_phan_ho_so", tep_id) else Loi(404, "Không thấy tệp")
+    return r
+
+
+def doc_lai(token, claims, tep_id):
+    """Cán bộ cho máy đọc lại tệp đã lưu (đồng bộ) – ví dụ khi OCR mới bật hay lần đọc nền lỗi."""
+    r = _can_bo_xem_tep(token, claims, tep_id)
+    loai = _loai_cua(r)
+    if r["loai_mime"] not in _ANH:
+        raise Loi(415, "Chỉ đọc được ảnh JPG hoặc PNG")
+    truong, dong, mo_hinh = _doc_va_trich(s3_doc(r["object_key"]), loai)
+    try:
+        return 200, _ghi_doc({"tep_id": tep_id, "ho_so_id": r["ho_so_id"], "loai": loai, "truong_may": truong,
+                              "dong_may": dong, "mo_hinh": mo_hinh})
+    except Loi as e:
+        if e.status == 403:
+            raise Loi(409, "Giấy tờ đã được xác nhận, không đọc lại") from None
+        raise
+
+
+def xac_nhan_giay_to(token, claims, body, tep_id):
+    """Cán bộ chốt giá trị các trường sau khi so ảnh gốc (HITL). Chỉ giá trị này được dùng; ghi kiểm toán."""
+    r = _can_bo_xem_tep(token, claims, tep_id)
+    loai = _loai_cua(r)
+    try:
+        truong = doc_giay_to.kiem_truong_gui(LOAI_GIAY_TO[loai], body.get("truong"))
+    except doc_giay_to.LoiDuLieu as e:
+        raise Loi(400, str(e)) from None
+    if not truong:
+        raise Loi(400, "Cần ít nhất một trường đã kiểm")
+    try:
+        moi = _ghi_doc({"tep_id": tep_id, "ho_so_id": r["ho_so_id"], "loai": loai, "trang_thai": "da_xac_nhan",
+                        "truong_xac_nhan": truong, "xac_nhan_boi_sub": claims["sub"]})
+    except Loi as e:
+        if e.status == 403:
+            raise Loi(409, "Giấy tờ đã được xác nhận trước đó") from None
+        raise
+    log.info("cán bộ xác nhận giấy tờ %s (%s): sửa %s", tep_id, loai, moi.get("truong_da_sua"))
+    return 200, moi
+
+
 # --- HTTP --------------------------------------------------------------------------
 # (phương thức, đường dẫn, body JSON?, hàm(token, claims, body JSON hoặc request, match))
 ROUTES = [
@@ -1086,6 +1300,12 @@ ROUTES = [
     ("POST", re.compile(r"/files/van-ban/di"), True, lambda tk, c, b, m: du_thao_di(tk, c, b)),
     ("POST", re.compile(rf"/files/van-ban/({UUID})/ky"), True, lambda tk, c, b, m: ky_van_ban(tk, c, m[1])),
     ("GET", re.compile(rf"/files/van-ban/({UUID})"), False, lambda tk, c, r, m: xem_van_ban(tk, c, r, m[1])),
+    # Đọc giấy tờ bằng OCR, cán bộ xác nhận (#93).
+    ("GET", re.compile(r"/files/doc-giay-to/loai"), False, lambda tk, c, r, m: ds_loai_giay_to(tk, c, r)),
+    ("POST", re.compile(r"/files/doc-giay-to"), False, lambda tk, c, r, m: doc_thu(tk, c, r)),
+    ("POST", re.compile(rf"/files/tep/({UUID})/khai"), True, lambda tk, c, b, m: khai_giay_to(tk, c, b, m[1])),
+    ("POST", re.compile(rf"/files/tep/({UUID})/doc"), True, lambda tk, c, b, m: doc_lai(tk, c, m[1])),
+    ("POST", re.compile(rf"/files/tep/({UUID})/xac-nhan"), True, lambda tk, c, b, m: xac_nhan_giay_to(tk, c, b, m[1])),
 ]
 
 

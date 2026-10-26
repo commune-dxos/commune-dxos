@@ -10,6 +10,7 @@
 // Bước nào lỗi thì giữ kết quả các bước trước để người dân bấm "Thử lại" từ chỗ dở dang.
 import { cauHinh as cauHinhMacDinh, type CauHinh } from "./cau-hinh";
 import { LoiApi, type ThuTuc } from "./api";
+import { gonTruong } from "./doc-giay-to";
 import { goiGateway } from "./goi-api";
 import { docThanhPhan, kiemThanhPhan } from "./thanh-phan";
 
@@ -113,10 +114,28 @@ export class LoiThieuThanhPhan extends LoiApi {
 export interface TienDoNop {
   hoSo: HoSoMoi | null;
   daTai: Set<File>;
+  /** Thành phần đã gửi thông tin tự điền (#93). */
+  daKhai: Set<string>;
   daKhoiTao: boolean;
 }
 
-export const tienDoMoi = (): TienDoNop => ({ hoSo: null, daTai: new Set(), daKhoiTao: false });
+export const tienDoMoi = (): TienDoNop => ({ hoSo: null, daTai: new Set(), daKhai: new Set(), daKhoiTao: false });
+
+/** Gửi thông tin công dân đã xem/sửa cho tệp đầu tiên của thành phần (#93): POST /files/tep/{id}/khai. */
+export async function khaiGiayTo(
+  token: string,
+  tepId: string,
+  truong: Record<string, string>,
+  cauHinh = cauHinhMacDinh,
+  goi: typeof fetch = fetch,
+) {
+  return goiApi(cauHinh, goi, `/files/tep/${encodeURIComponent(tepId)}/khai`, {
+    method: "POST",
+    token,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ truong: gonTruong(truong) }),
+  });
+}
 
 /** Cả luồng nộp, Poka-yoke trước tiên. Lỗi ở bước nào thì `tienDo` giữ phần đã xong. */
 export async function nopHoSo(
@@ -127,6 +146,8 @@ export async function nopHoSo(
   tienDo: TienDoNop = tienDoMoi(),
   cauHinh = cauHinhMacDinh,
   goi: typeof fetch = fetch,
+  /** Thông tin tự điền từ ảnh theo mã thành phần (#93); gửi kèm tệp đầu tiên của thành phần đó. */
+  khai: Record<string, Record<string, string> | undefined> = {},
 ) {
   const thieu = kiemThanhPhan(thuTuc.json_schema, tep);
   if (Object.keys(thieu).length) throw new LoiThieuThanhPhan(thieu);
@@ -135,8 +156,13 @@ export async function nopHoSo(
   for (const tp of docThanhPhan(thuTuc.json_schema)) {
     for (const f of tep[tp.ma] ?? []) {
       if (tienDo.daTai.has(f)) continue;
-      await taiTep(token, tienDo.hoSo.id, f, idThanhPhan[tp.ma], cauHinh, goi);
+      const moi = await taiTep(token, tienDo.hoSo.id, f, idThanhPhan[tp.ma], cauHinh, goi);
       tienDo.daTai.add(f);
+      const k = khai[tp.ma];
+      if (k && !tienDo.daKhai.has(tp.ma) && Object.keys(gonTruong(k)).length) {
+        await khaiGiayTo(token, moi.id, k, cauHinh, goi);
+        tienDo.daKhai.add(tp.ma);
+      }
     }
   }
   if (!tienDo.daKhoiTao) {

@@ -3,9 +3,10 @@
 // Chi tiết hồ sơ cho cán bộ: người nộp, thành phần hồ sơ và tệp (link ký sẵn ngắn hạn qua /files),
 // lịch sử các bước (/workflow/ho-so/{id}/tien-do), và form xử lý bước hiện tại nếu task thuộc mình
 // hoặc nhóm của mình. Hồ sơ RLS không cho xem (cán bộ lĩnh vực khác) → "Không thấy hồ sơ". Giấy tờ có
-// ký số (#77): biên nhận, và thông báo kết quả khi hồ sơ hoàn tất.
+// ký số (#77): biên nhận, và thông báo kết quả khi hồ sơ hoàn tất. Thông tin đọc từ giấy tờ chờ cán bộ xác nhận
+// (#93, components/xac-nhan-giay-to.tsx).
 import { ArrowLeft, CircleCheck, Download, FileText, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { NutGiayTo } from "@/components/nut-giay-to";
 import { ThongBao } from "@/components/thong-bao";
@@ -18,7 +19,9 @@ import { GOC_CAN_BO } from "@/auth/oidc";
 import { ngay } from "@/lib/dinh-dang";
 import { tenTrangThai } from "@/lib/trang-thai";
 import { cn } from "@/lib/utils";
+import { ApiDocGiayTo, type DocGiayTo, type LoaiGiayTo } from "@/lib/doc-giay-to";
 import { FormXuLy } from "../components/form-xu-ly";
+import { XacNhanGiayTo } from "../components/xac-nhan-giay-to";
 import { TheHan } from "@/components/the-han";
 import { useDuLieuCanBo } from "../du-lieu";
 import type { HoSoCanBo, KetQuaHoanThanh, LinkTep, TepHoSo, ThanhPhanYeuCau, TienDo } from "../lib/api";
@@ -30,6 +33,7 @@ interface DuLieuHoSo {
   tienDo: TienDo | null;
   tep: TepHoSo[];
   yeuCau: ThanhPhanYeuCau[];
+  docGiayTo: DocGiayTo[];
 }
 
 const KET_THUC: Record<string, string> = {
@@ -215,25 +219,33 @@ export function ChiTietHoSo() {
   const [duLieu, datDuLieu] = useState<DuLieuHoSo | null>(null);
   const [loi, datLoi] = useState<string | null>(null);
   const [daXong, datDaXong] = useState<{ taskId: string; ten: string; tomTat: string; tiepTheo: string[] } | null>(null);
+  // Cùng token, cấu hình và hàm gọi với api của cổng cán bộ (test thay được cả hai bằng một hàm fetch giả).
+  const apiDoc = useMemo(() => new ApiDocGiayTo(api.token, api.cauHinh, api.goi), [api]);
+  const [loaiDoc, datLoaiDoc] = useState<Record<string, LoaiGiayTo>>({});
+  useEffect(() => {
+    apiDoc.layLoai().then(datLoaiDoc, () => undefined);
+  }, [apiDoc]);
 
   const tai = useCallback(async () => {
     try {
       const hoSo = await api.layMotHoSo(id);
       if (!hoSo) {
-        datDuLieu({ hoSo: null, tienDo: null, tep: [], yeuCau: [] });
+        datDuLieu({ hoSo: null, tienDo: null, tep: [], yeuCau: [], docGiayTo: [] });
         return;
       }
-      const [tienDo, tep, yeuCau] = await Promise.all([
+      const [tienDo, tep, yeuCau, docGiayTo] = await Promise.all([
         api.layTienDo(id),
         api.layTep(id),
         hoSo.thu_tuc ? api.layThanhPhanYeuCau(hoSo.thu_tuc.id) : Promise.resolve([]),
+        // Bảng chưa có (lõi cũ) hay lỗi đọc thì bỏ qua thẻ này, không làm hỏng trang.
+        apiDoc.layKetQua(id).catch(() => [] as DocGiayTo[]),
       ]);
-      datDuLieu({ hoSo, tienDo, tep, yeuCau });
+      datDuLieu({ hoSo, tienDo, tep, yeuCau, docGiayTo });
       datLoi(null);
     } catch (e) {
       datLoi(e instanceof Error ? e.message : "Không tải được hồ sơ.");
     }
-  }, [api, id]);
+  }, [api, apiDoc, id]);
 
   useEffect(() => {
     datDuLieu(null);
@@ -366,6 +378,16 @@ export function ChiTietHoSo() {
             </CardContent>
           </Card>
           <ThanhPhan yeuCau={duLieu.yeuCau} tep={duLieu.tep} />
+          <XacNhanGiayTo
+            ds={duLieu.docGiayTo}
+            loai={loaiDoc}
+            tenTep={Object.fromEntries(duLieu.tep.map((t) => [t.id, t.ten_tep]))}
+            xemAnh={async (tepId) => (await api.layLinkTep(tepId)).link}
+            api={apiDoc}
+            doi={(moi) =>
+              datDuLieu((d) => d && { ...d, docGiayTo: d.docGiayTo.map((x) => (x.tep_id === moi.tep_id ? moi : x)) })
+            }
+          />
           <GiayToKySo hoSo={hoSo} />
           <LichSu tienDo={duLieu.tienDo} />
         </div>

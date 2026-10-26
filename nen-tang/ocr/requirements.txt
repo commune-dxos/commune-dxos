@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Thư viện của dịch vụ OCR (nen-tang/ocr/Dockerfile, #93). Gói chính ghim ở đây; cây phụ thuộc đầy đủ và giấy
+# phép từng gói ở DEPENDENCIES.md mục 3 (rà bằng pip-licenses trong image). torch/torchvision cài riêng từ chỉ mục
+# CPU của PyTorch (bản không CUDA) trong Dockerfile.
+paddlepaddle==3.2.2
+paddleocr==3.7.0
+# vietocr 0.3.13 ghim pillow 10.2.0 (không có bản cho Python 3.13) nên cài --no-deps; các gói nó thật sự dùng khi
+# suy luận (einops, PyYAML, requests, gdown, tqdm) cài ở đây.
+einops==0.8.2
+gdown==6.4.2

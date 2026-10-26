@@ -107,6 +107,16 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 
 Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng).
 
+### Bật đọc giấy tờ bằng OCR (tùy chọn)
+
+Chức năng "Đọc thông tin từ ảnh" khi nộp hồ sơ và thẻ "Thông tin đọc từ giấy tờ" cho cán bộ xác nhận (#93) cần dịch vụ `ocr` (PaddleOCR + VietOCR, profile `ai`):
+
+```bash
+make up-ocr       # lần đầu build image (~3 GB) và tải mô hình (~150 MB) vào volume ocr-models
+```
+
+Thử bằng ảnh mẫu GIẢ: http://localhost:9080/mau-gia/giay-to-tuy-than.png, http://localhost:9080/mau-gia/giay-chung-sinh.png (lưu về máy rồi chọn ở bước Giấy tờ khi nộp thủ tục Đăng ký khai sinh). Không bật thì hồ sơ vẫn nộp bình thường.
+
 ### Bật mô hình ngôn ngữ cho trợ lý thủ tục (tùy chọn)
 
 Mặc định (`LLM_PROVIDER=tat`) trang Hỏi đáp trả các đoạn tài liệu liên quan nhất, không cần mô hình. Để trợ lý soạn câu trả lời có dẫn nguồn bằng Qwen2.5 7B (Apache-2.0) và tìm theo nghĩa bằng bge-m3 (MIT):
