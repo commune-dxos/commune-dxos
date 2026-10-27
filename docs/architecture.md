@@ -156,6 +156,8 @@ thu-tuc/<ma>/                   mỗi thủ tục hành chính một gói (docs/
   README.md                     mô tả, sơ đồ quy trình
 thu-tuc/khai-sinh/              KS01 – Đăng ký khai sinh (1 ngày làm việc)
 thu-tuc/chung-thuc-ban-sao/     CT01 – Chứng thực bản sao từ bản chính (trong ngày)
+thu-tuc/ket-hon/                KH01 – Đăng ký kết hôn (5 ngày làm việc, #97)
+thu-tuc/hoa-giai-dat-dai/       DD01 – Hòa giải tranh chấp đất đai tại xã (20 ngày làm việc, #97)
 ```
 
 | Thứ | Nền tảng `nen-tang/` | Bộ máy `mot-cua/` | Gói `thu-tuc/<ma>/` |

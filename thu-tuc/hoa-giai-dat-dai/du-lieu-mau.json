@@ -1,0 +1,17 @@
+{
+  "mo_ta": "Hồ sơ mẫu GIẢ cho thủ tục DD01: người nộp, số điện thoại, thửa đất và id tệp đều không có thật. Smoke dùng để nộp hồ sơ và chạy hết quy trình (nhánh hòa giải không thành); bộ nạp kiểm tệp này khớp thanh-phan-ho-so.schema.json.",
+  "ho_so": {
+    "ho_ten_nguoi_nop": "Lê Văn Thử",
+    "so_dien_thoai": "0900000098"
+  },
+  "thanh_phan": {
+    "don_yeu_cau": ["d0010000-0000-4000-8000-000000000001"],
+    "giay_to_dat": ["d0010000-0000-4000-8000-000000000002"]
+  },
+  "xu_ly": {
+    "tiep_nhan": {"hopLe": true},
+    "xac_minh": {"thuocDienHoaGiai": true, "ghiChu": "Tranh chấp ranh giới giữa hai thửa liền kề (giả)"},
+    "hoa_giai": {"hoaGiaiThanh": false, "soLanHop": 2, "ghiChu": "Các bên chưa thống nhất mốc giới"},
+    "ky_bien_ban": {"daKy": true}
+  }
+}

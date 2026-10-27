@@ -47,9 +47,9 @@ dem_loai() { printf "SELECT string_agg(loai || ':' || n, ' ' ORDER BY loai) FROM
 
 # --- 1. Topology --------------------------------------------------------------------------
 kiem "vhost $VH có queue mot_cua.nhat_ky (quorum) và mot_cua.nhat_ky.loi" "mot_cua.nhat_ky:quorum mot_cua.nhat_ky.loi:classic" \
-  "$(rmq list_queues -p "$VH" name type --formatter json | jq -r 'map(select(.name | startswith("mot_cua.nhat_ky"))) | sort_by(.name) | map("\(.name):\(.type)") | join(" ")')"
+  "$(rmq_lai list_queues -p "$VH" name type --formatter json | jq -r 'map(select(.name | startswith("mot_cua.nhat_ky"))) | sort_by(.name) | map("\(.name):\(.type)") | join(" ")')"
 kiem "exchange mot_cua.su_kien kiểu topic, bền vững" "topic true" \
-  "$(rmq list_exchanges -p "$VH" name type durable --formatter json | jq -r '.[] | select(.name == "mot_cua.su_kien") | "\(.type) \(.durable)"')"
+  "$(rmq_lai list_exchanges -p "$VH" name type durable --formatter json | jq -r '.[] | select(.name == "mot_cua.su_kien") | "\(.type) \(.durable)"')"
 LOI_TRUOC="$(so_tin mot_cua.nhat_ky.loi)"
 
 # --- 2. Hồ sơ WH (mục 4d): mới → chuyển bước → hoàn tất ------------------------------------

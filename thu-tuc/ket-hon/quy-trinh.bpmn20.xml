@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  Gói thủ tục ket-hon – quy trình "Đăng ký kết hôn" (KH01, lĩnh vực ho_tich), BPMN 2.0 viết tay (#97). Không có
+  phần bpmndi: Flowable chạy được; sơ đồ ở README.md cùng thư mục. Bộ nạp nap-thu-tuc deploy tệp này lên Flowable.
+
+  Biến bộ máy đặt khi khởi tạo: hoSoId, maHoSo (businessKey), nguoiNopSub, hanXuLyLuc.
+  Biến người xử lý đặt khi hoàn thành bước (khai bằng flowable:formProperty, API chỉ nhận đúng các biến này):
+    tiep_nhan            hopLe (bắt buộc), ghiChu
+    bo_sung              ghiChu                       (công dân)
+    xac_minh             duDieuKien (bắt buộc), ghiChu
+    ky_giay_chung_nhan   daKy (bắt buộc), ghiChu        (lãnh đạo)
+    trao_giay_chung_nhan haiBenCoMat (bắt buộc), soDangKy, ghiChu
+  Biến quy trình tự đặt: ketQua (hoan_tat | tu_choi), quaHan.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="urn:dxos:mot-cua"
+             id="def_dang_ky_ket_hon">
+
+  <process id="dang_ky_ket_hon" name="Đăng ký kết hôn" isExecutable="true">
+    <documentation>Một cửa cấp xã – thủ tục KH01: tiếp nhận → xác minh điều kiện → lãnh đạo ký → trao giấy chứng nhận.</documentation>
+
+    <startEvent id="bat_dau" name="Hồ sơ đã nộp"/>
+    <sequenceFlow id="f_bat_dau" sourceRef="bat_dau" targetRef="tiep_nhan"/>
+
+    <!-- 1. Tiếp nhận: công chức tư pháp – hộ tịch kiểm thành phần hồ sơ -->
+    <userTask id="tiep_nhan" name="Tiếp nhận, kiểm tra thành phần hồ sơ" flowable:candidateGroups="ho_tich">
+      <documentation>hopLe = true nếu đủ tờ khai và giấy tờ tùy thân của hai bên; false kèm ghiChu để yêu cầu bổ sung.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="hopLe" name="Đủ thành phần hồ sơ?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_tiep_nhan" sourceRef="tiep_nhan" targetRef="gw_tiep_nhan"/>
+    <exclusiveGateway id="gw_tiep_nhan" name="Đủ thành phần?" default="f_can_bo_sung"/>
+    <sequenceFlow id="f_hop_le" name="đủ" sourceRef="gw_tiep_nhan" targetRef="xac_minh">
+      <conditionExpression xsi:type="tFormalExpression">${hopLe == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_can_bo_sung" name="thiếu" sourceRef="gw_tiep_nhan" targetRef="bo_sung"/>
+
+    <!-- 1b. Công dân bổ sung rồi quay lại tiếp nhận -->
+    <userTask id="bo_sung" name="Công dân bổ sung hồ sơ" flowable:assignee="${nguoiNopSub}">
+      <documentation>Hồ sơ ở trạng thái cho_bo_sung; công dân nộp thêm giấy tờ rồi hoàn thành bước.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_bo_sung" sourceRef="bo_sung" targetRef="tiep_nhan"/>
+
+    <!-- 2. Xác minh điều kiện kết hôn (tuổi, tự nguyện, không thuộc trường hợp cấm) -->
+    <userTask id="xac_minh" name="Xác minh điều kiện kết hôn" flowable:candidateGroups="ho_tich">
+      <documentation>duDieuKien = true để trình lãnh đạo ký; false (kèm ghiChu nêu lý do) để từ chối.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="duDieuKien" name="Đủ điều kiện kết hôn?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_xac_minh" sourceRef="xac_minh" targetRef="gw_xac_minh"/>
+    <exclusiveGateway id="gw_xac_minh" name="Đủ điều kiện?" default="f_khong_du"/>
+    <sequenceFlow id="f_du" name="đủ" sourceRef="gw_xac_minh" targetRef="ky_giay_chung_nhan">
+      <conditionExpression xsi:type="tFormalExpression">${duDieuKien == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_khong_du" name="không đủ" sourceRef="gw_xac_minh" targetRef="ket_thuc_tu_choi"/>
+
+    <!-- 3. Lãnh đạo xã ký Giấy chứng nhận kết hôn -->
+    <userTask id="ky_giay_chung_nhan" name="Ký Giấy chứng nhận kết hôn" flowable:candidateGroups="lanh_dao">
+      <documentation>daKy = true để chuyển trao giấy; false để trả lại bước xác minh.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="daKy" name="Đã ký?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_ky" sourceRef="ky_giay_chung_nhan" targetRef="gw_ky"/>
+    <exclusiveGateway id="gw_ky" name="Đã ký?" default="f_tra_lai"/>
+    <sequenceFlow id="f_da_ky" name="đã ký" sourceRef="gw_ky" targetRef="trao_giay_chung_nhan">
+      <conditionExpression xsi:type="tFormalExpression">${daKy == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_tra_lai" name="trả lại" sourceRef="gw_ky" targetRef="xac_minh"/>
+
+    <!-- 4. Trao giấy: hai bên nam, nữ cùng có mặt, ký Sổ hộ tịch và Giấy chứng nhận kết hôn -->
+    <userTask id="trao_giay_chung_nhan" name="Trao Giấy chứng nhận, hai bên ký Sổ hộ tịch" flowable:candidateGroups="ho_tich">
+      <documentation>haiBenCoMat = true khi hai bên đã cùng có mặt ký sổ và nhận giấy; false (kèm ghiChu hẹn ngày) để chờ.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="haiBenCoMat" name="Hai bên cùng có mặt ký sổ?" type="boolean" required="true"/>
+        <flowable:formProperty id="soDangKy" name="Số đăng ký trong Sổ hộ tịch" type="string"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_trao" sourceRef="trao_giay_chung_nhan" targetRef="gw_trao"/>
+    <exclusiveGateway id="gw_trao" name="Hai bên có mặt?" default="f_hen_lai"/>
+    <sequenceFlow id="f_co_mat" name="có mặt" sourceRef="gw_trao" targetRef="ket_thuc_hoan_tat">
+      <conditionExpression xsi:type="tFormalExpression">${haiBenCoMat == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_hen_lai" name="hẹn lại" sourceRef="gw_trao" targetRef="trao_giay_chung_nhan"/>
+
+    <endEvent id="ket_thuc_hoan_tat" name="Hoàn tất – đã trao Giấy chứng nhận kết hôn">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'hoan_tat')}"/>
+      </extensionElements>
+    </endEvent>
+    <endEvent id="ket_thuc_tu_choi" name="Từ chối">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'tu_choi')}"/>
+      </extensionElements>
+    </endEvent>
+
+    <!-- Quá hạn: hẹn giờ không ngắt quy trình, đánh dấu quaHan = true -->
+    <subProcess id="qua_han" name="Quá hạn xử lý" triggeredByEvent="true">
+      <startEvent id="den_han" name="Đến hạn xử lý" isInterrupting="false">
+        <timerEventDefinition>
+          <timeDate>${hanXuLyLuc}</timeDate>
+        </timerEventDefinition>
+      </startEvent>
+      <sequenceFlow id="f_den_han" sourceRef="den_han" targetRef="danh_dau_qua_han"/>
+      <serviceTask id="danh_dau_qua_han" name="Đánh dấu quá hạn"
+                   flowable:expression="${execution.setVariable('quaHan', true)}"/>
+      <sequenceFlow id="f_danh_dau" sourceRef="danh_dau_qua_han" targetRef="ket_thuc_qua_han"/>
+      <endEvent id="ket_thuc_qua_han"/>
+    </subProcess>
+  </process>
+</definitions>
