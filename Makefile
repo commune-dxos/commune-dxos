@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up up-bi up-ai up-ocr nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
+.PHONY: du-lieu-mo up up-bi up-ai up-ocr nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -146,12 +146,16 @@ ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có th
 license:       ## Thêm header SPDX (bản quyền + GPL-3.0-or-later, D-010) cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + kho tri thức + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
+du-lieu-mo:    ## Sinh lại bộ dữ liệu mở du-lieu-mo/thu-tuc-cap-xa/ (CC-BY-4.0) từ các gói thu-tuc/*/ (#102); chạy sau khi thêm/sửa gói
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/xuat_du_lieu_mo.py
+
+check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + kho tri thức + dữ liệu mở khớp gói + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/tests/test_check_license.py
 	python3 scripts/check-bpmn.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check-web.py
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_thu_tuc.py thu-tuc --chi-kiem
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_tri_thuc.py mot-cua/tro-ly/kho-tri-thuc thu-tuc --chi-kiem
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/xuat_du_lieu_mo.py --kiem
 	$(MAKE) --no-print-directory test-backend
 	docker compose $(COMPOSE_ENV) --profile '*' config --quiet && echo "OK: docker-compose.yml hợp lệ (mọi profile)"

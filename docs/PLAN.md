@@ -61,7 +61,7 @@ Cách dùng tệp này:
 - [ ] V2 · **Tuần UX:** sửa giao diện và luồng theo phản hồi người dùng (mỗi phản hồi một issue `user-feedback`)
 - [ ] V3 · Tài liệu song ngữ; hướng dẫn cho **lập trình viên** viết gói thủ tục `thu-tuc/<ma>/` đã có ở `docs/thu-tuc.md` (#30, D-009), bổ sung ví dụ theo phản hồi
 - [x] V1 · **Thêm gói thủ tục** (ngoài khai sinh, chứng thực bản sao), mỗi gói một thư mục, không sửa mã bộ máy, để chứng minh cắm–rút theo gói (D-009 thay cho "module mẫu thứ hai" kiểu `apps/<tên>/`): kết hôn KH01, hòa giải tranh chấp đất đai DD01 (#97, PR #98)
-- [ ] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ)
+- [x] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ): `du-lieu-mo/thu-tuc-cap-xa/`, CC-BY-4.0, sinh từ gói (#102, PR chờ duyệt)
 - [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp)
 - [ ] V1 · Release v0.3.0
 

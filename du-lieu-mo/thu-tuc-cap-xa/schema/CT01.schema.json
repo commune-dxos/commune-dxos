@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dxos:mot-cua:thu-tuc:CT01",
+  "title": "Chứng thực bản sao từ bản chính",
+  "description": "Thành phần hồ sơ chứng thực bản sao. Mỗi thành phần là mảng id tệp đã tải qua /files (thanh_phan_ho_so.id). Bản chính vẫn phải xuất trình tại bộ phận một cửa để đối chiếu.",
+  "type": "object",
+  "required": ["thanh_phan"],
+  "properties": {
+    "thanh_phan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ban_chinh"],
+      "properties": {
+        "ban_chinh": {
+          "title": "Bản chính giấy tờ cần chứng thực",
+          "description": "Ảnh chụp để cán bộ chuẩn bị đối chiếu; xuất trình bản chính tại bộ phận một cửa",
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"},
+          "minItems": 1
+        },
+        "ban_sao": {
+          "title": "Bản sao cần chứng thực",
+          "description": "Nếu người yêu cầu tự chuẩn bị bản sao",
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"},
+          "minItems": 0
+        }
+      }
+    }
+  }
+}
