@@ -136,7 +136,7 @@ Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make qua
 | Đã thay đổi gì | [`CHANGELOG.md`](CHANGELOG.md) (sinh bằng git-cliff), [Releases](https://github.com/commune-dxos/commune-dxos/releases) |
 | Báo lỗi, đề xuất thủ tục mới | [Issues](https://github.com/commune-dxos/commune-dxos/issues) |
 
-Trước mỗi commit: `make check`. Cùng lệnh với CI: `make lint`, `make test`.
+Trước mỗi commit: `make check`. Cùng lệnh với CI: `make lint` (gồm `reuse lint`: toàn repo đạt đặc tả [REUSE 3.3](https://reuse.software)), `make test`.
 
 Quy tắc ứng xử: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Nguồn hình ảnh: [`docs/images/README.md`](docs/images/README.md).
 
