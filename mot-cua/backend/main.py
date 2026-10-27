@@ -64,6 +64,15 @@ trigger ghi kiểm toán giay_to.ky kèm SHA-256):
   Tải ảnh giấy tờ có mẫu đọc lên (POST /files/ho-so/{id}/tep) → máy đọc tệp đã lưu ở luồng nền. Đọc kết quả:
   /api/doc_giay_to (RLS theo hồ sơ). Mọi ghi bằng tài khoản dịch vụ tệp, CSDL ghi kiểm toán giay_to.khai|doc|xac_nhan.
 
+Wiki văn bản nội bộ cho cán bộ (#95, phần thuần ở wiki.py): CSDL quyết định ai thấy gì (RLS theo phạm vi toàn xã /
+lĩnh vực phụ trách / lãnh đạo), Meilisearch CE (index mot-cua-wiki-van-ban) để tìm; ghi bằng token của người gọi:
+  GET  /files/wiki/tim?q=…[&loai=…][&tat_ca=1][&so_luong=…][&tu=…]
+                                            cán bộ, lãnh đạo, văn thư tìm văn bản: lọc theo quyền ở Meilisearch rồi
+                                            đối chiếu RLS; Meilisearch không chạy → tìm trong CSDL (nguon = "csdl")
+  POST /files/wiki                          văn thư, lãnh đạo thêm văn bản (JSON), cập nhật chỉ mục
+  POST /files/wiki/{id}                     sửa (chỉ trường gửi lên; trang_thai = het_hieu_luc để ngừng hiệu lực)
+  Xem chi tiết và lịch sử: /api/wiki_van_ban, /api/wiki_van_ban_lich_su (RLS). CSDL ghi kiểm toán wiki.*.
+
 Sổ văn bản đến/đi của xã (#78), cùng lớp tệp (ClamAV, Garage) và lớp ký số; ghi bằng tài khoản dịch vụ
 tệp sau khi kiểm vai người gọi, đọc sổ qua /api (RLS: cán bộ, lãnh đạo, văn thư):
   POST /files/van-ban/den?ten=…&loai=…&ky_hieu=…&ngay_van_ban=…&trich_yeu=…&noi_gui=…[&nguoi_ky=…]
@@ -124,6 +133,8 @@ import su_kien
 import tep
 import thong_bao
 import trang_thai
+import tri_thuc
+import wiki
 
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
 FLOWABLE_URL = os.environ.get("DXOS_FLOWABLE_URL", "http://flowable:8080/flowable-rest/service")
@@ -145,6 +156,8 @@ GOTENBERG_URL = os.environ.get("DXOS_GOTENBERG_URL", "http://gotenberg:3000")
 # 503, nộp và xử lý hồ sơ vẫn bình thường.
 OCR_URL = os.environ.get("DXOS_OCR_URL", "http://ocr:8000").rstrip("/")
 OCR_TIMEOUT = int(os.environ.get("DXOS_OCR_TIMEOUT", "120"))
+# Wiki văn bản (#95): chu kỳ dựng lại chỉ mục Meilisearch từ CSDL (giây).
+WIKI_DONG_BO_GIAY = int(os.environ.get("DXOS_WIKI_DONG_BO_GIAY", "300"))
 
 # --- Quy ước giữa bộ máy và gói thủ tục ------------------------------------------------
 # Kiểu của flowable:formProperty → kiểu JSON nhận khi hoàn thành bước. Biến không khai báo
@@ -1277,6 +1290,108 @@ def xac_nhan_giay_to(token, claims, body, tep_id):
     return 200, moi
 
 
+# --- Wiki văn bản nội bộ cho cán bộ (#95) -----------------------------------------------
+WIKI = wiki.Kho(tri_thuc.Meili(wiki.TEN_INDEX))
+
+
+def _linh_vuc_cua(token, claims):
+    """Id các lĩnh vực cán bộ đang phụ trách (đọc bằng token của chính họ)."""
+    sub = urllib.parse.quote(claims["sub"])
+    rows = pgrst(token, "GET", f"/can_bo?sub=eq.{sub}&dang_lam_viec=is.true&select=linh_vuc(id)")
+    return sorted({lv["id"] for r in rows for lv in r.get("linh_vuc") or []})
+
+
+def tim_wiki(token, claims, req):
+    vai = vai_tro(claims)
+    if vai not in wiki.VAI_DOC:
+        raise Loi(403, "Chỉ cán bộ, lãnh đạo, văn thư tra cứu văn bản nội bộ")
+    q = (req.query.get("q") or "").strip()
+    if len(q) > 200:
+        raise Loi(400, "Từ khóa dài quá 200 ký tự")
+    loai = req.query.get("loai") or None
+    if loai and loai not in wiki.LOAI:
+        raise Loi(400, "Loại văn bản không hợp lệ")
+    tat_ca = req.query.get("tat_ca") in ("1", "true")
+    so_luong = min(max(_so(req.query.get("so_luong") or 20, "so_luong"), 1), 50)
+    tu = min(max(_so(req.query.get("tu") or 0, "tu"), 0), 1000)
+    linh_vuc = _linh_vuc_cua(token, claims) if vai == "can_bo" else []
+    try:
+        hits, tong = WIKI.tim(q, wiki.bo_loc(vai, linh_vuc, loai, tat_ca), so_luong, tu)
+        nguon = "meilisearch"
+        ket_qua = [wiki.ket_qua_meili(h) for h in hits]
+    except tri_thuc.LoiKhoTriThuc as e:
+        log.warning("tìm wiki bằng Meilisearch lỗi, tìm trong CSDL: %s", e)
+        rows = pgrst(token, "POST", "/rpc/tim_wiki", {"p_q": q, "p_tat_ca": tat_ca, "p_so_luong": 100})
+        rows = [r for r in rows if not loai or r["loai"] == loai]
+        tong, nguon = len(rows), "csdl"
+        ket_qua = [wiki.ket_qua_csdl(r, q) for r in rows[tu:tu + so_luong]]
+    if ket_qua and nguon == "meilisearch":
+        # Đối chiếu RLS: chỉ mục có thể chậm một nhịp sau khi đổi phạm vi hay phân công.
+        ids = ",".join(k["id"] for k in ket_qua)
+        thay = {r["id"] for r in pgrst(token, "GET", f"/wiki_van_ban?id=in.({ids})&select=id")}
+        bo = len(ket_qua) - len(thay)
+        if bo:
+            log.warning("tìm wiki: bỏ %d kết quả chỉ mục mà RLS không cho xem", bo)
+            ket_qua = [k for k in ket_qua if k["id"] in thay]
+            tong = max(tong - bo, len(ket_qua))
+    return 200, {"ket_qua": ket_qua, "tong": tong, "nguon": nguon, "q": q}
+
+
+def _cap_nhat_chi_muc(dong):
+    try:
+        WIKI.cap_nhat(dong)
+    except tri_thuc.LoiKhoTriThuc as e:  # chỉ mục sẽ được dựng lại ở vòng đồng bộ sau
+        log.warning("chưa cập nhật chỉ mục wiki cho %s: %s", dong["id"], e)
+
+
+def ghi_wiki(token, claims, body, van_ban_id=None):
+    if vai_tro(claims) not in wiki.VAI_GHI:
+        raise Loi(403, "Chỉ văn thư, lãnh đạo thêm hoặc sửa văn bản nội bộ")
+    try:
+        dong = wiki.kiem_du_lieu(body, moi=van_ban_id is None)
+    except wiki.LoiDuLieu as e:
+        raise Loi(400, str(e)) from None
+    try:
+        if van_ban_id is None:
+            rows = pgrst(token, "POST", f"/wiki_van_ban?select={wiki.COT}", dong, prefer="return=representation")
+        else:
+            rows = pgrst(token, "PATCH", f"/wiki_van_ban?id=eq.{van_ban_id}&select={wiki.COT}", dong,
+                         prefer="return=representation")
+    except Loi as e:
+        if e.status in (401, 403) or (e.chi_tiet or {}).get("code") == "42501":
+            raise Loi(403, "Không có quyền ghi văn bản ở phạm vi này") from None
+        if e.status == 400 and (e.chi_tiet or {}).get("code") in ("23503", "23514"):
+            raise Loi(400, "Dữ liệu văn bản không hợp lệ (lĩnh vực không tồn tại hoặc phạm vi không khớp)") from None
+        raise
+    if not rows:
+        raise Loi(404, "Không thấy văn bản hoặc không có quyền sửa")
+    _cap_nhat_chi_muc(rows[0])
+    return (201 if van_ban_id is None else 200), rows[0]
+
+
+def dong_bo_wiki():
+    """Dựng lại toàn bộ chỉ mục từ CSDL bằng tài khoản dịch vụ tệp (chỉ đọc wiki)."""
+    rows = pgrst(DICH_VU_TEP.lay(), "GET", f"/wiki_van_ban?select={wiki.COT}&order=id&limit=10000")
+    return WIKI.dong_bo(rows)
+
+
+def vong_dong_bo_wiki():
+    """Luồng nền: đồng bộ ngay khi khởi động (thử lại tới khi được), rồi định kỳ."""
+    cho = 5
+    while True:
+        try:
+            kq = dong_bo_wiki()
+            log.info("đồng bộ chỉ mục wiki: %d văn bản, xóa %d tài liệu thừa", kq["so_tai_lieu"], kq["da_xoa"])
+            cho = WIKI_DONG_BO_GIAY
+        except (Loi, tri_thuc.LoiKhoTriThuc) as e:
+            log.warning("chưa đồng bộ được chỉ mục wiki: %s", getattr(e, "thong_diep", e))
+            cho = min(cho * 2, 60) if cho < WIKI_DONG_BO_GIAY else 5
+        except Exception:  # noqa: BLE001 – luồng nền không được chết
+            log.exception("đồng bộ chỉ mục wiki lỗi")
+            cho = 60
+        time.sleep(cho)
+
+
 # --- HTTP --------------------------------------------------------------------------
 # (phương thức, đường dẫn, body JSON?, hàm(token, claims, body JSON hoặc request, match))
 ROUTES = [
@@ -1306,6 +1421,10 @@ ROUTES = [
     ("POST", re.compile(rf"/files/tep/({UUID})/khai"), True, lambda tk, c, b, m: khai_giay_to(tk, c, b, m[1])),
     ("POST", re.compile(rf"/files/tep/({UUID})/doc"), True, lambda tk, c, b, m: doc_lai(tk, c, m[1])),
     ("POST", re.compile(rf"/files/tep/({UUID})/xac-nhan"), True, lambda tk, c, b, m: xac_nhan_giay_to(tk, c, b, m[1])),
+    # Wiki văn bản nội bộ cho cán bộ (#95).
+    ("GET", re.compile(r"/files/wiki/tim"), False, lambda tk, c, r, m: tim_wiki(tk, c, r)),
+    ("POST", re.compile(r"/files/wiki"), True, lambda tk, c, b, m: ghi_wiki(tk, c, b)),
+    ("POST", re.compile(rf"/files/wiki/({UUID})"), True, lambda tk, c, b, m: ghi_wiki(tk, c, b, m[1])),
 ]
 
 
@@ -1401,4 +1520,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     log.info("API quy trình mot-cua nghe cổng %d, Flowable %s", PORT, FLOWABLE_URL)
+    threading.Thread(target=vong_dong_bo_wiki, name="dong-bo-wiki", daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

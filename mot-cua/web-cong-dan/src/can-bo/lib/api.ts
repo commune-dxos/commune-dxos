@@ -18,6 +18,10 @@
 //   POST /files/xac-minh                    xác minh chữ ký số một PDF
 //   GET  /api/thong_bao                     thông báo sắp trễ hạn của mình (#56, RLS); PATCH đánh dấu đã đọc
 //   GET  /workflow/thong-bao/luong          luồng SSE cho chuông (lib/luong-thong-bao.ts)
+//   GET  /files/wiki/tim?q=…                wiki văn bản nội bộ (#95): tìm theo quyền (Meilisearch + RLS)
+//   POST /files/wiki, /files/wiki/{id}      văn thư, lãnh đạo thêm / sửa văn bản wiki
+//   GET  /api/wiki_van_ban?id=eq.…          chi tiết văn bản; /api/wiki_van_ban_lich_su: phiên bản cũ (RLS)
+//   GET  /api/linh_vuc                      danh sách lĩnh vực (chọn phạm vi văn bản)
 //   GET  /workflow/ho-so/{id}/tien-do       bước đang mở và lịch sử các bước
 //   POST /workflow/tasks/{id}/complete      nhận + hoàn thành bước với biến khai báo cho bước đó
 // Không gọi thẳng PostgREST, Flowable hay Garage; không cầm mật khẩu hay khóa nào.
@@ -189,6 +193,74 @@ export interface ThongBao {
   thong_bao_kenh: { kenh: "email" | "sms"; trang_thai: "gia_lap" }[];
 }
 
+/** Wiki văn bản nội bộ (#95). */
+export type LoaiWiki = "quy_che" | "huong_dan" | "quy_trinh" | "bieu_mau" | "thong_bao_noi_bo" | "khac";
+export type PhamViWiki = "toan_xa" | "linh_vuc" | "lanh_dao";
+export type TrangThaiWiki = "hieu_luc" | "het_hieu_luc";
+
+export interface VanBanWikiTom {
+  id: string;
+  tieu_de: string;
+  loai: LoaiWiki;
+  so_ky_hieu: string | null;
+  ngay_ban_hanh: string | null;
+  tom_tat: string | null;
+  pham_vi: PhamViWiki;
+  linh_vuc_id: string | null;
+  trang_thai: TrangThaiWiki;
+  phien_ban: number;
+  sua_luc: string;
+}
+
+export interface KetQuaWiki extends VanBanWikiTom {
+  /** Tiêu đề và đoạn trích; đoạn khớp nằm giữa U+E000 và U+E001 (giao diện tự dựng <mark>). */
+  tieu_de_danh_dau: string;
+  trich_doan: string;
+}
+
+export interface TimWiki {
+  ket_qua: KetQuaWiki[];
+  tong: number;
+  /** meilisearch; csdl khi chỉ mục không chạy (tìm dự phòng trong CSDL). */
+  nguon: "meilisearch" | "csdl";
+  q: string;
+}
+
+export interface VanBanWiki extends VanBanWikiTom {
+  noi_dung: string;
+  nguoi_tao_sub: string;
+  nguoi_sua_sub: string;
+  tao_luc: string;
+  linh_vuc: { ma: string; ten: string } | null;
+}
+
+export interface PhienBanWiki {
+  phien_ban: number;
+  tieu_de: string;
+  noi_dung: string;
+  trang_thai: TrangThaiWiki;
+  nguoi_sua_sub: string;
+  sua_luc: string;
+}
+
+export interface LinhVuc {
+  id: string;
+  ma: string;
+  ten: string;
+}
+
+export interface GhiWiki {
+  tieu_de?: string;
+  loai?: LoaiWiki;
+  so_ky_hieu?: string | null;
+  ngay_ban_hanh?: string | null;
+  tom_tat?: string | null;
+  noi_dung?: string;
+  pham_vi?: PhamViWiki;
+  linh_vuc_id?: string | null;
+  trang_thai?: TrangThaiWiki;
+}
+
 export class ApiCanBo {
   constructor(
     readonly token: string,
@@ -304,6 +376,39 @@ export class ApiCanBo {
       token: this.token,
       headers: { "Content-Type": "application/pdf" },
       body: tep,
+    });
+  }
+
+  timWiki(tham: { q?: string; loai?: LoaiWiki | ""; tatCa?: boolean }) {
+    const q = new URLSearchParams({ q: tham.q ?? "" });
+    if (tham.loai) q.set("loai", tham.loai);
+    if (tham.tatCa) q.set("tat_ca", "1");
+    return this.lay<TimWiki>(`/files/wiki/tim?${q.toString()}`);
+  }
+
+  async layVanBanWiki(id: string): Promise<VanBanWiki | null> {
+    if (!UUID.test(id)) return null;
+    const rows = await this.lay<VanBanWiki[]>(`/api/wiki_van_ban?id=eq.${id}&select=*,linh_vuc(ma,ten)`);
+    return rows[0] ?? null;
+  }
+
+  layLichSuWiki(id: string) {
+    return this.lay<PhienBanWiki[]>(
+      `/api/wiki_van_ban_lich_su?van_ban_id=eq.${encodeURIComponent(id)}` +
+        "&select=phien_ban,tieu_de,noi_dung,trang_thai,nguoi_sua_sub,sua_luc&order=phien_ban.desc",
+    );
+  }
+
+  layLinhVuc() {
+    return this.lay<LinhVuc[]>("/api/linh_vuc?select=id,ma,ten&order=ten");
+  }
+
+  ghiWiki(duLieu: GhiWiki, id?: string) {
+    return goiGateway<VanBanWiki>(this.cauHinh, this.goi, id ? `/files/wiki/${encodeURIComponent(id)}` : "/files/wiki", {
+      method: "POST",
+      token: this.token,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(duLieu),
     });
   }
 
