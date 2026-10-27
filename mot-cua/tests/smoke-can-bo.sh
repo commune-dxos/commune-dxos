@@ -10,7 +10,8 @@
 #   Keycloak: client mot_cua_can_bo chỉ nhận redirect_uri /can-bo/*, bắt PKCE; cán bộ nhập mật khẩu
 #   xong vẫn bị đòi OTP, có OTP mới có code (Authorization Code + PKCE, đúng các bước trình duyệt làm);
 #   E2E: cán bộ hộ tịch thấy hồ sơ $WEB_HS trong hộp việc → xem hồ sơ, tệp (link ký sẵn), tiến độ →
-#   tiếp nhận thiếu thành phần → công dân bổ sung (sửa hồ sơ, tải thêm tệp) và nộp lại (#73) →
+#   tiếp nhận thiếu thành phần → tra cứu công khai thấy chờ bổ sung (#54) → công dân bổ sung (sửa hồ
+#   sơ, tải thêm tệp) và nộp lại (#73) →
 #   tiếp nhận → thẩm định đạt (chuyển lãnh đạo) → không tự phê duyệt được → lãnh đạo phê duyệt →
 #   kết thúc Hoàn tất – trả kết quả; sau mỗi bước ho_so.trang_thai trong CSDL khớp bước của quy
 #   trình, cán bộ và công dân đọc cùng trạng thái qua /api và /workflow, lịch sử chuyển trạng thái
@@ -178,6 +179,10 @@ if [ -n "$TK_CB_WEB" ] && [ -n "${WEB_HS:-}" ]; then
   kiem "chờ bổ sung: công dân sửa số điện thoại qua /api → 200, 1 dòng (RLS chỉ cho khi cho_bo_sung)" "200 1" \
     "$(cb_api "$TK_CD73" PATCH "/api/ho_so?id=eq.$WEB_HS" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
        -d '{"so_dien_thoai":"0900000073"}') $(jq length "$CB_TD/b" 2>/dev/null)"
+  # Tra cứu không đăng nhập (#54): mã + 4 số cuối số điện thoại (số mới vừa sửa), không lộ lý do.
+  CB_MA="$(sql "SELECT ma_ho_so FROM mot_cua.ho_so WHERE id = '$WEB_HS'")"
+  kiem "chờ bổ sung: tra cứu công khai mã + 0073 → cho_bo_sung, không có lý do; số cũ 0057 → null" "200 cho_bo_sung không null" \
+    "$(cb_tai "/public/rpc/tra_cuu_ho_so?p_ma=$CB_MA&p_so_cuoi=0073" | cut -d'|' -f1) $(jq -r '.trang_thai' "$CB_TD/b" 2>/dev/null) $(grep -q 'giấy chứng sinh' "$CB_TD/b" && echo có || echo không) $(cb_tai "/public/rpc/tra_cuu_ho_so?p_ma=$CB_MA&p_so_cuoi=0057" > /dev/null; cat "$CB_TD/b")"
   printf '%%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%%%EOF\n' > "$CB_TD/bo-sung.pdf"
   kiem "chờ bổ sung: công dân tải thêm giấy tờ qua /files → 201" "201" \
     "$(cb_api "$TK_CD73" POST "/files/ho-so/$WEB_HS/tep?ten=bo-sung.pdf&thanh_phan_yeu_cau_id=$(sql "SELECT y.id FROM mot_cua.thanh_phan_yeu_cau y JOIN mot_cua.ho_so h ON h.thu_tuc_id = y.thu_tuc_id WHERE h.id = '$WEB_HS' AND y.bat_buoc ORDER BY y.thu_tu LIMIT 1")" \

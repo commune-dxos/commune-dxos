@@ -55,6 +55,8 @@ DANH_TINH = {
     "step-ca": 1000,    # smallstep/step-ca chạy user step (#77)
     "ca-init": 1000,    # dịch vụ một lần ca-init, cùng image step-ca
     "superset": 1000,   # apache/superset chạy user superset; superset, superset-init (#82)
+    "meilisearch": 0,   # getmeili/meilisearch chạy root (#91)
+    "meili-init": 0,
 }
 # Thời hạn token theo danh tính: agent một lần chỉ cần vài giây; backend chạy lâu thì
 # đăng nhập lại khi token hết hạn.
@@ -89,6 +91,8 @@ BI_MAT_LOI = {
     "core/db/superset": {"password": (None, _mat_khau)},
     "core/db/bao_cao_doc": {"password": (None, _mat_khau)},
     "core/superset": {"secret_key": (None, lambda: secrets.token_urlsafe(48))},
+    # Meilisearch (#91): khóa chủ (≥ 16 byte); chỉ meili-init dùng để cấp khóa API riêng cho Tầng 2.
+    "core/meilisearch": {"master_key": (None, _hex32)},
 }
 
 
@@ -206,8 +210,15 @@ def cau_hinh(tk):
         goi("POST", f"sys/mounts/{MOUNT}", {"type": "kv", "options": {"version": "2"},
                                              "description": "Bí mật Commune DX-OS"}, tk)
         log(f"đã bật KV v2 ở {MOUNT}/")
-    # Giữ 5 phiên bản gần nhất của mỗi bí mật (khôi phục khi đổi nhầm).
-    goi("POST", f"{MOUNT}/config", {"max_versions": 5}, tk)
+    # Giữ 5 phiên bản gần nhất của mỗi bí mật (khôi phục khi đổi nhầm). Mount KV v2 vừa bật còn đang
+    # nâng cấp nội bộ vài giây, trong lúc đó OpenBao trả 400: thử lại tối đa 30 giây.
+    for _ in range(30):
+        status, _ = goi("POST", f"{MOUNT}/config", {"max_versions": 5}, tk, cho_phep=(400,))
+        if status < 400:
+            break
+        time.sleep(1)
+    else:
+        dung(f"POST {MOUNT}/config → HTTP 400 sau 30 giây")
     _, auths = goi("GET", "sys/auth", token=tk)
     if "approle/" not in auths["data"]:
         goi("POST", "sys/auth/approle", {"type": "approle"}, tk)

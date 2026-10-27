@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Hạn xử lý hồ sơ cho cổng cán bộ. Nguồn: biến hanXuLyLuc của quy trình (mot-cua-api đặt khi khởi
-// tạo = ho_so.han_xu_ly + 17:00 giờ Việt Nam) và biến quaHan (hẹn giờ trong BPMN đặt true khi tới hạn).
+// Hạn xử lý hồ sơ, dùng chung cho cổng cán bộ và trang hồ sơ của cổng công dân (#54). Nguồn: biến
+// hanXuLyLuc của quy trình (mot-cua-api đặt khi khởi tạo = ho_so.han_xu_ly + 17:00 giờ Việt Nam) và
+// biến quaHan (hẹn giờ trong BPMN đặt true khi tới hạn).
 // Thiếu hanXuLyLuc thì dựng lại từ cột han_xu_ly theo cùng quy ước (main.py GIO_HET_HAN).
 // "Sắp trễ" = còn ≤ 1 ngày (24 giờ). Cảnh báo đẩy realtime qua RabbitMQ là #56, ở đây chỉ tính từ
 // dữ liệu đã có.

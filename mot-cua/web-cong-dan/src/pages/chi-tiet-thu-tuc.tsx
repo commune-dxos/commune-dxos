@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Chi tiết một thủ tục: các bước, thành phần hồ sơ (từ JSON Schema của gói), thời hạn, lệ phí,
 // nút "Bắt đầu nộp". Bố cục 2 cột trên máy tính, tóm tắt + nút lên đầu trên điện thoại.
-import { ArrowRight, Banknote, Building2, CircleCheck, Clock, FileText } from "lucide-react";
+import { ArrowRight, Banknote, Building2, CircleCheck, Clock, FileText, MessageCircleQuestionMark } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { Khung } from "@/components/khung";
@@ -105,6 +105,13 @@ function TomTat({ thuTuc }: { thuTuc: ThuTuc }) {
             Thủ tục này chưa nhận hồ sơ trực tuyến, vui lòng nộp tại bộ phận một cửa.
           </p>
         )}
+        <Link
+          to={`/hoi-dap?ma=${encodeURIComponent(thuTuc.ma)}`}
+          className={buttonVariants({ variant: "outline", className: "w-full" })}
+        >
+          <MessageCircleQuestionMark aria-hidden="true" />
+          Hỏi trợ lý về thủ tục này
+        </Link>
       </CardContent>
     </Card>
   );

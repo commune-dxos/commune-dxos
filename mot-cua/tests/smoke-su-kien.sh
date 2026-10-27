@@ -26,9 +26,16 @@ kiem "lấy lại token cán bộ tạm (mật khẩu + TOTP)" "có" "$(jq -r 'i
 TK_CB="$(jq -r '.access_token // empty' <<<"$r")"
 sql "INSERT INTO mot_cua.can_bo_linh_vuc (can_bo_id, linh_vuc_id) VALUES ('$CB_ID', '$LV_HT') ON CONFLICT DO NOTHING" > /dev/null
 VH="$DXOS_TANG2"
-rmq() { docker compose exec -T rabbitmq rabbitmqctl -q "$@"; }
-# so_tin <queue> → số tin đang nằm trong queue (sẵn sàng + chưa ACK)
-so_tin() { rmq list_queues -p "$VH" name messages --formatter json | jq -r --arg q "$1" '.[] | select(.name == $q) | .messages'; }
+# so_tin <queue> → số tin đang nằm trong queue (sẵn sàng + chưa ACK); rabbitmqctl hết giờ thì thử lại (3 lần)
+so_tin() {
+  local kq=""
+  for _ in 1 2 3; do
+    kq="$(rmq list_queues -p "$VH" name messages --formatter json | jq -r --arg q "$1" '.[] | select(.name == $q) | .messages')" &&
+      [ -n "$kq" ] && break
+    sleep 2
+  done
+  printf '%s' "$kq"
+}
 # cho_sql <mong đợi> <câu SQL> → kết quả SQL, chờ tối đa 30 giây cho tới khi bằng mong đợi
 cho_sql() {
   local kq=""
@@ -40,9 +47,9 @@ dem_loai() { printf "SELECT string_agg(loai || ':' || n, ' ' ORDER BY loai) FROM
 
 # --- 1. Topology --------------------------------------------------------------------------
 kiem "vhost $VH có queue mot_cua.nhat_ky (quorum) và mot_cua.nhat_ky.loi" "mot_cua.nhat_ky:quorum mot_cua.nhat_ky.loi:classic" \
-  "$(rmq list_queues -p "$VH" name type --formatter json | jq -r 'sort_by(.name) | map("\(.name):\(.type)") | join(" ")')"
+  "$(rmq_lai list_queues -p "$VH" name type --formatter json | jq -r 'map(select(.name | startswith("mot_cua.nhat_ky"))) | sort_by(.name) | map("\(.name):\(.type)") | join(" ")')"
 kiem "exchange mot_cua.su_kien kiểu topic, bền vững" "topic true" \
-  "$(rmq list_exchanges -p "$VH" name type durable --formatter json | jq -r '.[] | select(.name == "mot_cua.su_kien") | "\(.type) \(.durable)"')"
+  "$(rmq_lai list_exchanges -p "$VH" name type durable --formatter json | jq -r '.[] | select(.name == "mot_cua.su_kien") | "\(.type) \(.durable)"')"
 LOI_TRUOC="$(so_tin mot_cua.nhat_ky.loi)"
 
 # --- 2. Hồ sơ WH (mục 4d): mới → chuyển bước → hoàn tất ------------------------------------
@@ -87,7 +94,7 @@ HST="$(jq -r '.hoSo.id // empty' <<<"$r")"; HST="${HST:-00000000-0000-0000-0000-
 # Hạn = ngày làm việc kế tiếp (giờ Việt Nam): còn đúng 1 ngày làm việc.
 HAN_MOI="$(sql "UPDATE mot_cua.ho_so SET han_xu_ly = mot_cua_noi_bo.cong_ngay_lam_viec((now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date + 1, 0)
                 WHERE id = '$HST' RETURNING han_xu_ly" | head -1)"
-quet() { docker compose exec -T mot-cua-worker python /mot-cua/backend/worker.py quet-mot-lan 2>/dev/null | tail -1; }
+quet() { gioi_han 120 docker compose exec -T mot-cua-worker python /mot-cua/backend/worker.py quet-mot-lan 2>/dev/null | tail -1; }
 q1="$(quet)" || q1=lỗi; q2="$(quet)" || q2=lỗi; q3="$(quet)" || q3=lỗi
 kiem "quét lần 1 tạo cảnh báo; lần 2, 3 không tạo thêm" "có 0 0" "$([ "${q1:-0}" -ge 1 ] 2>/dev/null && echo có || echo "không($q1)") $q2 $q3"
 kiem "hồ sơ hạn $HAN_MOI: đúng 1 ho_so.sap_tre_han trong hộp thư đi" "1" \
@@ -108,12 +115,12 @@ fi
 
 # --- 5. Tin sai định dạng → queue lỗi -----------------------------------------------------------
 # Phát bằng chính user ứng dụng (thông tin kết nối đọc từ OpenBao trong container mot-cua-worker).
-docker compose exec -T mot-cua-worker python -c 'import sys; sys.path.insert(0, "/mot-cua/backend")
+gioi_han 60 docker compose exec -T mot-cua-worker python -c 'import sys; sys.path.insert(0, "/mot-cua/backend")
 import worker
 k = worker.rabbitmq(); k.phat("/exchange/mot_cua.su_kien/ho_so.moi", "{\"loai\": \"ho_so.moi\"}"); k.dong()'
 kiem "tin sai định dạng → consumer NACK → queue lỗi mot_cua.nhat_ky.loi (+1)" "$((LOI_TRUOC + 1))" \
   "$(for _ in $(seq 1 20); do n="$(so_tin mot_cua.nhat_ky.loi)"; [ "$n" = "$((LOI_TRUOC + 1))" ] && break; sleep 1; done; echo "$n")"
-rmq purge_queue -p "$VH" mot_cua.nhat_ky.loi > /dev/null
+rmq purge_queue -p "$VH" mot_cua.nhat_ky.loi > /dev/null || true
 
 # --- 6. RabbitMQ dừng: sự kiện chờ trong hộp thư, phát khi broker lên lại ------------------------
 # Mọi lệnh ở đây không được làm smoke dừng giữa chừng (set -e) khi broker đang tắt.
@@ -125,6 +132,8 @@ sleep 3
 kiem "RabbitMQ dừng: ho_so.chuyen_buoc chờ trong hộp thư, chưa phát" "1 0" \
   "$(sql "SELECT count(*) || ' ' || count(da_phat_luc) FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HST' AND loai = 'ho_so.chuyen_buoc'")"
 docker compose start rabbitmq > /dev/null 2>&1 || true
+# Chờ broker khởi động xong (tối đa 90 giây) trước khi mục sau gọi rabbitmqctl.
+gioi_han 100 docker compose exec -T rabbitmq rabbitmq-diagnostics -q await_startup --timeout 90 < /dev/null > /dev/null 2>&1 || true
 kiem "RabbitMQ lên lại: sự kiện được phát và consumer nhận đúng 1 lần" "1 1" \
   "$(for _ in $(seq 1 60); do kq="$(sql "SELECT (SELECT count(da_phat_luc) FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HST' AND loai = 'ho_so.chuyen_buoc') || ' ' ||
                                          (SELECT count(*) FROM mot_cua.nhat_ky_su_kien WHERE ho_so_id = '$HST' AND loai = 'ho_so.chuyen_buoc')")"

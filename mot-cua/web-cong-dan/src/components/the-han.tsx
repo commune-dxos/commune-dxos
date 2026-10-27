@@ -4,7 +4,7 @@
 // chữ, không chỉ bằng màu; đỏ son chỉ dùng cho quá hạn và sắp trễ (nhận diện Team 2).
 import { AlarmClockOff, CalendarClock, Clock3, Hourglass } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ngayGio, TEN_MUC_HAN, type DanhGiaHan, type MucHan } from "../lib/han";
+import { ngayGio, TEN_MUC_HAN, type DanhGiaHan, type MucHan } from "@/lib/han";
 
 const KIEU: Record<MucHan, { bieuTuong: typeof Clock3; lop: string }> = {
   qua_han: { bieuTuong: AlarmClockOff, lop: "border-destructive bg-destructive text-destructive-foreground" },

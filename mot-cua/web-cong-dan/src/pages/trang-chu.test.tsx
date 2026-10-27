@@ -34,7 +34,7 @@ describe("trang chủ – danh mục thủ tục", () => {
     const ct = screen.getByRole("article", { name: "Chứng thực bản sao từ bản chính" });
     expect(within(ct).getByText("Trong ngày")).toBeInTheDocument();
     expect(within(ct).getByText("2.000 đồng")).toBeInTheDocument();
-    expect(screen.getByText("2 thủ tục nhận hồ sơ")).toBeInTheDocument();
+    expect(screen.getByText(`${DS.length} thủ tục nhận hồ sơ`)).toBeInTheDocument();
   });
 
   it("thủ tục chưa có quy trình thì không có nút nộp", async () => {
@@ -50,7 +50,7 @@ describe("trang chủ – danh mục thủ tục", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: "Tìm thủ tục" }), "chung thuc");
     expect(screen.queryByRole("article", { name: "Đăng ký khai sinh" })).not.toBeInTheDocument();
     expect(screen.getByRole("article", { name: "Chứng thực bản sao từ bản chính" })).toBeInTheDocument();
-    expect(screen.getByText("Tìm thấy 1 / 2 thủ tục")).toBeInTheDocument();
+    expect(screen.getByText(`Tìm thấy 1 / ${DS.length} thủ tục`)).toBeInTheDocument();
   });
 
   it("lỗi tải thì báo rõ và thử lại được", async () => {
@@ -72,7 +72,7 @@ describe("trang chủ – danh mục thủ tục", () => {
     await userEvent.type(o, "ho khau");
     await userEvent.click(screen.getByRole("button", { name: "Xóa từ khóa, xem tất cả" }));
     expect(o).toHaveValue("");
-    expect(screen.getByText("2 thủ tục nhận hồ sơ")).toBeInTheDocument();
+    expect(screen.getByText(`${DS.length} thủ tục nhận hồ sơ`)).toBeInTheDocument();
   });
 
   it("thẻ thủ tục hiện giấy tờ bắt buộc lấy từ JSON Schema", async () => {

@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.5.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.6.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -156,6 +156,8 @@ thu-tuc/<ma>/                   mỗi thủ tục hành chính một gói (docs/
   README.md                     mô tả, sơ đồ quy trình
 thu-tuc/khai-sinh/              KS01 – Đăng ký khai sinh (1 ngày làm việc)
 thu-tuc/chung-thuc-ban-sao/     CT01 – Chứng thực bản sao từ bản chính (trong ngày)
+thu-tuc/ket-hon/                KH01 – Đăng ký kết hôn (5 ngày làm việc, #97)
+thu-tuc/hoa-giai-dat-dai/       DD01 – Hòa giải tranh chấp đất đai tại xã (20 ngày làm việc, #97)
 ```
 
 | Thứ | Nền tảng `nen-tang/` | Bộ máy `mot-cua/` | Gói `thu-tuc/<ma>/` |
@@ -267,7 +269,7 @@ Sơ đồ ER, bảng quyền đầy đủ và quy tắc trạng thái: [`mot-cua
 | Identity / SSO | Keycloak 26, realm lõi `dxos`; vai trò và người dùng do bộ máy một cửa nạp; cán bộ và lãnh đạo của `mot-cua` bắt buộc cấu hình OTP | `nen-tang/keycloak/realm-dxos.json`, `mot-cua/keycloak/realm.json` |
 | API Gateway | Apache APISIX 3.13 chế độ standalone (không cần etcd); route `/public`, `/api`, `/workflow`, `/files`; kiểm JWT, giới hạn tần suất, CORS, chặn API quản trị Flowable | `nen-tang/apisix/config.yaml`, `nen-tang/apisix/apisix.yaml`, §4.1, §8.5 |
 | Quản trị dữ liệu có cấu trúc | PostgreSQL 17 + Row-Level Security, PostgREST sinh REST API cho schema của bộ máy; migration theo dịch vụ Tầng 2; pgAudit 17.1 (log DDL, quyền, truy cập bảng dữ liệu cá nhân) và nhật ký kiểm toán chuỗi băm SHA-256 của bộ máy (§4.6) | `nen-tang/postgres/`, `nen-tang/scripts/tang2-migrate.sh`, `mot-cua/db/` |
-| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE để tìm toàn văn (tuần 5) | `nen-tang/garage/`, `nen-tang/scripts/garage-init.py`, `mot-cua/backend/`, §4.3, §8.6 |
+| Quản trị dữ liệu phi cấu trúc | Garage v2.4.1 (S3, một nút), ClamAV 1.5.4 quét **trước khi lưu**, kiểm loại tệp bằng magic bytes, link GET ký ngắn hạn; Meilisearch CE v1.54.3 tìm toàn văn (khóa API riêng mỗi dịch vụ Tầng 2, chỉ index có tiền tố của nó) và pgvector 0.8.7 tìm ngữ nghĩa (#91) | `nen-tang/garage/`, `nen-tang/scripts/garage-init.py`, `nen-tang/scripts/meili-init.py`, `nen-tang/postgres/Dockerfile`, `mot-cua/backend/`, §4.3, §4.14, §8.6 |
 | Workflow engine | Flowable REST 8.0.0 (CSDL riêng `flowable` trong PostgreSQL), BPMN 2.0 viết tay trong gói `thu-tuc/<ma>/quy-trinh.bpmn20.xml`, bộ nạp `nap-thu-tuc` kiểm và deploy qua REST; Tầng 2 dùng qua `/workflow` (API một cửa) | `docker-compose.yml` (`flowable`, `db-init`, `nap-thu-tuc`, `mot-cua-api`), `thu-tuc/`, `mot-cua/backend/`, §4.2, §7, §8.4, §8.5 |
 
 ## 4. Luồng xác thực: JWT Keycloak → APISIX → PostgREST → RLS
@@ -322,18 +324,20 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 
 | Route | Phương thức | Xác thực | Đích | Giới hạn / ghi chú |
 |---|---|---|---|---|
-| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì bộ máy `GRANT … TO anon` (gồm danh mục thủ tục nạp từ gói) |
+| `/public/*` | GET, HEAD, OPTIONS | không; header `Authorization` bị bỏ → role `anon` | PostgREST | 60 req/phút/IP, vượt → 429 (JSON); chỉ đọc những gì bộ máy `GRANT … TO anon` (gồm danh mục thủ tục nạp từ gói, RPC tra cứu hồ sơ theo mã + 4 số cuối số điện thoại §4.12) |
 | `/api/*` | mọi | JWT Keycloak (APISIX + PostgREST kiểm) | PostgREST, `SET ROLE` theo `resource_access.dxos_api.roles[0]` → RLS | 600 req/phút/IP |
 | `/workflow/*` | mọi (backend chỉ nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000` (API một cửa), bỏ tiền tố `/workflow` | 300 req/phút/IP; endpoint: `mot-cua/README.md` |
 | `/workflow/{repository,management,identity,runtime,history,query,form,flowable-rest}/*`, `/flowable-rest/*` | mọi | – | không chuyển tiếp | luôn 403: API quản trị/REST thô của Flowable không mở qua gateway |
 | `/files/*` | mọi (backend nhận GET/POST) | JWT Keycloak (APISIX + backend kiểm) | `mot-cua-api:8000`, giữ nguyên đường dẫn | 120 req/phút/IP; body ≤ 10 MiB (`client-control`, vượt → 413); endpoint: `mot-cua/README.md` |
 | `/files/s3/*` | GET, HEAD | chữ ký SigV4 trong URL (Garage kiểm chữ ký và hạn) | Garage S3 `garage:3900`, bỏ tiền tố, Host viết lại `garage:3900` | 120 req/phút/IP; bỏ header `Authorization`, `Cookie`; thêm `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store` |
+| `/tro-ly/hoi` | POST, OPTIONS | không (người dân hỏi không cần đăng nhập) | `tro-ly:8000` (trợ lý thủ tục, §4.14), giữ nguyên đường dẫn, chờ tối đa 180 giây | 10 req/phút/IP (mô hình tốn tài nguyên); body ≤ 4 KiB (`client-control`, vượt → 413); bỏ `Authorization`, `Cookie` |
+| `/tro-ly/*` | GET, HEAD, OPTIONS | không | `tro-ly:8000`: chế độ đang chạy, chỉ tìm từ khóa | 60 req/phút/IP; bỏ `Authorization`, `Cookie` |
 | `/can-bo`, `/can-bo/*` (ưu tiên -5) | GET, HEAD | không (trang tĩnh) | `mot-cua-web:8080`: cổng cán bộ, cùng bản build với cổng công dân (#55) | 300 req/phút/IP; bỏ `Authorization`, `Cookie`; `X-Robots-Tag: noindex, nofollow`. Dữ liệu đi qua `/api`, `/workflow`, `/files` bằng token client `mot_cua_can_bo` (mật khẩu + OTP); luồng: [`cong-can-bo.md`](cong-can-bo.md) |
 | `/*` (còn lại, ưu tiên thấp nhất) | GET, HEAD | không (trang tĩnh) | `mot-cua-web:8080`: cổng công dân, nginx không đặc quyền phục vụ bản build React (#57) | 600 req/phút/IP; bỏ `Authorization`, `Cookie`. nginx trả `index.html` cho route SPA (`/thu-tuc/…`, `/nop-ho-so/…`, `/dang-nhap/…`, 200) và đường dẫn lạ (404); CSP không `unsafe-inline`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: same-origin`; `/cau-hinh.js` (Keycloak, realm, client) sinh từ biến môi trường lúc chạy |
 
 - Toàn cục: plugin `cors` với `allow_origins` = origin của gateway (`DXOS_GATEWAY_URL`, nơi cổng công dân được phục vụ) + biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
 - Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
-- Không mở cổng ra host: PostgREST, `mot-cua-api`, `mot-cua-web`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+- Không mở cổng ra host: PostgREST, `mot-cua-api`, `mot-cua-web`, `tro-ly`, Meilisearch, Ollama, `ocr`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
 ### 4.2 Luồng `/workflow`: API quy trình mỏng của bộ máy một cửa
 
@@ -608,7 +612,7 @@ flowchart LR
   DLX --> QL[["mot_cua.nhat_ky.loi"]]
 ```
 
-Thêm consumer mới (thông báo, tuần 3): thêm queue + binding (ví dụ `ho_so.sap_tre_han`, `ho_so.chuyen_buoc`) vào `definitions.json`, `make up` (rabbitmq-init nạp), viết vòng nhận theo mẫu `worker.vong_nhan`. Mỗi consumer một queue riêng nên không lấy tin của nhau.
+Consumer thông báo sắp trễ hạn tới cán bộ (#56) có queue riêng `mot_cua.thong_bao` (§4.13). Thêm consumer mới: thêm queue + binding (ví dụ `ho_so.sap_tre_han`, `ho_so.chuyen_buoc`) vào `definitions.json`, `make up` (rabbitmq-init nạp), viết vòng nhận theo mẫu `worker.vong_nhan`. Mỗi consumer một queue riêng nên không lấy tin của nhau.
 
 #### 4.5.3 Bí mật và quản trị
 
@@ -869,6 +873,195 @@ API (qua APISIX `/files`, token Keycloak):
 
 Loại văn bản đi và chữ viết tắt trong ký hiệu: Thông báo TB, Quyết định QĐ, Kế hoạch KH, Báo cáo BC, Tờ trình TTr, Giấy mời GM, Công văn CV, Biên bản BB (ví dụ `12/TB-UBND`). Kiểm bằng `mot-cua/db/tests/van_ban.sql`, `mot-cua/backend/tests/test_van_ban.py`, `so-van-ban.test.tsx` và smoke 4n (`mot-cua/tests/smoke-van-ban.sh`).
 
+### 4.12 Tra cứu tiến độ hồ sơ (#54)
+
+Người dân hỏi "xong chưa" theo hai cách, đều qua APISIX:
+
+| Cách | Đường gọi | Thấy gì |
+|---|---|---|
+| **Không đăng nhập** (trang `/tra-cuu`): mã hồ sơ trên biên nhận + 4 số cuối số điện thoại đã khai khi nộp | `GET /public/rpc/tra_cuu_ho_so?p_ma=&p_so_cuoi=` (role `anon`, 60 request/phút/IP), RPC `SECURITY DEFINER` của migration 012 | thủ tục, trạng thái, ngày nộp, hạn, ngày có kết quả, các mốc chuyển trạng thái. Không họ tên, số điện thoại, lý do, tệp hay giấy tờ |
+| **Đăng nhập** (trang `/ho-so`, `/ho-so/{id}`) | `GET /api/ho_so`, `GET /api/lich_su_trang_thai` (RLS: chỉ hồ sơ của mình), `GET /workflow/ho-so/{id}/tien-do`, `GET /files/ho-so/{id}/tep`, `POST /files/ho-so/{id}/giay-to/{loai}` | như trên, thêm lý do bổ sung/từ chối, bước Flowable đang mở và đã xong, giấy tờ đã nộp, biên nhận và thông báo kết quả có ký số (§4.7) |
+| **Nộp bổ sung** (hồ sơ `cho_bo_sung`, ví dụ KS01) | `POST /files/ho-so/{id}/tep` (ClamAV) → `GET /workflow/tasks` (bước `bo_sung` giao cho người nộp) → `POST /workflow/tasks/{id}/complete` | `mot-cua-api` kiểm lại đủ thành phần (Poka-yoke, #59) rồi trả hồ sơ về bước tiếp nhận, trạng thái `dang_xu_ly` (§4.9 bước 4b) |
+
+| Quyết định | Lý do |
+|---|---|
+| Xác thực nhẹ bằng **4 số cuối số điện thoại**, không bằng CCCD | CSDL không lưu số CCCD (mục Dữ liệu cá nhân của `mot-cua/README.md`); số điện thoại là thông tin người nộp đã khai. Mã hồ sơ đánh số tăng dần nên đoán được: cần thêm một yếu tố chỉ người nộp biết |
+| Sai mã hay sai số đều trả `null` | Không dò được mã nào tồn tại. Kết hợp giới hạn 60 request/phút/IP của `/public`, dò 4 số của một mã mất cỡ 3 giờ cho một IP |
+| Kết quả công khai **không có dữ liệu cá nhân** | Ai cầm biên nhận (người thân, người được nhờ đi nộp) xem được tiến độ; lý do bổ sung/từ chối có thể nhắc tới người hay giấy tờ nên chỉ hiện khi đăng nhập |
+| Hồ sơ không khai số điện thoại thì không tra cứu công khai được | Không có yếu tố thứ hai; người nộp đăng nhập để xem |
+| Các bước người dân thấy (Nộp → Tiếp nhận → Thẩm định → Phê duyệt → Trả kết quả) dựng từ `ho_so.trang_thai` và `lich_su_trang_thai`, không từ BPMN | Trạng thái đã đi theo bước Flowable qua ánh xạ của gói (#73), nên một bảng bước dùng cho mọi thủ tục; tên bước Flowable thật vẫn hiện ở trang chi tiết khi đăng nhập. RPC chỉ đọc (`STABLE`), chạy được qua GET của `/public` mà không sửa route của nền tảng |
+| Truy vấn mang mã và 4 số cuối trên URL (GET) | `/public` của nền tảng chỉ nhận GET; nhật ký truy cập của APISIX chỉ thấy 4 chữ số, không thấy số điện thoại đầy đủ |
+
+Kiểm bằng `mot-cua/db/tests/tra_cuu.sql`, Vitest (`src/lib/tien-do.test.ts`, `src/lib/tra-cuu.test.ts`, `src/pages/ho-so-cua-toi.test.tsx`) và smoke 4o (`mot-cua/tests/smoke-tra-cuu.sh`), thêm một kiểm tra lúc hồ sơ đang chờ bổ sung trong `smoke-can-bo.sh`.
+
+### 4.13 Thông báo sắp trễ hạn tới cán bộ (#56)
+
+```mermaid
+sequenceDiagram
+  participant WK as mot-cua-worker (quét)
+  participant MQ as RabbitMQ
+  participant TB as mot-cua-worker (consumer thông báo)
+  participant PG as PostgreSQL
+  participant API as mot-cua-api
+  participant W as Cổng cán bộ
+  WK->>MQ: ho_so.sap_tre_han (§4.5)
+  MQ->>TB: queue mot_cua.thong_bao
+  TB->>PG: RPC ghi_thong_bao_sap_tre (token dịch vụ sự kiện)
+  PG-->>TB: mỗi cán bộ phụ trách lĩnh vực 1 dòng thong_bao (+ kênh giả lập)
+  TB->>MQ: ACK
+  W->>API: GET /workflow/thong-bao/luong (SSE, qua APISIX)
+  loop mỗi 3 giây
+    API->>PG: GET /thong_bao?da_doc_luc=is.null (PostgREST, token cán bộ, RLS)
+  end
+  API-->>W: event: thong-bao {chuaDoc, moiNhat}
+  W->>PG: GET /api/thong_bao, PATCH đã đọc (qua APISIX)
+```
+
+| Quyết định | Lý do |
+|---|---|
+| Queue riêng `mot_cua.thong_bao`, binding chỉ `ho_so.sap_tre_han` | Không lấy tin của consumer nhật ký; tin hỏng hay CSDL từ chối (400) → NACK sang `mot_cua.thong_bao.loi`, lỗi tạm thời thì không ACK để RabbitMQ giao lại |
+| Người nhận do **CSDL** chọn (RPC `SECURITY DEFINER`): cán bộ đang làm việc phụ trách lĩnh vực của thủ tục | Cùng quy tắc với RLS của hộp việc (#5, #55): ai xử lý được hồ sơ thì được báo. Worker không cần quyền đọc danh sách cán bộ |
+| Chống trùng bằng `UNIQUE (cán bộ, hồ sơ, loại, mốc hạn)` | RabbitMQ giao ít nhất một lần; nhận lại tin, chạy lại worker hay quét lại đều không thêm dòng. Hạn đổi (gia hạn) là mốc mới nên được báo lại |
+| Trình duyệt nhận qua **SSE của `mot-cua-api`**, không nối thẳng RabbitMQ | Không mở cổng STOMP/WebSocket của broker ra ngoài; vẫn đi qua APISIX và JWT như mọi API. Luồng đọc CSDL bằng **token của chính cán bộ** qua PostgREST nên RLS quyết định thấy gì. Token hết hạn → `het-han`, trình duyệt mở lại bằng token mới |
+| Trình duyệt đọc SSE bằng `fetch` (không dùng `EventSource`) | `EventSource` không gửi được header `Authorization`; token không được nằm trên URL (lọt vào log truy cập) |
+| Email/SMS ở **chế độ giả lập** | Chưa có máy chủ thư và nhà mạng SMS; ghi `thong_bao_kenh` trạng thái `gia_lap` để thấy được kênh nào sẽ gửi. Thêm kênh thật: một consumer khác đọc các dòng này |
+| Nội dung chỉ có mã hồ sơ, thủ tục, hạn | Giữ nguyên tắc sự kiện không có dữ liệu cá nhân (§4.5); cán bộ mở hồ sơ để xem người nộp, theo quyền của mình |
+| Cán bộ chỉ được **đánh dấu đã đọc** | Quyền cột `UPDATE (da_doc_luc)` + trigger: giờ đọc do CSDL đặt, đọc rồi không bỏ đọc, không sửa tiêu đề/nội dung |
+
+Kiểm bằng `mot-cua/db/tests/thong_bao.sql`, `mot-cua/backend/tests/test_thong_bao.py`, Vitest `src/can-bo/thong-bao.test.tsx` và smoke 4f (`mot-cua/tests/smoke-thong-bao.sh`: queue, mỗi cán bộ một thông báo, RLS qua `/api`, luồng SSE qua APISIX đẩy số mới khi đánh dấu đã đọc, phát lại không trùng, tin hỏng → queue lỗi).
+
+### 4.14 Trợ lý thủ tục hành chính: RAG trên Meilisearch + pgvector (#91)
+
+Người dân hỏi bằng lời thường trên cổng công dân (trang **Hỏi đáp**, `/hoi-dap`, không cần đăng nhập): "đăng ký kết hôn cần giấy tờ gì", "giấy xác nhận tình trạng hôn nhân dùng được bao lâu". Trợ lý chỉ trả lời từ **kho tri thức** của xã và luôn ghi nguồn; không có mô hình thì vẫn trả các đoạn tài liệu liên quan nhất.
+
+```mermaid
+sequenceDiagram
+  participant W as Cổng công dân /hoi-dap
+  participant GW as APISIX /tro-ly (10 câu/phút/IP)
+  participant TL as tro-ly (Tầng 2)
+  participant MS as Meilisearch CE (Tầng 1)
+  participant PG as PostgreSQL + pgvector
+  participant LLM as Mô hình (LLM_PROVIDER)
+  W->>GW: POST /tro-ly/hoi {cau_hoi, ma_thu_tuc?}
+  GW->>TL: (không token, bỏ Cookie)
+  par tìm từ khóa
+    TL->>MS: search index mot-cua-tri-thuc (khóa API riêng của Tầng 2)
+  and tìm ngữ nghĩa
+    TL->>LLM: nhúng câu hỏi (bge-m3, 1024 chiều)
+    TL->>PG: RPC tim_doan_gan (token dịch vụ mot_cua_tro_ly, cosin, cùng mô hình nhúng)
+  end
+  TL->>TL: gộp Reciprocal Rank Fusion → 4 nguồn đánh số [1]…[4]
+  TL->>LLM: lời nhắc: chỉ dùng NGUỒN, mỗi ý ghi [n], không biết thì nói không biết
+  LLM-->>TL: câu trả lời
+  TL->>TL: bỏ [n] không có thật; không còn trích dẫn → trích nguyên văn nguồn [1]
+  TL-->>W: {cau_tra_loi, nguon[], che_do, thong_bao}
+```
+
+**Kho tri thức.** `mot-cua/tro-ly/kho-tri-thuc/*.md` (tóm tắt thủ tục hành chính cấp xã từ văn bản pháp luật, không thuộc đối tượng bảo hộ quyền tác giả; định dạng và nguồn ở README của thư mục) + mỗi gói `thu-tuc/<ma>/` (đoạn tóm tắt thời hạn, lệ phí, căn cứ sinh từ `thu-tuc.yaml`, đoạn thành phần hồ sơ sinh từ JSON Schema: cùng dữ liệu bộ máy dùng để tính hạn và Poka-yoke). Dịch vụ một lần `nap-tri-thuc` chạy ở mỗi `make up` (và `make nap-tri-thuc`): mỗi mục `##` một đoạn, ghi vào Meilisearch và bảng `mot_cua.tri_thuc_doan` (chữ + `vector(1024)`; tìm cosin quét chính xác, chưa cần chỉ mục HNSW ở cỡ kho cấp xã), chỉ nhúng đoạn mới/đã sửa (SHA-256) hoặc nhúng bằng mô hình khác, xóa đoạn không còn trong repo. Thêm thủ tục = thêm tệp Markdown hoặc gói, không sửa mã.
+
+**Nhà cung cấp mô hình** (`LLM_PROVIDER`, `mot-cua/backend/mo_hinh.py`):
+
+| Giá trị | Sinh câu trả lời | Nhúng (tìm ngữ nghĩa) | Dùng khi |
+|---|---|---|---|
+| `tat` (mặc định) | không: trả đoạn tìm được + thông báo | không | máy yếu, chưa tải mô hình; tìm kiếm Meilisearch vẫn chạy |
+| `ollama` | Qwen2.5 7B Instruct (Apache-2.0) | bge-m3 (MIT) | `make up-ai`: profile `ai`, Ollama tải mô hình lúc chạy vào volume (~6 GB), hoặc Ollama trên máy chủ (`LLM_BASE_URL`) |
+| `openai-compatible` | `LLM_MODEL` tại `LLM_BASE_URL/chat/completions` | `LLM_EMBED_MODEL` tại `/embeddings` (phải 1024 chiều) | API ngoài; khóa API trong OpenBao `dxos/tang2/mot-cua/llm` |
+| `gia-lap` | trích nguyên văn nguồn [1] | băm từ + cặp từ vào 1024 chiều | CI, smoke: chạy đủ đường RAG mà không tải mô hình |
+
+| Quyết định | Lý do |
+|---|---|
+| **Tìm lai** từ khóa (Meilisearch) + ngữ nghĩa (pgvector), gộp RRF | Từ khóa bắt đúng tên thủ tục, mã, số điều luật, kể cả gõ không dấu; ngữ nghĩa bắt câu hỏi diễn đạt khác tài liệu. RRF không cần cân điểm hai thang khác nhau. Một nguồn hỏng thì dùng nguồn kia |
+| Meilisearch CE ở **Tầng 1**, `meili-init` cấp khóa API riêng chỉ cho index `mot-cua-*` | Như Garage (§4.3): lõi không biết index nghiệp vụ nào; dịch vụ Tầng 2 không tạo được index của dịch vụ khác, không xóa index, không quản lý khóa. Khóa chủ ở OpenBao, Meilisearch đọc từ tệp cấu hình (agent `meilisearch-secrets`), không qua biến môi trường. Image gốc `getmeili/meilisearch` là Community Edition MIT (bản Enterprise là image riêng, không dùng) |
+| pgvector **biên dịch vào image PostgreSQL** của nền tảng | Không thêm CSDL vector riêng; vector nằm cạnh dữ liệu, cùng RLS, sao lưu một chỗ. Chỉ role `dich_vu_tro_ly` đọc/ghi bảng đoạn |
+| Câu trả lời **bắt buộc dẫn nguồn**, kiểm ở máy chủ | Lời nhắc chỉ là yêu cầu; dịch vụ bỏ trích dẫn không có thật và không dùng câu trả lời không có trích dẫn nào (thay bằng câu trích nguyên văn, `trich_tu_dong`). Người dân luôn thấy đoạn tài liệu gốc để tự đối chiếu |
+| Câu hỏi đóng khung trong `<cau_hoi>`, tối đa 500 ký tự | Giảm prompt injection; nội dung câu hỏi không thể thoát khỏi thẻ |
+| Không đăng nhập, **không lưu câu hỏi**, log chỉ ghi độ dài | Câu hỏi có thể chứa thông tin cá nhân; trang nhắc không nhập số giấy tờ. Giới hạn 10 câu/phút/IP ở gateway, `TRO_LY_DONG_THOI` câu sinh cùng lúc (quá thì trả kết quả tìm kiếm, "đang bận") |
+| Chặn mô hình sai giấy phép ngay khi khởi động | `mo_hinh.kiem_ten_mo_hinh`: Qwen2.5 3B/72B (giấy phép Qwen, không OSI), Llama, Gemma → dừng. Trọng số không nằm trong repo hay image |
+| Không dùng LlamaIndex | Luồng chỉ gồm tìm hai nguồn, gộp, dựng lời nhắc, kiểm trích dẫn (~300 dòng thư viện chuẩn, `rag.py`); kéo LlamaIndex thêm hàng trăm MB phụ thuộc mà không đổi kết quả |
+
+Kiểm bằng `mot-cua/db/tests/tro_ly.sql` (quyền, cosin, cùng mô hình, ràng buộc vector), `mot-cua/backend/tests/test_tro_ly.py` (đọc kho của repo, RRF, trích dẫn, chặn mô hình, suy giảm êm, HTTP), Vitest `src/pages/tro-ly.test.tsx` và smoke 4p (`mot-cua/tests/smoke-tro-ly.sh`: khóa Meilisearch của Tầng 2 bị chặn ngoài index của mình, kho nạp đủ, chế độ `tat`, chế độ `gia-lap` có dẫn nguồn và tìm ngữ nghĩa, mô hình hỏng vẫn tìm được, chặn `qwen2.5:3b`, 429).
+
+### 4.15 Đọc giấy tờ bằng OCR, cán bộ xác nhận (Human-in-the-loop, #93)
+
+Người dân chọn ảnh giấy tờ ở bước nộp hồ sơ, bấm **Đọc thông tin từ ảnh**: máy điền sẵn các trường, đánh dấu trường không chắc, người dân sửa theo giấy tờ rồi nộp. Sau khi nộp, máy đọc lại **tệp đã lưu** và cán bộ so ảnh gốc, kết quả máy, thông tin công dân khai trước khi xác nhận. Chỉ giá trị cán bộ xác nhận được dùng.
+
+```mermaid
+sequenceDiagram
+  participant CD as Công dân (cổng /nop-ho-so)
+  participant API as mot-cua-api (Tầng 2)
+  participant AV as ClamAV
+  participant OCR as ocr (Tầng 1, profile ai)
+  participant S3 as Garage
+  participant PG as PostgreSQL
+  participant CB as Cán bộ (cổng /can-bo)
+  CD->>API: POST /files/doc-giay-to?loai=giay_to_tuy_than (ảnh)
+  API->>AV: quét
+  API->>OCR: POST /doc (ảnh) → dòng chữ + độ tin cậy
+  API-->>CD: trường đề xuất (không lưu gì) → tự điền, công dân sửa
+  CD->>API: tải tệp (/files/ho-so/{id}/tep) → ClamAV → Garage
+  CD->>API: POST /files/tep/{id}/khai {truong} → doc_giay_to.truong_cong_dan
+  API-)OCR: luồng nền: đọc lại TỆP ĐÃ LƯU → doc_giay_to.truong_may (cho_xac_nhan)
+  CB->>PG: GET /api/doc_giay_to (RLS theo lĩnh vực)
+  CB->>API: link ảnh gốc, (đọc lại), POST /files/tep/{id}/xac-nhan {truong}
+  API->>PG: da_xac_nhan, CSDL tính truong_da_sua, kiểm toán giay_to.xac_nhan
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **PaddleOCR phát hiện dòng + VietOCR nhận dạng** (cả hai Apache-2.0) | Thử trên ảnh mẫu: bộ nhận dạng đa ngôn ngữ của PaddleOCR (`lang="vi"`, PP-OCRv6) làm rơi dấu ("Nguyễn Thị" → "Nguyn Th"); VietOCR `vgg_transformer` đọc đúng dấu, 2–4 giây/trang trên CPU. Dò dòng dùng mô hình nhẹ `PP-OCRv5_mobile_det` (4,8 MB) |
+| Chạy bằng **ONNX Runtime** (MIT), không cài PaddlePaddle, PaddleX, PyTorch | Rà thư viện nhị phân trong wheel (26/10/2026): `paddlepaddle` và `torch` bản amd64 kèm Intel MKL (giấy phép Intel, không OSI), `opencv-contrib-python` mà PaddleX ghim kèm Qt5 và OpenSSL 1.1, `ujson` có đoạn mã giấy phép Tcl. PP-OCRv5_mobile_det dùng bản ONNX RapidOCR công bố; VietOCR xuất ONNX (encoder + decoder, giải mã tham lam như `translate()`) trong stage build có PyTorch, stage bị bỏ. Lúc build so ONNX với PyTorch trên ba ảnh chữ, lệch thì dừng. Tiền/hậu xử lý viết lại theo tham số gốc (`DBPostProcess` của PaddleX, bước nới khung theo đúng thuật toán Clipper). Trên hai ảnh mẫu giả, khung, chữ, độ tin cậy trùng hệt bản PaddleX + PyTorch. Image arm64 từ 2,39 GB còn 714 MB (Docker tính cả bản nén; giải nén ~450 MB) |
+| **OpenCV 4.10 tự biên dịch** (core + imgproc), không lấy wheel PyPI | Mọi wheel `opencv-python(-headless)` 4.10–4.14 kèm OpenSSL 1.1 (do FFmpeg), bản amd64 còn liên kết tĩnh Intel IPP ICV. Stage `opencv` biên dịch từ mã nguồn đã kiểm SHA-256, tắt FFmpeg, IPP, ITT, OpenCL, bộ đọc ảnh (Pillow đọc ảnh); `build-info.txt` đi kèm image. Giữ đúng bản 4.10: `cv2.resize` của 4.14 nội suy khác, khung lệch 1–2 điểm ảnh và VietOCR đọc sai 2/14 trường |
+| Dịch vụ `ocr` ở **Tầng 1**, không biết nghiệp vụ | Nhận ảnh, trả dòng chữ + độ tin cậy + khung, như Gotenberg sinh PDF. Loại giấy tờ, trường cần lấy, quy tắc chuẩn hóa thuộc Tầng 2 (`mot-cua/doc-giay-to/loai-giay-to.json`, khóa trùng mã thành phần hồ sơ của gói): thêm loại giấy tờ không sửa mã |
+| Trọng số **tải lúc build, kiểm SHA-256**, nằm sẵn trong image | Không nằm trong repo. `nen-tang/ocr/xuat_mo_hinh.py` ghim SHA-256 tệp ONNX của RapidOCR và cấu hình + trọng số VietOCR, sai thì dừng build; ghi SHA-256 các tệp `.onnx` vào `mo-hinh.json`, dịch vụ kiểm lại lúc khởi động. Không tải gì lúc chạy (151 MB trong image, không cần volume) |
+| Dịch vụ `ocr` ở mạng `ocr-noi-bo` (internal) | Chỉ `mot-cua-api` gọi được; dịch vụ không ra Internet. ONNX Runtime bản Linux có mô-đun gửi số liệu sử dụng (1DS, `mobile.events.data.microsoft.com`): tắt bằng `ORT_DISABLE_TELEMETRY=1` trong image và `disable_telemetry_events()`, smoke kiểm cả ba |
+| Máy chỉ **đề xuất**; trích trường theo nhãn, so khớp không dấu, cho sai lệch nhỏ | OCR hay đọc sai dấu ở nhãn ("Dư định" = "Dự định"); trường tin cậy < 0,9 hay sai dạng (ngày, số định danh 12 chữ số) bị đánh dấu "kiểm tra lại" ở cả hai cổng |
+| Đọc thử để tự điền **không lưu**; sau khi nộp máy **đọc lại tệp đã lưu** | Không tin kết quả do trình duyệt gửi lên: cán bộ thấy riêng giá trị máy đọc từ đúng tệp trên Garage và giá trị công dân khai, chỗ lệch được tô đậm |
+| Xác nhận rồi **không sửa được**; CSDL tự tính `truong_da_sua` | Dấu vết HITL rõ ràng: ai xác nhận, lúc nào, sửa những trường nào so với máy (đo độ chính xác OCR theo thời gian). Nhật ký kiểm toán chuỗi băm ghi `giay_to.khai`, `giay_to.doc`, `giay_to.xac_nhan` với **tên** trường, không ghi giá trị (dữ liệu cá nhân) |
+| OCR là tùy chọn | Không chạy profile `ai`: đọc thử trả 503 có lời giải thích, nộp hồ sơ bình thường, dòng `doc_giay_to` ghi lý do chưa đọc, cán bộ nhập theo ảnh gốc |
+| Chỉ ảnh JPG/PNG, quét ClamAV trước khi đọc, giới hạn 10 MB | Cùng lớp bảo vệ như tải tệp (§4.3). PDF nhiều trang: cán bộ nhập tay |
+| Dịch vụ `ocr` chạy user 1000, rootfs chỉ đọc, bỏ mọi capability, không mở cổng, không ghi chữ đọc được ra log | Giấy tờ có dữ liệu cá nhân; dịch vụ chỉ xử lý trong bộ nhớ |
+
+Ảnh mẫu GIẢ để thử: `mot-cua/web-cong-dan/public/mau-gia/` (sinh bằng `scripts/sinh_giay_to_gia.py`, có dải "DỮ LIỆU GIẢ", bố cục khác giấy tờ thật), tải ở http://localhost:9080/mau-gia/giay-to-tuy-than.png. Kiểm bằng `mot-cua/db/tests/doc_giay_to.sql`, `mot-cua/backend/tests/test_doc_giay_to.py` (trích trường từ kết quả OCR thật của ảnh mẫu), Vitest `doc-anh.test.tsx`, `xac-nhan-giay-to.test.tsx` và smoke 4q (`mot-cua/tests/smoke-doc-giay-to.sh`).
+
+### 4.16 Wiki văn bản nội bộ cho cán bộ (#95)
+
+Cán bộ tra cứu quy chế, hướng dẫn nghiệp vụ, quy trình, biểu mẫu, thông báo nội bộ của xã ngay trong cổng cán bộ (`/can-bo/wiki`): tìm theo từ khóa (không dấu cũng được, chịu lỗi chính tả, đoạn khớp được tô), lọc theo loại, xem chi tiết và các phiên bản cũ. Văn thư và lãnh đạo soạn, sửa, ngừng hiệu lực văn bản.
+
+```mermaid
+sequenceDiagram
+  participant CB as Cán bộ (cổng /can-bo)
+  participant VT as Văn thư / lãnh đạo
+  participant GW as APISIX /files
+  participant API as mot-cua-api
+  participant PG as PostgreSQL (RLS)
+  participant MS as Meilisearch CE
+  CB->>GW: GET /files/wiki/tim?q=… (JWT)
+  GW->>API: chuyển tiếp (JWT đã kiểm)
+  API->>PG: lĩnh vực đang phụ trách (token của cán bộ)
+  API->>MS: search, filter theo vai + lĩnh vực, trang_thai
+  MS-->>API: hit + đoạn khớp đánh dấu U+E000/U+E001
+  API->>PG: id=in.(…) bằng token của cán bộ → bỏ id RLS không cho xem
+  API-->>CB: kết quả (nguon: meilisearch)
+  Note over API,PG: Meilisearch lỗi → RPC tim_wiki (RLS, không dấu), nguon: csdl
+  VT->>API: POST /files/wiki[/{id}] (JSON)
+  API->>PG: INSERT/PATCH bằng token của người ghi (RLS, trigger phiên bản + lịch sử + kiểm toán wiki.*)
+  API->>MS: cập nhật tài liệu, chờ xong
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **CSDL là nguồn sự thật và quyết định quyền** (RLS theo `pham_vi`: `toan_xa`, `linh_vuc` theo phân công trong `can_bo_linh_vuc`, `lanh_dao`); Meilisearch chỉ là chỉ mục | Một chỗ định nghĩa quyền, giống mọi bảng khác (§4). Đổi phân công có hiệu lực ngay vì bộ lọc dựng từ CSDL mỗi lần tìm. Mất chỉ mục không mất dữ liệu |
+| **Lọc theo quyền ở Meilisearch rồi đối chiếu lại RLS** | Lọc trước để số kết quả, xếp hạng, phân trang đúng phạm vi; đối chiếu sau vì chỉ mục có thể chậm một nhịp (đổi phạm vi, sửa trực tiếp trong CSDL) – smoke đổi phạm vi bằng superuser và kiểm cán bộ không còn thấy |
+| **Dùng lại Meilisearch CE và khóa Tầng 2 của #91** (index `mot-cua-wiki-van-ban`, lớp `tri_thuc.Meili`) | Không thêm dịch vụ; khóa Tầng 2 chỉ dùng được trên index `mot-cua-*`, không tạo khóa, không xóa index. Meilisearch không mở cổng, không qua APISIX: chỉ `mot-cua-api` gọi |
+| Meilisearch dừng → **tìm dự phòng trong CSDL** (RPC `tim_wiki`, `SECURITY INVOKER`, bỏ dấu bằng `translate`) | Tra cứu nội bộ không được chết theo chỉ mục; giao diện báo "bộ tìm kiếm đang tạm dừng" |
+| Ghi bằng **token của người ghi**, không dùng tài khoản dịch vụ | RLS quyết định văn thư không ghi phạm vi lãnh đạo, cán bộ không ghi; tài khoản dịch vụ tệp chỉ có quyền **đọc** wiki để dựng lại chỉ mục |
+| **Không xóa**; sửa → phiên bản + lịch sử; hết dùng → `het_hieu_luc` | Văn bản nội bộ cần truy được ai sửa gì, lúc nào. Trigger chặn xóa/sửa lịch sử kể cả superuser |
+| Kiểm toán `wiki.them|sua|ngung_hieu_luc|hieu_luc_lai` ghi **SHA-256 nội dung** và tên cột đổi, không ghi tiêu đề/nội dung | Xác minh được phiên bản đang có đúng phiên bản đã ghi nhật ký mà không đưa nội dung (có thể có tên người) vào chuỗi kiểm toán |
+| Đoạn khớp đánh dấu bằng **U+E000/U+E001**, web tự dựng `<mark>` | Không chèn HTML từ máy chủ hay nội dung văn bản (chống XSS); Vitest kiểm `<script>` trong nội dung hiện thành chữ |
+| Đồng bộ chỉ mục: sau mỗi lần ghi + dựng lại toàn bộ khi khởi động và định kỳ (`DXOS_WIKI_DONG_BO_GIAY`, 300 giây) | Đơn giản, tự sửa khi chỉ mục mất hay lệch; số văn bản nội bộ của một xã nhỏ (hàng trăm) |
+
+Kiểm bằng `mot-cua/db/tests/wiki_van_ban.sql` (43 kiểm tra), `mot-cua/backend/tests/test_wiki.py`, Vitest `src/can-bo/wiki.test.tsx` và smoke 4r (`mot-cua/tests/smoke-wiki-van-ban.sh`).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -887,12 +1080,13 @@ Loại văn bản đi và chữ viết tắt trong ký hiệu: Thông báo TB, Q
 | `core` | OpenBao (+ dịch vụ một lần `bao-init`, 5 agent `*-secrets`) | chạy thử 21/10/2026 (#10) | agent chạy khoảng 1 giây rồi thoát, không giữ RAM |
 | `core` | RabbitMQ (+ dịch vụ một lần `rabbitmq-secrets`, `rabbitmq-init`), `mot-cua-worker` | chạy thử 21/10/2026 (#9) | RabbitMQ ~150 MB RAM, chặn publisher ở 40% RAM; `mot-cua-worker` ~20 MB |
 | `core` | step-ca (+ dịch vụ một lần `step-ca-secrets`, `ca-init`), Gotenberg | chạy thử 23/10/2026 (#77) | đo 23/10/2026: step-ca ~70 MB RAM; Gotenberg (Chromium) ~470 MB sau khi sinh PDF, image ~1,7 GB; image `mot-cua-api` 157 MB (thêm pyHanko ~55 MB) |
-| `docs` | Meilisearch CE | TODO tuần 5 | |
-| `ai` | Ollama + Qwen2.5 7B, PaddleOCR/VietOCR | TODO tuần 5 | cần ~8 GB RAM |
+| `core` | Meilisearch CE (+ dịch vụ một lần `meilisearch-secrets`, `meili-init`), `nap-tri-thuc`, `tro-ly` (#91) | chạy thử 26/10/2026 (#91) | Meilisearch giới hạn 256 MB khi lập chỉ mục; `tro-ly` image `python` gốc |
+| `ai` | Ollama 0.40.3 (+ dịch vụ một lần `ollama-pull`): Qwen2.5 7B + bge-m3 cho `LLM_PROVIDER=ollama`, `make up-ai` (#91) | chạy thử 26/10/2026 (#91) | image tải 2,8 GB, giải nén 7,0 GB (arm64, đo 26/10/2026); mô hình tải lúc chạy 5,84 GB vào volume `ollama-models`; đo được Ollama ~6,2 GB RAM khi nạp cả Qwen2.5 7B và bge-m3. Meilisearch ~55 MB RAM, image 477 MB; `tro-ly` ~17 MB RAM |
+| `ai` | `ocr`: PP-OCRv5_mobile_det + VietOCR trên ONNX Runtime (#93), `make up-ocr` (chỉ OCR) hoặc `make up-ai` | chạy thử 26/10/2026 (#93) | đo 26/10/2026 (arm64): image tải 241 MB, giải nén ~450 MB (mô hình ONNX 158 MB, Python + onnxruntime + numpy + pillow + cv2 ~150 MB); build lần đầu cần thêm stage tạm có PyTorch CPU; đọc 2–4 giây/trang. Xem §4.15 |
 | `bi` | `kho-du-lieu` (dịch vụ một lần, `make kho-du-lieu`) | chạy thử 23/10/2026 (#80) | image 399 MB (python slim 206 MB + dbt, DuckDB ~190 MB); một lần chạy ~4 giây trên dữ liệu smoke rồi thoát |
 | `bi` | Superset (+ dịch vụ một lần `superset-secrets`, `superset-init`), `make up-bi` | chạy thử 23/10/2026 (#82) | image 1,28 GB; một worker gunicorn 20 luồng, ~230 MB RAM (đo 23/10/2026) |
 
-Chạy: `make up` (= `docker compose --profile core up -d`), thêm Superset: `make up-bi` (= `--profile core --profile bi`), kiểm tra: `make smoke` (mục Superset chỉ chạy khi profile `bi` đang chạy). Thêm profile: `docker compose --profile core --profile docs up -d`.
+Chạy: `make up` (= `docker compose --profile core up -d`), thêm Superset: `make up-bi` (= `--profile core --profile bi`), kiểm tra: `make smoke` (mục Superset chỉ chạy khi profile `bi` đang chạy). Thêm mô hình cho trợ lý thủ tục: đặt `LLM_PROVIDER=ollama` trong `.env` rồi `make up-ai` (= `--profile core --profile ai`, tải mô hình, nhúng lại kho tri thức).
 Mọi image ghim phiên bản cụ thể, lấy từ dự án gốc (bảng ở `DEPENDENCIES.md`). Cấu hình qua `.env` (mẫu `.env.example`).
 
 ## 7. Viết BPMN khi không có modeler
@@ -1136,7 +1330,7 @@ Bản clone mới của nhánh #12 trong thư mục tạm ngoài thư mục mã 
 - MFA theo vai trò bằng luồng xác thực có điều kiện (mục 5).
 - Quyền ghi danh mục thủ tục, phân công lĩnh vực qua API (hiện chỉ quản trị bằng migration/SQL): cần role quản trị riêng của ứng dụng.
 - Gói thủ tục (D-009): nhiều quy trình hoặc mẫu quy trình dùng chung trong một gói; quyền quản trị danh mục ngoài gói (bật/tắt công khai) qua API.
-- Thông báo cho công dân, cán bộ khi có `ho_so.chuyen_buoc`, `ho_so.sap_tre_han` (tuần 3): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
+- Thông báo tới công dân (khi có `ho_so.chuyen_buoc`, kết quả), gửi email/SMS thật (hiện giả lập, §4.13): thêm queue + binding vào `mot-cua/rabbitmq/definitions.json` và một consumer, theo mẫu consumer nhật ký (§4.5). Sự kiện `ho_so.qua_han` khi hẹn giờ quá hạn của BPMN chạy.
 - OpenBao khi triển khai thật (§4.4.1): Shamir nhiều phần hoặc auto-unseal, thu hồi root token, TLS từ step-ca, secret_id có hạn + response wrapping, agent sidecar trên tmpfs.
 - Tệp: giao diện xem tệp cho cán bộ (tuần 3); OCR đọc tệp đã lưu (tuần 5).
 - Log kiểm toán append-only + chuỗi băm SHA-256 (tuần 4).

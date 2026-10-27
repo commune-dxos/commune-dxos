@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GOC_CAN_BO } from "@/auth/oidc";
 import { cn } from "@/lib/utils";
-import { TheHan } from "../components/the-han";
+import { TheHan } from "@/components/the-han";
 import { useDuLieuCanBo } from "../du-lieu";
 import {
   demTheoHan,

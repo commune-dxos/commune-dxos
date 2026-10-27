@@ -1,25 +1,39 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Bước 2: chọn giấy tờ theo thành phần hồ sơ trong JSON Schema của gói thủ tục. Tệp giữ trong
-// trình duyệt tới khi bấm nộp ở bước Kiểm tra lại, rồi mới tải qua /files (lib/ho-so.ts).
+// trình duyệt tới khi bấm nộp ở bước Kiểm tra lại, rồi mới tải qua /files (lib/ho-so.ts). Thành phần có mẫu đọc
+// (#93) thì có thêm ô "Tự điền thông tin từ ảnh" (doc-anh.tsx).
 import { FileText, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
+import type { KetQuaDocThu, LoaiGiayTo } from "@/lib/doc-giay-to";
 import type { ThanhPhan } from "@/lib/thanh-phan";
 import { cn } from "@/lib/utils";
+import { DocAnh } from "./doc-anh";
 import { dungLuong, NHAN_TEP, type Loi } from "./kieu";
+
+/** Tự điền từ ảnh (#93); vắng mặt khi máy chủ không có mẫu đọc hay chưa tải được danh sách. */
+export interface TuDien {
+  loai: Record<string, LoaiGiayTo>;
+  khai: Record<string, Record<string, string>>;
+  doiKhai: (ma: string, giaTri: Record<string, string> | undefined) => void;
+  docThu: (loai: string, anh: File) => Promise<KetQuaDocThu>;
+  dungHoTen: (hoTen: string) => void;
+}
 
 export function BuocGiayTo({
   thanhPhan,
   tep,
   doi,
   loi,
+  tuDien,
 }: {
   thanhPhan: ThanhPhan[];
   tep: Record<string, File[]>;
   doi: (ma: string, ds: File[]) => void;
   loi: Loi;
+  tuDien?: TuDien;
 }) {
   return (
     <FieldGroup className="max-w-2xl gap-6">
@@ -94,6 +108,17 @@ export function BuocGiayTo({
                 />
               </label>
             </Field>
+            {tuDien?.loai[tp.ma] && (
+              <DocAnh
+                ma={tp.ma}
+                loai={tuDien.loai[tp.ma]}
+                tep={ds}
+                giaTri={tuDien.khai[tp.ma]}
+                doi={(g) => tuDien.doiKhai(tp.ma, g)}
+                docThu={tuDien.docThu}
+                dungHoTen={tuDien.loai[tp.ma].truong.some((t) => t.ma === "ho_ten") ? tuDien.dungHoTen : undefined}
+              />
+            )}
           </FieldSet>
           </div>
         );

@@ -15,6 +15,9 @@
 # | /files/*      | JWT Keycloak    | mot-cua-api (API tệp, #7)    | 120 req/phút/IP,    |
 # |               |                 |                              | body ≤ 10 MiB       |
 # | /files/s3/*   | chữ ký trong URL| Garage S3, chỉ GET/HEAD      | 120 req/phút/IP     |
+# | /tro-ly/hoi   | không (công dân)| tro-ly (trợ lý thủ tục, #91),| 10 req/phút/IP,     |
+# |               |                 | chỉ POST, chờ tối đa 180 giây| body ≤ 4 KiB        |
+# | /tro-ly/*     | không           | tro-ly, chỉ GET/HEAD         | 60 req/phút/IP      |
 # | /can-bo,      | không (trang)   | mot-cua-web (cổng cán bộ),   | 300 req/phút/IP     |
 # | /can-bo/*     |                 | chỉ GET/HEAD, noindex, #55   |                     |
 # | /* (còn lại)  | không           | mot-cua-web (cổng công dân), | 600 req/phút/IP     |
@@ -51,6 +54,16 @@ upstreams:
     type: roundrobin
     nodes:
       "mot-cua-web:8080": 1
+
+  # Trợ lý thủ tục của Tầng 2 (#91): tìm kiếm + RAG, không cần token. Mô hình chạy CPU có thể mất cả phút.
+  - id: tro-ly
+    type: roundrobin
+    timeout:
+      connect: 5
+      send: 30
+      read: 180
+    nodes:
+      "tro-ly:8000": 1
 
   # Superset (profile bi, #82): dashboard báo cáo, tự xử lý đăng nhập (SSO Keycloak).
   - id: superset
@@ -218,6 +231,47 @@ routes:
         rejected_code: 429
         policy: local
     upstream_id: mot-cua-api
+
+  # Trợ lý thủ tục (#91): người dân hỏi trên cổng công dân không cần đăng nhập. Câu hỏi tốn tài nguyên (mô hình
+  # ngôn ngữ) nên giới hạn chặt theo IP và kích thước body; bỏ Authorization/Cookie (dịch vụ không cần danh tính,
+  # không lưu câu hỏi). Phần GET (thông tin chế độ, chỉ tìm từ khóa) giới hạn như /public.
+  - id: tro-ly-hoi
+    uri: /tro-ly/hoi
+    methods: [POST, OPTIONS]
+    priority: 10
+    plugins:
+      client-control:
+        max_body_size: 4096
+      limit-count:
+        count: 10
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        rejected_msg: '{"loi":"Bạn hỏi quá nhanh (tối đa 10 câu/phút), vui lòng thử lại sau ít phút"}'
+        policy: local
+      proxy-rewrite:
+        headers:
+          remove: [Authorization, Cookie]
+    upstream_id: tro-ly
+
+  - id: tro-ly
+    uri: /tro-ly/*
+    methods: [GET, HEAD, OPTIONS]
+    priority: 0
+    plugins:
+      limit-count:
+        count: 60
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        rejected_msg: '{"loi":"Vượt giới hạn 60 request/phút, thử lại sau"}'
+        policy: local
+      proxy-rewrite:
+        headers:
+          remove: [Authorization, Cookie]
+    upstream_id: tro-ly
 
   # Cổng cán bộ (web Tầng 2, #55): cùng dịch vụ mot-cua-web với cổng công dân (SPA fallback, CSP và
   # header bảo mật do nginx đặt), route riêng để giới hạn chặt hơn và báo máy tìm kiếm không lập chỉ

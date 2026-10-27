@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up up-bi down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc nhat-ky ghi-chu-phat-hanh
+.PHONY: up up-bi up-ai up-ocr nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -15,6 +15,27 @@ BI := docker compose --profile core --profile bi
 up-bi:         ## Như make up, thêm Superset (dashboard http://localhost:9080/bao-cao/, SSO Keycloak, #82). Chạy make kho-du-lieu để có số liệu
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
 	$(BI) up -d --build
+
+# Profile ai (#91): Ollama + tải mô hình (qwen2.5:7b 4,7 GB, bge-m3 1,2 GB lần đầu) rồi nạp lại kho tri thức để
+# nhúng bằng bge-m3. Cần LLM_PROVIDER=ollama trong .env (tro-ly đọc biến này khi khởi động).
+AI := docker compose --profile core --profile ai
+
+up-ai:         ## Như make up, thêm Ollama + Qwen2.5 7B + bge-m3 cho trợ lý thủ tục (đặt LLM_PROVIDER=ollama trong .env) và dịch vụ OCR
+	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
+	@grep -q '^LLM_PROVIDER=ollama' .env || echo "Lưu ý: .env chưa đặt LLM_PROVIDER=ollama, trợ lý sẽ không dùng mô hình vừa tải"
+	$(AI) up -d --build
+	$(AI) up --no-deps ollama-pull
+	$(AI) run --rm --no-deps nap-tri-thuc
+
+# Chỉ dịch vụ OCR của profile ai (#93), không Ollama. Lần đầu build image (đo 26/10/2026, arm64: ~3 phút; image tải
+# 241 MB, giải nén ~450 MB gồm mô hình ONNX 158 MB); stage build tạm cần ~1,5 GB (PyTorch CPU) rồi bỏ.
+up-ocr:        ## Như make up, thêm dịch vụ đọc giấy tờ (PaddleOCR + VietOCR trên ONNX Runtime) cho tự điền + cán bộ xác nhận
+	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
+	docker compose --profile core up -d --build
+	$(AI) up -d --build --no-deps ocr
+
+nap-tri-thuc:  ## Nạp lại kho tri thức của trợ lý (mot-cua/tro-ly/kho-tri-thuc/, thu-tuc/) vào Meilisearch + pgvector; chỉ nhúng đoạn đổi
+	docker compose --profile core run --rm --no-deps nap-tri-thuc
 
 bao-init:      ## OpenBao: init (lần đầu) → unseal → KV, policy, AppRole, bí mật lõi. Idempotent; `make up` tự gọi
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
@@ -104,6 +125,11 @@ XUAT_PY ?= python3
 xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-truc-dong.gif và docs/media/kien-truc-dong.mp4
 	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/xuat_kien_truc.py
 
+# GIF demo cho README (#58): cùng venv, ffmpeg như trên; cần hệ thống đang chạy (make up). Tài khoản mẫu
+# congdan01, canbo01 được đặt mật khẩu + OTP ngẫu nhiên (không in ra), quay xong trả lại như realm.json.
+quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif. Cần make up
+	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py
+
 # CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
 # Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
 # rồi chạy với PATH="$$PWD/.venv/bin:$$PATH" hoặc GIT_CLIFF=.venv/bin/git-cliff. Quy trình: docs/quy-trinh-lam-viec.md.
@@ -120,11 +146,12 @@ ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có th
 license:       ## Thêm header SPDX (bản quyền + GPL-3.0-or-later, D-010) cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
+check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + kho tri thức + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/tests/test_check_license.py
 	python3 scripts/check-bpmn.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check-web.py
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_thu_tuc.py thu-tuc --chi-kiem
+	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_tri_thuc.py mot-cua/tro-ly/kho-tri-thuc thu-tuc --chi-kiem
 	$(MAKE) --no-print-directory test-backend
 	docker compose $(COMPOSE_ENV) --profile '*' config --quiet && echo "OK: docker-compose.yml hợp lệ (mọi profile)"

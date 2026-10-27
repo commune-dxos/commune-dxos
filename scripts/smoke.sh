@@ -19,12 +19,15 @@ export COMPOSE_PROFILES=core
 DXOS_TANG2=mot-cua
 # shellcheck source=scripts/lib-smoke.sh
 . scripts/lib-smoke.sh
+# Phiên kcadm của lần smoke trước (lưu trong container keycloak) có thể đã hết hạn: đăng nhập lại từ đầu.
+docker compose exec -T keycloak rm -f /tmp/smoke-kcadm.config > /dev/null 2>&1 || true
 
 echo "== Nền tảng Tầng 1 (nen-tang/, Tầng 2 = $DXOS_TANG2)"
 
 # 1. Dịch vụ một lần đã thoát với mã 0, dịch vụ chạy nền healthy ------------------
 for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secrets garage-secrets \
-           rabbitmq-secrets jwks-init db-init tang2-migrate tang2-realm garage-init rabbitmq-init nap-thu-tuc; do
+           rabbitmq-secrets jwks-init db-init tang2-migrate tang2-realm garage-init rabbitmq-init nap-thu-tuc \
+           meilisearch-secrets meili-init nap-tri-thuc; do
   for _ in $(seq 1 60); do  # chờ tối đa 2 phút nếu còn đang chạy
     tt="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' "$svc" 2>/dev/null)"
     case "$tt" in exited*) break ;; esac
@@ -32,7 +35,8 @@ for svc in bao-init db-secrets postgrest-secrets keycloak-secrets flowable-secre
   done
   kiem "dịch vụ một lần $svc thoát mã 0" "exited 0" "${tt:-không có container}"
 done
-for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker mot-cua-web; do
+for svc in openbao postgres keycloak apisix flowable mot-cua-api garage clamav rabbitmq mot-cua-worker mot-cua-web \
+           meilisearch tro-ly; do
   for _ in $(seq 1 90); do  # vừa `make up` xong thì có thể còn "starting" (ClamAV nạp CSDL ~1–2 phút)
     st="$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo khong-chay)"
     [ "$st" = "starting" ] || break

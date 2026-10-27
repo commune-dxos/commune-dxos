@@ -1,0 +1,183 @@
+{
+  "dong": [
+    {
+      "chu": "TÀI LIỆU MẤU - DỮ LIỆU GIẢ ? KHÔNG CÓ GIÁ TRỊ PHÁP LÝ",
+      "tin_cay": 0.914,
+      "khung": [
+        302,
+        0,
+        1096,
+        45
+      ]
+    },
+    {
+      "chu": "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+      "tin_cay": 0.932,
+      "khung": [
+        403,
+        53,
+        999,
+        101
+      ]
+    },
+    {
+      "chu": "Độc lập - Tựdo - Hạnh phúc",
+      "tin_cay": 0.911,
+      "khung": [
+        495,
+        99,
+        902,
+        142
+      ]
+    },
+    {
+      "chu": "TRẠM Y TẾ XÃ MẪU",
+      "tin_cay": 0.906,
+      "khung": [
+        72,
+        156,
+        366,
+        217
+      ]
+    },
+    {
+      "chu": "GIẤY CHỨNG SINH",
+      "tin_cay": 0.933,
+      "khung": [
+        480,
+        216,
+        920,
+        284
+      ]
+    },
+    {
+      "chu": "Họ và tên mẹ: Nguyễn Thị Mẫu Thử",
+      "tin_cay": 0.93,
+      "khung": [
+        80,
+        313,
+        631,
+        371
+      ]
+    },
+    {
+      "chu": "Năm sinh: 1995",
+      "tin_cay": 0.93,
+      "khung": [
+        82,
+        389,
+        331,
+        437
+      ]
+    },
+    {
+      "chu": "Số định danh cá nhân: 000195001234",
+      "tin_cay": 0.929,
+      "khung": [
+        84,
+        460,
+        684,
+        507
+      ]
+    },
+    {
+      "chu": "GIA",
+      "tin_cay": 0.933,
+      "khung": [
+        806,
+        339,
+        1079,
+        553
+      ]
+    },
+    {
+      "chu": "Nơi thường trú: Thôn một, xã mẫu, tỉnh Thử Nghiệm",
+      "tin_cay": 0.918,
+      "khung": [
+        84,
+        530,
+        880,
+        578
+      ]
+    },
+    {
+      "chu": "Đã sinh con vào lúc: 08 giờ 30 phút, ngày 12/10/2026",
+      "tin_cay": 0.932,
+      "khung": [
+        82,
+        598,
+        929,
+        650
+      ]
+    },
+    {
+      "chu": "Tại: Trạm y tế xã Mẫu",
+      "tin_cay": 0.932,
+      "khung": [
+        80,
+        663,
+        433,
+        722
+      ]
+    },
+    {
+      "chu": "Số con trong lần sinh này: 1",
+      "tin_cay": 0.929,
+      "khung": [
+        80,
+        734,
+        513,
+        791
+      ]
+    },
+    {
+      "chu": "Giới tính của con: Nam",
+      "tin_cay": 0.929,
+      "khung": [
+        82,
+        807,
+        449,
+        859
+      ]
+    },
+    {
+      "chu": "Cân nặng: 3200 gam",
+      "tin_cay": 0.933,
+      "khung": [
+        80,
+        875,
+        426,
+        933
+      ]
+    },
+    {
+      "chu": "Dự định đặt tên con là: Trần Văn Thử Nghiệm",
+      "tin_cay": 0.931,
+      "khung": [
+        82,
+        948,
+        784,
+        1000
+      ]
+    },
+    {
+      "chu": "Ảnh sinh bằng scripts/sinh giay to gia.py ? chỉ dùng thứ ocR",
+      "tin_cay": 0.897,
+      "khung": [
+        273,
+        1029,
+        1127,
+        1080
+      ]
+    }
+  ],
+  "mo_hinh": {
+    "phat_hien": "PaddleOCR PP-OCRv5_mobile_det",
+    "nhan_dang": "VietOCR vgg_transformer",
+    "chay": "ONNX Runtime 1.31.0"
+  },
+  "kich_thuoc": [
+    1400,
+    1080
+  ]
+}

@@ -15,7 +15,7 @@ describe("layDanhMucThuTuc", () => {
   it("gọi /public/thu_tuc qua APISIX, không gửi token", async () => {
     const goi = traVe(200, duLieuGia);
     const ds = await layDanhMucThuTuc(cauHinh, goi);
-    expect(ds.map((t) => t.ma)).toEqual(["CT01", "KS01"]);
+    expect(ds.map((t) => t.ma)).toEqual(duLieuGia.map((t) => t.ma));
     expect(goi).toHaveBeenCalledOnce();
     const [url, init] = goi.mock.calls[0];
     expect(url).toBe("http://cong.vi.du:9080" + DUONG_DAN_DANH_MUC);
@@ -51,7 +51,7 @@ describe("layDanhMucThuTuc", () => {
   it("chế độ dữ liệu giả không gọi mạng", async () => {
     const goi = vi.fn<typeof fetch>();
     const ds = await layDanhMucThuTuc({ ...cauHinh, duLieuGia: true }, goi);
-    expect(ds).toHaveLength(2);
+    expect(ds).toHaveLength(duLieuGia.length);
     expect(goi).not.toHaveBeenCalled();
   });
 });
