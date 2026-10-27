@@ -211,6 +211,13 @@ class DuLieuMauSai(CoGoiTam):
 class BpmnSai(CoGoiTam):
     T = "quy-trinh.bpmn20.xml"
 
+    def test_process_id_qua_dai(self):
+        goi = self.chep()
+        dai = "hoa_giai_tranh_chap_dat_dai"
+        self.sua(goi, "thu-tuc.yaml", "quy_trinh: chung_thuc_ban_sao", f"quy_trinh: {dai}")
+        self.sua(goi, self.T, 'process id="chung_thuc_ban_sao"', f'process id="{dai}"')
+        self.assertLoi(goi, "dài quá 24 ký tự")
+
     def test_process_id_khac_yaml(self):
         goi = self.chep()
         self.sua(goi, self.T, 'process id="chung_thuc_ban_sao"', 'process id="chung_thuc_khac"')

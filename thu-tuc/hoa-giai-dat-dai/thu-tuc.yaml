@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Gói thủ tục: Hòa giải tranh chấp đất đai tại xã (D-009, #97). Định dạng: docs/thu-tuc.md.
+# Giá trị lấy theo quy định công khai, rút gọn để minh họa; đối chiếu văn bản trước khi dùng thật.
+ma: DD01
+ten: Hòa giải tranh chấp đất đai tại xã
+linh_vuc: dat_dai
+ten_linh_vuc: Đất đai
+# Luật Đất đai 2024, Điều 235: hòa giải tại Ủy ban nhân dân cấp xã không quá 30 ngày kể từ ngày nhận đơn. Bộ máy
+# tính hạn theo ngày làm việc, nên đặt 20 ngày làm việc (khoảng 4 tuần) để không vượt mốc 30 ngày.
+thoi_han_ngay_lam_viec: 20
+le_phi: 0
+ghi_chu_le_phi: Không thu phí
+cong_khai: true
+quy_trinh: hoa_giai_dat_dai
+can_cu_phap_ly:
+  - Luật Đất đai 2024, Điều 235
+  - Nghị định 102/2024/NĐ-CP
+trang_thai_theo_buoc:
+  - tiep_nhan: moi

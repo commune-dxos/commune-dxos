@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  Gói thủ tục hoa-giai-dat-dai – quy trình "Hòa giải tranh chấp đất đai tại xã" (DD01, lĩnh vực dat_dai), BPMN 2.0
+  viết tay (#97). Không có phần bpmndi; sơ đồ ở README.md cùng thư mục. Bộ nạp nap-thu-tuc deploy tệp này.
+
+  Biến bộ máy đặt khi khởi tạo: hoSoId, maHoSo (businessKey), nguoiNopSub, hanXuLyLuc.
+  Biến người xử lý đặt khi hoàn thành bước (flowable:formProperty):
+    tiep_nhan     hopLe (bắt buộc), ghiChu
+    bo_sung       ghiChu                                (công dân)
+    xac_minh      thuocDienHoaGiai (bắt buộc), ghiChu
+    hoa_giai      hoaGiaiThanh (bắt buộc), soLanHop (long), ghiChu
+    ky_bien_ban   daKy (bắt buộc), ghiChu                (lãnh đạo)
+  Hòa giải thành hay không thành đều kết thúc hoàn tất (thủ tục hòa giải xong, có biên bản); kết quả hòa giải
+  nằm ở biến hoaGiaiThanh và điểm kết thúc. Biến quy trình tự đặt: ketQua (hoan_tat | tu_choi), quaHan.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="urn:dxos:mot-cua"
+             id="def_hoa_giai_dat_dai">
+
+  <process id="hoa_giai_dat_dai" name="Hòa giải tranh chấp đất đai tại xã" isExecutable="true">
+    <documentation>Một cửa cấp xã – thủ tục DD01: tiếp nhận đơn → xác minh → họp hòa giải → lãnh đạo ký biên bản.</documentation>
+
+    <startEvent id="bat_dau" name="Đơn đã nộp"/>
+    <sequenceFlow id="f_bat_dau" sourceRef="bat_dau" targetRef="tiep_nhan"/>
+
+    <!-- 1. Tiếp nhận đơn: công chức địa chính -->
+    <userTask id="tiep_nhan" name="Tiếp nhận đơn yêu cầu hòa giải" flowable:candidateGroups="dat_dai">
+      <documentation>hopLe = true nếu đơn đủ nội dung; false kèm ghiChu để người nộp bổ sung.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="hopLe" name="Đơn đủ nội dung?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_tiep_nhan" sourceRef="tiep_nhan" targetRef="gw_tiep_nhan"/>
+    <exclusiveGateway id="gw_tiep_nhan" name="Đơn hợp lệ?" default="f_can_bo_sung"/>
+    <sequenceFlow id="f_hop_le" name="hợp lệ" sourceRef="gw_tiep_nhan" targetRef="xac_minh">
+      <conditionExpression xsi:type="tFormalExpression">${hopLe == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_can_bo_sung" name="thiếu" sourceRef="gw_tiep_nhan" targetRef="bo_sung"/>
+
+    <userTask id="bo_sung" name="Người nộp bổ sung đơn, giấy tờ" flowable:assignee="${nguoiNopSub}">
+      <documentation>Hồ sơ ở trạng thái cho_bo_sung; người nộp sửa đơn hoặc nộp thêm giấy tờ rồi hoàn thành bước.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_bo_sung" sourceRef="bo_sung" targetRef="tiep_nhan"/>
+
+    <!-- 2. Thẩm tra, xác minh nguồn gốc, quá trình sử dụng đất; thu thập tài liệu -->
+    <userTask id="xac_minh" name="Thẩm tra, xác minh, thu thập tài liệu" flowable:candidateGroups="dat_dai">
+      <documentation>thuocDienHoaGiai = true để tổ chức hòa giải; false (kèm ghiChu hướng dẫn nơi giải quyết) để từ chối.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="thuocDienHoaGiai" name="Thuộc diện hòa giải tại xã?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_xac_minh" sourceRef="xac_minh" targetRef="gw_xac_minh"/>
+    <exclusiveGateway id="gw_xac_minh" name="Thuộc diện hòa giải?" default="f_khong_thuoc"/>
+    <sequenceFlow id="f_thuoc" name="thuộc" sourceRef="gw_xac_minh" targetRef="hoa_giai">
+      <conditionExpression xsi:type="tFormalExpression">${thuocDienHoaGiai == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_khong_thuoc" name="không thuộc" sourceRef="gw_xac_minh" targetRef="ket_thuc_tu_choi"/>
+
+    <!-- 3. Tổ chức cuộc họp hòa giải với các bên tranh chấp -->
+    <userTask id="hoa_giai" name="Tổ chức họp hòa giải, lập biên bản" flowable:candidateGroups="dat_dai">
+      <documentation>hoaGiaiThanh = true nếu các bên thống nhất; false nếu không thành. soLanHop: số cuộc họp đã tổ chức.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="hoaGiaiThanh" name="Hòa giải thành?" type="boolean" required="true"/>
+        <flowable:formProperty id="soLanHop" name="Số cuộc họp đã tổ chức" type="long"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_hoa_giai" sourceRef="hoa_giai" targetRef="ky_bien_ban"/>
+
+    <!-- 4. Lãnh đạo xã ký biên bản hòa giải -->
+    <userTask id="ky_bien_ban" name="Ký biên bản hòa giải" flowable:candidateGroups="lanh_dao">
+      <documentation>daKy = true để kết thúc; false để họp hòa giải lại.</documentation>
+      <extensionElements>
+        <flowable:formProperty id="daKy" name="Đã ký biên bản?" type="boolean" required="true"/>
+        <flowable:formProperty id="ghiChu" name="Ghi chú" type="string"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="f_ky" sourceRef="ky_bien_ban" targetRef="gw_ky"/>
+    <exclusiveGateway id="gw_ky" name="Đã ký? Kết quả hòa giải?" default="f_hop_lai"/>
+    <sequenceFlow id="f_thanh" name="đã ký, hòa giải thành" sourceRef="gw_ky" targetRef="ket_thuc_hoan_tat">
+      <conditionExpression xsi:type="tFormalExpression">${daKy == true &amp;&amp; hoaGiaiThanh == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_khong_thanh" name="đã ký, không thành" sourceRef="gw_ky" targetRef="ket_thuc_khong_thanh">
+      <conditionExpression xsi:type="tFormalExpression">${daKy == true &amp;&amp; hoaGiaiThanh == false}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_hop_lai" name="họp lại" sourceRef="gw_ky" targetRef="hoa_giai"/>
+
+    <endEvent id="ket_thuc_hoan_tat" name="Hoàn tất – hòa giải thành">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'hoan_tat')}"/>
+      </extensionElements>
+    </endEvent>
+    <endEvent id="ket_thuc_khong_thanh" name="Hoàn tất – hòa giải không thành, hướng dẫn nơi giải quyết tiếp">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'hoan_tat')}"/>
+      </extensionElements>
+    </endEvent>
+    <endEvent id="ket_thuc_tu_choi" name="Từ chối – không thuộc diện hòa giải tại xã">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('ketQua', 'tu_choi')}"/>
+      </extensionElements>
+    </endEvent>
+
+    <subProcess id="qua_han" name="Quá hạn xử lý" triggeredByEvent="true">
+      <startEvent id="den_han" name="Đến hạn xử lý" isInterrupting="false">
+        <timerEventDefinition>
+          <timeDate>${hanXuLyLuc}</timeDate>
+        </timerEventDefinition>
+      </startEvent>
+      <sequenceFlow id="f_den_han" sourceRef="den_han" targetRef="danh_dau_qua_han"/>
+      <serviceTask id="danh_dau_qua_han" name="Đánh dấu quá hạn"
+                   flowable:expression="${execution.setVariable('quaHan', true)}"/>
+      <sequenceFlow id="f_danh_dau" sourceRef="danh_dau_qua_han" targetRef="ket_thuc_qua_han"/>
+      <endEvent id="ket_thuc_qua_han"/>
+    </subProcess>
+  </process>
+</definitions>
