@@ -43,6 +43,6 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 | Việc | Trạng thái |
 |---|---|
 | README song ngữ, CONTRIBUTING, CODE_OF_CONDUCT | ✔ (README viết lại #12, kể chuyện sản phẩm #28) |
-| Hướng dẫn viết module cắm–rút + module mẫu | ◐ (D-009, #30: gói thủ tục `thu-tuc/<ma>/`, hướng dẫn 5 bước `docs/thu-tuc.md`, 2 gói khai sinh + chứng thực bản sao; smoke cắm–rút gói tạm. Còn: thêm gói) |
+| Hướng dẫn viết module cắm–rút + module mẫu | ◐ (D-009, #30: gói thủ tục `thu-tuc/<ma>/`, hướng dẫn 5 bước `docs/thu-tuc.md`, 4 gói: khai sinh, chứng thực bản sao, kết hôn, hòa giải tranh chấp đất đai (#97, thêm bằng thư mục, không sửa mã bộ máy, lĩnh vực mới `dat_dai`); smoke cắm–rút gói tạm và tự chạy hết quy trình mọi gói mới bằng dữ liệu mẫu của gói) |
 | Demo công khai trên Internet, người dùng thật thử | ☐ |
 | Kênh trao đổi (Discussions/Telegram), bài giới thiệu | ☐ |

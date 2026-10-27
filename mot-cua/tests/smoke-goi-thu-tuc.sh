@@ -112,3 +112,62 @@ else
     "$(sql "SELECT string_agg(DISTINCT loai, ',' ORDER BY loai) FROM mot_cua.hop_thu_su_kien
             WHERE ho_so_id = '${CH:-00000000-0000-0000-0000-000000000000}' AND loai IN ('ho_so.moi', 'ho_so.hoan_tat')")"
 fi
+
+# --- 5. Mọi gói khác hai gói mẫu: chạy hết quy trình bằng dữ liệu mẫu của chính gói (#97) -------------------
+# Không viết riêng gì cho từng gói: đọc thu-tuc.yaml, schema, du-lieu-mau.json (thứ tự bước = thứ tự khóa của
+# "xu_ly"), người hoàn thành bước theo candidateGroups trong BPMN (lanh_dao → lãnh đạo tạm, còn lại → cán bộ tạm
+# được phân công thêm lĩnh vực của gói, giữ tới mục Dọn của smoke.sh như CT01 ở mục 4). Thả một gói mới vào thu-tuc/
+# là smoke tự chạy nó.
+# gt_token_otp <username> <secret OTP> → access token mới (mã TOTP vừa dùng bị từ chối trong 30 giây: chờ chu kỳ sau).
+gt_token_otp() {
+  local tk
+  tk="$(lay_token_otp "$1" "$MK" "$(ma_totp "$2")" | jq -r '.access_token // empty')"
+  if [ -z "$tk" ]; then
+    sleep $((31 - $(date +%s) % 30))
+    tk="$(lay_token_otp "$1" "$MK" "$(ma_totp "$2")" | jq -r '.access_token // empty')"
+  fi
+  echo "$tk"
+}
+GT_CB="$(gt_token_otp "${U_CB:?}" "${OTP_CB:?}")"
+GT_LD="$(gt_token_otp "${U_LD:?}" "${OTP_LD:?}")"
+GT_CD="$(lay_token congdan01 "$MK" | jq -r '.access_token // empty')"
+for g in $(tr ',' ' ' <<<"$GOI_LIST"); do
+  case "$g" in khai-sinh|chung-thuc-ban-sao) continue ;; esac
+  D="thu-tuc/$g"; MAU="$D/du-lieu-mau.json"
+  ma_tt="$(sed -n 's/^ma: *//p' "$D/thu-tuc.yaml")"; pid="$(sed -n 's/^quy_trinh: *//p' "$D/thu-tuc.yaml")"
+  lv="$(sed -n 's/^linh_vuc: *//p' "$D/thu-tuc.yaml")"; han="$(sed -n 's/^thoi_han_ngay_lam_viec: *//p' "$D/thu-tuc.yaml")"
+  TT="$(sql "SELECT id FROM mot_cua.thu_tuc WHERE ma = '$ma_tt' AND goi = '$g' AND quy_trinh IS NOT NULL AND cong_khai")"
+  LV_G="$(sql "SELECT id FROM mot_cua.linh_vuc WHERE ma = '$lv'")"
+  if [ -z "$TT" ] || [ -z "$LV_G" ]; then
+    kiem "gói $g: có thủ tục $ma_tt và lĩnh vực $lv đã nạp" "có" "không"; continue
+  fi
+  kiem "gói $g ($ma_tt): thành phần trong danh mục khớp schema của gói (mã:bắt buộc:số tệp tối thiểu)" \
+    "$(jq -r '.properties.thanh_phan as $t | [$t.properties | to_entries[] | select(.key as $k | $t.required | index($k) != null)
+        | "\(.key):true:\(.value.minItems)"] | sort | join(",")' "$D/thanh-phan-ho-so.schema.json")" \
+    "$(sql "SELECT string_agg(ma || ':' || bat_buoc || ':' || so_luong, ',' ORDER BY ma) FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$TT' AND bat_buoc")"
+  sql "INSERT INTO mot_cua.can_bo_linh_vuc (can_bo_id, linh_vuc_id) VALUES ('$CB_ID', '$LV_G') ON CONFLICT DO NOTHING" > /dev/null
+  r="$(nop_du "$GT_CD" "$(jq -c --arg t "$TT" '.ho_so + {thu_tuc_id: $t}' "$MAU")")"
+  HS_G="$(jq -r '.hoSo.id // "00000000-0000-0000-0000-000000000000"' <<<"$r")"; PI_G="$(jq -r '.processInstanceId // empty' <<<"$r")"
+  kiem "gói $g: công dân nộp (tải đủ tệp tối thiểu, khởi tạo) → quy trình $pid ở bước tiep_nhan, $(sql "SELECT sum(so_luong) FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$TT' AND bat_buoc") tệp" \
+    "$pid tiep_nhan $(sql "SELECT sum(so_luong) FROM mot_cua.thanh_phan_yeu_cau WHERE thu_tuc_id = '$TT' AND bat_buoc")" \
+    "$(jq -r '"\(.quyTrinh) \([.buocDangMo[]?.buoc] | join(",")) \(.soTep)"' <<<"$r")"
+  kiem "gói $g: hạn xử lý = $han ngày làm việc sau ngày nhận" "t" \
+    "$(sql "SELECT han_xu_ly = mot_cua_noi_bo.cong_ngay_lam_viec((ngay_nhan AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, $han) FROM mot_cua.ho_so WHERE id = '$HS_G'")"
+  T0="$(task_cua "$GT_CB" "$HS_G" tiep_nhan)"
+  kiem "gói $g: biến không khai trong BPMN của gói → 400" "400" "$(gw_ma "$GT_CB" "/tasks/$T0/complete" '{"bien":{"hopLe":true,"bienLa":1}}')"
+  buoc_da=""
+  for b in $(jq -r '.xu_ly | keys_unsorted[]' "$MAU"); do
+    nhom="$(grep -o "<userTask id=\"$b\"[^>]*" "$D/quy-trinh.bpmn20.xml" | sed -n 's/.*candidateGroups="\([^"]*\)".*/\1/p')"
+    tk="$GT_CB"; [ "$nhom" = lanh_dao ] && tk="$GT_LD"
+    tid="$(task_cua "$tk" "$HS_G" "$b")"
+    ma_ht="$(gw_ma "$tk" "/tasks/${tid:-00000000-0000-0000-0000-000000000000}/complete" "$(jq -c --arg b "$b" '{bien: .xu_ly[$b]}' "$MAU")")"
+    buoc_da="$buoc_da${buoc_da:+,}$b:$ma_ht"
+  done
+  kiem "gói $g: hoàn thành từng bước theo dữ liệu mẫu bằng đúng người (cán bộ $lv / lãnh đạo) → 200" \
+    "$(jq -r '[.xu_ly | keys_unsorted[] | "\(.):200"] | join(",")' "$MAU")" "$buoc_da"
+  kiem "gói $g: quy trình kết thúc, đi đúng các bước của dữ liệu mẫu, ketQua = hoan_tat" \
+    "ket_thuc $(jq -r '[.xu_ly | keys_unsorted[]] | join(",")' "$MAU") hoan_tat" \
+    "$(gw "$GT_CD" "/ho-so/$HS_G/tien-do" | jq -r '.quyTrinh[0] | "\((.diemKetThuc // "")[0:8]) \([.lichSu[].buoc] | join(","))"') $(wf "history/historic-variable-instances?processInstanceId=$PI_G&variableName=ketQua" | jq -r '.data[0].variable.value')"
+  kiem "gói $g: CSDL hồ sơ hoan_tat, có sự kiện ho_so.hoan_tat" "hoan_tat 1" \
+    "$(sql "SELECT trang_thai FROM mot_cua.ho_so WHERE id = '$HS_G'") $(sql "SELECT count(*) FROM mot_cua.hop_thu_su_kien WHERE ho_so_id = '$HS_G' AND loai = 'ho_so.hoan_tat'")"
+done

@@ -23,7 +23,7 @@ TB_TD="$(mktemp -d)"
 # --- 1. Topology --------------------------------------------------------------------------
 kiem "vhost $VH có queue mot_cua.thong_bao (quorum, dead-letter mot_cua.thong_bao.loi) và mot_cua.thong_bao.loi" \
   "quorum mot_cua.thong_bao.loi classic" \
-  "$(rmq list_queues -p "$VH" name type arguments --formatter json | jq -r '
+  "$(rmq_lai list_queues -p "$VH" name type arguments --formatter json | jq -r '
      (.[] | select(.name == "mot_cua.thong_bao")
       | "\(.type) \(.arguments | if type == "array" then map({(.[0]): .[-1]}) | add else . end | .["x-dead-letter-exchange"])"),
      (.[] | select(.name == "mot_cua.thong_bao.loi") | .type)' | paste -sd' ' -)"
