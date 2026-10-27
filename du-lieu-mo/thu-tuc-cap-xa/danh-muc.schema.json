@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dxos:du-lieu-mo:thu-tuc-cap-xa:danh-muc",
+  "title": "Danh mục thủ tục hành chính cấp xã (Commune DX-OS)",
+  "type": "object",
+  "required": [
+    "ten_bo_du_lieu",
+    "giay_phep",
+    "ghi_cong",
+    "so_thu_tuc",
+    "thu_tuc"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "ten_bo_du_lieu": {
+      "type": "string"
+    },
+    "mo_ta": {
+      "type": "string"
+    },
+    "giay_phep": {
+      "const": "CC-BY-4.0"
+    },
+    "ghi_cong": {
+      "type": "string"
+    },
+    "nguon": {
+      "type": "string",
+      "format": "uri"
+    },
+    "luu_y": {
+      "type": "string"
+    },
+    "so_thu_tuc": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "thu_tuc": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ma",
+          "ten",
+          "linh_vuc",
+          "thoi_han_ngay_lam_viec",
+          "le_phi",
+          "can_cu_phap_ly",
+          "thanh_phan",
+          "cac_buoc",
+          "schema",
+          "schema_sha256",
+          "goi"
+        ],
+        "properties": {
+          "ma": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9_-]{1,29}$",
+            "description": "Mã thủ tục trong hệ thống"
+          },
+          "ten": {
+            "type": "string"
+          },
+          "linh_vuc": {
+            "type": "object",
+            "required": [
+              "ma",
+              "ten"
+            ],
+            "properties": {
+              "ma": {
+                "type": "string"
+              },
+              "ten": {
+                "type": "string"
+              }
+            }
+          },
+          "thoi_han_ngay_lam_viec": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0 = trong ngày tiếp nhận; bỏ thứ Bảy, Chủ nhật, ngày lễ"
+          },
+          "le_phi": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Đồng"
+          },
+          "ghi_chu_le_phi": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "can_cu_phap_ly": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "thanh_phan": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ma",
+                "ten",
+                "bat_buoc",
+                "so_tep_toi_thieu"
+              ],
+              "properties": {
+                "ma": {
+                  "type": "string"
+                },
+                "ten": {
+                  "type": "string"
+                },
+                "bat_buoc": {
+                  "type": "boolean"
+                },
+                "so_tep_toi_thieu": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "ghi_chu": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "cac_buoc": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ma",
+                "ten",
+                "nguoi_xu_ly"
+              ],
+              "properties": {
+                "ma": {
+                  "type": "string"
+                },
+                "ten": {
+                  "type": "string"
+                },
+                "nguoi_xu_ly": {
+                  "enum": [
+                    "can_bo_linh_vuc",
+                    "lanh_dao",
+                    "nguoi_nop"
+                  ]
+                }
+              }
+            }
+          },
+          "schema": {
+            "type": "string",
+            "description": "Đường dẫn tương đối tới JSON Schema thành phần hồ sơ"
+          },
+          "schema_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "goi": {
+            "type": "string",
+            "description": "Thư mục gói trong kho mã nguồn"
+          }
+        }
+      }
+    }
+  }
+}

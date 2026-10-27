@@ -34,6 +34,20 @@ kiem "JSON Schema CT01 qua /public/rpc lấy đúng tệp của gói" \
   "$(jq -c '.properties.thanh_phan.required' thu-tuc/chung-thuc-ban-sao/thanh-phan-ho-so.schema.json)" \
   "$(curl -s "$GW/public/rpc/json_schema_thu_tuc?ma=CT01" | jq -c '.properties.thanh_phan.required')"
 
+# Dữ liệu mở (#102): bộ công bố du-lieu-mo/thu-tuc-cap-xa/ khớp hệ thống đang chạy – cùng danh sách thủ tục công khai
+# có gói, cùng thời hạn, lệ phí, thành phần bắt buộc, và JSON Schema công bố giống hệt schema API công khai trả về.
+DM_MO=du-lieu-mo/thu-tuc-cap-xa/danh-muc.json
+kiem "dữ liệu mở: danh mục công bố = thủ tục công khai có gói trên /public/thu_tuc (mã:thời hạn:lệ phí:thành phần bắt buộc)" \
+  "$(jq -r '[.thu_tuc[] | "\(.ma):\(.thoi_han_ngay_lam_viec):\(.le_phi):\([.thanh_phan[] | select(.bat_buoc) | .ma] | sort | join("+"))"] | sort | join(",")' "$DM_MO")" \
+  "$(curl -s "$GW/public/thu_tuc?goi=not.is.null&cong_khai=is.true&select=ma,so_ngay_xu_ly,le_phi,thanh_phan_yeu_cau(ma,bat_buoc)" \
+     | jq -r '[.[] | "\(.ma):\(.so_ngay_xu_ly):\(.le_phi | tonumber | floor):\([.thanh_phan_yeu_cau[] | select(.bat_buoc) | .ma] | sort | join("+"))"] | sort | join(",")')"
+lech_mo=""
+for ma_mo in $(jq -r '.thu_tuc[].ma' "$DM_MO"); do
+  [ "$(jq -cS . "du-lieu-mo/thu-tuc-cap-xa/schema/$ma_mo.schema.json")" = "$(curl -s "$GW/public/rpc/json_schema_thu_tuc?ma=$ma_mo" | jq -cS .)" ] \
+    || lech_mo="$lech_mo $ma_mo"
+done
+kiem "dữ liệu mở: JSON Schema công bố của mọi thủ tục giống hệt /public/rpc/json_schema_thu_tuc" "" "${lech_mo# }"
+
 # --- 2. Chạy lại bộ nạp ---------------------------------------------------------------------
 if out="$(docker compose run --rm --no-deps nap-thu-tuc 2>&1)"; then ma=0; else ma=$?; fi
 kiem "nap-thu-tuc lần 2: mã thoát 0" "0" "$ma"
