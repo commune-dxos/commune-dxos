@@ -1021,6 +1021,45 @@ sequenceDiagram
 
 Ảnh mẫu GIẢ để thử: `mot-cua/web-cong-dan/public/mau-gia/` (sinh bằng `scripts/sinh_giay_to_gia.py`, có dải "DỮ LIỆU GIẢ", bố cục khác giấy tờ thật), tải ở http://localhost:9080/mau-gia/giay-to-tuy-than.png. Kiểm bằng `mot-cua/db/tests/doc_giay_to.sql`, `mot-cua/backend/tests/test_doc_giay_to.py` (trích trường từ kết quả OCR thật của ảnh mẫu), Vitest `doc-anh.test.tsx`, `xac-nhan-giay-to.test.tsx` và smoke 4q (`mot-cua/tests/smoke-doc-giay-to.sh`).
 
+### 4.16 Wiki văn bản nội bộ cho cán bộ (#95)
+
+Cán bộ tra cứu quy chế, hướng dẫn nghiệp vụ, quy trình, biểu mẫu, thông báo nội bộ của xã ngay trong cổng cán bộ (`/can-bo/wiki`): tìm theo từ khóa (không dấu cũng được, chịu lỗi chính tả, đoạn khớp được tô), lọc theo loại, xem chi tiết và các phiên bản cũ. Văn thư và lãnh đạo soạn, sửa, ngừng hiệu lực văn bản.
+
+```mermaid
+sequenceDiagram
+  participant CB as Cán bộ (cổng /can-bo)
+  participant VT as Văn thư / lãnh đạo
+  participant GW as APISIX /files
+  participant API as mot-cua-api
+  participant PG as PostgreSQL (RLS)
+  participant MS as Meilisearch CE
+  CB->>GW: GET /files/wiki/tim?q=… (JWT)
+  GW->>API: chuyển tiếp (JWT đã kiểm)
+  API->>PG: lĩnh vực đang phụ trách (token của cán bộ)
+  API->>MS: search, filter theo vai + lĩnh vực, trang_thai
+  MS-->>API: hit + đoạn khớp đánh dấu U+E000/U+E001
+  API->>PG: id=in.(…) bằng token của cán bộ → bỏ id RLS không cho xem
+  API-->>CB: kết quả (nguon: meilisearch)
+  Note over API,PG: Meilisearch lỗi → RPC tim_wiki (RLS, không dấu), nguon: csdl
+  VT->>API: POST /files/wiki[/{id}] (JSON)
+  API->>PG: INSERT/PATCH bằng token của người ghi (RLS, trigger phiên bản + lịch sử + kiểm toán wiki.*)
+  API->>MS: cập nhật tài liệu, chờ xong
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **CSDL là nguồn sự thật và quyết định quyền** (RLS theo `pham_vi`: `toan_xa`, `linh_vuc` theo phân công trong `can_bo_linh_vuc`, `lanh_dao`); Meilisearch chỉ là chỉ mục | Một chỗ định nghĩa quyền, giống mọi bảng khác (§4). Đổi phân công có hiệu lực ngay vì bộ lọc dựng từ CSDL mỗi lần tìm. Mất chỉ mục không mất dữ liệu |
+| **Lọc theo quyền ở Meilisearch rồi đối chiếu lại RLS** | Lọc trước để số kết quả, xếp hạng, phân trang đúng phạm vi; đối chiếu sau vì chỉ mục có thể chậm một nhịp (đổi phạm vi, sửa trực tiếp trong CSDL) – smoke đổi phạm vi bằng superuser và kiểm cán bộ không còn thấy |
+| **Dùng lại Meilisearch CE và khóa Tầng 2 của #91** (index `mot-cua-wiki-van-ban`, lớp `tri_thuc.Meili`) | Không thêm dịch vụ; khóa Tầng 2 chỉ dùng được trên index `mot-cua-*`, không tạo khóa, không xóa index. Meilisearch không mở cổng, không qua APISIX: chỉ `mot-cua-api` gọi |
+| Meilisearch dừng → **tìm dự phòng trong CSDL** (RPC `tim_wiki`, `SECURITY INVOKER`, bỏ dấu bằng `translate`) | Tra cứu nội bộ không được chết theo chỉ mục; giao diện báo "bộ tìm kiếm đang tạm dừng" |
+| Ghi bằng **token của người ghi**, không dùng tài khoản dịch vụ | RLS quyết định văn thư không ghi phạm vi lãnh đạo, cán bộ không ghi; tài khoản dịch vụ tệp chỉ có quyền **đọc** wiki để dựng lại chỉ mục |
+| **Không xóa**; sửa → phiên bản + lịch sử; hết dùng → `het_hieu_luc` | Văn bản nội bộ cần truy được ai sửa gì, lúc nào. Trigger chặn xóa/sửa lịch sử kể cả superuser |
+| Kiểm toán `wiki.them|sua|ngung_hieu_luc|hieu_luc_lai` ghi **SHA-256 nội dung** và tên cột đổi, không ghi tiêu đề/nội dung | Xác minh được phiên bản đang có đúng phiên bản đã ghi nhật ký mà không đưa nội dung (có thể có tên người) vào chuỗi kiểm toán |
+| Đoạn khớp đánh dấu bằng **U+E000/U+E001**, web tự dựng `<mark>` | Không chèn HTML từ máy chủ hay nội dung văn bản (chống XSS); Vitest kiểm `<script>` trong nội dung hiện thành chữ |
+| Đồng bộ chỉ mục: sau mỗi lần ghi + dựng lại toàn bộ khi khởi động và định kỳ (`DXOS_WIKI_DONG_BO_GIAY`, 300 giây) | Đơn giản, tự sửa khi chỉ mục mất hay lệch; số văn bản nội bộ của một xã nhỏ (hàng trăm) |
+
+Kiểm bằng `mot-cua/db/tests/wiki_van_ban.sql` (43 kiểm tra), `mot-cua/backend/tests/test_wiki.py`, Vitest `src/can-bo/wiki.test.tsx` và smoke 4r (`mot-cua/tests/smoke-wiki-van-ban.sh`).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.

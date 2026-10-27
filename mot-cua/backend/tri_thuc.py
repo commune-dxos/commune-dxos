@@ -111,17 +111,18 @@ def tim_ngu_nghia(vec_chu, nhan_mo_hinh, so_luong=8, ma_thu_tuc=None):
 
 
 class Meili:
-    """Index tri thức `<tiền tố>tri-thuc` trên Meilisearch, bằng khóa API riêng của Tầng 2."""
+    """Một index `<tiền tố><ten_index>` trên Meilisearch (mặc định index tri thức), bằng khóa API riêng của Tầng 2.
+    Wiki văn bản cho cán bộ (#95) dùng lại lớp này với index `wiki-van-ban`."""
 
-    def __init__(self):
-        self._cfg, self.lock = None, threading.Lock()
+    def __init__(self, ten_index=TEN_INDEX):
+        self._cfg, self.lock, self.ten_index = None, threading.Lock(), ten_index
 
     def cfg(self):
         with self.lock:
             if self._cfg is None:
                 c = _bi_mat(f"tang2/{TANG2}/meilisearch")
                 self._cfg = {"url": c["url"].rstrip("/"), "h": {"Authorization": f"Bearer {c['key']}"},
-                             "index": f"{c['tien_to_index']}{TEN_INDEX}"}
+                             "index": f"{c['tien_to_index']}{self.ten_index}"}
             return self._cfg
 
     def goi(self, method, duong, body=None, cho_phep=(), timeout=15):

@@ -101,6 +101,18 @@ Trang **Sổ văn bản** (`/can-bo/van-ban`, nhóm "Văn bản" ở thanh bên)
 
 Lỗi từ API (mã độc 422, không có quyền 403, đã ký 409) hiện nguyên câu báo trên trang. Thiết kế: [`architecture.md`](architecture.md) §4.11.
 
+## Wiki văn bản nội bộ (#95)
+
+Trang **Wiki văn bản** (`/can-bo/wiki`, nhóm "Văn bản" ở thanh bên) hiện cho mọi vai của cổng. Ô tìm (không dấu cũng được), chọn loại văn bản, "Gồm cả văn bản hết hiệu lực"; tham số nằm trên URL (`/can-bo/wiki?q=tiep+cong+dan&loai=quy_trinh`) để gửi link cho đồng nghiệp. Đoạn khớp được tô đậm. Mỗi văn bản có trang chi tiết (`/can-bo/wiki/<id>`) với nội dung và các phiên bản trước.
+
+| Vai | Thấy | Làm được |
+|---|---|---|
+| `can_bo` | văn bản toàn xã và văn bản của lĩnh vực mình đang phụ trách | tìm, xem, xem phiên bản cũ |
+| `van_thu` | mọi văn bản trừ phạm vi "chỉ lãnh đạo" | thêm (`/can-bo/wiki/moi`), sửa, ngừng hiệu lực / cho hiệu lực lại |
+| `lanh_dao` | tất cả | như văn thư, thêm được văn bản "chỉ lãnh đạo" |
+
+Khi bộ tìm kiếm (Meilisearch) tạm dừng, trang báo "Bộ tìm kiếm đang tạm dừng" và vẫn tìm trực tiếp trong CSDL theo đúng quyền. Thiết kế: [`architecture.md`](architecture.md) §4.16.
+
 ## Hạ tầng
 
 | Thành phần | Cấu hình |
@@ -115,7 +127,7 @@ Không mở cổng nào ra host: web, API, Flowable, Garage chỉ đi qua APISIX
 ## Chạy thử
 
 ```bash
-make up && make smoke     # smoke mục 4i: trang /can-bo, client mot_cua_can_bo, E2E cán bộ → lãnh đạo; 4n: sổ văn bản
+make up && make smoke     # smoke mục 4i: trang /can-bo, client mot_cua_can_bo, E2E cán bộ → lãnh đạo; 4n: sổ văn bản; 4r: wiki văn bản
 make demo-users           # đặt mật khẩu chung cho tài khoản mẫu và in ra
 ```
 

@@ -462,6 +462,8 @@ services:
       # Đọc giấy tờ (#93): dịch vụ OCR của nền tảng (profile ai). Không chạy thì chức năng đọc trả 503, hồ sơ vẫn nộp được.
       DXOS_OCR_URL: http://ocr:8000
       DXOS_OCR_TIMEOUT: ${DXOS_OCR_TIMEOUT:-120}
+      # Wiki văn bản (#95): chu kỳ dựng lại chỉ mục Meilisearch từ CSDL (giây).
+      DXOS_WIKI_DONG_BO_GIAY: ${DXOS_WIKI_DONG_BO_GIAY:-300}
       # pyHanko (tzlocal) cần múi giờ hệ thống; giờ Việt Nam trên giấy tờ tính bằng offset cố định.
       TZ: UTC
       PYTHONDONTWRITEBYTECODE: "1"
@@ -481,6 +483,9 @@ services:
       garage-init:
         condition: service_completed_successfully
       nap-thu-tuc:
+        condition: service_completed_successfully
+      # Wiki văn bản (#95): khóa Meilisearch của Tầng 2 phải có trong OpenBao trước khi đồng bộ chỉ mục.
+      meili-init:
         condition: service_completed_successfully
       # ClamAV nạp CSDL virus mất khoảng 1 phút: không chờ. Chưa sẵn sàng thì API tải tệp
       # trả 503 (không bao giờ lưu tệp chưa quét).
