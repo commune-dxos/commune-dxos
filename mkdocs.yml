@@ -24,6 +24,7 @@ hooks:
 # mkdocs serve tự build lại khi các tệp ngoài docs/ mà site dùng thay đổi.
 watch:
   - thu-tuc
+  - du-lieu-mo
   - mot-cua/README.md
   - mot-cua/backend/goi_thu_tuc.py
   - CONTRIBUTING.md
@@ -38,6 +39,7 @@ nav:
       - Cổng cán bộ – luồng xử lý hồ sơ: cong-can-bo.md
   - Lập trình viên thêm thủ tục:
       - Thêm một thủ tục mới: thu-tuc.md
+      - Dữ liệu mở – thủ tục cấp xã (CC-BY-4.0): du-lieu-mo/thu-tuc-cap-xa/index.md
       - Bộ máy một cửa: mot-cua.md
       - Web Tầng 2 (cổng công dân, cán bộ): cong-cong-dan.md
   - Vận hành:

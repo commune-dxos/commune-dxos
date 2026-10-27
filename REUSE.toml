@@ -27,3 +27,12 @@ path = [
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 DTU_DZ_2"
 SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Dữ liệu mở (#102): bộ dữ liệu thủ tục cấp xã theo CC-BY-4.0, không phải GPL. Bảng này đứng sau bảng chung ở
+# trên nên được ưu tiên với các tệp trong du-lieu-mo/ (REUSE: bảng khớp sau cùng thắng). Toàn văn:
+# LICENSES/CC-BY-4.0.txt, chép kèm thư mục thành du-lieu-mo/thu-tuc-cap-xa/LICENSE.
+[[annotations]]
+path = "du-lieu-mo/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 DTU_DZ_2"
+SPDX-License-Identifier = "CC-BY-4.0"
