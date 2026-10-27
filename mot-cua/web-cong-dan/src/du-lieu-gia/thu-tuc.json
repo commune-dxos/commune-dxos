@@ -127,5 +127,124 @@
         }
       }
     }
+  },
+  {
+    "id": "00000000-0000-4000-8000-0000000000c3",
+    "ma": "DD01",
+    "ten": "Hòa giải tranh chấp đất đai tại xã",
+    "so_ngay_xu_ly": 20,
+    "le_phi": 0,
+    "ghi_chu_le_phi": "Không thu phí",
+    "quy_trinh": "hoa_giai_dat_dai",
+    "linh_vuc": {
+      "ma": "dat_dai",
+      "ten": "Đất đai"
+    },
+    "json_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:dxos:mot-cua:thu-tuc:DD01",
+      "title": "Hòa giải tranh chấp đất đai tại xã",
+      "description": "Thành phần hồ sơ yêu cầu hòa giải tranh chấp đất đai tại Ủy ban nhân dân cấp xã. Mỗi thành phần là mảng id tệp đã tải qua /files (thanh_phan_ho_so.id).",
+      "type": "object",
+      "required": [
+        "thanh_phan"
+      ],
+      "properties": {
+        "thanh_phan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "don_yeu_cau"
+          ],
+          "properties": {
+            "don_yeu_cau": {
+              "title": "Đơn yêu cầu hòa giải tranh chấp đất đai",
+              "description": "Ghi rõ các bên tranh chấp, vị trí thửa đất và nội dung yêu cầu",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1
+            },
+            "giay_to_dat": {
+              "title": "Giấy tờ liên quan đến thửa đất",
+              "description": "Nếu có: giấy chứng nhận, giấy tờ về nguồn gốc, quá trình sử dụng đất",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "00000000-0000-4000-8000-0000000000c4",
+    "ma": "KH01",
+    "ten": "Đăng ký kết hôn",
+    "so_ngay_xu_ly": 5,
+    "le_phi": 0,
+    "ghi_chu_le_phi": "Miễn lệ phí đăng ký kết hôn của công dân Việt Nam cư trú trong nước (Luật Hộ tịch 2014, Điều 11)",
+    "quy_trinh": "dang_ky_ket_hon",
+    "linh_vuc": {
+      "ma": "ho_tich",
+      "ten": "Hộ tịch"
+    },
+    "json_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:dxos:mot-cua:thu-tuc:KH01",
+      "title": "Đăng ký kết hôn",
+      "description": "Thành phần hồ sơ đăng ký kết hôn giữa công dân Việt Nam cư trú trong nước. Mỗi thành phần là mảng id tệp đã tải qua /files (thanh_phan_ho_so.id). Khi đăng ký, hai bên nam, nữ phải cùng có mặt.",
+      "type": "object",
+      "required": [
+        "thanh_phan"
+      ],
+      "properties": {
+        "thanh_phan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "to_khai",
+            "giay_to_tuy_than"
+          ],
+          "properties": {
+            "to_khai": {
+              "title": "Tờ khai đăng ký kết hôn (theo mẫu)",
+              "description": "Hai bên có thể khai chung một tờ khai",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1
+            },
+            "giay_to_tuy_than": {
+              "title": "Giấy tờ tùy thân của hai bên nam, nữ",
+              "description": "Mỗi bên một ảnh; xuất trình bản chính khi đến ký Sổ hộ tịch",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 2
+            },
+            "xac_nhan_hon_nhan": {
+              "title": "Giấy xác nhận tình trạng hôn nhân",
+              "description": "Khi một bên không thường trú tại xã đăng ký và chưa khai thác được thông tin từ cơ sở dữ liệu",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 0
+            }
+          }
+        }
+      }
+    }
   }
 ]
