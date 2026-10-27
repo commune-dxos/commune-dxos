@@ -131,7 +131,8 @@ Bộ nạp ghi các thành phần này vào `mot_cua.thanh_phan_yeu_cau`, và `G
 
 ```bash
 make license              # thêm dòng SPDX cho tệp mới (YAML, XML)
-make check                # kiểm mọi gói thu-tuc/ (không cần Docker) + BPMN + SPDX + test
+make du-lieu-mo           # cập nhật bộ dữ liệu mở du-lieu-mo/thu-tuc-cap-xa/ (CC-BY-4.0) theo gói mới
+make check                # kiểm mọi gói thu-tuc/ (không cần Docker) + BPMN + SPDX + dữ liệu mở khớp gói + test
 make nap-thu-tuc          # hệ thống đang chạy: deploy BPMN lên Flowable + ghi danh mục
 curl -s 'http://localhost:9080/public/thu_tuc?ma=eq.XNCT01&select=ma,ten,goi,quy_trinh,so_ngay_xu_ly'
 ```

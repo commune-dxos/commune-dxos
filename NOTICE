@@ -38,6 +38,10 @@ thư viện qua trình quản lý gói hoặc image Docker gốc, không sửa �
 không chứa mã của bên thứ ba. Mọi giấy phép trong bảng đều tương thích GPL-3.0
 (Apache-2.0, MIT, BSD, MPL-2.0, PostgreSQL, PSF-2.0) hoặc là dịch vụ riêng.
 
+Ngoại lệ trong kho: thư mục du-lieu-mo/ (bộ dữ liệu mở thủ tục hành chính cấp xã, #102) phát hành
+theo Creative Commons Attribution 4.0 International (CC-BY-4.0), toàn văn LICENSES/CC-BY-4.0.txt;
+ghi công: "Commune DX-OS – đội DTU_DZ_2, https://github.com/commune-dxos/commune-dxos".
+
 Thành phần AGPL/GPL chạy như dịch vụ độc lập, không liên kết vào mã của dự án:
 - Garage (AGPL-3.0): image gốc `dxflrs/garage`, không sửa mã; dự án chỉ gọi qua
   mạng (S3 API, Admin API).
