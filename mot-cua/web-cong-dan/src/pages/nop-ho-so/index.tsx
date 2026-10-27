@@ -5,9 +5,9 @@
 // Poka-yoke phía trình duyệt theo JSON Schema 2020-12 của gói (lib/thanh-phan.ts): thiếu thành phần
 // bắt buộc thì không sang bước sau, và lib/ho-so.ts nopHoSo kiểm lại trước khi gửi request đầu tiên.
 // Bấm nộp thì tạo hồ sơ, tải tệp, khởi tạo quy trình thật qua APISIX; máy chủ kiểm lại schema với
-// tệp đã quét sạch trước khi khởi tạo (#59).
+// tệp đã quét sạch trước khi khởi tạo (#59). Thành phần có mẫu đọc: tự điền từ ảnh (#93), thông tin gửi kèm tệp.
 import { ArrowLeft, ArrowRight, CircleAlert, LogIn } from "lucide-react";
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { tenHienThi, useXacThuc } from "@/auth/xac-thuc";
 import { Khung } from "@/components/khung";
@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoiApi, type ThuTuc } from "@/lib/api";
+import { ApiDocGiayTo, type LoaiGiayTo } from "@/lib/doc-giay-to";
 import { phatHanhGiayTo } from "@/lib/giay-to";
 import { nopHoSo, tienDoMoi, type HoSoMoi, type TienDoNop } from "@/lib/ho-so";
 import { docThanhPhan, kiemThanhPhan } from "@/lib/thanh-phan";
@@ -58,6 +59,21 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
   const [dangGui, datDangGui] = useState(false);
   const [loiGui, datLoiGui] = useState<string | null>(null);
   const [daNop, datDaNop] = useState<HoSoMoi | null>(null);
+  // Tự điền từ ảnh (#93): danh sách loại giấy tờ đọc được; không tải được (OCR không bật vẫn tải được) thì ẩn.
+  const token = nguoiDung?.access_token;
+  const apiDoc = useMemo(() => (token ? new ApiDocGiayTo(token) : null), [token]);
+  const [loaiDoc, datLoaiDoc] = useState<Record<string, LoaiGiayTo>>({});
+  const [khai, datKhai] = useState<Record<string, Record<string, string>>>({});
+  useEffect(() => {
+    let huy = false;
+    apiDoc
+      ?.layLoai()
+      .then((l) => !huy && datLoaiDoc(l))
+      .catch(() => undefined);
+    return () => {
+      huy = true;
+    };
+  }, [apiDoc]);
 
   if (buoc === "da-nop") {
     if (!daNop) return <Navigate to={goc} replace />;
@@ -106,6 +122,9 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
         { ho_ten_nguoi_nop: nguoiNop.hoTen.trim(), so_dien_thoai: chuanSoDienThoai(nguoiNop.soDienThoai) },
         tep,
         tienDo.current,
+        undefined,
+        undefined,
+        khai,
       );
       datDaNop(hoSo);
       sang(`${goc}/da-nop`);
@@ -171,6 +190,21 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
             tep={tep}
             loi={loi}
             doi={(ma, ds) => datTep((t) => ({ ...t, [ma]: ds }))}
+            tuDien={
+              apiDoc && Object.keys(loaiDoc).length
+                ? {
+                    loai: loaiDoc,
+                    khai,
+                    doiKhai: (ma, g) =>
+                      datKhai((k) => {
+                        const { [ma]: _bo, ...con } = k;
+                        return g ? { ...con, [ma]: g } : con;
+                      }),
+                    docThu: (l, anh) => apiDoc.docThu(l, anh),
+                    dungHoTen: (hoTen) => datNguoiNop((n) => ({ ...n, hoTen })),
+                  }
+                : undefined
+            }
           />
         )}
         {duong === "kiem-tra" && (
@@ -181,6 +215,8 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
             tep={tep}
             goc={goc}
             khoaSua={!!daTaoHoSo}
+            loaiDoc={loaiDoc}
+            khai={khai}
           />
         )}
         <div className="flex flex-col items-start gap-3">

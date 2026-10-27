@@ -1,0 +1,17 @@
+{
+  "mo_ta": "Hồ sơ mẫu GIẢ cho thủ tục KH01: người nộp, số điện thoại, số đăng ký và id tệp đều không có thật. Smoke dùng để nộp hồ sơ và chạy hết quy trình; bộ nạp kiểm tệp này khớp thanh-phan-ho-so.schema.json.",
+  "ho_so": {
+    "ho_ten_nguoi_nop": "Trần Văn Mẫu",
+    "so_dien_thoai": "0900000097"
+  },
+  "thanh_phan": {
+    "to_khai": ["4b010000-0000-4000-8000-000000000001"],
+    "giay_to_tuy_than": ["4b010000-0000-4000-8000-000000000002", "4b010000-0000-4000-8000-000000000003"]
+  },
+  "xu_ly": {
+    "tiep_nhan": {"hopLe": true},
+    "xac_minh": {"duDieuKien": true, "ghiChu": "Hai bên đủ tuổi, tự nguyện, không thuộc trường hợp cấm"},
+    "ky_giay_chung_nhan": {"daKy": true},
+    "trao_giay_chung_nhan": {"haiBenCoMat": true, "soDangKy": "MAU-07/2026"}
+  }
+}

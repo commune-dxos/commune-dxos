@@ -25,6 +25,10 @@ NGUON = "mot-cua"
 # Topology khai báo trong mot-cua/rabbitmq/definitions.json (rabbitmq-init nạp).
 EXCHANGE = "mot_cua.su_kien"
 QUEUE_NHAT_KY = "mot_cua.nhat_ky"
+# Consumer thông báo tới cán bộ (#56): chỉ nhận ho_so.sap_tre_han.
+QUEUE_THONG_BAO = "mot_cua.thong_bao"
+# Kênh ngoài của thông báo; mọi kênh ở chế độ giả lập (không gửi email/SMS thật).
+KENH_THONG_BAO = ("email", "sms")
 LOAI = ("ho_so.moi", "ho_so.chuyen_buoc", "ho_so.hoan_tat", "ho_so.tu_choi", "ho_so.sap_tre_han")
 # Khóa không bao giờ được xuất hiện trong sự kiện (dữ liệu cá nhân của người nộp).
 KHOA_CAM = {"hoTen", "hoTenNguoiNop", "ho_ten", "ho_ten_nguoi_nop", "soDienThoai", "so_dien_thoai",
@@ -168,3 +172,16 @@ def dong_nhat_ky(su_kien):
     return {"su_kien_id": su_kien["id"], "loai": su_kien["loai"], "ho_so_id": su_kien["hoSoId"],
             "ma_ho_so": su_kien["maHoSo"], "linh_vuc": su_kien["linhVuc"], "xay_ra_luc": su_kien["luc"],
             "noi_dung": su_kien}
+
+
+def kenh_thong_bao(cau_hinh):
+    """DXOS_THONG_BAO_KENH ("email,sms", rỗng = chỉ trong cổng) → tuple kênh hợp lệ, giữ thứ tự, không trùng.
+    Kênh lạ → ValueError (cấu hình sai thì worker dừng ngay, không lặng lẽ bỏ)."""
+    ds = []
+    for k in (x.strip().lower() for x in (cau_hinh or "").split(",")):
+        if not k or k in ds:
+            continue
+        if k not in KENH_THONG_BAO:
+            raise ValueError(f"kênh thông báo không hỗ trợ: {k} (chỉ {', '.join(KENH_THONG_BAO)})")
+        ds.append(k)
+    return tuple(ds)

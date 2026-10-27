@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Chỉ cho stage build `xuat-mo-hinh` của nen-tang/ocr/Dockerfile (xuất VietOCR sang ONNX), KHÔNG có trong image chạy
+# thật. torch/torchvision cài riêng từ chỉ mục CPU của PyTorch. vietocr 0.3.13 ghim pillow 10.2.0 (không có bản cho
+# Python 3.13) nên cài --no-deps; các gói nó dùng khi dựng mô hình và đọc cấu hình cài ở đây.
+PyYAML==6.0.3
+einops==0.8.2
+gdown==6.4.2
+pillow==12.3.0
+numpy==2.3.5
+onnx==1.23.2
+onnxruntime==1.31.0

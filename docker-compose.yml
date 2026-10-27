@@ -29,8 +29,10 @@
 #          + cổng công dân mot-cua-web, APISIX phục vụ ở route / (#57)
 #          + step-ca (CA nội bộ), ca-init, Gotenberg: biên nhận/kết quả PDF có ký số thuộc luồng
 #            nộp hồ sơ chính nên chạy cùng core (#77)
-#   docs : Meilisearch CE                              (tuần 5)
-#   ai   : Ollama + Qwen2.5 7B, OCR                   (tuần 5)
+#          + Meilisearch CE (tìm kiếm), meili-init, nap-tri-thuc, trợ lý thủ tục tro-ly (RAG, #91): chạy cùng
+#            core để ô hỏi đáp của cổng công dân luôn tìm được, kể cả khi không có mô hình (LLM_PROVIDER=tat)
+#   ai   : Ollama (Qwen2.5 7B + bge-m3, tải lúc chạy) cho LLM_PROVIDER=ollama (#91): make up-ai
+#          + ocr: đọc chữ trên ảnh giấy tờ, PaddleOCR + VietOCR trên ONNX Runtime (#93): make up-ocr
 #   bi   : kho-du-lieu (dịch vụ một lần: hồ sơ đã đóng → Parquet → dbt → bảng mart bao_cao, #80;
 #          make kho-du-lieu), Apache Superset (dashboard /bao-cao, SSO Keycloak, #82): make up-bi
 #
@@ -98,10 +100,11 @@ x-superset: &superset
 services:
   # ---------------------------------------------------------------- core ----
   postgres:
-    # postgres:17.6-alpine + pgAudit 17.1 biên dịch từ mã nguồn ghim SHA-256 (#75): nen-tang/postgres/Dockerfile.
+    # postgres:17.6-alpine + pgAudit 17.1 (#75) + pgvector 0.8.7 (#91) biên dịch từ mã nguồn ghim SHA-256:
+    # nen-tang/postgres/Dockerfile.
     build:
       context: ./nen-tang/postgres
-    image: commune-dxos/postgres:17.6-pgaudit17.1
+    image: commune-dxos/postgres:17.6-pgaudit17.1-pgvector0.8.7
     profiles: [core]
     # pgAudit (#75) ghi vào log PostgreSQL (docker compose logs postgres) các dòng "AUDIT: …":
     #   SESSION: lớp câu lệnh theo DXOS_PGAUDIT_LOG (mặc định ddl,role: đổi schema, role, quyền);
@@ -337,6 +340,8 @@ services:
         condition: service_healthy
       mot-cua-web:
         condition: service_healthy
+      tro-ly:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9080'"]
       interval: 10s
@@ -430,6 +435,8 @@ services:
     image: commune-dxos/mot-cua-api:local
     profiles: [core]
     command: ["python", "-u", "/mot-cua/backend/main.py"]
+    # default: mạng chung của lõi; ocr-noi-bo: chỉ để gọi dịch vụ ocr (#93).
+    networks: [default, ocr-noi-bo]
     environment:
       DXOS_TANG2: *tang2
       DXOS_POSTGREST_URL: http://postgrest:3000
@@ -452,6 +459,11 @@ services:
       # thư ca-init ghi vào OpenBao. Tên cơ quan in trên giấy tờ = tên trong chứng thư.
       DXOS_GOTENBERG_URL: http://gotenberg:3000
       DXOS_KY_SO_TEN: ${DXOS_KY_SO_TEN:-UBND xã Mẫu – Bộ phận Một cửa}
+      # Đọc giấy tờ (#93): dịch vụ OCR của nền tảng (profile ai). Không chạy thì chức năng đọc trả 503, hồ sơ vẫn nộp được.
+      DXOS_OCR_URL: http://ocr:8000
+      DXOS_OCR_TIMEOUT: ${DXOS_OCR_TIMEOUT:-120}
+      # Wiki văn bản (#95): chu kỳ dựng lại chỉ mục Meilisearch từ CSDL (giây).
+      DXOS_WIKI_DONG_BO_GIAY: ${DXOS_WIKI_DONG_BO_GIAY:-300}
       # pyHanko (tzlocal) cần múi giờ hệ thống; giờ Việt Nam trên giấy tờ tính bằng offset cố định.
       TZ: UTC
       PYTHONDONTWRITEBYTECODE: "1"
@@ -471,6 +483,9 @@ services:
       garage-init:
         condition: service_completed_successfully
       nap-thu-tuc:
+        condition: service_completed_successfully
+      # Wiki văn bản (#95): khóa Meilisearch của Tầng 2 phải có trong OpenBao trước khi đồng bộ chỉ mục.
+      meili-init:
         condition: service_completed_successfully
       # ClamAV nạp CSDL virus mất khoảng 1 phút: không chờ. Chưa sẵn sàng thì API tải tệp
       # trả 503 (không bao giờ lưu tệp chưa quét).
@@ -540,6 +555,7 @@ services:
       DXOS_SU_KIEN_SAP_TRE_NGAY: ${DXOS_SU_KIEN_SAP_TRE_NGAY:-1}
       DXOS_DOI_SOAT_CHO_GIAY: ${DXOS_DOI_SOAT_CHO_GIAY:-60}
       DXOS_DOI_SOAT_TOI_DA: ${DXOS_DOI_SOAT_TOI_DA:-500}
+      DXOS_THONG_BAO_KENH: ${DXOS_THONG_BAO_KENH-email,sms}
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - ./mot-cua:/mot-cua:ro
@@ -743,6 +759,8 @@ services:
       - step-ca-secrets:/vol/step-ca
       - ca-init-secrets:/vol/ca-init
       - superset-secrets:/vol/superset
+      - meilisearch-secrets:/vol/meilisearch
+      - meili-init-secrets:/vol/meili-init
     depends_on:
       openbao:
         condition: service_started
@@ -946,8 +964,134 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # ------------------------------------------------- docs – TODO tuần 5 ----
-  # meilisearch: # Chỉ Community Edition (MIT), không bật tính năng Enterprise (D-004)
+  # ------------------------------------------- tìm kiếm + trợ lý thủ tục (#91) ----
+  # Khóa chủ Meilisearch (bao-init sinh trong OpenBao dxos/core/meilisearch) → tệp cấu hình TOML quyền 0400
+  # trong volume meilisearch-secrets; Meilisearch đọc bằng --config-file-path (không qua biến môi trường).
+  meilisearch-secrets:
+    <<: *bao-agent
+    user: "0"
+    command: ["-config=/nen-tang/openbao/agent/meilisearch.hcl"]
+    volumes:
+      - ./nen-tang/openbao/agent:/nen-tang/openbao/agent:ro
+      - meilisearch-secrets:/run/dxos-secrets
+
+  # Máy tìm kiếm (MIT): image gốc getmeili/meilisearch là Community Edition (bản Enterprise phát hành riêng
+  # thành image meilisearch-enterprise, giấy phép BUSL – không dùng, D-004). Dữ liệu phi cấu trúc dạng chữ của
+  # lõi: Tầng 2 chỉ dùng khóa API riêng do meili-init cấp, chỉ trên index có tiền tố của mình. Không mở cổng ra
+  # host, không có route APISIX: chỉ dịch vụ trong mạng nội bộ gọi. Tắt gửi số liệu sử dụng.
+  meilisearch:
+    image: getmeili/meilisearch:v1.54.3
+    profiles: [core]
+    command: ["/bin/meilisearch", "--config-file-path", "/run/dxos-secrets/meilisearch.toml"]
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_DB_PATH: /meili_data/data.ms
+      MEILI_DUMP_DIR: /meili_data/dumps
+      MEILI_SNAPSHOT_DIR: /meili_data/snapshots
+      # Laptop 16 GB: giới hạn bộ nhớ khi lập chỉ mục (kho tri thức chỉ vài trăm đoạn).
+      MEILI_MAX_INDEXING_MEMORY: 256Mb
+      MEILI_MAX_INDEXING_THREADS: "2"
+    volumes:
+      - meilisearch-secrets:/run/dxos-secrets:ro
+      - meili-data:/meili_data
+    expose:
+      - "7700"
+    depends_on:
+      meilisearch-secrets:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Cấp khóa API Meilisearch riêng của Tầng 2 (chỉ index <DXOS_TANG2>-*) → OpenBao
+  # dxos/tang2/<DXOS_TANG2>/meilisearch (nen-tang/scripts/meili-init.py) rồi thoát. Idempotent. AppRole meili-init
+  # (volume meili-init-secrets chỉ có role_id/secret_id).
+  meili-init:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    entrypoint: ["python", "-u", "/nen-tang/scripts/meili-init.py"]
+    environment:
+      DXOS_TANG2: *tang2
+      MEILI_URL: http://meilisearch:7700
+      BAO_ADDR: http://openbao:8200
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./nen-tang/scripts:/nen-tang/scripts:ro
+      - meili-init-secrets:/run/dxos-secrets:ro
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+      bao-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Bộ nạp kho tri thức của trợ lý (mot-cua/backend/nap_tri_thuc.py): mot-cua/tro-ly/kho-tri-thuc/*.md + gói
+  # thu-tuc/*/ → đoạn → Meilisearch (từ khóa) + mot_cua.tri_thuc_doan (chữ + vector pgvector, nhúng bằng mô hình
+  # của LLM_PROVIDER) rồi thoát. Chạy ở mỗi `up` (tro-ly chờ nó xong) và bằng tay: make nap-tri-thuc. Không có mô
+  # hình nhúng hay mô hình chưa sẵn sàng → vẫn nạp chữ, mã thoát 0. Cùng danh tính OpenBao `tang2`.
+  nap-tri-thuc:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    command: ["python", "-u", "/mot-cua/backend/nap_tri_thuc.py", "/mot-cua/tro-ly/kho-tri-thuc", "/thu-tuc"]
+    environment: &tro-ly-env
+      DXOS_TANG2: *tang2
+      DXOS_POSTGREST_URL: http://postgrest:3000
+      DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
+      DXOS_BAO_ADDR: http://openbao:8200
+      DXOS_BAO_APPROLE_DIR: /run/dxos-secrets/approle
+      # Mô hình (mot-cua/backend/mo_hinh.py): ollama | openai-compatible | tat | gia-lap. Mặc định tat (chỉ tìm kiếm).
+      LLM_PROVIDER: ${LLM_PROVIDER:-tat}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+      LLM_EMBED_MODEL: ${LLM_EMBED_MODEL:-bge-m3}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-170}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./mot-cua:/mot-cua:ro
+      - ./thu-tuc:/thu-tuc:ro
+      - tang2-secrets:/run/dxos-secrets:ro
+    depends_on:
+      postgrest:
+        condition: service_started
+      tang2-realm:
+        condition: service_completed_successfully
+      tang2-migrate:
+        condition: service_completed_successfully
+      meili-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Trợ lý thủ tục hành chính (RAG, mot-cua/backend/tro_ly.py): APISIX /tro-ly/* công khai (giới hạn tần suất
+  # chặt), tìm lai Meilisearch + pgvector, mô hình theo LLM_PROVIDER, câu trả lời luôn dẫn nguồn; tắt/lỗi mô hình
+  # vẫn trả kết quả tìm kiếm. Không lưu câu hỏi. Không mở cổng ra host. Cùng danh tính OpenBao `tang2`.
+  tro-ly:
+    image: python:3.13.16-alpine3.24
+    profiles: [core]
+    command: ["python", "-u", "/mot-cua/backend/tro_ly.py"]
+    environment:
+      <<: *tro-ly-env
+      TRO_LY_DONG_THOI: ${TRO_LY_DONG_THOI:-2}
+    volumes:
+      - ./mot-cua:/mot-cua:ro
+      - tang2-secrets:/run/dxos-secrets:ro
+    expose:
+      - "8000"
+    depends_on:
+      nap-tri-thuc:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
 
   # ------------------------------------------- kho dữ liệu lịch sử (#80) ----
   # Dịch vụ một lần của bộ máy (mot-cua/kho-du-lieu/chay.py), chạy tay hoặc theo lịch máy chủ:
@@ -1025,8 +1169,79 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # --------------------------------------------------- ai – TODO ----
-  # ollama:      # profile ai; model Qwen2.5 7B/14B (Apache-2.0), không dùng bản 3B (D-004)
+  # ------------------------------------------------------------ ai (#91) ----
+  # Chạy mô hình (MIT): image gốc, chỉ trong profile ai (make up-ai). Trọng số KHÔNG nằm trong repo hay image:
+  # ollama-pull tải lúc chạy vào volume ollama-models (khoảng 6 GB: qwen2.5:7b 4,7 GB Apache-2.0, bge-m3 1,2 GB
+  # MIT, từ registry.ollama.ai). Không mở cổng ra host; tro-ly và nap-tri-thuc gọi http://ollama:11434 khi
+  # LLM_PROVIDER=ollama. Docker trên Mac không dùng được GPU: muốn nhanh hơn thì chạy Ollama trên máy và đặt
+  # LLM_BASE_URL=http://host.docker.internal:11434 (docs/cai-dat.md).
+  ollama:
+    image: ollama/ollama:0.40.3
+    profiles: [ai]
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "2"
+    volumes:
+      - ollama-models:/root/.ollama
+    expose:
+      - "11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Đọc chữ trên ảnh giấy tờ (#93): PP-OCRv5_mobile_det của PaddleOCR (phát hiện dòng) + VietOCR vgg_transformer
+  # (nhận dạng tiếng Việt), cả hai Apache-2.0, chạy bằng ONNX Runtime (MIT). Image build từ nen-tang/ocr/Dockerfile:
+  # stage build tải trọng số (kiểm SHA-256), xuất VietOCR sang ONNX, biên dịch OpenCV tối giản rồi bị bỏ; image cuối
+  # chỉ có onnxruntime, numpy, pillow, cv2 + tệp .onnx (~158 MB), không tải gì lúc chạy. Không biết nghiệp vụ: nhận ảnh,
+  # trả dòng chữ + độ tin cậy; mot-cua-api trích trường và cho cán bộ xác nhận. Không mở cổng ra host, không route
+  # APISIX, không lưu ảnh; chỉ ở mạng ocr-noi-bo (không ra Internet). Chạy user 1000, rootfs chỉ đọc.
+  ocr:
+    build:
+      context: ./nen-tang/ocr
+    image: commune-dxos/ocr:local
+    profiles: [ai]
+    environment:
+      # ONNX Runtime dùng bấy nhiêu luồng CPU (laptop 16 GB chạy cùng lõi).
+      OMP_NUM_THREADS: ${DXOS_OCR_LUONG:-4}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [ocr-noi-bo]
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  # Tải mô hình sinh và mô hình nhúng (LLM_MODEL, LLM_EMBED_MODEL) vào volume ollama-models rồi thoát; đã có thì
+  # chỉ kiểm lại. mo_hinh.py từ chối Qwen2.5 3B/72B, Llama, Gemma (giấy phép không phải OSI).
+  ollama-pull:
+    image: ollama/ollama:0.40.3
+    profiles: [ai]
+    entrypoint: ["/bin/sh", "-c", "ollama pull \"$$LLM_MODEL\" && ollama pull \"$$LLM_EMBED_MODEL\" && ollama list"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+      LLM_EMBED_MODEL: ${LLM_EMBED_MODEL:-bge-m3}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: "no"
 
 volumes:
   pg-data:
@@ -1059,3 +1274,15 @@ volumes:
   superset-secrets:
   step-ca-secrets:
   ca-init-secrets:
+  # Meilisearch (#91): chỉ mục tìm kiếm, dựng lại được bằng make nap-tri-thuc (nguồn là repo).
+  meili-data:
+  meilisearch-secrets:
+  meili-init-secrets:
+  # Ollama (#91, profile ai): trọng số mô hình tải lúc chạy (khoảng 6 GB), không nằm trong repo.
+  ollama-models:
+
+networks:
+  # Mạng riêng của dịch vụ đọc giấy tờ (#93): chỉ ocr và mot-cua-api; internal nên ocr không ra được Internet (ảnh
+  # giấy tờ có dữ liệu cá nhân, ONNX Runtime có mô-đun gửi số liệu sử dụng đã tắt).
+  ocr-noi-bo:
+    internal: true

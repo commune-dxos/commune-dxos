@@ -4,7 +4,7 @@
 // chép mã): thanh bên (Sidebar của shadcn/ui; dưới 768px thành ngăn kéo), đầu trang có nút thu thanh
 // bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung bên phải. Lãnh đạo có
 // thêm liên kết dashboard báo cáo (Superset ở /bao-cao, đăng nhập SSO cùng Keycloak, #82).
-import { AlarmClockOff, BookOpen, ChartColumn, ExternalLink, Hourglass, Inbox, UserCheck } from "lucide-react";
+import { AlarmClockOff, Bell, BookOpen, ChartColumn, ExternalLink, Hourglass, Inbox, LibraryBig, UserCheck } from "lucide-react";
 import { Link, Outlet, useLocation, useMatch } from "react-router";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -39,12 +39,15 @@ function MucMenu({
   bieuTuong: BieuTuong,
   dem,
   dangMo,
+  donVi = "hồ sơ",
 }: {
   den: string;
   nhan: string;
   bieuTuong: typeof Inbox;
   dem?: number;
   dangMo: boolean;
+  /** Đơn vị của số đếm cho trình đọc màn hình. */
+  donVi?: string;
 }) {
   const { setOpenMobile } = useSidebar();
   return (
@@ -58,7 +61,7 @@ function MucMenu({
       {dem !== undefined && dem > 0 && (
         <SidebarMenuBadge className="top-2.5 right-2 text-sm">
           {dem}
-          <span className="sr-only"> hồ sơ</span>
+          <span className="sr-only"> {donVi}</span>
         </SidebarMenuBadge>
       )}
     </SidebarMenuItem>
@@ -66,11 +69,13 @@ function MucMenu({
 }
 
 function ThanhBen() {
-  const { viec, vaiTro, canBo } = useDuLieuCanBo();
+  const { viec, vaiTro, canBo, chuaDoc } = useDuLieuCanBo();
   const { pathname, search } = useLocation();
   const dem = demTheoHan(viec);
   const oHopViec = pathname.replace(/\/$/, "") === GOC_CAN_BO;
   const oSoVanBan = pathname.replace(/\/$/, "") === `${GOC_CAN_BO}/van-ban`;
+  const oThongBao = pathname.replace(/\/$/, "") === `${GOC_CAN_BO}/thong-bao`;
+  const oWiki = pathname.startsWith(`${GOC_CAN_BO}/wiki`);
   const q = new URLSearchParams(search);
   const loc = q.get("han") ?? q.get("trang_thai") ?? "";
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
@@ -113,6 +118,14 @@ function ThanhBen() {
                 dem={viec.filter((v) => v.cuaToi).length}
                 dangMo={oHopViec && loc === "cua_toi"}
               />
+              <MucMenu
+                den={`${GOC_CAN_BO}/thong-bao`}
+                nhan="Thông báo"
+                bieuTuong={Bell}
+                dem={chuaDoc}
+                donVi="thông báo chưa đọc"
+                dangMo={oThongBao}
+              />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -122,6 +135,7 @@ function ThanhBen() {
           <SidebarGroupContent>
             <SidebarMenu>
               <MucMenu den={`${GOC_CAN_BO}/van-ban`} nhan="Sổ văn bản" bieuTuong={BookOpen} dangMo={oSoVanBan} />
+              <MucMenu den={`${GOC_CAN_BO}/wiki`} nhan="Wiki văn bản" bieuTuong={LibraryBig} dangMo={oWiki} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -170,8 +184,12 @@ function ThanhBen() {
 function TieuDeTrang() {
   const hoSo = useMatch(`${GOC_CAN_BO}/ho-so/:id`);
   const soVanBan = useMatch(`${GOC_CAN_BO}/van-ban`);
+  const thongBao = useMatch(`${GOC_CAN_BO}/thong-bao`);
+  const wiki = useMatch(`${GOC_CAN_BO}/wiki/*`);
   const { viec, hoSoDangXem } = useDuLieuCanBo();
   if (soVanBan) return <span className="truncate font-semibold">Sổ văn bản</span>;
+  if (wiki) return <span className="truncate font-semibold">Wiki văn bản</span>;
+  if (thongBao) return <span className="truncate font-semibold">Thông báo</span>;
   if (!hoSo) return <span className="truncate font-semibold">Hộp việc</span>;
   const ma =
     (hoSoDangXem && hoSoDangXem.id === hoSo.params.id ? hoSoDangXem.ma : null) ??

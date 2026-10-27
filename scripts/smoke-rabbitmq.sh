@@ -9,17 +9,16 @@
 # Không in mật khẩu.
 
 echo "== RabbitMQ (#9)"
-rmq() { docker compose exec -T rabbitmq rabbitmqctl -q "$@"; }
 VH="$DXOS_TANG2"; TANG2_USER="tang2-$DXOS_TANG2"
 
 kiem "plugin rabbitmq_stomp và rabbitmq_management đang chạy" "rabbitmq_management rabbitmq_stomp" \
   "$(docker compose exec -T rabbitmq rabbitmq-plugins list -e -m 2>/dev/null | grep -E '^rabbitmq_(stomp|management)$' | sort | xargs)"
-kiem "không có user guest" "0" "$(rmq list_users --formatter json | jq '[.[] | select(.user == "guest")] | length')"
-kiem "vhost $VH của Tầng 2 tồn tại" "1" "$(rmq list_vhosts --formatter json | jq --arg v "$VH" '[.[] | select(.name == $v)] | length')"
+kiem "không có user guest" "0" "$(rmq_lai list_users --formatter json | jq '[.[] | select(.user == "guest")] | length')"
+kiem "vhost $VH của Tầng 2 tồn tại" "1" "$(rmq_lai list_vhosts --formatter json | jq --arg v "$VH" '[.[] | select(.name == $v)] | length')"
 kiem "user $TANG2_USER không có tag (không vào được management)" "[]" \
-  "$(rmq list_users --formatter json | jq -c --arg u "$TANG2_USER" '.[] | select(.user == $u) | .tags')"
+  "$(rmq_lai list_users --formatter json | jq -c --arg u "$TANG2_USER" '.[] | select(.user == $u) | .tags')"
 kiem "user $TANG2_USER: chỉ có quyền trong vhost $VH, configure rỗng" "$VH ^$ .* .*" \
-  "$(rmq list_user_permissions "$TANG2_USER" --formatter json | jq -r '.[] | "\(.vhost) \(.configure) \(.write) \(.read)"' | xargs)"
+  "$(rmq_lai list_user_permissions "$TANG2_USER" --formatter json | jq -r '.[] | "\(.vhost) \(.configure) \(.write) \(.read)"' | xargs)"
 
 kiem "management không có route qua gateway (/rabbitmq/api/overview → 404)" "404" "$(ma_http "$GW/rabbitmq/api/overview")"
 kiem "management không có route qua gateway (/api/overview của RabbitMQ không tới được)" "401" \

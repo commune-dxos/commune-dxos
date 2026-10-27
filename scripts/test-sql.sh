@@ -11,15 +11,19 @@
 #
 # Hai cách chạy:
 #   - Đã có PGHOST (CI: service container postgres): chạy thẳng bằng psql trên máy.
-#   - Không có PGHOST (`make test-sql` trên máy): tự dựng container tạm từ đúng image
-#     postgres trong docker-compose.yml, chạy script này bên trong container rồi xóa container.
+#   - Không có PGHOST (`make test-sql` trên máy, CI): build image PostgreSQL của nền tảng
+#     (nen-tang/postgres/Dockerfile: pgAudit + pgvector, #91; Docker giữ cache) đúng tag trong
+#     docker-compose.yml, dựng container tạm, chạy script này bên trong container rồi xóa container.
+#     Migration của mot-cua cần pgvector (014_tro_ly.sql) nên không dùng được image postgres gốc.
 set -eu
 cd "$(dirname "$0")/.."
 
 if [ -z "${PGHOST:-}" ]; then
   command -v docker > /dev/null 2>&1 || { echo "test-sql: cần Docker (hoặc đặt PGHOST tới một PostgreSQL trống)" >&2; exit 1; }
-  IMAGE="$(sed -n 's/^ *image: *\(postgres:[^ ]*\).*/\1/p' docker-compose.yml | head -n 1)"
-  [ -n "$IMAGE" ] || { echo "test-sql: không tìm thấy image postgres trong docker-compose.yml" >&2; exit 1; }
+  IMAGE="$(sed -n 's/^ *image: *\(commune-dxos\/postgres:[^ ]*\).*/\1/p' docker-compose.yml | head -n 1)"
+  [ -n "$IMAGE" ] || { echo "test-sql: không tìm thấy image commune-dxos/postgres trong docker-compose.yml" >&2; exit 1; }
+  echo "test-sql: build $IMAGE (nen-tang/postgres/Dockerfile)"
+  docker build -q -t "$IMAGE" nen-tang/postgres > /dev/null
   TEN="dxos-test-sql-$$"
   trap 'docker rm -f "$TEN" > /dev/null 2>&1 || true' EXIT INT TERM
   echo "test-sql: dựng container tạm $TEN ($IMAGE)"

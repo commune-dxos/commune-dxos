@@ -2,12 +2,16 @@
 
 Commune DX-OS cắm–rút theo **gói thủ tục hành chính** (D-009). Mỗi thủ tục là một thư mục `thu-tuc/<ma>/`; bộ máy một cửa [`mot-cua/`](../mot-cua/) chạy mọi thủ tục, nền tảng [`nen-tang/`](../nen-tang/) không biết thủ tục nào. Thêm thủ tục **không sửa dòng mã nào** trong `mot-cua/`, `nen-tang/`, `docker-compose.yml` hay APISIX: chỉ thêm một thư mục rồi chạy `make nap-thu-tuc`. Rút thủ tục: xóa thư mục rồi chạy lại lệnh đó.
 
-Hai gói có sẵn để chép:
+Bốn gói có sẵn để chép:
 
 | Gói | Mã | Lĩnh vực | Thời hạn | Quy trình |
 |---|---|---|---|---|
 | [`thu-tuc/khai-sinh/`](../thu-tuc/khai-sinh/) | KS01 | `ho_tich` | 1 ngày làm việc | tiếp nhận → (bổ sung) → thẩm định → phê duyệt |
 | [`thu-tuc/chung-thuc-ban-sao/`](../thu-tuc/chung-thuc-ban-sao/) | CT01 | `chung_thuc` | trong ngày | tiếp nhận → kiểm tra bản chính → ký chứng thực → trả kết quả |
+| [`thu-tuc/ket-hon/`](../thu-tuc/ket-hon/) | KH01 | `ho_tich` | 5 ngày làm việc | tiếp nhận → (bổ sung) → xác minh điều kiện → lãnh đạo ký → trao giấy (chờ tới khi hai bên có mặt) |
+| [`thu-tuc/hoa-giai-dat-dai/`](../thu-tuc/hoa-giai-dat-dai/) | DD01 | `dat_dai` | 20 ngày làm việc | tiếp nhận đơn → (bổ sung) → xác minh → họp hòa giải → lãnh đạo ký biên bản; hai điểm kết thúc hoàn tất (thành / không thành), một từ chối |
+
+Hai gói sau (#97) được thêm đúng theo 5 bước dưới đây, không sửa dòng mã nào của bộ máy; `make smoke` tự chạy hết quy trình của mọi gói ngoài hai gói đầu bằng `du-lieu-mau.json` của chính gói (mục 5 của `mot-cua/tests/smoke-goi-thu-tuc.sh`), nên gói mới thả vào cũng được kiểm.
 
 Ví dụ dưới đây thêm thủ tục **xác nhận cư trú** (giá trị mẫu, không phải tư vấn pháp lý).
 
@@ -56,7 +60,7 @@ trang_thai_theo_buoc:
 | `thoi_han_ngay_lam_viec` | có | số 0–365 | ngày làm việc (bỏ thứ Bảy, Chủ nhật, ngày nghỉ lễ); `0` = trong ngày tiếp nhận |
 | `le_phi` | có | số ≥ 0 | đồng; cách tính chi tiết ghi ở `ghi_chu_le_phi` |
 | `can_cu_phap_ly` | có | danh sách chuỗi | văn bản pháp luật |
-| `quy_trinh` | có | process id | phải trùng `id` của `<process>` trong BPMN |
+| `quy_trinh` | có | process id, tối đa 24 ký tự | phải trùng `id` của `<process>` trong BPMN. Dài hơn thì Flowable đổi id định nghĩa quy trình sang UUID và bộ máy không tra được thủ tục của task, nên bộ nạp từ chối (#97) |
 | `ghi_chu_le_phi`, `mo_ta` | không | chuỗi | |
 | `cong_khai` | không | `true`/`false` | mặc định `true`; `false` thì người ngoài và công dân không thấy |
 | `trang_thai_theo_buoc` | không | danh sách `- <bước>: <trạng thái>` | đổi trạng thái mặc định của hồ sơ khi đang ở bước đó ([Trạng thái hồ sơ theo bước](#trạng-thái-hồ-sơ-theo-bước)) |
@@ -139,7 +143,7 @@ nap-thu-tuc: gói xac-nhan-cu-tru LỖI, bỏ qua:
   - quy-trinh.bpmn20.xml: process id 'chung_thuc_ban_sao' khác quy_trinh 'xac_nhan_cu_tru' trong thu-tuc.yaml
 ```
 
-Nộp thử một hồ sơ (token công dân lấy như `docs/architecture.md` §8) theo luồng tạo hồ sơ `POST /api/ho_so` → tải tệp cho từng thành phần bắt buộc `POST /files/ho-so/{id}/tep` → `POST /workflow/ho-so/{id}/khoi-tao` (ví dụ lệnh: `mot-cua/README.md` mục `/workflow`). Cổng công dân tự sinh form từ `thanh-phan-ho-so.schema.json` của gói mới, không sửa mã web; cả cổng và `mot-cua-api` kiểm đủ thành phần theo đúng schema này (Poka-yoke 2 lớp, #53/#59). Muốn smoke kiểm luôn thủ tục mới, xem mẫu ở `mot-cua/tests/smoke-goi-thu-tuc.sh` (mục 4 chạy hết quy trình chứng thực bằng `du-lieu-mau.json`).
+Nộp thử một hồ sơ (token công dân lấy như `docs/architecture.md` §8) theo luồng tạo hồ sơ `POST /api/ho_so` → tải tệp cho từng thành phần bắt buộc `POST /files/ho-so/{id}/tep` → `POST /workflow/ho-so/{id}/khoi-tao` (ví dụ lệnh: `mot-cua/README.md` mục `/workflow`). Cổng công dân tự sinh form từ `thanh-phan-ho-so.schema.json` của gói mới, không sửa mã web; cả cổng và `mot-cua-api` kiểm đủ thành phần theo đúng schema này (Poka-yoke 2 lớp, #53/#59). `make smoke` tự chạy hết quy trình của gói mới bằng `du-lieu-mau.json` của nó (mục 5 của `mot-cua/tests/smoke-goi-thu-tuc.sh`: thứ tự bước = thứ tự khóa trong `xu_ly`, bước của `lanh_dao` do lãnh đạo hoàn thành, còn lại do cán bộ lĩnh vực của gói), nên `xu_ly` phải đi tới một `endEvent` đặt `ketQua = hoan_tat`.
 
 Mở PR theo [`CONTRIBUTING.md`](../CONTRIBUTING.md): job CI `make-check` chạy bộ kiểm gói, job `bpmn` kiểm cấu trúc mọi `thu-tuc/*/quy-trinh.bpmn20.xml`.
 

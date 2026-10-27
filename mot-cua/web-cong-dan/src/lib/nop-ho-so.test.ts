@@ -47,6 +47,7 @@ beforeEach(() => {
     if (u.includes("/api/ho_so")) return json(201, [HO_SO]);
     if (u.includes("/public/thanh_phan_yeu_cau")) return json(200, [{ id: "yc-1", ma: "to_khai" }, { id: "yc-2", ma: "ban_chinh" }]);
     if (u.includes("/files/ho-so/")) return json(201, { id: "t" });
+    if (u.endsWith("/khai")) return json(200, { tep_id: "t" });
     if (u.includes("/khoi-tao")) return json(201, { processInstanceId: "p1" });
     return json(404, {});
   });
@@ -120,5 +121,30 @@ describe("đủ thành phần thì gọi đúng thứ tự 3 bước", () => {
     );
     expect(tienDo.hoSo?.id).toBe(HO_SO.id);
     expect(tienDo.daKhoiTao).toBe(false);
+  });
+});
+
+describe("tự điền từ ảnh (#93): gửi thông tin đã khai kèm tệp đầu tiên của thành phần", () => {
+  const anh = (ten: string) => new File(["\x89PNG"], ten, { type: "image/png" });
+
+  it("KS01: khai giấy tờ tùy thân sau khi tải tệp đầu, một lần, trước khi khởi tạo", async () => {
+    const tienDo = tienDoMoi();
+    await nopHoSo(
+      "tk", KS01, NGUOI_NOP,
+      { to_khai: [tep("tk.pdf")], giay_chung_sinh: [tep("gcs.pdf")], giay_to_tuy_than: [anh("a.png"), anh("b.png")] },
+      tienDo, cauHinh, goi,
+      { giay_to_tuy_than: { ho_ten: "  Trần  Văn Mẫu ", gioi_tinh: "" } },
+    );
+    const post = viec().filter((v) => v.startsWith("POST"));
+    expect(post.filter((v) => v.endsWith("/khai"))).toEqual(["POST /files/tep/t/khai"]);
+    expect(post.indexOf("POST /files/tep/t/khai")).toBeLessThan(post.indexOf("POST /workflow/ho-so/{id}/khoi-tao"));
+    const khai = goi.mock.calls.find(([u]) => String(u).endsWith("/khai"))!;
+    expect(JSON.parse(String(khai[1]?.body))).toEqual({ truong: { ho_ten: "Trần Văn Mẫu" } });
+    expect([...tienDo.daKhai]).toEqual(["giay_to_tuy_than"]);
+  });
+
+  it("không khai gì (hoặc toàn ô trống) thì không gọi /khai", async () => {
+    await nopHoSo("tk", CT01, NGUOI_NOP, { ban_chinh: [tep("bc.pdf")] }, tienDoMoi(), cauHinh, goi, { ban_chinh: { x: " " } });
+    expect(viec().some((v) => v.endsWith("/khai"))).toBe(false);
   });
 });

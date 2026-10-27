@@ -39,6 +39,10 @@ RE_GOI = re.compile(r"^[a-z0-9][a-z0-9-]{1,59}$")
 RE_MA = re.compile(r"^[A-Z0-9][A-Z0-9_-]{1,29}$")
 RE_LINH_VUC = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
 RE_PROCESS = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,254}$")
+# Flowable đặt id định nghĩa quy trình = "<process id>:<phiên bản>:<id deployment 36 ký tự>"; dài quá 64 ký tự thì
+# đổi sang UUID, mất tiền tố process id mà bộ máy dùng để tra thủ tục của task (#97). Giới hạn 24 ký tự chừa đủ chỗ
+# cho phiên bản tới 999.
+DAI_TOI_DA_PROCESS = 24
 RE_THANH_PHAN = re.compile(r"^[a-z][a-z0-9_]{1,59}$")
 RE_UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 RE_SO_DIEN_THOAI = re.compile(r"^0[0-9]{9}$")
@@ -147,6 +151,9 @@ def kiem_mo_ta(mo_ta):
         loi.append(f"{TEP_YAML}: can_cu_phap_ly cần ít nhất một văn bản (mỗi mục một chuỗi)")
     if not RE_PROCESS.fullmatch(mo_ta["quy_trinh"]):
         loi.append(f"{TEP_YAML}: quy_trinh '{mo_ta['quy_trinh']}' không phải process id hợp lệ")
+    elif len(mo_ta["quy_trinh"]) > DAI_TOI_DA_PROCESS:
+        loi.append(f"{TEP_YAML}: quy_trinh '{mo_ta['quy_trinh']}' dài quá {DAI_TOI_DA_PROCESS} ký tự (Flowable đổi id "
+                   "định nghĩa quy trình sang UUID, bộ máy không tra được thủ tục của task)")
     return loi
 
 

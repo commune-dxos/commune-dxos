@@ -14,7 +14,8 @@
 #      tạo; Poka-yoke phía máy chủ (#59): thiếu tệp → 422, không khởi tạo; cán bộ/lãnh đạo thấy và
 #      hoàn thành task của nhóm mình, chặn chéo vai trò, backend tự kiểm token.
 #   4e. Tệp hồ sơ qua APISIX /files (#7): tests/smoke-tep.sh.
-#   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh.
+#   4f. Sự kiện hồ sơ qua RabbitMQ (#9): tests/smoke-su-kien.sh. Thông báo sắp trễ hạn tới cán bộ: queue,
+#      consumer, RLS và quyền đã đọc qua /api, luồng SSE qua APISIX (#56): tests/smoke-thong-bao.sh.
 #   4g. Gói thủ tục (D-009): danh mục, cắm–rút gói, hồ sơ chứng thực bản sao qua /workflow:
 #      tests/smoke-goi-thu-tuc.sh.
 #   4h. Cổng công dân mot-cua-web qua APISIX /: trang, phông, route SPA, header bảo mật, đăng nhập
@@ -32,6 +33,16 @@
 #      khớp mart, cán bộ bị chặn: tests/smoke-superset.sh. Chỉ khi Superset chạy (make up-bi), không thì BỎ QUA.
 #   4n. Sổ văn bản (#78): văn thư vào sổ văn bản đến (ClamAV, xác minh chữ ký), soạn văn bản đi; lãnh đạo ký
 #      ban hành (số đi, PDF ký PAdES xác minh hợp lệ); quyền theo vai: tests/smoke-van-ban.sh.
+#   4o. Tra cứu tiến độ (#54): không đăng nhập bằng mã + 4 số cuối số điện thoại (không lộ dữ liệu cá nhân);
+#      Hồ sơ của tôi: danh sách, mốc kèm lý do, tiến độ, giấy tờ ký số, RLS giữa hai công dân: tests/smoke-tra-cuu.sh.
+#   4p. Trợ lý thủ tục (RAG, #91): Meilisearch + khóa riêng của Tầng 2, kho tri thức nạp đủ vào Meilisearch và pgvector,
+#      chế độ chỉ tìm kiếm, chế độ gia-lap (dẫn nguồn, tìm ngữ nghĩa), mô hình hỏng vẫn tìm được, chặn mô hình sai
+#      giấy phép, giới hạn tần suất: tests/smoke-tro-ly.sh.
+#   4q. Đọc giấy tờ bằng OCR + cán bộ xác nhận (#93): OCR tắt vẫn nộp được, tự bật dịch vụ ocr (profile ai), đọc thử ảnh mẫu
+#      giả, máy đọc nền tệp đã lưu, công dân khai, quyền xác nhận, kiểm toán không chứa giá trị: tests/smoke-doc-giay-to.sh.
+#   4r. Wiki văn bản nội bộ cho cán bộ (#95): chỉ mục Meilisearch dựng từ CSDL, tìm theo phạm vi (toàn xã, lĩnh vực phụ
+#      trách, lãnh đạo), quyền ghi theo vai, phiên bản + lịch sử, đối chiếu RLS khi chỉ mục cũ, Meilisearch dừng vẫn tìm
+#      được trong CSDL, kiểm toán wiki.*: tests/smoke-wiki-van-ban.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -411,6 +422,8 @@ fi
 if [ -n "${WH:-}" ]; then
   # shellcheck source=mot-cua/tests/smoke-su-kien.sh
   . "mot-cua/tests/smoke-su-kien.sh"
+  # shellcheck source=mot-cua/tests/smoke-thong-bao.sh
+  . "mot-cua/tests/smoke-thong-bao.sh"
 fi
 
 # --- 4g. Gói thủ tục (D-009) ---------------------------------------------------------------
@@ -444,6 +457,22 @@ fi
 # --- 4n. Sổ văn bản đến/đi có ký số (#78) ------------------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-van-ban.sh
 . "mot-cua/tests/smoke-van-ban.sh"
+
+# --- 4o. Tra cứu tiến độ hồ sơ: công khai theo mã + 4 số cuối, Hồ sơ của tôi (#54) -----------------------
+# shellcheck source=mot-cua/tests/smoke-tra-cuu.sh
+. "mot-cua/tests/smoke-tra-cuu.sh"
+
+# --- 4p. Trợ lý thủ tục hành chính (RAG): Meilisearch + pgvector, LLM_PROVIDER (#91) ---------------------------
+# shellcheck source=mot-cua/tests/smoke-tro-ly.sh
+. "mot-cua/tests/smoke-tro-ly.sh"
+
+# --- 4q. Đọc giấy tờ bằng OCR + cán bộ xác nhận (HITL, #93) --------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-doc-giay-to.sh
+. "mot-cua/tests/smoke-doc-giay-to.sh"
+
+# --- 4r. Wiki văn bản nội bộ cho cán bộ (#95) ------------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-wiki-van-ban.sh
+. "mot-cua/tests/smoke-wiki-van-ban.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';

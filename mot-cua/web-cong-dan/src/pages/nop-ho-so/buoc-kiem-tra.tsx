@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { ThuTuc } from "@/lib/api";
+import type { LoaiGiayTo } from "@/lib/doc-giay-to";
 import type { ThanhPhan } from "@/lib/thanh-phan";
 import type { NguoiNop } from "./kieu";
 
@@ -40,6 +41,8 @@ export function BuocKiemTra({
   tep,
   goc,
   khoaSua = false,
+  loaiDoc = {},
+  khai = {},
 }: {
   thuTuc: ThuTuc;
   nguoiNop: NguoiNop;
@@ -47,6 +50,9 @@ export function BuocKiemTra({
   tep: Record<string, File[]>;
   goc: string;
   khoaSua?: boolean;
+  /** Thông tin tự điền từ ảnh (#93) theo mã thành phần, kèm định nghĩa trường để hiện nhãn. */
+  loaiDoc?: Record<string, LoaiGiayTo>;
+  khai?: Record<string, Record<string, string>>;
 }) {
   const sua = (d: string) => (khoaSua ? undefined : `${goc}/${d}`);
   return (
@@ -81,6 +87,19 @@ export function BuocKiemTra({
           );
         })}
       </Bang>
+      {thanhPhan
+        .filter((tp) => loaiDoc[tp.ma] && khai[tp.ma] && Object.values(khai[tp.ma]).some((v) => v.trim()))
+        .map((tp) => (
+          <Bang key={tp.ma} tieuDe={`Thông tin trên ${tp.ten.toLowerCase()}`}>
+            {loaiDoc[tp.ma].truong
+              .filter((t) => khai[tp.ma][t.ma]?.trim())
+              .map((t) => (
+                <Dong key={t.ma} nhan={t.nhan} sua={sua("giay-to")} nhanSua={t.nhan.toLowerCase()}>
+                  {khai[tp.ma][t.ma]}
+                </Dong>
+              ))}
+          </Bang>
+        ))}
       <section aria-labelledby="cam-doan" className="flex flex-col gap-3">
         <h2 id="cam-doan" className="text-xl font-bold">
           Cam đoan
