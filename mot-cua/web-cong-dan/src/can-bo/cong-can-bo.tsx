@@ -3,7 +3,7 @@
 // Cổng cán bộ (#55) ở /can-bo, cùng ứng dụng và theme với cổng công dân nhưng tách gói JS (App.tsx
 // nạp lười) và tách phiên đăng nhập: client public mot_cua_can_bo, PKCE, Keycloak tự đòi mật khẩu +
 // OTP với vai can_bo, lanh_dao, van_thu. Người đăng nhập không có các vai này thấy trang "không có quyền".
-// Văn thư (#78) chỉ làm việc với sổ văn bản: trang đầu của họ là /can-bo/van-ban.
+// Văn thư (#78) chỉ làm việc với sổ văn bản và wiki văn bản (#95): trang đầu của họ là /can-bo/van-ban.
 import type { UserManager } from "oidc-client-ts";
 import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
@@ -17,6 +17,7 @@ import { ChuaDangNhap, DangNhapXongCanBo, KhongCoQuyen, KhongThayTrang } from ".
 import { HopViec } from "./pages/hop-viec";
 import { SoVanBan } from "./pages/so-van-ban";
 import { HopThongBao } from "./pages/thong-bao";
+import { ChiTietWiki, SoanWiki, WikiVanBan } from "./pages/wiki";
 
 function CongVao() {
   const { nguoiDung, dangTai } = useXacThuc();
@@ -40,6 +41,10 @@ function CongVao() {
           <Route index element={vaiTro === "van_thu" ? <Navigate to="van-ban" replace /> : <HopViec />} />
           <Route path="ho-so/:id" element={vaiTro === "van_thu" ? <Navigate to="../van-ban" replace /> : <ChiTietHoSo />} />
           <Route path="van-ban" element={<SoVanBan />} />
+          <Route path="wiki" element={<WikiVanBan />} />
+          <Route path="wiki/moi" element={<SoanWiki />} />
+          <Route path="wiki/:id" element={<ChiTietWiki />} />
+          <Route path="wiki/:id/sua" element={<SoanWiki />} />
           <Route path="thong-bao" element={vaiTro === "van_thu" ? <Navigate to="../van-ban" replace /> : <HopThongBao />} />
           <Route path="*" element={<KhongThayTrang />} />
         </Route>

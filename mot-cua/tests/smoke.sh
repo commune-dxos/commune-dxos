@@ -40,6 +40,9 @@
 #      giấy phép, giới hạn tần suất: tests/smoke-tro-ly.sh.
 #   4q. Đọc giấy tờ bằng OCR + cán bộ xác nhận (#93): OCR tắt vẫn nộp được, tự bật dịch vụ ocr (profile ai), đọc thử ảnh mẫu
 #      giả, máy đọc nền tệp đã lưu, công dân khai, quyền xác nhận, kiểm toán không chứa giá trị: tests/smoke-doc-giay-to.sh.
+#   4r. Wiki văn bản nội bộ cho cán bộ (#95): chỉ mục Meilisearch dựng từ CSDL, tìm theo phạm vi (toàn xã, lĩnh vực phụ
+#      trách, lãnh đạo), quyền ghi theo vai, phiên bản + lịch sử, đối chiếu RLS khi chỉ mục cũ, Meilisearch dừng vẫn tìm
+#      được trong CSDL, kiểm toán wiki.*: tests/smoke-wiki-van-ban.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -466,6 +469,10 @@ fi
 # --- 4q. Đọc giấy tờ bằng OCR + cán bộ xác nhận (HITL, #93) --------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-doc-giay-to.sh
 . "mot-cua/tests/smoke-doc-giay-to.sh"
+
+# --- 4r. Wiki văn bản nội bộ cho cán bộ (#95) ------------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-wiki-van-ban.sh
+. "mot-cua/tests/smoke-wiki-van-ban.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';

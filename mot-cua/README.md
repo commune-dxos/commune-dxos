@@ -19,8 +19,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/011_so_van_ban.sql` | sổ văn bản đến/đi (#78): role `van_thu`, bảng `van_ban` (bất biến sau khi vào sổ hoặc ký), bộ đếm `so_van_ban_dem` cấp số theo năm không trùng, RPC `cap_so_van_ban_di`, trigger kiểm toán `van_ban.*`; xem [Sổ văn bản](#sổ-văn-bản-đếnđi-78) |
 | `db/migrations/014_tro_ly.sql` | trợ lý thủ tục (#91): `CREATE EXTENSION vector` (pgvector của nền tảng), role `dich_vu_tro_ly`, bảng `tri_thuc_doan` (đoạn kho tri thức + `vector(1024)`), RPC `tim_doan_gan` (cosin, chỉ vector cùng mô hình nhúng); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
 | `db/migrations/015_doc_giay_to.sql` | đọc giấy tờ bằng OCR + cán bộ xác nhận (#93): bảng `doc_giay_to` (máy đọc, công dân khai, cán bộ xác nhận; xác nhận rồi không sửa), CSDL tính trường bị sửa, kiểm toán `giay_to.khai|doc|xac_nhan`; xem [Đọc giấy tờ](#đọc-giấy-tờ-bằng-ocr-cán-bộ-xác-nhận-93) |
+| `db/migrations/016_wiki_van_ban.sql` | wiki văn bản nội bộ cho cán bộ (#95): bảng `wiki_van_ban` (RLS theo phạm vi toàn xã / lĩnh vực phụ trách / lãnh đạo; văn thư, lãnh đạo ghi; không xóa), `wiki_van_ban_lich_su` (phiên bản cũ, chỉ trigger ghi), RPC `tim_wiki` (tìm dự phòng không dấu, RLS của người gọi), kiểm toán `wiki.*`; xem [Wiki văn bản](#wiki-văn-bản-nội-bộ-cho-cán-bộ-95) |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01) được bộ nạp ghi đè theo gói; 4 thủ tục còn lại chưa có gói nên chưa nộp qua `/workflow` được |
-| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql`, `db/tests/tro_ly.sql`, `db/tests/doc_giay_to.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), kho tri thức trợ lý (17 kiểm tra: pgvector, chỉ tài khoản dịch vụ, cosin cùng mô hình, ràng buộc vector), đọc giấy tờ (20 kiểm tra: chỉ dịch vụ tệp ghi, RLS theo hồ sơ, xác nhận rồi không sửa, kiểm toán không chứa giá trị), chạy trong một transaction rồi ROLLBACK |
+| `db/seed/003_wiki_mau.sql` | **văn bản wiki mẫu** do đội tự viết (quy chế, quy trình, hướng dẫn hộ tịch/chứng thực, biểu mẫu, ghi chú họp lãnh đạo; số ký hiệu giả); chỉ nạp khi `DXOS_SEED=true` |
+| `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql`, `db/tests/tro_ly.sql`, `db/tests/doc_giay_to.sql`, `db/tests/wiki_van_ban.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), kho tri thức trợ lý (17 kiểm tra: pgvector, chỉ tài khoản dịch vụ, cosin cùng mô hình, ràng buộc vector), đọc giấy tờ (29 kiểm tra: chỉ dịch vụ tệp ghi, RLS theo hồ sơ, upsert như mot-cua-api, xác nhận rồi không sửa, kiểm toán không chứa giá trị), wiki văn bản (43 kiểm tra: ai ghi, ai thấy theo phạm vi, phiên bản + lịch sử, không xóa, tìm dự phòng không dấu theo RLS, kiểm toán không chứa nội dung), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80), `mot_cua_tro_ly` (#91) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
 | `backend/main.py` | API quy trình `/workflow/*` (#6) và API tệp `/files/*` (#7): dịch vụ `mot-cua-api`, chỉ thư viện chuẩn Python; quy trình và biến từng bước đọc từ danh mục gói; xem [API cho Tầng 2](#api-cho-tầng-2) |
@@ -31,9 +33,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `kho-du-lieu/` (`chay.py`, `dbt/`, `du-lieu-mau.json`, `tests/`), `backend/kho_du_lieu.py` | kho dữ liệu lịch sử (#80): dịch vụ một lần `kho-du-lieu`, `make kho-du-lieu`; khử định danh là hàm thuần trong `backend/` |
 | `bao-cao/superset_dung.py` | dashboard Superset dựng bằng mã (#82): kết nối `bao_cao`, dataset, 5 chart, dashboard "Hiệu suất một cửa", vai "Lãnh đạo xã"; superset-init của lõi chạy ở mỗi `make up-bi` |
 | `backend/tep.py`, `backend/tests/` | phần thuần của API tệp (kiểm tên/loại/magic bytes, ký S3 SigV4, giao thức `clamd`, quy tắc quyền), bộ nạp gói và test đơn vị: `make test` |
-| `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
+| `tests/smoke.sh`, `smoke-tep.sh`, `smoke-su-kien.sh`, `smoke-goi-thu-tuc.sh`, …, `smoke-wiki-van-ban.sh` | `make smoke`: route công khai, test SQL, MFA, gọi API qua APISIX bằng token thật của từng vai trò (cán bộ, lãnh đạo dùng mật khẩu + TOTP), luồng khai sinh và chứng thực bản sao đầy đủ qua `/workflow`, cắm–rút gói tạm, tải/xem tệp, EICAR, link ký sẵn, sự kiện RabbitMQ. Cần thêm `python3` trên máy để sinh mã TOTP |
 | `backend/tro_ly.py`, `rag.py`, `mo_hinh.py`, `tri_thuc.py`, `nap_tri_thuc.py`; `tro-ly/kho-tri-thuc/` | trợ lý thủ tục hành chính (#91): dịch vụ `tro-ly` (APISIX `/tro-ly/*`, công khai), dịch vụ một lần `nap-tri-thuc` (`make nap-tri-thuc`); kho tri thức Markdown, định dạng ở [README](tro-ly/kho-tri-thuc/README.md); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
 | `backend/doc_giay_to.py`, `doc-giay-to/loai-giay-to.json` | đọc giấy tờ bằng OCR (#93): trích trường từ chữ do dịch vụ `ocr` của nền tảng đọc; loại giấy tờ và trường khai bằng JSON (khóa = mã thành phần hồ sơ của gói); endpoint trong `main.py` |
+| `backend/wiki.py` | wiki văn bản (#95): kiểm dữ liệu ghi, bộ lọc Meilisearch theo vai/lĩnh vực (giống RLS), đồng bộ chỉ mục `mot-cua-wiki-van-ban` từ CSDL; endpoint `/files/wiki/*` trong `main.py` |
 | `web-cong-dan/` | web Tầng 2: cổng công dân `/` (#52, đăng nhập `mot_cua_web`) và cổng cán bộ `/can-bo` (#55, đăng nhập `mot_cua_can_bo` + OTP; hộp việc, xử lý bước). React + Vite + Tailwind + shadcn/ui, PKCE; xem [README](web-cong-dan/README.md) |
 
 Sửa schema: thêm tệp `db/migrations/007_<mo-ta>.sql`, **không sửa** tệp đã áp dụng (`tang2-migrate` sẽ dừng vì SHA-256 khác). Áp dụng: `make migrate`.
@@ -183,7 +186,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 
 ## Quyền theo vai trò
 
-Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản, không thấy hồ sơ nào. Đổi vai trò như PostgREST làm cho mỗi request: `SET ROLE` theo `resource_access.dxos_api.roles[0]` của JWT, policy đọc `dxos.jwt_sub()` của lõi. RLS bật và `FORCE` trên mọi bảng của `mot_cua`. Không role nào ghi được danh mục, cán bộ, phân công, ngày nghỉ qua API (quản trị bằng migration/SQL); không role nào xóa được hồ sơ.
+Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản và wiki văn bản (#95), không thấy hồ sơ nào. Đổi vai trò như PostgREST làm cho mỗi request: `SET ROLE` theo `resource_access.dxos_api.roles[0]` của JWT, policy đọc `dxos.jwt_sub()` của lõi. RLS bật và `FORCE` trên mọi bảng của `mot_cua`. Không role nào ghi được danh mục, cán bộ, phân công, ngày nghỉ qua API (quản trị bằng migration/SQL); không role nào xóa được hồ sơ.
 
 | Bảng | `anon` (`/public/*`) | `cong_dan` | `can_bo` | `lanh_dao` |
 |---|---|---|---|---|
@@ -201,6 +204,7 @@ Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản, không thấy hồ 
 | RPC `nap_bao_cao`, schema `bao_cao` | — | — | — | — (chỉ tài khoản dịch vụ `dich_vu_bao_cao` gọi RPC; Superset đọc `bao_cao` bằng role đăng nhập `bao_cao_doc`, lãnh đạo xem qua dashboard `/bao-cao`) |
 | RPC `tra_cuu_ho_so` (#54) | gọi: mã + 4 số cuối số điện thoại → trạng thái, mốc (không dữ liệu cá nhân) | gọi được như anon | — | — |
 | `van_ban` (sổ văn bản đến/đi) | — | — | đọc | đọc; ký văn bản đi qua `/files` (văn thư: đọc, vào sổ đến và soạn dự thảo đi qua `/files`; chỉ `dich_vu_tep` ghi; không ai sửa sau khi vào sổ/ký, kể cả superuser; chỉ xóa được dự thảo) |
+| `wiki_van_ban`, `wiki_van_ban_lich_su`, RPC `tim_wiki` (#95) | — | — | đọc văn bản toàn xã và lĩnh vực mình phụ trách | đọc tất cả; thêm, sửa mọi phạm vi qua `/files/wiki` (văn thư: đọc, thêm, sửa mọi phạm vi trừ "chỉ lãnh đạo"; không ai xóa, kể cả superuser; lịch sử chỉ trigger ghi) |
 | `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
@@ -432,6 +436,7 @@ Kênh ngoài (`DXOS_THONG_BAO_KENH`, mặc định `email,sms`, để trống = 
 | `giay_to.ky` | phát hành biên nhận / thông báo kết quả có ký số (#77) | người có thao tác dẫn tới phát hành | `loai`, `giayToId`, `sha256` (PDF đã ký), `chungThu` (số hiệu) |
 | `tep.tai_len`, `tep.kiem_tra` | tải tệp qua `/files`; cán bộ đổi `trang_thai_kiem_tra` | người tải / cán bộ | `tepId`, `thanhPhan`, `sha256` (nội dung tệp), `kichThuoc`, `ketQua` |
 | `thu_tuc.them`, `thu_tuc.nap_goi`, `thu_tuc.rut_goi` | thêm thủ tục; nạp gói mới hoặc đã đổi (`goi_sha256`); rút gói | tài khoản dịch vụ danh mục | `goi`, `goiSha256`, `goiSha256Truoc`, `quyTrinh` |
+| `wiki.them`, `wiki.sua`, `wiki.ngung_hieu_luc`, `wiki.hieu_luc_lai` | thêm, sửa văn bản wiki; chuyển hết hiệu lực / có hiệu lực lại (#95) | văn thư, lãnh đạo ghi | `loai`, `phamVi`, `linhVucId`, `trangThai`, `phienBan`, `sha256NoiDung`, `truongDoi` (tên cột); không có tiêu đề, nội dung |
 | `can_bo.them_linh_vuc`, `can_bo.bo_linh_vuc` | đổi phân công lĩnh vực (= đổi hồ sơ cán bộ thấy) | — | `linhVuc` |
 | `kiem_toan.khoi_tao` | bản ghi 1, lúc chạy migration 007 | — | số hồ sơ, số thủ tục lúc đó |
 
@@ -539,6 +544,25 @@ curl -H "Authorization: Bearer $TK_CB" -H 'Content-Type: application/json' \
 ```
 
 Thêm loại giấy tờ: thêm một mục trong `doc-giay-to/loai-giay-to.json` có khóa trùng mã thành phần hồ sơ trong `thanh-phan-ho-so.schema.json` của gói (ví dụ `giay_to_tuy_than`), khai `nhan_khop` (nhãn in trên giấy) và `kieu` của từng trường; `make check` + `make test-backend`, khởi động lại `mot-cua-api`.
+
+## Wiki văn bản nội bộ cho cán bộ (#95)
+
+Thiết kế và lý do: `docs/architecture.md` §4.16. Cổng cán bộ: mục **Wiki văn bản** (`/can-bo/wiki`) cho cán bộ, lãnh đạo, văn thư; văn thư và lãnh đạo có nút **Thêm văn bản**, **Sửa**, **Ngừng hiệu lực**. Văn bản có phạm vi xem: `toan_xa` (mọi cán bộ), `linh_vuc` (cán bộ đang phụ trách lĩnh vực đó), `lanh_dao` (chỉ lãnh đạo); lãnh đạo và văn thư (trừ `lanh_dao`) thấy theo vai.
+
+| Endpoint | Vai | Kết quả |
+|---|---|---|
+| `GET /files/wiki/tim?q=&loai=&tat_ca=1&so_luong=&tu=` | `can_bo`, `lanh_dao`, `van_thu` | `{ket_qua: [{id, tieu_de, tieu_de_danh_dau, trich_doan, loai, pham_vi, linh_vuc_id, trang_thai, phien_ban, …}], tong, nguon}`; đoạn khớp nằm giữa U+E000 và U+E001; mặc định chỉ văn bản còn hiệu lực; `nguon = csdl` khi Meilisearch không chạy |
+| `POST /files/wiki` (JSON `tieu_de`, `loai`, `noi_dung`, `pham_vi`, `linh_vuc_id`, `so_ky_hieu`, `ngay_ban_hanh`, `tom_tat`) | `van_thu`, `lanh_dao` | 201 + văn bản (phiên bản 1); phạm vi không được ghi → 403; dữ liệu sai → 400 |
+| `POST /files/wiki/{id}` (JSON chỉ trường cần sửa; `trang_thai: het_hieu_luc` để ngừng hiệu lực) | `van_thu`, `lanh_dao` | 200 + văn bản (phiên bản tăng 1, bản cũ vào lịch sử); không thấy hoặc không được sửa → 404 |
+| `GET /api/wiki_van_ban?id=eq.…`, `GET /api/wiki_van_ban_lich_su?van_ban_id=eq.…` | theo RLS | chi tiết, các phiên bản cũ |
+
+```bash
+curl -H "Authorization: Bearer $TK_CAN_BO" "http://localhost:9080/files/wiki/tim?q=tiep+cong+dan"
+curl -H "Authorization: Bearer $TK_VAN_THU" -H 'Content-Type: application/json' \
+  -d '{"tieu_de": "Hướng dẫn …", "loai": "huong_dan", "noi_dung": "…", "pham_vi": "toan_xa"}' http://localhost:9080/files/wiki
+```
+
+Chỉ mục Meilisearch `mot-cua-wiki-van-ban` là bản sao: `mot-cua-api` cập nhật ngay sau mỗi lần ghi và dựng lại toàn bộ từ CSDL khi khởi động và mỗi `DXOS_WIKI_DONG_BO_GIAY` giây (mặc định 300). Mất chỉ mục thì khởi động lại `mot-cua-api` hoặc chờ vòng đồng bộ kế tiếp.
 
 ## Sổ văn bản đến/đi (#78)
 
