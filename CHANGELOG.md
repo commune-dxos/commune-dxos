@@ -4,6 +4,41 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-27
+
+### Tính năng mới
+
+- **cong-cong-dan:** Tra cứu tiến độ hồ sơ – không đăng nhập bằng mã + 4 số cuối điện thoại, Hồ sơ của tôi, nộp bổ sung ([#54](https://github.com/commune-dxos/commune-dxos/issues/54)) ([#88](https://github.com/commune-dxos/commune-dxos/issues/88))
+- **mot-cua:** Thông báo sắp trễ hạn tới cán bộ – consumer RabbitMQ, chuông và trang thông báo cập nhật qua SSE ([#56](https://github.com/commune-dxos/commune-dxos/issues/56)) ([#89](https://github.com/commune-dxos/commune-dxos/issues/89))
+    - Queue mot_cua.thong_bao (quorum, dead-letter mot_cua.thong_bao.loi) nhận ho_so.sap_tre_han;
+      consumer trong mot-cua-worker gọi RPC ghi_thong_bao_sap_tre: mỗi cán bộ phụ trách lĩnh vực một
+      thông báo, idempotent theo (cán bộ, hồ sơ, loại, mốc hạn)
+    - Migration 013: mot_cua.thong_bao + thong_bao_kenh, RLS chỉ đọc của mình, chỉ được đánh dấu đã đọc;
+      nội dung không có dữ liệu cá nhân người nộp
+    - Kênh email/SMS chỉ giả lập (DXOS_THONG_BAO_KENH): ghi CSDL và log, không gửi ra ngoài
+    - GET /workflow/thong-bao/luong (SSE) đọc qua PostgREST bằng token cán bộ, đẩy sự kiện khi số chưa
+      đọc đổi, nhịp giữ kết nối, het-han khi token hết hạn
+    - Test đơn vị backend và test SQL RLS cho thông báo
+- **mot-cua:** Trợ lý thủ tục hành chính RAG – Meilisearch CE + pgvector, LLM_PROVIDER, ô hỏi đáp cổng công dân ([#91](https://github.com/commune-dxos/commune-dxos/issues/91)) ([#92](https://github.com/commune-dxos/commune-dxos/issues/92))
+- **mot-cua:** Đọc giấy tờ bằng OCR (PP-OCRv5 + VietOCR trên ONNX Runtime) tự điền hồ sơ, cán bộ xác nhận ([#93](https://github.com/commune-dxos/commune-dxos/issues/93)) ([#94](https://github.com/commune-dxos/commune-dxos/issues/94))
+    - Công dân chọn ảnh giấy tờ khi nộp → máy tự điền, đánh dấu trường cần kiểm tra; sau khi nộp máy đọc lại tệp đã lưu, cán bộ so ảnh gốc rồi xác nhận (HITL), kiểm toán chuỗi băm không ghi giá trị
+    - Dịch vụ ocr (Tầng 1, profile ai): PP-OCRv5_mobile_det + VietOCR vgg_transformer chạy bằng ONNX Runtime, OpenCV 4.10 tự biên dịch; không PyTorch/PaddlePaddle, không Intel MKL/IPP, OpenSSL 1.1; mạng nội bộ, tắt số liệu sử dụng
+    - Bảng doc_giay_to (migration 015) với RLS theo hồ sơ, xác nhận rồi không sửa được, CSDL tính trường bị sửa
+    - Smoke 1064/1064 trên volume trống, test-sql 786/786; ảnh mẫu giả 14/14 trường đúng
+- **mot-cua:** Wiki văn bản nội bộ cho cán bộ – tìm qua Meilisearch theo quyền RLS, phiên bản, kiểm toán ([#95](https://github.com/commune-dxos/commune-dxos/issues/95)) ([#96](https://github.com/commune-dxos/commune-dxos/issues/96))
+    - Bảng wiki_van_ban (migration 016): RLS theo phạm vi toàn xã / lĩnh vực phụ trách / chỉ lãnh đạo, văn thư và lãnh đạo ghi, không xóa, phiên bản + lịch sử, kiểm toán wiki.* ghi SHA-256 nội dung
+    - mot-cua-api /files/wiki: tìm qua Meilisearch (index mot-cua-wiki-van-ban) lọc theo vai rồi đối chiếu RLS, Meilisearch lỗi thì tìm trong CSDL (RPC tim_wiki); ghi bằng token người gọi, đồng bộ chỉ mục
+    - Cổng cán bộ /can-bo/wiki: tìm, lọc, đánh dấu đoạn khớp, chi tiết + phiên bản trước, thêm/sửa/ngừng hiệu lực
+    - Smoke 1138/1138 trên volume trống, test-sql 872/872
+- **thu-tuc:** Gói đăng ký kết hôn (KH01) và hòa giải tranh chấp đất đai (DD01), smoke tự chạy mọi gói mới ([#97](https://github.com/commune-dxos/commune-dxos/issues/97)) ([#98](https://github.com/commune-dxos/commune-dxos/issues/98))
+    - thu-tuc/ket-hon/ (KH01, hộ tịch) và thu-tuc/hoa-giai-dat-dai/ (DD01, đất đai): thêm bằng thư mục, không sửa mã chạy của bộ máy
+    - Bộ kiểm gói từ chối process id dài quá 24 ký tự (Flowable đổi id định nghĩa quy trình sang UUID)
+    - Smoke gói mục 5 tự nộp và chạy hết quy trình mọi gói mới bằng du-lieu-mau.json; smoke 1156/1156 trên volume trống
+
+### Tài liệu
+
+- **mot-cua:** GIF demo cổng công dân và cổng cán bộ quay trên lõi chạy thật ([#58](https://github.com/commune-dxos/commune-dxos/issues/58)) ([#90](https://github.com/commune-dxos/commune-dxos/issues/90))
+
 ## [0.5.0] - 2026-10-24
 
 ### Tính năng mới
@@ -340,7 +375,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.2.0...v0.3.0
