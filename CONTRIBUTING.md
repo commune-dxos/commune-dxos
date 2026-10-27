@@ -66,7 +66,7 @@ Chạy trên máy đúng những lệnh CI chạy, mỗi lệnh ứng với mộ
 | Lệnh | Job CI | Kiểm gì | Cần |
 |---|---|---|---|
 | `make check` | `make-check` | SPDX từng tệp, cấu trúc BPMN, kiểm gói `thu-tuc/*` (bộ nạp `--chi-kiem`), test đơn vị, compose hợp lệ mọi profile | Docker Compose, Python 3 |
-| `make lint` | `shellcheck`, `yamllint`, `bpmn` | mọi `*.sh`; YAML theo `.yamllint.yml` (kể cả `thu-tuc.yaml`); BPMN `thu-tuc/*/quy-trinh.bpmn20.xml` + test của bộ kiểm | `pip install -r scripts/requirements-lint.txt` (nên dùng `.venv`) |
+| `make lint` | `shellcheck`, `yamllint`, `bpmn`, `reuse` | mọi `*.sh`; YAML theo `.yamllint.yml` (kể cả `thu-tuc.yaml`); BPMN `thu-tuc/*/quy-trinh.bpmn20.xml` + test của bộ kiểm; `reuse lint`: mọi tệp có bản quyền + giấy phép theo đặc tả REUSE 3.3 (header SPDX hoặc `REUSE.toml`) | `pip install -r scripts/requirements-lint.txt` (nên dùng `.venv`) |
 | `make test` | `test-backend`, `test-sql` | unittest `mot-cua/backend/tests` (kể cả bộ nạp gói); migration nền tảng + `mot-cua` trên PostgreSQL trống rồi `mot-cua/db/tests/*.sql` (RLS, danh mục gói) | Python 3; Docker (tự dựng container tạm) hoặc `PGHOST` tới một PostgreSQL trống |
 
 ```bash

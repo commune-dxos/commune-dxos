@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Công cụ lint dùng trong `make lint` và CI (job `shellcheck`, `yamllint`). Ghim phiên bản
+# Công cụ lint dùng trong `make lint` và CI (job `shellcheck`, `yamllint`, `reuse`). Ghim phiên bản
 # để máy cá nhân và CI ra cùng kết quả. Chỉ là công cụ phát triển, không đi vào sản phẩm.
 #   python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-lint.txt
 yamllint==1.38.0        # GPL-3.0, https://github.com/adrienverge/yamllint
 shellcheck-py==0.11.0.1 # MIT (gói bọc), ShellCheck 0.11.0 GPL-3.0, https://github.com/koalaman/shellcheck
+# reuse lint (đặc tả REUSE 3.3, #104): GPL-3.0-or-later; charset-normalizer (MIT) để reuse đoán bảng mã tệp.
+reuse==6.2.0            # GPL-3.0-or-later, https://github.com/fsfe/reuse-tool
+charset-normalizer==3.5.2  # MIT, https://github.com/jawah/charset_normalizer

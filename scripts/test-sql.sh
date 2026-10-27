@@ -86,8 +86,10 @@ done
 # CSDL cài từ v0.2.0 trở về trước ghi SHA-256 của tệp có header Apache-2.0 (D-010, #47): đặt lại sổ
 # như vậy rồi chạy migrate lần 3, phải chỉ cập nhật sổ chứ không áp dụng lại hay báo tệp bị sửa.
 echo "-- tang2-migrate lần 3 (sổ ghi SHA-256 trước D-010)"
+# REUSE-IgnoreStart (chuỗi header trong mã, không phải header của tệp này; #104)
 for tep in "$TANG2_DIR"/db/migrations/*.sql; do
   cu="$({ echo "-- SPDX-License-Identifier: Apache-2.0"; tail -n +3 "$tep"; } | sha256sum | cut -d' ' -f1)"
+# REUSE-IgnoreEnd
   psql_q -d "$db" -v tep="$(basename "$tep")" -v sha="$cu" > /dev/null <<'SQL'
 UPDATE dxos.app_migration SET sha256 = :'sha' WHERE loai = 'migration' AND tep = :'tep';
 SQL
