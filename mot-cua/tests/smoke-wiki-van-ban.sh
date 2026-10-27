@@ -48,7 +48,9 @@ PY
 M="ZQ$(openssl rand -hex 3)"
 # Từ chỉ có trong bản sửa: khác hẳn $M để Meilisearch (chịu lỗi chính tả) không khớp nhầm văn bản khác.
 TU_MOI="xuong$(openssl rand -hex 4 | tr '0-9' 'g-p')"
-LV_KHAC="$(sql "SELECT id FROM mot_cua.linh_vuc WHERE id <> '${LV_ID:?}' ORDER BY ma LIMIT 1")"
+# Lĩnh vực cán bộ tạm chắc chắn chưa phụ trách (các mục trước đã giao thêm cho cán bộ tạm nhiều lĩnh vực).
+LV_KHAC="$(sql "INSERT INTO mot_cua.linh_vuc (ma, ten) VALUES ('smoke_wiki_$(openssl rand -hex 3)', 'Lĩnh vực thử wiki') RETURNING id" | head -1)"
+: "${LV_ID:?}"
 
 # --- Chỉ mục dựng từ CSDL lúc khởi động -------------------------------------------------------------
 SO_VB="$(sql "SELECT count(*) FROM mot_cua.wiki_van_ban")"

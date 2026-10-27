@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Gói thủ tục: Đăng ký kết hôn giữa công dân Việt Nam cư trú trong nước (D-009, #97). Định dạng: docs/thu-tuc.md.
+# Giá trị lấy theo quy định công khai, rút gọn để minh họa; đối chiếu văn bản trước khi dùng thật.
+ma: KH01
+ten: Đăng ký kết hôn
+linh_vuc: ho_tich
+ten_linh_vuc: Hộ tịch
+# Luật Hộ tịch 2014, Điều 18: giải quyết ngay khi nhận đủ giấy tờ; cần xác minh điều kiện kết hôn thì không quá
+# 05 ngày làm việc. Bộ máy đặt hạn theo mức tối đa.
+thoi_han_ngay_lam_viec: 5
+le_phi: 0
+ghi_chu_le_phi: Miễn lệ phí đăng ký kết hôn của công dân Việt Nam cư trú trong nước (Luật Hộ tịch 2014, Điều 11)
+cong_khai: true
+quy_trinh: dang_ky_ket_hon
+can_cu_phap_ly:
+  - Luật Hộ tịch 2014, Điều 17 và Điều 18
+  - Luật Hôn nhân và gia đình 2014, Điều 5 và Điều 8
+  - Nghị định 123/2015/NĐ-CP
+# Hồ sơ còn "mới" tới khi cán bộ tiếp nhận; bước trao giấy chứng nhận vẫn là đang xử lý (chờ hai bên tới ký sổ).
+trang_thai_theo_buoc:
+  - tiep_nhan: moi
