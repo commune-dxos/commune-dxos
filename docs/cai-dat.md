@@ -155,7 +155,7 @@ Rút thủ tục: xóa thư mục rồi `make nap-thu-tuc`. Gói lỗi bị báo
 
 ```bash
 make check                # SPDX + BPMN + kiểm gói thu-tuc/ + test đơn vị + compose hợp lệ (mọi profile)
-make lint                 # shellcheck, yamllint, BPMN (như CI); cài: pip install -r scripts/requirements-lint.txt
+make lint                 # shellcheck, yamllint, BPMN, reuse lint (như CI); cài: pip install -r scripts/requirements-lint.txt
 make test                 # test đơn vị + SQL/RLS trên PostgreSQL tạm
 make smoke                # kiểm tra đầu-cuối trên hệ thống đang chạy
 make license              # thêm header SPDX cho tệp mới
