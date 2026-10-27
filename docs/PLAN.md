@@ -48,18 +48,19 @@ Cách dùng tệp này:
 - [x] V2 · Superset: dashboard thời gian giải quyết, tỷ lệ trễ hạn (#82, v0.5.0)
 - [ ] V1 · **Thuê VPS + tên miền**, HTTPS, CI tự triển khai khi merge `main` – **còn mở**, không có trong v0.5.0 (người hướng dẫn lo VPS)
 - [ ] V3 · Cuối tuần mời 3–5 người dùng thật (cán bộ xã, sinh viên) dùng thử, ghi phản hồi thành issue nhãn `user-feedback` – **còn mở**, không có trong v0.5.0 (cần VPS)
-- [ ] V1 · Release v0.5.0 – bản tuần 4: trạng thái theo Flowable, kiểm toán, ký số, kho dữ liệu, Superset, sổ văn bản (#85, PR chờ duyệt). Số bản theo nhịp phát hành mỗi tuần, khác số dự kiến ban đầu (v0.2.0)
+- [x] V1 · Release v0.5.0 – bản tuần 4: trạng thái theo Flowable, kiểm toán, ký số, kho dữ liệu, Superset, sổ văn bản (#85, PR #86, #87). Số bản theo nhịp phát hành mỗi tuần, khác số dự kiến ban đầu (v0.2.0)
 
 ## Tuần 5 · 12–18/11 · Tầng [I] + demo công khai
 - [x] V3 · OCR (PP-OCRv5 của PaddleOCR + VietOCR, chạy bằng ONNX Runtime) giấy tờ mẫu giả → tự điền hồ sơ → cán bộ xác nhận (HITL) (#93, PR #94)
 - [x] V3 · Nạp thủ tục hành chính công khai → Meilisearch CE + pgvector; trợ lý RAG (Qwen2.5 7B/14B + bge-m3; không dùng LlamaIndex, luồng RAG tự viết); chọn nhà cung cấp mô hình qua `LLM_PROVIDER` (#91, PR #92)
 - [ ] V1 · Demo công khai trên tên miền, theo dõi lỗi và tài nguyên VPS
+- [x] V1 · Release v0.6.0 – bản tuần 5: trợ lý thủ tục RAG, OCR + cán bộ xác nhận, wiki văn bản, tra cứu tiến độ, thông báo sắp trễ hạn, gói KH01 và DD01 (#99)
 - [x] V2 · Wiki văn bản cho cán bộ (tra cứu văn bản nội bộ): Meilisearch + RLS theo phạm vi, phiên bản, kiểm toán (#95, PR #96)
 
 ## Tuần 6 · 19–25/11 · Tuần UX + cộng đồng → v0.3.0
 - [ ] V2 · **Tuần UX:** sửa giao diện và luồng theo phản hồi người dùng (mỗi phản hồi một issue `user-feedback`)
 - [ ] V3 · Tài liệu song ngữ; hướng dẫn cho **lập trình viên** viết gói thủ tục `thu-tuc/<ma>/` đã có ở `docs/thu-tuc.md` (#30, D-009), bổ sung ví dụ theo phản hồi
-- [x] V1 · **Thêm gói thủ tục** (ngoài khai sinh, chứng thực bản sao), mỗi gói một thư mục, không sửa mã bộ máy, để chứng minh cắm–rút theo gói (D-009 thay cho "module mẫu thứ hai" kiểu `apps/<tên>/`): kết hôn KH01, hòa giải tranh chấp đất đai DD01 (#97, PR chờ duyệt)
+- [x] V1 · **Thêm gói thủ tục** (ngoài khai sinh, chứng thực bản sao), mỗi gói một thư mục, không sửa mã bộ máy, để chứng minh cắm–rút theo gói (D-009 thay cho "module mẫu thứ hai" kiểu `apps/<tên>/`): kết hôn KH01, hòa giải tranh chấp đất đai DD01 (#97, PR #98)
 - [ ] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ)
 - [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp)
 - [ ] V1 · Release v0.3.0
