@@ -335,7 +335,7 @@ JWKS cho PostgREST: PostgREST không tự tải khóa từ URL, nên dịch vụ
 
 - Toàn cục: plugin `cors` với `allow_origins` = origin của gateway (`DXOS_GATEWAY_URL`, nơi cổng công dân được phục vụ) + biến môi trường `DXOS_CORS_ORIGINS` (`.env`, mặc định `http://localhost:5173`, nhiều origin cách nhau bởi dấu phẩy); APISIX đọc biến trong `apisix.yaml` bằng `${{DXOS_CORS_ORIGINS}}`, biến được khai báo ở `nginx_config.envs` của `config.yaml`. PostgREST cũng chỉ cho cùng danh sách origin (`PGRST_SERVER_CORS_ALLOWED_ORIGINS`), origin lạ không nhận header CORS.
 - Cấu hình `openid-connect` (bearer only, JWKS của realm `dxos`) đặt một lần trong `plugin_configs` `jwt-dxos`, các route cần token tham chiếu `plugin_config_id`.
-- Không mở cổng ra host: PostgREST, `mot-cua-api`, `mot-cua-web`, `tro-ly`, Meilisearch, Ollama, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
+- Không mở cổng ra host: PostgREST, `mot-cua-api`, `mot-cua-web`, `tro-ly`, Meilisearch, Ollama, `ocr`, Garage (S3 và Admin API), ClamAV. Flowable chỉ có cổng debug trên `127.0.0.1` (smoke, quản trị viên); Keycloak mở cổng 8080 cho trình duyệt đăng nhập.
 
 ### 4.2 Luồng `/workflow`: API quy trình mỏng của bộ máy một cửa
 
@@ -979,6 +979,48 @@ sequenceDiagram
 
 Kiểm bằng `mot-cua/db/tests/tro_ly.sql` (quyền, cosin, cùng mô hình, ràng buộc vector), `mot-cua/backend/tests/test_tro_ly.py` (đọc kho của repo, RRF, trích dẫn, chặn mô hình, suy giảm êm, HTTP), Vitest `src/pages/tro-ly.test.tsx` và smoke 4p (`mot-cua/tests/smoke-tro-ly.sh`: khóa Meilisearch của Tầng 2 bị chặn ngoài index của mình, kho nạp đủ, chế độ `tat`, chế độ `gia-lap` có dẫn nguồn và tìm ngữ nghĩa, mô hình hỏng vẫn tìm được, chặn `qwen2.5:3b`, 429).
 
+### 4.15 Đọc giấy tờ bằng OCR, cán bộ xác nhận (Human-in-the-loop, #93)
+
+Người dân chọn ảnh giấy tờ ở bước nộp hồ sơ, bấm **Đọc thông tin từ ảnh**: máy điền sẵn các trường, đánh dấu trường không chắc, người dân sửa theo giấy tờ rồi nộp. Sau khi nộp, máy đọc lại **tệp đã lưu** và cán bộ so ảnh gốc, kết quả máy, thông tin công dân khai trước khi xác nhận. Chỉ giá trị cán bộ xác nhận được dùng.
+
+```mermaid
+sequenceDiagram
+  participant CD as Công dân (cổng /nop-ho-so)
+  participant API as mot-cua-api (Tầng 2)
+  participant AV as ClamAV
+  participant OCR as ocr (Tầng 1, profile ai)
+  participant S3 as Garage
+  participant PG as PostgreSQL
+  participant CB as Cán bộ (cổng /can-bo)
+  CD->>API: POST /files/doc-giay-to?loai=giay_to_tuy_than (ảnh)
+  API->>AV: quét
+  API->>OCR: POST /doc (ảnh) → dòng chữ + độ tin cậy
+  API-->>CD: trường đề xuất (không lưu gì) → tự điền, công dân sửa
+  CD->>API: tải tệp (/files/ho-so/{id}/tep) → ClamAV → Garage
+  CD->>API: POST /files/tep/{id}/khai {truong} → doc_giay_to.truong_cong_dan
+  API-)OCR: luồng nền: đọc lại TỆP ĐÃ LƯU → doc_giay_to.truong_may (cho_xac_nhan)
+  CB->>PG: GET /api/doc_giay_to (RLS theo lĩnh vực)
+  CB->>API: link ảnh gốc, (đọc lại), POST /files/tep/{id}/xac-nhan {truong}
+  API->>PG: da_xac_nhan, CSDL tính truong_da_sua, kiểm toán giay_to.xac_nhan
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **PaddleOCR phát hiện dòng + VietOCR nhận dạng** (cả hai Apache-2.0) | Thử trên ảnh mẫu: bộ nhận dạng đa ngôn ngữ của PaddleOCR (`lang="vi"`, PP-OCRv6) làm rơi dấu ("Nguyễn Thị" → "Nguyn Th"); VietOCR `vgg_transformer` đọc đúng dấu, 2–4 giây/trang trên CPU. Dò dòng dùng mô hình nhẹ `PP-OCRv5_mobile_det` (4,8 MB) |
+| Chạy bằng **ONNX Runtime** (MIT), không cài PaddlePaddle, PaddleX, PyTorch | Rà thư viện nhị phân trong wheel (26/10/2026): `paddlepaddle` và `torch` bản amd64 kèm Intel MKL (giấy phép Intel, không OSI), `opencv-contrib-python` mà PaddleX ghim kèm Qt5 và OpenSSL 1.1, `ujson` có đoạn mã giấy phép Tcl. PP-OCRv5_mobile_det dùng bản ONNX RapidOCR công bố; VietOCR xuất ONNX (encoder + decoder, giải mã tham lam như `translate()`) trong stage build có PyTorch, stage bị bỏ. Lúc build so ONNX với PyTorch trên ba ảnh chữ, lệch thì dừng. Tiền/hậu xử lý viết lại theo tham số gốc (`DBPostProcess` của PaddleX, bước nới khung theo đúng thuật toán Clipper). Trên hai ảnh mẫu giả, khung, chữ, độ tin cậy trùng hệt bản PaddleX + PyTorch. Image arm64 từ 2,39 GB còn 714 MB (Docker tính cả bản nén; giải nén ~450 MB) |
+| **OpenCV 4.10 tự biên dịch** (core + imgproc), không lấy wheel PyPI | Mọi wheel `opencv-python(-headless)` 4.10–4.14 kèm OpenSSL 1.1 (do FFmpeg), bản amd64 còn liên kết tĩnh Intel IPP ICV. Stage `opencv` biên dịch từ mã nguồn đã kiểm SHA-256, tắt FFmpeg, IPP, ITT, OpenCL, bộ đọc ảnh (Pillow đọc ảnh); `build-info.txt` đi kèm image. Giữ đúng bản 4.10: `cv2.resize` của 4.14 nội suy khác, khung lệch 1–2 điểm ảnh và VietOCR đọc sai 2/14 trường |
+| Dịch vụ `ocr` ở **Tầng 1**, không biết nghiệp vụ | Nhận ảnh, trả dòng chữ + độ tin cậy + khung, như Gotenberg sinh PDF. Loại giấy tờ, trường cần lấy, quy tắc chuẩn hóa thuộc Tầng 2 (`mot-cua/doc-giay-to/loai-giay-to.json`, khóa trùng mã thành phần hồ sơ của gói): thêm loại giấy tờ không sửa mã |
+| Trọng số **tải lúc build, kiểm SHA-256**, nằm sẵn trong image | Không nằm trong repo. `nen-tang/ocr/xuat_mo_hinh.py` ghim SHA-256 tệp ONNX của RapidOCR và cấu hình + trọng số VietOCR, sai thì dừng build; ghi SHA-256 các tệp `.onnx` vào `mo-hinh.json`, dịch vụ kiểm lại lúc khởi động. Không tải gì lúc chạy (151 MB trong image, không cần volume) |
+| Dịch vụ `ocr` ở mạng `ocr-noi-bo` (internal) | Chỉ `mot-cua-api` gọi được; dịch vụ không ra Internet. ONNX Runtime bản Linux có mô-đun gửi số liệu sử dụng (1DS, `mobile.events.data.microsoft.com`): tắt bằng `ORT_DISABLE_TELEMETRY=1` trong image và `disable_telemetry_events()`, smoke kiểm cả ba |
+| Máy chỉ **đề xuất**; trích trường theo nhãn, so khớp không dấu, cho sai lệch nhỏ | OCR hay đọc sai dấu ở nhãn ("Dư định" = "Dự định"); trường tin cậy < 0,9 hay sai dạng (ngày, số định danh 12 chữ số) bị đánh dấu "kiểm tra lại" ở cả hai cổng |
+| Đọc thử để tự điền **không lưu**; sau khi nộp máy **đọc lại tệp đã lưu** | Không tin kết quả do trình duyệt gửi lên: cán bộ thấy riêng giá trị máy đọc từ đúng tệp trên Garage và giá trị công dân khai, chỗ lệch được tô đậm |
+| Xác nhận rồi **không sửa được**; CSDL tự tính `truong_da_sua` | Dấu vết HITL rõ ràng: ai xác nhận, lúc nào, sửa những trường nào so với máy (đo độ chính xác OCR theo thời gian). Nhật ký kiểm toán chuỗi băm ghi `giay_to.khai`, `giay_to.doc`, `giay_to.xac_nhan` với **tên** trường, không ghi giá trị (dữ liệu cá nhân) |
+| OCR là tùy chọn | Không chạy profile `ai`: đọc thử trả 503 có lời giải thích, nộp hồ sơ bình thường, dòng `doc_giay_to` ghi lý do chưa đọc, cán bộ nhập theo ảnh gốc |
+| Chỉ ảnh JPG/PNG, quét ClamAV trước khi đọc, giới hạn 10 MB | Cùng lớp bảo vệ như tải tệp (§4.3). PDF nhiều trang: cán bộ nhập tay |
+| Dịch vụ `ocr` chạy user 1000, rootfs chỉ đọc, bỏ mọi capability, không mở cổng, không ghi chữ đọc được ra log | Giấy tờ có dữ liệu cá nhân; dịch vụ chỉ xử lý trong bộ nhớ |
+
+Ảnh mẫu GIẢ để thử: `mot-cua/web-cong-dan/public/mau-gia/` (sinh bằng `scripts/sinh_giay_to_gia.py`, có dải "DỮ LIỆU GIẢ", bố cục khác giấy tờ thật), tải ở http://localhost:9080/mau-gia/giay-to-tuy-than.png. Kiểm bằng `mot-cua/db/tests/doc_giay_to.sql`, `mot-cua/backend/tests/test_doc_giay_to.py` (trích trường từ kết quả OCR thật của ảnh mẫu), Vitest `doc-anh.test.tsx`, `xac-nhan-giay-to.test.tsx` và smoke 4q (`mot-cua/tests/smoke-doc-giay-to.sh`).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.
@@ -999,6 +1041,7 @@ Kiểm bằng `mot-cua/db/tests/tro_ly.sql` (quyền, cosin, cùng mô hình, r�
 | `core` | step-ca (+ dịch vụ một lần `step-ca-secrets`, `ca-init`), Gotenberg | chạy thử 23/10/2026 (#77) | đo 23/10/2026: step-ca ~70 MB RAM; Gotenberg (Chromium) ~470 MB sau khi sinh PDF, image ~1,7 GB; image `mot-cua-api` 157 MB (thêm pyHanko ~55 MB) |
 | `core` | Meilisearch CE (+ dịch vụ một lần `meilisearch-secrets`, `meili-init`), `nap-tri-thuc`, `tro-ly` (#91) | chạy thử 26/10/2026 (#91) | Meilisearch giới hạn 256 MB khi lập chỉ mục; `tro-ly` image `python` gốc |
 | `ai` | Ollama 0.40.3 (+ dịch vụ một lần `ollama-pull`): Qwen2.5 7B + bge-m3 cho `LLM_PROVIDER=ollama`, `make up-ai` (#91) | chạy thử 26/10/2026 (#91) | image tải 2,8 GB, giải nén 7,0 GB (arm64, đo 26/10/2026); mô hình tải lúc chạy 5,84 GB vào volume `ollama-models`; đo được Ollama ~6,2 GB RAM khi nạp cả Qwen2.5 7B và bge-m3. Meilisearch ~55 MB RAM, image 477 MB; `tro-ly` ~17 MB RAM |
+| `ai` | `ocr`: PP-OCRv5_mobile_det + VietOCR trên ONNX Runtime (#93), `make up-ocr` (chỉ OCR) hoặc `make up-ai` | chạy thử 26/10/2026 (#93) | đo 26/10/2026 (arm64): image tải 241 MB, giải nén ~450 MB (mô hình ONNX 158 MB, Python + onnxruntime + numpy + pillow + cv2 ~150 MB); build lần đầu cần thêm stage tạm có PyTorch CPU; đọc 2–4 giây/trang. Xem §4.15 |
 | `bi` | `kho-du-lieu` (dịch vụ một lần, `make kho-du-lieu`) | chạy thử 23/10/2026 (#80) | image 399 MB (python slim 206 MB + dbt, DuckDB ~190 MB); một lần chạy ~4 giây trên dữ liệu smoke rồi thoát |
 | `bi` | Superset (+ dịch vụ một lần `superset-secrets`, `superset-init`), `make up-bi` | chạy thử 23/10/2026 (#82) | image 1,28 GB; một worker gunicorn 20 luồng, ~230 MB RAM (đo 23/10/2026) |
 

@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up up-bi up-ai nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
+.PHONY: up up-bi up-ai up-ocr nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -20,12 +20,19 @@ up-bi:         ## Như make up, thêm Superset (dashboard http://localhost:9080/
 # nhúng bằng bge-m3. Cần LLM_PROVIDER=ollama trong .env (tro-ly đọc biến này khi khởi động).
 AI := docker compose --profile core --profile ai
 
-up-ai:         ## Như make up, thêm Ollama + Qwen2.5 7B + bge-m3 cho trợ lý thủ tục (đặt LLM_PROVIDER=ollama trong .env)
+up-ai:         ## Như make up, thêm Ollama + Qwen2.5 7B + bge-m3 cho trợ lý thủ tục (đặt LLM_PROVIDER=ollama trong .env) và dịch vụ OCR
 	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
 	@grep -q '^LLM_PROVIDER=ollama' .env || echo "Lưu ý: .env chưa đặt LLM_PROVIDER=ollama, trợ lý sẽ không dùng mô hình vừa tải"
 	$(AI) up -d --build
 	$(AI) up --no-deps ollama-pull
 	$(AI) run --rm --no-deps nap-tri-thuc
+
+# Chỉ dịch vụ OCR của profile ai (#93), không Ollama. Lần đầu build image (đo 26/10/2026, arm64: ~3 phút; image tải
+# 241 MB, giải nén ~450 MB gồm mô hình ONNX 158 MB); stage build tạm cần ~1,5 GB (PyTorch CPU) rồi bỏ.
+up-ocr:        ## Như make up, thêm dịch vụ đọc giấy tờ (PaddleOCR + VietOCR trên ONNX Runtime) cho tự điền + cán bộ xác nhận
+	@test -f .env || { echo "Thiếu .env — chạy: cp .env.example .env"; exit 1; }
+	docker compose --profile core up -d --build
+	$(AI) up -d --build --no-deps ocr
 
 nap-tri-thuc:  ## Nạp lại kho tri thức của trợ lý (mot-cua/tro-ly/kho-tri-thuc/, thu-tuc/) vào Meilisearch + pgvector; chỉ nhúng đoạn đổi
 	docker compose --profile core run --rm --no-deps nap-tri-thuc

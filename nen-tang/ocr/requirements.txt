@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Thư viện của image chạy thật của dịch vụ OCR (nen-tang/ocr/Dockerfile, #93). Chỉ ba gói này và phụ thuộc của
+# chúng; cây đầy đủ và giấy phép từng gói, kể cả thư viện nhị phân đi kèm wheel, ở DEPENDENCIES.md mục 3.
+# OpenCV KHÔNG cài từ PyPI (mọi wheel opencv-python kèm OpenSSL 1.1, bản amd64 kèm Intel IPP): biên dịch 4.10.0 từ mã
+# nguồn trong stage `opencv` của Dockerfile (cùng phiên bản PaddleX 3.7 dùng: cv2.resize của 4.14 nội suy khác, khung
+# dòng chữ lệch 1–2 điểm ảnh và VietOCR đọc khác). Không có PaddlePaddle, PaddleX, PyTorch: wheel amd64 kèm Intel MKL.
+onnxruntime==1.31.0
+numpy==2.3.5
+pillow==12.3.0
