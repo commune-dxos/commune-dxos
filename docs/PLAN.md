@@ -12,7 +12,7 @@ Cách dùng tệp này:
   - **V3** – OCR giấy tờ, trợ lý RAG, tìm kiếm (nhãn `vai-3`)
 - Ai phụ trách thì người đó commit bằng tài khoản của mình.
 
-**Hiện trạng (29/10/2026):** đội đi trước lịch. Đã phát hành 7 bản, mới nhất **v0.6.0** (27/10); số bản theo nhịp phát hành, không theo số dự kiến ban đầu ở tiêu đề mỗi tuần (v0.2.0, v0.3.0). Tuần 1–5 xong, trừ các dòng 🔒 chờ người hướng dẫn và lịch công tác của cán bộ. Đang làm tuần 6–7: tài liệu song ngữ (#106), kịch bản trình bày 15 phút + video dự phòng, chuẩn bị v0.7.0.
+**Hiện trạng (29/10/2026):** đội đi trước lịch. Đã phát hành 8 bản, mới nhất **v0.7.0** (29/10); số bản theo nhịp phát hành, không theo số dự kiến ban đầu ở tiêu đề mỗi tuần (v0.2.0, v0.3.0). Tuần 1–5 xong, trừ các dòng 🔒 chờ người hướng dẫn và lịch công tác của cán bộ. Tuần 6: phần đội tự làm được đã xong (dữ liệu mở #102, REUSE #104, tài liệu song ngữ #106, kịch bản trình bày + video dự phòng #108, v0.7.0 #112); còn tập trình bày thật cả đội và các dòng 🔒.
 
 | Bản | Ngày | Nội dung chính |
 |---|---|---|
@@ -23,6 +23,7 @@ Cách dùng tệp này:
 | v0.4.0 | 23/10 | cổng công dân giao diện mới, form nộp hồ sơ |
 | v0.5.0 | 24/10 | Poka-yoke 2 lớp, cổng cán bộ, kiểm toán chuỗi băm, ký số, kho dữ liệu, Superset, sổ văn bản |
 | v0.6.0 | 27/10 | trợ lý RAG, OCR + cán bộ xác nhận, wiki văn bản, tra cứu tiến độ, thông báo sắp trễ hạn, gói KH01 + DD01 |
+| v0.7.0 | 29/10 | dữ liệu mở thủ tục cấp xã CC-BY-4.0, REUSE 3.3, tài liệu song ngữ, kịch bản trình bày + video dự phòng, sửa đăng nhập Superset |
 
 ## Tuần 1 · 15–21/10 · Nền móng → v0.0.1 ✅
 - [x] V1 · Xác minh giấy phép trên repo gốc: Garage, Meilisearch, pyHanko, step-ca, Gotenberg, PostgREST, Flowable → `NOTICE`, `DEPENDENCIES.md`
@@ -77,7 +78,7 @@ Cách dùng tệp này:
 - [x] V1 · **Thêm gói thủ tục** (ngoài khai sinh, chứng thực bản sao), mỗi gói một thư mục, không sửa mã bộ máy, để chứng minh cắm–rút theo gói (D-009 thay cho "module mẫu thứ hai" kiểu `apps/<tên>/`): kết hôn KH01, hòa giải tranh chấp đất đai DD01 (#97, PR #98)
 - [x] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ): `du-lieu-mo/thu-tuc-cap-xa/`, CC-BY-4.0, sinh từ gói (#102, PR #103); `reuse lint` đạt REUSE 3.3, chạy trong CI (#104, PR #105)
 - [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp). Đã có: kịch bản theo phút `docs/trinh-bay/kich-ban-demo.md`, `make du-lieu-demo`, dàn ý slide (#108); còn: tập thật cả đội
-- [ ] V1 · Release v0.7.0 – bản tuần 6 (thay dòng "Release v0.3.0" cũ: v0.3.0 đã phát hành 22/10)
+- [x] V1 · Release v0.7.0 – bản tuần 6: dữ liệu mở, REUSE 3.3, tài liệu song ngữ, kịch bản trình bày, sửa đăng nhập Superset (#112; thay dòng "Release v0.3.0" cũ: v0.3.0 đã phát hành 22/10)
 
 ## Tuần 7 · 26/11–06/12 · Đóng băng PoF, nộp bài → v1.0.0
 - [ ] V1 · Rà đủ 6 tiêu chí PoF: LICENSE + SPDX mọi tệp, release có tag + `.tar.gz`, README song ngữ, CHANGELOG, hướng dẫn build từ máy sạch, bug tracker
