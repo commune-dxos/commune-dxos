@@ -4,6 +4,40 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-29
+
+### Tính năng mới
+
+- **thu-tuc:** Công bố bộ dữ liệu mở thủ tục hành chính cấp xã – danh mục + JSON Schema thành phần hồ sơ, CC-BY-4.0 ([#102](https://github.com/commune-dxos/commune-dxos/issues/102)) ([#103](https://github.com/commune-dxos/commune-dxos/issues/103))
+    - du-lieu-mo/thu-tuc-cap-xa/: danh mục JSON + CSV, JSON Schema thành phần hồ sơ từng thủ tục, LICENSE CC-BY-4.0, README song ngữ
+    - Sinh từ thu-tuc/*/ bằng make du-lieu-mo, make check báo lệch; REUSE.toml khai CC-BY-4.0 cho du-lieu-mo/**
+    - Smoke đối chiếu bản công bố với API công khai; smoke 1158/1158 trên volume trống
+
+### Sửa lỗi
+
+- **nen-tang:** Nút "Sign in with Keycloak" của Superset về đúng /bao-cao/login/keycloak ([#110](https://github.com/commune-dxos/commune-dxos/issues/110)) ([#111](https://github.com/commune-dxos/commune-dxos/issues/111))
+    - Superset 6.1 dựng link nút SSO cứng `/login/<provider>`, bỏ qua SUPERSET_APP_ROOT: APISIX thêm route /login/keycloak → 302 /bao-cao/login/keycloak, giữ ?next=; không sửa mã Superset
+    - Smoke mục 4m: đọc mẫu href của nút trong JS Superset phục vụ, kiểm route chuyển hướng giữ next, đi theo nút tới Keycloak (client bao_cao_superset); smoke 1176/1176 trên volume trống (profile bi)
+    - Kịch bản trình bày và video dự phòng bỏ đường vòng, bấm nút như người dùng; bảng route architecture §4.1 thêm /bao-cao, /login/keycloak
+
+### Tài liệu
+
+- **tai-lieu:** Dọn kế hoạch theo hiện trạng, tài liệu song ngữ, ví dụ gói thủ tục từ A đến Z ([#106](https://github.com/commune-dxos/commune-dxos/issues/106)) ([#107](https://github.com/commune-dxos/commune-dxos/issues/107))
+    - docs/PLAN.md: bảng 7 bản đã phát hành, bỏ "PR chờ duyệt" của PR đã merge, dòng "Release v0.3.0" tuần 6 thành v0.7.0, đánh dấu 🔒 các dòng chờ người hướng dẫn (VPS, người dùng thật, tuần UX)
+    - README: mục English đủ mọi mục chính, Quick start chạy từ máy sạch; trang tài liệu thêm tab English (docs/en/: tổng quan, Quick start, kiến trúc, đóng góp)
+    - docs/thu-tuc.md: ví dụ song ngữ gói XNCT01 từ issue tới rút gói, đủ 5 tệp, lỗi thật của bộ kiểm, phân công cán bộ, kết quả smoke
+- **trinh-bay:** Kịch bản trình bày 15 phút, script dữ liệu demo, video dự phòng đủ luồng H-P-D-I ([#108](https://github.com/commune-dxos/commune-dxos/issues/108)) ([#109](https://github.com/commune-dxos/commune-dxos/issues/109))
+    - docs/trinh-bay/kich-ban-demo.md (MkDocs, mục Kiến trúc): chuẩn bị, lịch theo phút, lời thoại 7 bước demo H-P-D-I, phương án khi demo hỏng, câu hỏi giám khảo kèm trả lời, dàn ý 10 slide
+    - make du-lieu-demo (scripts/du-lieu-demo.sh): 96 hồ sơ lịch sử giả cho dashboard, 1 hồ sơ khai sinh nộp thật qua APISIX có thông báo sắp trễ hạn cho canbo01, nạp kho dữ liệu nếu đã bật profile bi
+    - make quay-demo VIDEO=<thư mục ngoài repo> (scripts/quay_video_demo.py): MP4 ≤ 5 phút, 7 đoạn có khung tiêu đề, lệnh xác minh chữ ký và chuỗi băm chạy thật, cắm rồi rút gói ví dụ
+    - scripts/goi_vi_du.py: chép gói ví dụ XNCT01 từ docs/thu-tuc.md; make check kiểm gói này để tài liệu không lỗi thời
+
+### Hạ tầng và CI
+
+- Reuse lint đạt 100% đặc tả REUSE 3.3 và chạy trong CI ([#104](https://github.com/commune-dxos/commune-dxos/issues/104)) ([#105](https://github.com/commune-dxos/commune-dxos/issues/105))
+    - reuse lint 438/438 tệp có bản quyền và giấy phép (REUSE 3.3); job CI reuse, phần reuse trong scripts/lint.sh
+    - Bọc chuỗi SPDX trong mã bằng REUSE-IgnoreStart/End; REUSE.toml khai tệp reuse đoán sai bảng mã và mẫu Go template
+
 ## [0.6.0] - 2026-10-27
 
 ### Tính năng mới
@@ -375,7 +409,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.3.0...v0.4.0

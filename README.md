@@ -26,7 +26,7 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.6.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.7.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
 
 | Trước | Sau |
 |---|---|
@@ -35,7 +35,7 @@ Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau
 | Hồ sơ giấy chuyển qua nhiều bàn, thất lạc, không ai biết đang nằm ở đâu. | Mỗi hồ sơ có mã, trạng thái và lịch sử từng bước của quy trình. Tệp có nhật ký chỉ ghi thêm, không sửa được. ✅ v0.1.0 · Trạng thái hồ sơ đi đúng bước quy trình Flowable: ✅ v0.5.0 |
 | Hạn giải quyết tính tay, quá hạn rồi mới biết. | Hạn tự tính theo ngày làm việc, bỏ cuối tuần và ngày lễ. Còn ≤ 1 ngày thì hệ thống phát cảnh báo sắp trễ hạn qua hàng đợi. ✅ v0.1.0 · Cổng cán bộ xếp hồ sơ quá hạn, sắp trễ lên đầu: ✅ v0.5.0 · Thông báo sắp trễ hạn tới cán bộ trên cổng cán bộ, cập nhật ngay (email/SMS giả lập): ✅ v0.6.0 · Thông báo tới người dân: ⏳ chưa xếp tuần |
 | Sổ hồ sơ để chung, ai cũng mở được. Giấy tờ gửi qua tin nhắn, không ai kiểm. | Cán bộ chỉ thấy hồ sơ thuộc lĩnh vực mình, đăng nhập phải có mã OTP. Tệp được quét mã độc trước khi lưu. ✅ v0.1.0 · Cổng cán bộ đăng nhập một lần + OTP; sổ văn bản đến/đi có ký số: ✅ v0.5.0 · Wiki văn bản nội bộ, ai thấy gì theo vai và lĩnh vực: ✅ v0.6.0 |
-| Thêm một thủ tục mới phải chờ sửa phần mềm. | Thêm một thư mục `thu-tuc/<ma>/` rồi chạy `make nap-thu-tuc`. Không sửa mã. ✅ v0.2.0 · Thêm gói kết hôn, hòa giải tranh chấp đất đai đúng cách đó (4 gói): ✅ v0.6.0 |
+| Thêm một thủ tục mới phải chờ sửa phần mềm. | Thêm một thư mục `thu-tuc/<ma>/` rồi chạy `make nap-thu-tuc`. Không sửa mã. ✅ v0.2.0 · Thêm gói kết hôn, hòa giải tranh chấp đất đai đúng cách đó (4 gói): ✅ v0.6.0 · Hướng dẫn thêm gói từ A đến Z (song ngữ), danh mục thủ tục công bố dạng dữ liệu mở CC-BY-4.0: ✅ v0.7.0 |
 | Lãnh đạo xã cộng sổ cuối tháng mới biết bao nhiêu hồ sơ trễ. | Dashboard thời gian giải quyết, tỷ lệ trễ hạn; nhật ký kiểm toán có chuỗi băm. ✅ v0.5.0 |
 | Cán bộ gõ lại từng dòng trên giấy tờ người dân mang tới. | Chụp giấy tờ, hệ thống đọc chữ và điền sẵn, cán bộ xác nhận lại. ✅ v0.6.0 |
 
@@ -164,7 +164,7 @@ Commune DX-OS phát hành theo **[GNU GPL phiên bản 3 hoặc mới hơn](LICE
 | Paper files get lost between desks. | Application code, status driven by the BPMN workflow, step history, append-only hash-chained audit log (v0.1.0, v0.5.0) |
 | Deadlines counted by hand. | Working-day deadlines (weekends, holidays skipped), near-deadline alerts to officers in real time (v0.1.0, v0.6.0) |
 | Anyone can open the register. | Officers see only their own field (row-level security), OTP login, virus scan before storage, internal wiki by role (v0.1.0 → v0.6.0) |
-| A new procedure waits for a software change. | Add a `thu-tuc/<code>/` folder and run `make nap-thu-tuc`; four packages ship today (v0.2.0, v0.6.0) |
+| A new procedure waits for a software change. | Add a `thu-tuc/<code>/` folder and run `make nap-thu-tuc`; four packages ship today; bilingual A-to-Z guide and the catalogue as CC-BY-4.0 open data (v0.2.0, v0.6.0, v0.7.0) |
 | Late files counted at month end. | Superset dashboard of processing time and late rate, audit log verifiable by anyone (v0.5.0) |
 | Officers retype citizens' papers. | OCR pre-fills the form, an officer confirms (v0.6.0) |
 
