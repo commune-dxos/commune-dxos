@@ -39,6 +39,23 @@ kiem "/bao-cao/login/keycloak → Keycloak, client bao_cao_superset, PKCE S256, 
   "$(for m in "^$KC/realms/dxos/protocol/openid-connect/auth" 'client_id=bao_cao_superset' 'code_challenge_method=S256' \
               "redirect_uri=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$GW/bao-cao/oauth-authorized/keycloak")"; do
        grep -qE -- "$m" <<<"$SS_AUTH" && printf 'có ' || printf 'không '; done | sed 's/ $//')"
+# #110: nút "Sign in with Keycloak" dựng href trong JS của trang đăng nhập (curl không chạy JS): lấy mẫu link từ chính
+# các tệp JS Superset phục vụ (`/login/${tên}` ở Superset 6.1, thiếu tiền tố /bao-cao), rồi đi theo link đó như trình
+# duyệt, qua APISIX, phải tới Keycloak. Superset sửa mẫu ở bản sau thì kiểm vẫn đúng mà không phải sửa smoke.
+SS_MAU="$(docker compose --profile core --profile bi exec -T superset sh -c \
+  'grep -l "Sign in with" /app/superset/static/assets/*.js | xargs grep -ohE "\`[^\`]*/login/\\\$\{[a-z]+\}\`"' 2>/dev/null | head -1)"
+# shellcheck disable=SC2016  # dấu ` và ${…} là ký tự của mẫu JS, không phải biểu thức shell
+SS_HREF="$(sed -E 's/^`(.*)\$\{[a-z]+\}`$/\1keycloak/' <<<"$SS_MAU")"
+SS_NEXT="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$GW/bao-cao/superset/dashboard/hieu-suat-mot-cua/")"
+kiem "trang đăng nhập Superset: đọc được href của nút Keycloak trong JS" "có" "$([ -n "$SS_HREF" ] && echo có || echo không)"
+kiem "APISIX: /login/keycloak?next=… (href của nút ở Superset 6.1) → 302 về /bao-cao/login/keycloak, giữ next" \
+  "302 $GW/bao-cao/login/keycloak?next=$SS_NEXT" \
+  "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$GW/login/keycloak?next=$SS_NEXT")"
+SS_NUT="$(curl -s -c "$SS_TD/jar-nut" -b "$SS_TD/jar-nut" -o /dev/null -L --max-redirs 4 -w '%{url_effective}' "$GW${SS_HREF:-/khong-co}?next=$SS_NEXT")"
+kiem "bấm nút Keycloak (GET ${SS_HREF:-?} qua APISIX) → trang đăng nhập Keycloak của client bao_cao_superset, quay về /bao-cao" "có có có" \
+  "$(for m in "^$KC/realms/dxos/protocol/openid-connect/auth" 'client_id=bao_cao_superset' \
+              "redirect_uri=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$GW/bao-cao/oauth-authorized/keycloak")"; do
+       grep -qE -- "$m" <<<"$SS_NUT" && printf 'có ' || printf 'không '; done | sed 's/ $//')"
 
 # ss_dang_nhap <tên> <username> <secret OTP>: đăng nhập Superset bằng SSO như trình duyệt (cookie riêng
 # $SS_TD/jar-<tên>). → in mã HTTP của lần Superset nhận code (302 = đăng nhập xong). Mã OTP bị từ chối
