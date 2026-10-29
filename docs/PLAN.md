@@ -52,7 +52,7 @@ Cách dùng tệp này:
 - [x] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable – 2 lớp: cổng công dân (#53) + `mot-cua-api` 422 (#59, PR #71)
 - [x] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái – khung + danh mục + đăng nhập (#52, PR #60); giao diện mới + form nộp hồ sơ (#63, #64, PR #65, #66); web trong compose qua APISIX (#57, PR #70); tra cứu tiến độ không đăng nhập + Hồ sơ của tôi + nộp bổ sung (#54, PR #88)
 - [x] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước (#55, PR #72); trạng thái hồ sơ theo bước Flowable (#73, PR #74)
-- [ ] V2 · Lịch công tác trong cổng cán bộ – **còn mở**, chưa có issue (để sau tuần 7 nếu còn thời gian)
+- [x] V2 · Lịch công tác trong cổng cán bộ: văn thư soạn, lãnh đạo duyệt, cán bộ xem theo tuần, chặn trùng địa điểm + chồng giờ, kiểm toán `lich.*` (#117)
 - [x] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `mot-cua/`): sự kiện `ho_so.sap_tre_han` (#9); consumer thông báo tới cán bộ, chuông + trang Thông báo cập nhật qua SSE, email/SMS giả lập (#56, PR #89). Thông báo tới công dân: **còn mở**, chưa có issue
 - [x] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả) (#82, v0.5.0)
 

@@ -43,6 +43,8 @@
 #   4r. Wiki văn bản nội bộ cho cán bộ (#95): chỉ mục Meilisearch dựng từ CSDL, tìm theo phạm vi (toàn xã, lĩnh vực phụ
 #      trách, lãnh đạo), quyền ghi theo vai, phiên bản + lịch sử, đối chiếu RLS khi chỉ mục cũ, Meilisearch dừng vẫn tìm
 #      được trong CSDL, kiểm toán wiki.*: tests/smoke-wiki-van-ban.sh.
+#   4s. Lịch công tác (#117): văn thư soạn lịch dự kiến, lãnh đạo duyệt, cán bộ chỉ thấy lịch đã duyệt, trùng địa điểm +
+#      chồng giờ → 400 (23P01), hủy phải có lý do, không xóa, kiểm toán lich.*: tests/smoke-lich-cong-tac.sh.
 #   5. Quy trình Flowable "Đăng ký khai sinh" ở mức engine (REST trực tiếp, cổng debug):
 #      tiếp nhận → (bổ sung) → thẩm định → phê duyệt, nhánh từ chối, hẹn giờ quá hạn.
 # Không phụ thuộc dữ liệu seed: số liệu mong đợi lấy từ CSDL bằng superuser.
@@ -473,6 +475,10 @@ fi
 # --- 4r. Wiki văn bản nội bộ cho cán bộ (#95) ------------------------------------------------------------------
 # shellcheck source=mot-cua/tests/smoke-wiki-van-ban.sh
 . "mot-cua/tests/smoke-wiki-van-ban.sh"
+
+# --- 4s. Lịch công tác (#117) --------------------------------------------------------------------------------------
+# shellcheck source=mot-cua/tests/smoke-lich-cong-tac.sh
+. "mot-cua/tests/smoke-lich-cong-tac.sh"
 
 # Dọn: người dùng tạm và cán bộ tạm (hồ sơ thử của công dân được giữ lại, bỏ giao).
 sql "UPDATE mot_cua.ho_so SET can_bo_xu_ly_id = NULL WHERE can_bo_xu_ly_id = '$CB_ID';
