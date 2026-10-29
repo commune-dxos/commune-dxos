@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-.PHONY: up up-bi up-ai up-ocr nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
+.PHONY: du-lieu-mo up up-bi up-ai up-ocr nap-tri-thuc down logs ps migrate seed nap-thu-tuc kho-du-lieu kho-du-lieu-tai-lieu test-kho smoke demo-users lint test test-backend test-sql test-web license check bao-init bao-status bao-import-env tai-lieu xem-tai-lieu xuat-kien-truc quay-demo nhat-ky ghi-chu-phat-hanh
 
 # Chưa có .env (máy CI, máy mới clone) thì kiểm tra compose bằng .env.example.
 COMPOSE_ENV := $(if $(wildcard .env),,--env-file .env.example)
@@ -77,6 +77,9 @@ kho-du-lieu-tai-lieu: ## Xem lineage và mô tả model dbt ở http://127.0.0.1
 smoke:         ## Kiểm tra hệ thống đang chạy: nền tảng (JWT, JWKS, OpenBao…) + bộ máy mot-cua + gói thủ tục
 	bash scripts/smoke.sh
 
+du-lieu-demo:  ## Dữ liệu GIẢ cho buổi trình bày (#108): 96 hồ sơ lịch sử cho dashboard, 1 hồ sơ sắp trễ hạn có thông báo cho canbo01, nạp kho dữ liệu nếu đã up-bi. Chạy trước demo-users
+	bash scripts/du-lieu-demo.sh
+
 demo-users:    ## Đặt mật khẩu chung cho người dùng mẫu để thử tay (chạy sau smoke). DXOS_DEMO_PASSWORD=… hoặc sinh ngẫu nhiên
 	bash scripts/demo-users.sh
 
@@ -127,8 +130,11 @@ xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-tru
 
 # GIF demo cho README (#58): cùng venv, ffmpeg như trên; cần hệ thống đang chạy (make up). Tài khoản mẫu
 # congdan01, canbo01 được đặt mật khẩu + OTP ngẫu nhiên (không in ra), quay xong trả lại như realm.json.
-quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif. Cần make up
-	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py
+# VIDEO=<thư mục ngoài repo> (#108): video dự phòng MP4 3–5 phút đủ luồng H-P-D-I cho buổi trình bày
+# (docs/trinh-bay/kich-ban-demo.md); cần thêm make up-ai, make up-bi, make du-lieu-demo. Trả congdan01, canbo01,
+# lanhdao01 về như realm.json: sau đó chạy lại make demo-users.
+quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif; VIDEO=<thư mục>: video dự phòng đủ luồng. Cần make up
+	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py $(if $(VIDEO),--video $(VIDEO))
 
 # CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
 # Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt
@@ -146,12 +152,17 @@ ghi-chu-phat-hanh: ## In ghi chú phát hành vX.Y.Z ra stdout (tag chưa có th
 license:       ## Thêm header SPDX (bản quyền + GPL-3.0-or-later, D-010) cho tệp mới
 	bash scripts/add-license-header.sh
 
-check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + kho tri thức + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
+du-lieu-mo:    ## Sinh lại bộ dữ liệu mở du-lieu-mo/thu-tuc-cap-xa/ (CC-BY-4.0) từ các gói thu-tuc/*/ (#102); chạy sau khi thêm/sửa gói
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/xuat_du_lieu_mo.py
+
+check:         ## Kiểm tra trước khi commit/nộp: SPDX GPL-3.0-or-later + BPMN thu-tuc/*/ + kho tri thức + dữ liệu mở khớp gói + gói ví dụ của docs/thu-tuc.md + web ghim phiên bản + test đơn vị + compose hợp lệ (mọi profile)
 	bash scripts/check-license.sh
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/tests/test_check_license.py
 	python3 scripts/check-bpmn.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check-web.py
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_thu_tuc.py thu-tuc --chi-kiem
 	PYTHONDONTWRITEBYTECODE=1 python3 mot-cua/backend/nap_tri_thuc.py mot-cua/tro-ly/kho-tri-thuc thu-tuc --chi-kiem
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/xuat_du_lieu_mo.py --kiem
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/goi_vi_du.py --kiem
 	$(MAKE) --no-print-directory test-backend
 	docker compose $(COMPOSE_ENV) --profile '*' config --quiet && echo "OK: docker-compose.yml hợp lệ (mọi profile)"

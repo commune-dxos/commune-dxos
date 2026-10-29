@@ -1,0 +1,269 @@
+{
+  "$schema": "./danh-muc.schema.json",
+  "ten_bo_du_lieu": "Thủ tục hành chính cấp xã – thành phần hồ sơ và quy trình (Commune DX-OS)",
+  "mo_ta": "Danh mục thủ tục mà bộ máy một cửa Commune DX-OS đang hỗ trợ, kèm JSON Schema 2020-12 thành phần hồ sơ dùng để kiểm hồ sơ đủ giấy tờ trước khi nộp (Poka-yoke). Sinh tự động từ các gói thu-tuc/.",
+  "giay_phep": "CC-BY-4.0",
+  "ghi_cong": "Commune DX-OS – đội DTU_DZ_2 (OLP PMNM 2026), https://github.com/commune-dxos/commune-dxos",
+  "nguon": "https://github.com/commune-dxos/commune-dxos/tree/main/thu-tuc",
+  "luu_y": "Giá trị lấy theo quy định công khai, rút gọn để minh họa; đối chiếu văn bản pháp luật gốc trước khi dùng cho nghiệp vụ thật. Văn bản pháp luật không thuộc đối tượng bảo hộ quyền tác giả.",
+  "so_thu_tuc": 4,
+  "thu_tuc": [
+    {
+      "ma": "CT01",
+      "ten": "Chứng thực bản sao từ bản chính",
+      "linh_vuc": {
+        "ma": "chung_thuc",
+        "ten": "Chứng thực"
+      },
+      "thoi_han_ngay_lam_viec": 0,
+      "le_phi": 2000,
+      "ghi_chu_le_phi": "2.000 đồng/trang; từ trang thứ ba 1.000 đồng/trang, tối đa 200.000 đồng/bản",
+      "can_cu_phap_ly": [
+        "Nghị định 23/2015/NĐ-CP, Điều 7 và Điều 20",
+        "Thông tư 01/2020/TT-BTP",
+        "Thông tư 226/2016/TT-BTC (lệ phí chứng thực)"
+      ],
+      "thanh_phan": [
+        {
+          "ma": "ban_chinh",
+          "ten": "Bản chính giấy tờ cần chứng thực",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 1,
+          "ghi_chu": "Ảnh chụp để cán bộ chuẩn bị đối chiếu; xuất trình bản chính tại bộ phận một cửa"
+        },
+        {
+          "ma": "ban_sao",
+          "ten": "Bản sao cần chứng thực",
+          "bat_buoc": false,
+          "so_tep_toi_thieu": 0,
+          "ghi_chu": "Nếu người yêu cầu tự chuẩn bị bản sao"
+        }
+      ],
+      "cac_buoc": [
+        {
+          "ma": "tiep_nhan",
+          "ten": "Tiếp nhận yêu cầu chứng thực",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "kiem_tra_ban_chinh",
+          "ten": "Kiểm tra bản chính, đối chiếu bản sao",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "ky_chung_thuc",
+          "ten": "Ký chứng thực, đóng dấu",
+          "nguoi_xu_ly": "lanh_dao"
+        },
+        {
+          "ma": "tra_ket_qua",
+          "ten": "Trả kết quả, ghi sổ chứng thực",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        }
+      ],
+      "schema": "schema/CT01.schema.json",
+      "schema_sha256": "4e8b982820f99747eb433c660632e1a65ee2c47499b7d68ddf3671984b3ed2fe",
+      "goi": "thu-tuc/chung-thuc-ban-sao"
+    },
+    {
+      "ma": "DD01",
+      "ten": "Hòa giải tranh chấp đất đai tại xã",
+      "linh_vuc": {
+        "ma": "dat_dai",
+        "ten": "Đất đai"
+      },
+      "thoi_han_ngay_lam_viec": 20,
+      "le_phi": 0,
+      "ghi_chu_le_phi": "Không thu phí",
+      "can_cu_phap_ly": [
+        "Luật Đất đai 2024, Điều 235",
+        "Nghị định 102/2024/NĐ-CP"
+      ],
+      "thanh_phan": [
+        {
+          "ma": "don_yeu_cau",
+          "ten": "Đơn yêu cầu hòa giải tranh chấp đất đai",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 1,
+          "ghi_chu": "Ghi rõ các bên tranh chấp, vị trí thửa đất và nội dung yêu cầu"
+        },
+        {
+          "ma": "giay_to_dat",
+          "ten": "Giấy tờ liên quan đến thửa đất",
+          "bat_buoc": false,
+          "so_tep_toi_thieu": 0,
+          "ghi_chu": "Nếu có: giấy chứng nhận, giấy tờ về nguồn gốc, quá trình sử dụng đất"
+        }
+      ],
+      "cac_buoc": [
+        {
+          "ma": "tiep_nhan",
+          "ten": "Tiếp nhận đơn yêu cầu hòa giải",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "bo_sung",
+          "ten": "Người nộp bổ sung đơn, giấy tờ",
+          "nguoi_xu_ly": "nguoi_nop"
+        },
+        {
+          "ma": "xac_minh",
+          "ten": "Thẩm tra, xác minh, thu thập tài liệu",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "hoa_giai",
+          "ten": "Tổ chức họp hòa giải, lập biên bản",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "ky_bien_ban",
+          "ten": "Ký biên bản hòa giải",
+          "nguoi_xu_ly": "lanh_dao"
+        }
+      ],
+      "schema": "schema/DD01.schema.json",
+      "schema_sha256": "c00447b79aff4d7e1bab2e1ada8a289224e7cb28516d2d90d493f87214889490",
+      "goi": "thu-tuc/hoa-giai-dat-dai"
+    },
+    {
+      "ma": "KH01",
+      "ten": "Đăng ký kết hôn",
+      "linh_vuc": {
+        "ma": "ho_tich",
+        "ten": "Hộ tịch"
+      },
+      "thoi_han_ngay_lam_viec": 5,
+      "le_phi": 0,
+      "ghi_chu_le_phi": "Miễn lệ phí đăng ký kết hôn của công dân Việt Nam cư trú trong nước (Luật Hộ tịch 2014, Điều 11)",
+      "can_cu_phap_ly": [
+        "Luật Hộ tịch 2014, Điều 17 và Điều 18",
+        "Luật Hôn nhân và gia đình 2014, Điều 5 và Điều 8",
+        "Nghị định 123/2015/NĐ-CP"
+      ],
+      "thanh_phan": [
+        {
+          "ma": "to_khai",
+          "ten": "Tờ khai đăng ký kết hôn (theo mẫu)",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 1,
+          "ghi_chu": "Hai bên có thể khai chung một tờ khai"
+        },
+        {
+          "ma": "giay_to_tuy_than",
+          "ten": "Giấy tờ tùy thân của hai bên nam, nữ",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 2,
+          "ghi_chu": "Mỗi bên một ảnh; xuất trình bản chính khi đến ký Sổ hộ tịch"
+        },
+        {
+          "ma": "xac_nhan_hon_nhan",
+          "ten": "Giấy xác nhận tình trạng hôn nhân",
+          "bat_buoc": false,
+          "so_tep_toi_thieu": 0,
+          "ghi_chu": "Khi một bên không thường trú tại xã đăng ký và chưa khai thác được thông tin từ cơ sở dữ liệu"
+        }
+      ],
+      "cac_buoc": [
+        {
+          "ma": "tiep_nhan",
+          "ten": "Tiếp nhận, kiểm tra thành phần hồ sơ",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "bo_sung",
+          "ten": "Công dân bổ sung hồ sơ",
+          "nguoi_xu_ly": "nguoi_nop"
+        },
+        {
+          "ma": "xac_minh",
+          "ten": "Xác minh điều kiện kết hôn",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "ky_giay_chung_nhan",
+          "ten": "Ký Giấy chứng nhận kết hôn",
+          "nguoi_xu_ly": "lanh_dao"
+        },
+        {
+          "ma": "trao_giay_chung_nhan",
+          "ten": "Trao Giấy chứng nhận, hai bên ký Sổ hộ tịch",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        }
+      ],
+      "schema": "schema/KH01.schema.json",
+      "schema_sha256": "760eb1336a88342c4b24c13440030e347d2a6c12678f79f40d6ce65e73ec9f4a",
+      "goi": "thu-tuc/ket-hon"
+    },
+    {
+      "ma": "KS01",
+      "ten": "Đăng ký khai sinh",
+      "linh_vuc": {
+        "ma": "ho_tich",
+        "ten": "Hộ tịch"
+      },
+      "thoi_han_ngay_lam_viec": 1,
+      "le_phi": 0,
+      "ghi_chu_le_phi": "Miễn lệ phí khi đăng ký đúng hạn",
+      "can_cu_phap_ly": [
+        "Luật Hộ tịch 2014, Điều 16",
+        "Nghị định 123/2015/NĐ-CP"
+      ],
+      "thanh_phan": [
+        {
+          "ma": "to_khai",
+          "ten": "Tờ khai đăng ký khai sinh (theo mẫu)",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 1,
+          "ghi_chu": null
+        },
+        {
+          "ma": "giay_chung_sinh",
+          "ten": "Giấy chứng sinh",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 1,
+          "ghi_chu": "Không có thì thay bằng văn bản của người làm chứng hoặc giấy cam đoan về việc sinh"
+        },
+        {
+          "ma": "giay_to_tuy_than",
+          "ten": "Giấy tờ tùy thân của người đi đăng ký",
+          "bat_buoc": true,
+          "so_tep_toi_thieu": 1,
+          "ghi_chu": "Xuất trình bản chính hoặc ảnh chụp"
+        },
+        {
+          "ma": "giay_ket_hon_cha_me",
+          "ten": "Giấy chứng nhận kết hôn của cha mẹ",
+          "bat_buoc": false,
+          "so_tep_toi_thieu": 0,
+          "ghi_chu": "Nếu cha mẹ đã đăng ký kết hôn"
+        }
+      ],
+      "cac_buoc": [
+        {
+          "ma": "tiep_nhan",
+          "ten": "Tiếp nhận, kiểm tra thành phần hồ sơ",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "bo_sung",
+          "ten": "Công dân bổ sung hồ sơ",
+          "nguoi_xu_ly": "nguoi_nop"
+        },
+        {
+          "ma": "tham_dinh",
+          "ten": "Thẩm định hồ sơ",
+          "nguoi_xu_ly": "can_bo_linh_vuc"
+        },
+        {
+          "ma": "phe_duyet",
+          "ten": "Phê duyệt, ký giấy khai sinh",
+          "nguoi_xu_ly": "lanh_dao"
+        }
+      ],
+      "schema": "schema/KS01.schema.json",
+      "schema_sha256": "8667d44738867b20dfbd76a81a4c1e6d3068c606991045fa0bf6fb1909e4d5a7",
+      "goi": "thu-tuc/khai-sinh"
+    }
+  ]
+}

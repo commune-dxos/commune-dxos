@@ -8,8 +8,10 @@
 #   /tang2/db/seed/*.sql        dữ liệu giả, chỉ khi DXOS_SEED=true, cũng một lần
 # Mỗi tệp chạy trong một transaction cùng dòng ghi sổ dxos.app_migration, nên lỗi
 # giữa chừng không để lại nửa schema. Tệp đã áp dụng mà bị sửa → dừng với mã lỗi.
+# REUSE-IgnoreStart (dòng dưới và hàm sha_truoc_d010 nhắc tới header, không phải header của tệp này; #104)
 # Ngoại lệ duy nhất (D-010, #47): tệp áp dụng từ v0.2.0 trở về trước chỉ khác header giấy phép
 # (`-- SPDX-License-Identifier: Apache-2.0` thành 2 dòng GPL-3.0-or-later) thì cập nhật sổ, không chạy lại.
+# REUSE-IgnoreEnd
 # Kết nối qua biến chuẩn của libpq: PGHOST, PGUSER, PGPASSWORD, PGDATABASE.
 set -eu
 : "${DXOS_TANG2:?Thiếu DXOS_TANG2}"
@@ -22,11 +24,13 @@ psql_q() { psql -X -v ON_ERROR_STOP=1 -qtA "$@"; }
 
 # SHA-256 của tệp như trước D-010: header GPL 2 dòng đổi lại thành 1 dòng Apache-2.0.
 # Tệp không có đúng header GPL ở 2 dòng đầu thì không in gì.
+# REUSE-IgnoreStart
 sha_truoc_d010() {
   [ "$(head -n 2 "$1")" = "-- SPDX-FileCopyrightText: 2026 DTU_DZ_2
 -- SPDX-License-Identifier: GPL-3.0-or-later" ] || return 0
   { echo "-- SPDX-License-Identifier: Apache-2.0"; tail -n +3 "$1"; } | sha256sum | cut -d' ' -f1
 }
+# REUSE-IgnoreEnd
 
 [ -d "$TANG2_DIR/db" ] || { echo "tang2-migrate: $DXOS_TANG2 không có thư mục db/, bỏ qua"; exit 0; }
 

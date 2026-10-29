@@ -23,7 +23,29 @@ path = [
   # UTF-8 tiếng Việt nên coi là tệp nhị phân và bỏ qua header.
   "nen-tang/postgres/initdb/10-core.sql",
   "mot-cua/web-cong-dan/src/index.css",
+  "mot-cua/backend/tests/test_tro_ly.py",
+  "mot-cua/tests/smoke-kho-du-lieu.sh",
+  "mot-cua/tests/smoke.sh",
+  "mot-cua/web-cong-dan/src/can-bo/du-lieu.tsx",
+  "scripts/sinh_giay_to_gia.py",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 DTU_DZ_2"
 SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Mẫu Go template của step-ca (#77): header là chú thích {{- /* … */ -}}, reuse đọc cả đuôi "*/ -}}" vào biểu
+# thức giấy phép. Khai ở đây và ghi đè thông tin trong tệp (#104); make check vẫn kiểm header trong tệp.
+[[annotations]]
+path = "nen-tang/step-ca/ky-tai-lieu.tpl"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 DTU_DZ_2"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Dữ liệu mở (#102): bộ dữ liệu thủ tục cấp xã theo CC-BY-4.0, không phải GPL. Bảng này đứng sau bảng chung ở
+# trên nên được ưu tiên với các tệp trong du-lieu-mo/ (REUSE: bảng khớp sau cùng thắng). Toàn văn:
+# LICENSES/CC-BY-4.0.txt, chép kèm thư mục thành du-lieu-mo/thu-tuc-cap-xa/LICENSE.
+[[annotations]]
+path = "du-lieu-mo/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 DTU_DZ_2"
+SPDX-License-Identifier = "CC-BY-4.0"

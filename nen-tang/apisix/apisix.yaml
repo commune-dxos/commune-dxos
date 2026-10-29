@@ -318,6 +318,19 @@ routes:
             X-Robots-Tag: "noindex, nofollow"
     upstream_id: superset
 
+  # Nút "Sign in with Keycloak" của trang đăng nhập Superset 6.1 dựng link cứng `/login/<provider>`, bỏ qua
+  # SUPERSET_APP_ROOT (#110), nên trỏ ra ngoài /bao-cao và rơi vào cổng công dân (404). Chuyển đúng đường dẫn
+  # đó về /bao-cao/login/keycloak, giữ ?next=…; không sửa mã Superset. Chỉ một đường dẫn, không che route nào của web.
+  - id: superset-dang-nhap
+    uri: /login/keycloak
+    methods: [GET, HEAD]
+    priority: -4
+    plugins:
+      redirect:
+        uri: /bao-cao/login/keycloak
+        append_query_string: true
+        ret_code: 302
+
   # Cổng công dân (web Tầng 2, #57): mọi đường dẫn không thuộc route nào ở trên, ưu tiên thấp nhất
   # nên không che /public, /api, /workflow, /files. Không cần token (trang tĩnh; dữ liệu vẫn đi qua
   # các route trên). Chỉ GET/HEAD. nginx của mot-cua-web trả index.html cho route SPA (200) và
