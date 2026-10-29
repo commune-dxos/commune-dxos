@@ -1,6 +1,6 @@
 {
   "name": "commune-dxos-web-cong-dan",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Cổng công dân của Commune DX-OS (Tầng 2, một cửa)",
   "license": "GPL-3.0-or-later",
