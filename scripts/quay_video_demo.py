@@ -308,16 +308,17 @@ def doan_kiem_toan(trang, ctx):
 def doan_superset(trang, ctx):
     trang = ctx.get("trang_ld", trang)
     bang = GW + "/bao-cao/superset/dashboard/hieu-suat-mot-cua/"
-    # Vào thẳng /bao-cao/login/keycloak: nút "Sign in with Keycloak" của trang đăng nhập Superset trỏ tới
-    # /login/keycloak, thiếu tiền tố /bao-cao (SUPERSET_APP_ROOT), nên rơi vào trang 404 của cổng.
-    trang.goto(GW + "/bao-cao/login/keycloak?next=" + urllib.parse.quote(bang, safe=""))
+    trang.goto(bang)
+    nut = trang.get_by_role("button", name=re.compile("Sign in with Keycloak", re.I)).or_(
+        trang.get_by_role("link", name=re.compile("Sign in with Keycloak", re.I)))
     bieu_do = trang.locator(".dashboard-chart, .chart-container")
-    trang.locator("#username").or_(bieu_do).first.wait_for(timeout=60000)
-    if trang.locator("#username").count():
-        dang_nhap(trang, "lanhdao01", ctx["mat_khau"], ctx["otp"])
-    trang.wait_for_url(re.compile(r"/bao-cao/superset/"), timeout=60000)
-    if "dashboard" not in trang.url:
-        trang.goto(bang)
+    nut.or_(bieu_do).first.wait_for(timeout=60000)
+    if nut.count():
+        qd.dung(trang, 1.5)
+        nut.first.click()  # APISIX chuyển /login/keycloak về /bao-cao (#110)
+        trang.locator("#username").or_(bieu_do).first.wait_for(timeout=60000)
+        if trang.locator("#username").count():
+            dang_nhap(trang, "lanhdao01", ctx["mat_khau"], ctx["otp"])
     bieu_do.first.wait_for(timeout=90000)
     trang.wait_for_load_state("networkidle", timeout=60000)
     qd.dung(trang, 10)
