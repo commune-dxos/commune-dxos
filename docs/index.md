@@ -28,4 +28,6 @@ Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make qua
 | Người tìm hiểu kiến trúc | [Kiến trúc tổng thể](architecture.md), [đối chiếu yêu cầu đề thi](de-thi-mapping.md) |
 | Người muốn đóng góp | [Hướng dẫn đóng góp](dong-gop.md), [kế hoạch](PLAN.md), [nhật ký thay đổi](thay-doi.md) |
 
+**English:** [overview](en/index.md) · [quick start from a clean machine](en/quick-start.md) · [adding a procedure, A to Z](thu-tuc.md#ví-dụ-từ-a-đến-z-gói-xác-nhận-thông-tin-về-cư-trú) · [architecture](en/architecture.md) · [contributing](en/contributing.md).
+
 Trang này dựng tự động từ thư mục `docs/` và các gói `thu-tuc/` của [repo](https://github.com/commune-dxos/commune-dxos) mỗi khi nhánh `main` thay đổi. Thấy sai, bấm biểu tượng sửa ở đầu mỗi trang để mở PR.
