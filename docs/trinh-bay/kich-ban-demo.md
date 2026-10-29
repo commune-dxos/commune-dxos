@@ -47,7 +47,7 @@ make quay-demo XUAT_PY=.venv/bin/python VIDEO=../video-demo   # MP4 3–5 phút,
 | 1 | `http://localhost:9080/hoi-dap` | cửa sổ A, chưa đăng nhập |
 | 2 | `http://localhost:9080/thu-tuc/KS01` | cửa sổ A (công dân `congdan01` đăng nhập khi nộp) |
 | 3 | `http://localhost:9080/can-bo` | cửa sổ B (`canbo01`, rồi đăng xuất, `lanhdao01`) |
-| 4 | `http://localhost:9080/bao-cao/login/keycloak`, xong thì mở `http://localhost:9080/bao-cao/superset/dashboard/hieu-suat-mot-cua/` | cửa sổ B, mở **sau** khi `lanhdao01` đã đăng nhập ở tab 3 (SSO không hỏi lại mật khẩu) |
+| 4 | `http://localhost:9080/bao-cao/superset/dashboard/hieu-suat-mot-cua/` (hoặc mục "Báo cáo hiệu suất" của cổng cán bộ), bấm "Sign in with Keycloak" | cửa sổ B, mở **sau** khi `lanhdao01` đã đăng nhập ở tab 3 (SSO không hỏi lại mật khẩu) |
 | 5 | terminal, thư mục repo, chữ cỡ lớn | |
 
 - Lưu sẵn hai ảnh giấy tờ mẫu giả: `http://localhost:9080/mau-gia/giay-chung-sinh.png` và `http://localhost:9080/mau-gia/giay-to-tuy-than.png`. Chuẩn bị thêm một tệp PNG hoặc PDF bất kỳ làm tờ khai.
@@ -190,7 +190,6 @@ Nguyên tắc: không gỡ lỗi trước giám khảo quá **20 giây**. Nói m
 | Đăng nhập OTP bị từ chối | "Mã không hợp lệ" | Chờ mã mới (30 giây), nhập lại. Lần hai vẫn lỗi: đồng hồ VM Docker lệch sau khi máy ngủ, chạy `docker run --rm --privileged alpine hwclock -s` rồi thử lại |
 | Hồ sơ không có trong hộp việc | danh sách trống | Kiểm tra đúng cán bộ hộ tịch (`canbo01`). Mở hồ sơ mẫu sẵn có (HSMAU-000002) để trình bày phần xử lý |
 | Không có thông báo sắp trễ | chuông không có số | `make du-lieu-demo` ở terminal (≤ 1 phút với `DXOS_SU_KIEN_QUET_GIAY=30`); trong lúc chờ, làm tiếp phần xác nhận OCR |
-| Superset hiện trang "Sign in" hoặc trang "Không tìm thấy trang" của cổng | bấm nút "Sign in with Keycloak" | Nút đó trỏ thiếu tiền tố `/bao-cao`. Mở thẳng `http://localhost:9080/bao-cao/login/keycloak` (tab 4 đã dùng địa chỉ này) |
 | Superset trắng hoặc lỗi | không có biểu đồ | `make kho-du-lieu`, tải lại; vẫn lỗi thì chiếu đoạn 6 của video |
 | `make nap-thu-tuc` lỗi | không có dòng "hợp lệ" | Đọc dòng lỗi (bộ nạp chỉ rõ tệp, dòng): đó cũng là một tính năng. Rút gói và chiếu đoạn 7 |
 | Cả hệ thống không lên, máy treo | | Chiếu **video dự phòng** từ đầu, thuyết minh trực tiếp theo đúng lời thoại; video dài 3–5 phút nên tiết kiệm thời gian cho phần hỏi đáp |
