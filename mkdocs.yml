@@ -53,6 +53,11 @@ nav:
       - Kế hoạch: PLAN.md
       - Nhật ký thay đổi: thay-doi.md
       - Nguồn hình ảnh: images/README.md
+  - English:
+      - Overview: en/index.md
+      - Quick start: en/quick-start.md
+      - Architecture overview: en/architecture.md
+      - How we work, contributing: en/contributing.md
 
 theme:
   name: material

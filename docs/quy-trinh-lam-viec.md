@@ -18,12 +18,14 @@ Mỗi tuần trong [kế hoạch](PLAN.md) là một milestone `Tuần 1` … `T
 | Milestone | Thời gian | Mục tiêu |
 |---|---|---|
 | Tuần 1 | 15–21/10 | Nền móng → v0.0.1 |
-| Tuần 2 | 22–28/10 | Lõi headless → v0.1.0, gói thủ tục, trang tài liệu |
-| Tuần 3 | 29/10–04/11 | Luồng nghiệp vụ chính: Poka-yoke, cổng công dân, cổng cán bộ |
-| Tuần 4 | 05–11/11 | Tầng [D] + bảo mật + VPS → v0.2.0 |
-| Tuần 5 | 12–18/11 | Tầng [I] + demo công khai |
-| Tuần 6 | 19–25/11 | Tuần UX + cộng đồng → v0.3.0 |
+| Tuần 2 | 22–28/10 | Lõi headless → v0.1.0, gói thủ tục, trang tài liệu (thực tế: v0.1.0 → v0.3.0) |
+| Tuần 3 | 29/10–04/11 | Luồng nghiệp vụ chính: Poka-yoke, cổng công dân, cổng cán bộ → v0.4.0 |
+| Tuần 4 | 05–11/11 | Tầng [D] + bảo mật + VPS → v0.5.0 |
+| Tuần 5 | 12–18/11 | Tầng [I] + demo công khai → v0.6.0 |
+| Tuần 6 | 19–25/11 | Tuần UX + cộng đồng, tài liệu song ngữ, tập trình bày → v0.7.0 |
 | Tuần 7 | 26/11–06/12 | Đóng băng PoF, nộp bài → v1.0.0 |
+
+Đội làm nhanh hơn lịch nên số bản phát hành thực tế khác số dự kiến lúc lập kế hoạch; bảng phát hành ở đầu [kế hoạch](PLAN.md).
 
 - Mỗi dòng `[ ]` trong kế hoạch là một issue, gắn vào milestone của tuần đó. PR đóng issue gắn cùng milestone.
 - Việc làm sớm hơn kế hoạch vẫn để ở milestone của tuần ghi trong kế hoạch. Việc phát sinh giữa chừng vào milestone đang mở gần nhất.

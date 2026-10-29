@@ -37,13 +37,13 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 | 3 | Release đánh phiên bản, `.tar.gz`, trước hạn | | ☐ |
 | 4 | Build từ mã nguồn, cấu hình qua .env, chạy ngoài thư mục mã | README mục 2–3, 5 (hướng dẫn từ máy sạch, yêu cầu máy, bảng biến `.env` đọc lúc `make up`, không sửa header tay: `make license`, chỉ image gốc + công cụ nguồn mở); `docs/architecture.md` §8.9: bản clone mới trong thư mục tạm, gọi `make -C` từ thư mục khác, `make up` 128 giây, smoke 405/405 (#12) | ◐ (còn kiểm trên máy amd64/Linux) |
 | 5 | Không vendor/sửa thư viện, khai báo phụ thuộc | `DEPENDENCIES.md` (image đã ghim; npm/pip khi có mã) | ◐ |
-| 6 | README, CHANGELOG, bug tracker | README tiếng Việt kể chuyện sản phẩm (#28), hướng dẫn cài đặt đầy đủ ở `docs/cai-dat.md`: cài đặt, cấu hình, thêm ứng dụng, xử lý lỗi, giấy phép; `CHANGELOG.md` theo Keep a Changelog; GitHub Issues có mẫu issue, README mục Báo lỗi | ◐ (README đủ; còn phiên bản v0.1.0) |
+| 6 | README, CHANGELOG, bug tracker | README tiếng Việt kể chuyện sản phẩm (#28) kèm mục English (#106), hướng dẫn cài đặt đầy đủ ở `docs/cai-dat.md`: cài đặt, cấu hình, thêm ứng dụng, xử lý lỗi, giấy phép; `CHANGELOG.md` theo Keep a Changelog; GitHub Issues có mẫu issue, README mục Báo lỗi | ◐ (README đủ; còn phiên bản v0.1.0) |
 
 ## E. Cộng đồng & bền vững (tiêu chí 10, 11)
 | Việc | Trạng thái |
 |---|---|
-| README song ngữ, CONTRIBUTING, CODE_OF_CONDUCT | ✔ (README viết lại #12, kể chuyện sản phẩm #28) |
-| Hướng dẫn viết module cắm–rút + module mẫu | ◐ (D-009, #30: gói thủ tục `thu-tuc/<ma>/`, hướng dẫn 5 bước `docs/thu-tuc.md`, 4 gói: khai sinh, chứng thực bản sao, kết hôn, hòa giải tranh chấp đất đai (#97, thêm bằng thư mục, không sửa mã bộ máy, lĩnh vực mới `dat_dai`); smoke cắm–rút gói tạm và tự chạy hết quy trình mọi gói mới bằng dữ liệu mẫu của gói) |
+| README song ngữ, CONTRIBUTING, CODE_OF_CONDUCT | ✔ (README viết lại #12, kể chuyện sản phẩm #28; mục **English** đủ mọi mục chính + Quick start từ máy sạch, trang tài liệu có tab English: tổng quan, Quick start, kiến trúc, đóng góp – `docs/en/` (#106)) |
+| Hướng dẫn viết module cắm–rút + module mẫu | ◐ (D-009, #30: gói thủ tục `thu-tuc/<ma>/`, hướng dẫn 5 bước `docs/thu-tuc.md`, 4 gói: khai sinh, chứng thực bản sao, kết hôn, hòa giải tranh chấp đất đai (#97, thêm bằng thư mục, không sửa mã bộ máy, lĩnh vực mới `dat_dai`); smoke cắm–rút gói tạm và tự chạy hết quy trình mọi gói mới bằng dữ liệu mẫu của gói; **ví dụ từ A đến Z song ngữ** trong `docs/thu-tuc.md`: gói XNCT01 đủ 5 tệp, kiểm, nạp, phân công cán bộ, thử tay, smoke, PR, rút gói – đã chạy qua bộ kiểm và smoke trên volume trống (#106)) |
 | Dữ liệu mở cho cộng đồng | ✔ (#102: `du-lieu-mo/thu-tuc-cap-xa/` – danh mục JSON + CSV + JSON Schema thành phần hồ sơ từng thủ tục, giấy phép **CC-BY-4.0**, README song ngữ; sinh từ gói bằng `make du-lieu-mo`, `make check` báo lệch, smoke đối chiếu với API công khai đang chạy; tải trên trang tài liệu) |
 | Demo công khai trên Internet, người dùng thật thử | ☐ |
 | Kênh trao đổi (Discussions/Telegram), bài giới thiệu | ☐ |
