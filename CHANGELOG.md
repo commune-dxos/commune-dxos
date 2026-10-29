@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-29
+
+### Tính năng mới
+
+- **mot-cua:** Lịch công tác trong cổng cán bộ – văn thư soạn, lãnh đạo duyệt, chặn trùng địa điểm, RLS, kiểm toán ([#117](https://github.com/commune-dxos/commune-dxos/issues/117)) ([#118](https://github.com/commune-dxos/commune-dxos/issues/118))
+
+### Kiểm thử
+
+- **mot-cua:** Test sự kiện không chứa dữ liệu cá nhân không còn trượt ngẫu nhiên ([#115](https://github.com/commune-dxos/commune-dxos/issues/115)) ([#116](https://github.com/commune-dxos/commune-dxos/issues/116))
+    - Giá trị canh gác "abc" có thể trùng một đoạn của id UUID4 ngẫu nhiên (~0,7 % mỗi lượt): đổi sang chuỗi có ký tự ngoài [0-9a-f-], số điện thoại khác số mẫu
+    - Cố định id và luc của sự kiện trong test để chuỗi JSON được kiểm hoàn toàn xác định
+    - Các assertNotIn khác của test backend đều kiểm khóa dict hoặc văn bản cố định, không cần sửa
+
 ## [0.7.0] - 2026-10-29
 
 ### Tính năng mới
@@ -409,7 +422,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.4.0...v0.5.0
