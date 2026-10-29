@@ -1064,6 +1064,32 @@ sequenceDiagram
 
 Kiểm bằng `mot-cua/db/tests/wiki_van_ban.sql` (43 kiểm tra), `mot-cua/backend/tests/test_wiki.py`, Vitest `src/can-bo/wiki.test.tsx` và smoke 4r (`mot-cua/tests/smoke-wiki-van-ban.sh`).
 
+### 4.17 Lịch công tác (#117)
+
+Lịch họp, tiếp công dân, trực, đi công tác của Ủy ban xã trong cổng cán bộ (`/can-bo/lich`). Văn thư soạn lịch dự kiến, lãnh đạo duyệt; cán bộ chỉ thấy lịch đã duyệt. Không có dịch vụ mới: web gọi thẳng PostgREST qua APISIX (`/api/lich_cong_tac`) bằng token của người dùng, CSDL quyết định mọi quyền.
+
+```mermaid
+stateDiagram-v2
+  [*] --> du_kien: văn thư / lãnh đạo thêm
+  [*] --> da_duyet: lãnh đạo thêm, "Duyệt luôn"
+  du_kien --> da_duyet: lãnh đạo duyệt (CSDL ghi người duyệt, giờ duyệt)
+  du_kien --> da_huy: văn thư / lãnh đạo hủy, có lý do
+  da_duyet --> da_huy: lãnh đạo hủy, có lý do
+  da_huy --> [*]
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **Không qua `mot-cua-api`**, web ghi thẳng PostgREST (`POST`/`PATCH /api/lich_cong_tac`) | Không có tệp, không có chỉ mục, không có bước ngoài CSDL: thêm một lớp API chỉ để chuyển tiếp là thừa. PostgREST nhận token của người dùng nên RLS áp đúng người |
+| **RLS theo vai và trạng thái**: cán bộ đọc `duyet_luc IS NOT NULL`; văn thư thêm/sửa lịch `du_kien`, chỉ được chuyển sang `du_kien` hoặc `da_huy`; lãnh đạo làm mọi bước | Quy trình của văn phòng xã: văn thư dự thảo lịch tuần, chủ tịch duyệt rồi mới công bố. Cán bộ không thấy lịch chưa chốt; lịch đã duyệt rồi hủy vẫn hiện để mọi người biết lịch bị bỏ |
+| **Người tạo, người sửa, người duyệt, giờ duyệt do trigger ghi** từ `sub` trong JWT; không cấp quyền cột cho các trường này | Không ai khai thay người khác, không ai tự đặt "đã duyệt" giả |
+| **Poka-yoke trùng địa điểm trong CSDL**: trigger khóa theo địa điểm (`pg_advisory_xact_lock`) rồi tìm lịch chưa hủy cùng địa điểm (không phân biệt hoa thường, khoảng trắng) có khoảng giờ chồng nhau (`tstzrange &&`), lỗi `exclusion_violation` → PostgREST 400 mã `23P01` kèm câu tiếng Việt (web nhận diện theo mã) | Hai người đặt cùng phòng cùng giờ là lỗi hay gặp; chặn ở CSDL nên mọi đường ghi đều bị chặn, kể cả ghi đồng thời. Không cần extension `btree_gist`. Lịch nối tiếp (10:00–11:00 sau 08:00–10:00) không tính là trùng |
+| **Hủy bắt buộc lý do, lịch đã hủy không sửa, không xóa** (trigger chặn cả superuser) | Truy được lịch nào bị bỏ, vì sao, ai bỏ |
+| Kiểm toán `lich.them|sua|duyet|huy` ghi loại, giờ, trạng thái, tên cột đổi; **không** ghi tiêu đề, thành phần, ghi chú, lý do | Các trường chữ có thể có tên người; chuỗi kiểm toán chỉ cần biết việc gì xảy ra lúc nào, ai làm |
+| Giờ lưu `timestamptz`, web gửi giờ Việt Nam kèm `+07:00` và hiện theo `Asia/Ho_Chi_Minh` | Không lệch ngày khi trình duyệt hay máy chủ ở múi giờ khác |
+
+Kiểm bằng `mot-cua/db/tests/lich_cong_tac.sql` (42 kiểm tra), Vitest `src/can-bo/lich-cong-tac.test.tsx` (7) và smoke 4s (`mot-cua/tests/smoke-lich-cong-tac.sh`). Dữ liệu mẫu: `mot-cua/db/seed/004_lich_mau.sql` (6 lịch của tuần lúc nạp seed).
+
 ## 5. MFA cho cán bộ
 
 - Hiện tại: chính sách OTP (TOTP 6 số, 30 giây) nằm ở realm lõi; bộ máy một cửa quyết định ai bị bắt OTP. Người dùng mẫu `canbo01`, `lanhdao01` của `mot-cua` có required action `CONFIGURE_TOTP`, nên lần đăng nhập đầu phải quét mã QR bằng ứng dụng OTP (FreeOTP, Google Authenticator…). Từ lần sau, luồng browser mặc định của Keycloak hỏi OTP vì người dùng đã cấu hình.

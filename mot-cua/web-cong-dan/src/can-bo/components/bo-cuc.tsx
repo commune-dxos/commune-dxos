@@ -4,7 +4,7 @@
 // chép mã): thanh bên (Sidebar của shadcn/ui; dưới 768px thành ngăn kéo), đầu trang có nút thu thanh
 // bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung bên phải. Lãnh đạo có
 // thêm liên kết dashboard báo cáo (Superset ở /bao-cao, đăng nhập SSO cùng Keycloak, #82).
-import { AlarmClockOff, Bell, BookOpen, ChartColumn, ExternalLink, Hourglass, Inbox, LibraryBig, UserCheck } from "lucide-react";
+import { AlarmClockOff, Bell, BookOpen, CalendarDays, ChartColumn, ExternalLink, Hourglass, Inbox, LibraryBig, UserCheck } from "lucide-react";
 import { Link, Outlet, useLocation, useMatch } from "react-router";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -76,6 +76,7 @@ function ThanhBen() {
   const oSoVanBan = pathname.replace(/\/$/, "") === `${GOC_CAN_BO}/van-ban`;
   const oThongBao = pathname.replace(/\/$/, "") === `${GOC_CAN_BO}/thong-bao`;
   const oWiki = pathname.startsWith(`${GOC_CAN_BO}/wiki`);
+  const oLich = pathname.replace(/\/$/, "") === `${GOC_CAN_BO}/lich`;
   const q = new URLSearchParams(search);
   const loc = q.get("han") ?? q.get("trang_thai") ?? "";
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
@@ -130,6 +131,14 @@ function ThanhBen() {
           </SidebarGroupContent>
         </SidebarGroup>
         )}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sm">Công tác</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <MucMenu den={`${GOC_CAN_BO}/lich`} nhan="Lịch công tác" bieuTuong={CalendarDays} dangMo={oLich} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sm">Văn bản</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -186,9 +195,11 @@ function TieuDeTrang() {
   const soVanBan = useMatch(`${GOC_CAN_BO}/van-ban`);
   const thongBao = useMatch(`${GOC_CAN_BO}/thong-bao`);
   const wiki = useMatch(`${GOC_CAN_BO}/wiki/*`);
+  const lich = useMatch(`${GOC_CAN_BO}/lich`);
   const { viec, hoSoDangXem } = useDuLieuCanBo();
   if (soVanBan) return <span className="truncate font-semibold">Sổ văn bản</span>;
   if (wiki) return <span className="truncate font-semibold">Wiki văn bản</span>;
+  if (lich) return <span className="truncate font-semibold">Lịch công tác</span>;
   if (thongBao) return <span className="truncate font-semibold">Thông báo</span>;
   if (!hoSo) return <span className="truncate font-semibold">Hộp việc</span>;
   const ma =
