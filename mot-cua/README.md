@@ -20,8 +20,10 @@ Bộ máy dùng chung cho **mọi thủ tục hành chính**: hồ sơ, vai trò
 | `db/migrations/014_tro_ly.sql` | trợ lý thủ tục (#91): `CREATE EXTENSION vector` (pgvector của nền tảng), role `dich_vu_tro_ly`, bảng `tri_thuc_doan` (đoạn kho tri thức + `vector(1024)`), RPC `tim_doan_gan` (cosin, chỉ vector cùng mô hình nhúng); xem [Trợ lý thủ tục](#trợ-lý-thủ-tục-hành-chính-91) |
 | `db/migrations/015_doc_giay_to.sql` | đọc giấy tờ bằng OCR + cán bộ xác nhận (#93): bảng `doc_giay_to` (máy đọc, công dân khai, cán bộ xác nhận; xác nhận rồi không sửa), CSDL tính trường bị sửa, kiểm toán `giay_to.khai|doc|xac_nhan`; xem [Đọc giấy tờ](#đọc-giấy-tờ-bằng-ocr-cán-bộ-xác-nhận-93) |
 | `db/migrations/016_wiki_van_ban.sql` | wiki văn bản nội bộ cho cán bộ (#95): bảng `wiki_van_ban` (RLS theo phạm vi toàn xã / lĩnh vực phụ trách / lãnh đạo; văn thư, lãnh đạo ghi; không xóa), `wiki_van_ban_lich_su` (phiên bản cũ, chỉ trigger ghi), RPC `tim_wiki` (tìm dự phòng không dấu, RLS của người gọi), kiểm toán `wiki.*`; xem [Wiki văn bản](#wiki-văn-bản-nội-bộ-cho-cán-bộ-95) |
+| `db/migrations/017_lich_cong_tac.sql` | lịch công tác (#117): bảng `lich_cong_tac` (dự kiến → đã duyệt / đã hủy; RLS: cán bộ chỉ đọc lịch đã duyệt, văn thư soạn lịch dự kiến, lãnh đạo duyệt), trigger ghi người tạo/sửa/duyệt, chặn trùng địa điểm + chồng giờ (400, mã 23P01), hủy phải có lý do, không xóa, kiểm toán `lich.*` |
 | `db/seed/002_du_lieu_mau.sql` | **dữ liệu giả**: 3 lĩnh vực, 6 thủ tục kèm thành phần hồ sơ, 3 cán bộ, 6 hồ sơ ở đủ trạng thái, ngày nghỉ 2026; chỉ nạp khi `DXOS_SEED=true`. Thủ tục có gói (KS01, CT01, KH01, DD01) được bộ nạp ghi đè theo gói; 2 thủ tục còn lại (KT01, CT02) chưa có gói nên chưa nộp qua `/workflow` được |
 | `db/seed/003_wiki_mau.sql` | **văn bản wiki mẫu** do đội tự viết (quy chế, quy trình, hướng dẫn hộ tịch/chứng thực, biểu mẫu, ghi chú họp lãnh đạo; số ký hiệu giả); chỉ nạp khi `DXOS_SEED=true` |
+| `db/seed/004_lich_mau.sql` | **lịch công tác mẫu** (6 lịch giả của tuần lúc nạp seed: giao ban, tiếp công dân, họp, trực; 4 đã duyệt, 2 dự kiến) |
 | `db/tests/rls.sql`, `db/tests/goi_thu_tuc.sql`, `db/tests/trang_thai.sql`, `db/tests/kiem_toan.sql`, `db/tests/giay_to_ky.sql`, `db/tests/van_ban.sql`, `db/tests/tra_cuu.sql`, `db/tests/tro_ly.sql`, `db/tests/doc_giay_to.sql`, `db/tests/wiki_van_ban.sql` | test quyền/RLS (110 kiểm tra), danh mục gói (23 kiểm tra), trạng thái theo quy trình (50 kiểm tra), nhật ký kiểm toán (49 kiểm tra: ghi đồng thời qua dblink, chặn sửa/xóa, giả mạo bị chỉ đúng vị trí), giấy tờ ký số (23 kiểm tra), sổ văn bản (28 kiểm tra: cấp số đồng thời qua dblink, RLS, chặn sửa sau khi vào sổ/ký), tra cứu hồ sơ (11 kiểm tra: đúng/sai mã và số, không lộ dữ liệu cá nhân, vai được gọi), kho tri thức trợ lý (17 kiểm tra: pgvector, chỉ tài khoản dịch vụ, cosin cùng mô hình, ràng buộc vector), đọc giấy tờ (29 kiểm tra: chỉ dịch vụ tệp ghi, RLS theo hồ sơ, upsert như mot-cua-api, xác nhận rồi không sửa, kiểm toán không chứa giá trị), wiki văn bản (43 kiểm tra: ai ghi, ai thấy theo phạm vi, phiên bản + lịch sử, không xóa, tìm dự phòng không dấu theo RLS, kiểm toán không chứa nội dung), chạy trong một transaction rồi ROLLBACK |
 | `keycloak/realm.json` | client role của `dxos_api` (kể cả role dịch vụ), nhóm `/cong-dan`, `/can-bo`, `/lanh-dao`, `/van-thu` (#78), client `mot_cua_web` (PKCE), client `bao_cao_superset` (PKCE, Superset #82), client dịch vụ `mot_cua_tep`, `mot_cua_su_kien`, `mot_cua_danh_muc`, `mot_cua_bao_cao` (#80), `mot_cua_tro_ly` (#91) (Client Credentials, secret do Keycloak sinh), 7 người dùng mẫu có `id` (= `sub`) cố định; cán bộ, lãnh đạo, văn thư bắt buộc cài OTP |
 | `s3/buckets.conf` | bucket Garage `mot-cua-ho-so`; nền tảng tạo bucket và khóa S3 riêng chỉ có quyền trên bucket này |
@@ -186,7 +188,7 @@ Tối thiểu theo mục đích giải quyết thủ tục: `nguoi_nop_sub` (đ�
 
 ## Quyền theo vai trò
 
-Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản và wiki văn bản (#95), không thấy hồ sơ nào. Đổi vai trò như PostgREST làm cho mỗi request: `SET ROLE` theo `resource_access.dxos_api.roles[0]` của JWT, policy đọc `dxos.jwt_sub()` của lõi. RLS bật và `FORCE` trên mọi bảng của `mot_cua`. Không role nào ghi được danh mục, cán bộ, phân công, ngày nghỉ qua API (quản trị bằng migration/SQL); không role nào xóa được hồ sơ.
+Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản, wiki văn bản (#95) và lịch công tác (#117), không thấy hồ sơ nào. Đổi vai trò như PostgREST làm cho mỗi request: `SET ROLE` theo `resource_access.dxos_api.roles[0]` của JWT, policy đọc `dxos.jwt_sub()` của lõi. RLS bật và `FORCE` trên mọi bảng của `mot_cua`. Không role nào ghi được danh mục, cán bộ, phân công, ngày nghỉ qua API (quản trị bằng migration/SQL); không role nào xóa được hồ sơ.
 
 | Bảng | `anon` (`/public/*`) | `cong_dan` | `can_bo` | `lanh_dao` |
 |---|---|---|---|---|
@@ -205,6 +207,7 @@ Vai `van_thu` (#78) chỉ có quyền trên sổ văn bản và wiki văn bản 
 | RPC `tra_cuu_ho_so` (#54) | gọi: mã + 4 số cuối số điện thoại → trạng thái, mốc (không dữ liệu cá nhân) | gọi được như anon | — | — |
 | `van_ban` (sổ văn bản đến/đi) | — | — | đọc | đọc; ký văn bản đi qua `/files` (văn thư: đọc, vào sổ đến và soạn dự thảo đi qua `/files`; chỉ `dich_vu_tep` ghi; không ai sửa sau khi vào sổ/ký, kể cả superuser; chỉ xóa được dự thảo) |
 | `wiki_van_ban`, `wiki_van_ban_lich_su`, RPC `tim_wiki` (#95) | — | — | đọc văn bản toàn xã và lĩnh vực mình phụ trách | đọc tất cả; thêm, sửa mọi phạm vi qua `/files/wiki` (văn thư: đọc, thêm, sửa mọi phạm vi trừ "chỉ lãnh đạo"; không ai xóa, kể cả superuser; lịch sử chỉ trigger ghi) |
+| `lich_cong_tac` (#117) | — | — | đọc lịch đã duyệt | đọc tất cả; thêm, sửa, duyệt, hủy (văn thư: đọc tất cả; thêm, sửa, hủy lịch dự kiến; không duyệt). Không ai xóa, kể cả superuser |
 | `nhat_ky_kiem_toan`, `dau_chuoi_kiem_toan`, RPC `xac_minh_kiem_toan` | — | — | — | đọc, xác minh (chỉ trigger/RPC của bộ máy ghi; không ai sửa/xóa, kể cả superuser) |
 | `lich_su_trang_thai` | — | của hồ sơ mình | của hồ sơ mình thấy | tất cả (chỉ thêm, do trigger ghi; không ai sửa, kể cả superuser) |
 
@@ -437,6 +440,7 @@ Kênh ngoài (`DXOS_THONG_BAO_KENH`, mặc định `email,sms`, để trống = 
 | `tep.tai_len`, `tep.kiem_tra` | tải tệp qua `/files`; cán bộ đổi `trang_thai_kiem_tra` | người tải / cán bộ | `tepId`, `thanhPhan`, `sha256` (nội dung tệp), `kichThuoc`, `ketQua` |
 | `thu_tuc.them`, `thu_tuc.nap_goi`, `thu_tuc.rut_goi` | thêm thủ tục; nạp gói mới hoặc đã đổi (`goi_sha256`); rút gói | tài khoản dịch vụ danh mục | `goi`, `goiSha256`, `goiSha256Truoc`, `quyTrinh` |
 | `wiki.them`, `wiki.sua`, `wiki.ngung_hieu_luc`, `wiki.hieu_luc_lai` | thêm, sửa văn bản wiki; chuyển hết hiệu lực / có hiệu lực lại (#95) | văn thư, lãnh đạo ghi | `loai`, `phamVi`, `linhVucId`, `trangThai`, `phienBan`, `sha256NoiDung`, `truongDoi` (tên cột); không có tiêu đề, nội dung |
+| `lich.them`, `lich.sua`, `lich.duyet`, `lich.huy` | thêm, sửa, duyệt, hủy lịch công tác (#117) | văn thư, lãnh đạo ghi | `loai`, `trangThai`, `batDau`, `ketThuc`, `truongDoi` (không tiêu đề, ghi chú, lý do) |
 | `can_bo.them_linh_vuc`, `can_bo.bo_linh_vuc` | đổi phân công lĩnh vực (= đổi hồ sơ cán bộ thấy) | — | `linhVuc` |
 | `kiem_toan.khoi_tao` | bản ghi 1, lúc chạy migration 007 | — | số hồ sơ, số thủ tục lúc đó |
 
@@ -563,6 +567,24 @@ curl -H "Authorization: Bearer $TK_VAN_THU" -H 'Content-Type: application/json' 
 ```
 
 Chỉ mục Meilisearch `mot-cua-wiki-van-ban` là bản sao: `mot-cua-api` cập nhật ngay sau mỗi lần ghi và dựng lại toàn bộ từ CSDL khi khởi động và mỗi `DXOS_WIKI_DONG_BO_GIAY` giây (mặc định 300). Mất chỉ mục thì khởi động lại `mot-cua-api` hoặc chờ vòng đồng bộ kế tiếp.
+
+## Lịch công tác (#117)
+
+Thiết kế và lý do: `docs/architecture.md` §4.17. Cổng cán bộ: mục **Lịch công tác** (`/can-bo/lich`). Không qua `mot-cua-api`: gọi thẳng PostgREST qua APISIX bằng token của người dùng.
+
+| Gọi | Vai | Kết quả |
+|---|---|---|
+| `GET /api/lich_cong_tac?bat_dau=lt.<cuối tuần>&ket_thuc=gt.<đầu tuần>&order=bat_dau` | `can_bo` (lịch đã duyệt), `van_thu`, `lanh_dao` | danh sách lịch giao với tuần |
+| `POST /api/lich_cong_tac` (JSON `tieu_de`, `loai`, `bat_dau`, `ket_thuc`, `dia_diem`, `chu_tri`, `thanh_phan`, `ghi_chu`, `trang_thai`) | `van_thu` (chỉ `du_kien`), `lanh_dao` | 201; trùng địa điểm + chồng giờ → 400 mã `23P01` (câu tiếng Việt); giờ ngược, quá 7 ngày → 400 |
+| `PATCH /api/lich_cong_tac?id=eq.…` (`trang_thai: da_duyet`, hoặc `da_huy` + `ly_do_huy`, hoặc trường cần sửa) | `van_thu` (lịch dự kiến), `lanh_dao` | 200; văn thư duyệt → 403; sửa lịch đã hủy → 400 |
+
+```bash
+curl -H "Authorization: Bearer $TK_VAN_THU" -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
+  -d '{"tieu_de": "Họp giao ban", "loai": "hop", "bat_dau": "2026-11-02T07:30:00+07:00", "ket_thuc": "2026-11-02T08:30:00+07:00", "dia_diem": "Phòng họp Ủy ban"}' \
+  http://localhost:9080/api/lich_cong_tac
+curl -X PATCH -H "Authorization: Bearer $TK_LANH_DAO" -H 'Content-Type: application/json' \
+  -d '{"trang_thai": "da_duyet"}' "http://localhost:9080/api/lich_cong_tac?id=eq.<id>"
+```
 
 ## Sổ văn bản đến/đi (#78)
 
