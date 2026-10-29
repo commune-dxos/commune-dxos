@@ -22,6 +22,7 @@ Cần: hệ thống đang chạy (make up), venv như make xuat-kien-truc, ffmpe
     python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-xuat.txt
     .venv/bin/playwright install chromium
 Chạy: make quay-demo XUAT_PY=.venv/bin/python
+Video dự phòng đủ luồng cho buổi trình bày (#108): --video THU_MUC (make quay-demo VIDEO=…), xem scripts/quay_video_demo.py.
 """
 import argparse
 import hashlib
@@ -205,6 +206,9 @@ def ra_gif(video, gif, rong, fps):
 
 
 def main():
+    if "--video" in sys.argv[1:]:
+        import quay_video_demo
+        return quay_video_demo.main(sys.argv[1:])
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--rong", type=int, default=800, help="chiều rộng GIF (px)")
     ap.add_argument("--fps", type=int, default=8)
