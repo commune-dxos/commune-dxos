@@ -7,7 +7,8 @@ Ba việc:
    bộ kiểm của bộ nạp (mot-cua/backend/goi_thu_tuc.py), nên trang khớp những gì `make nap-thu-tuc`
    nạp. Thêm gói = trang tự có dòng mới và mục điều hướng mới; gói lỗi → cảnh báo, `--strict` dừng.
 2. Đưa vào site một số tệp nằm ngoài docs/ mà không chép: README của từng gói (trang
-   thu-tuc/<goi>/) kèm BPMN, JSON Schema, dữ liệu mẫu; mot-cua/README.md, CONTRIBUTING.md,
+   thu-tuc/<goi>/) kèm BPMN, JSON Schema, dữ liệu mẫu; bộ dữ liệu mở du-lieu-mo/thu-tuc-cap-xa/ (#102,
+   README thành trang, các tệp JSON, CSV, LICENSE tải được); mot-cua/README.md, CONTRIBUTING.md,
    CHANGELOG.md (bảng NGOAI_DOCS).
 3. Neo tiêu đề tính như GitHub (_neo_github), để link `tệp.md#mục` viết cho GitHub chạy đúng trên site.
 4. Sửa link tương đối: link tới tệp có trên site → link trong site; link tới tệp khác trong repo
@@ -33,6 +34,7 @@ NHANH_LINK = "main"     # link tới mã: nhánh deploy site
 NHANH_SUA = "develop"   # nút "Sửa trang": PR vào develop (CONTRIBUTING.md)
 
 DANH_MUC = "danh-muc-thu-tuc.md"
+DU_LIEU_MO = "du-lieu-mo/thu-tuc-cap-xa"
 MUC_NAV_DANH_MUC = "Người dân / cán bộ"
 
 # Tệp ngoài docs/ hiện trên site: đường dẫn trong repo → đường dẫn trên site.
@@ -85,6 +87,11 @@ def on_config(config):
         for tep in sorted(os.listdir(thu_muc)):
             if os.path.isfile(os.path.join(thu_muc, tep)) and not tep.startswith("."):
                 _ban_do[f"thu-tuc/{ten}/{tep}"] = f"thu-tuc/{ten}/" + ("index.md" if tep == "README.md" else tep)
+    du_lieu_mo = os.path.join(_goc, DU_LIEU_MO)
+    for goc_con, _, ds in os.walk(du_lieu_mo):
+        for tep in sorted(ds):
+            rel = os.path.relpath(os.path.join(goc_con, tep), _goc).replace(os.sep, "/")
+            _ban_do[rel] = rel[:-len("README.md")] + "index.md" if tep == "README.md" else rel
     # Mỗi gói hợp lệ một mục điều hướng ngay dưới trang danh mục.
     for muc in config.nav or []:
         if isinstance(muc, dict) and MUC_NAV_DANH_MUC in muc:
