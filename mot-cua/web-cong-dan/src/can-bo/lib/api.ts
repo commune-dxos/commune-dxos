@@ -22,11 +22,14 @@
 //   POST /files/wiki, /files/wiki/{id}      văn thư, lãnh đạo thêm / sửa văn bản wiki
 //   GET  /api/wiki_van_ban?id=eq.…          chi tiết văn bản; /api/wiki_van_ban_lich_su: phiên bản cũ (RLS)
 //   GET  /api/linh_vuc                      danh sách lĩnh vực (chọn phạm vi văn bản)
+//   GET  /api/lich_cong_tac?bat_dau=lt.…     lịch công tác trong một tuần (#117, RLS: cán bộ chỉ thấy lịch đã duyệt)
+//   POST/PATCH /api/lich_cong_tac           văn thư soạn lịch dự kiến; lãnh đạo thêm, sửa, duyệt, hủy (RLS + trigger)
 //   GET  /workflow/ho-so/{id}/tien-do       bước đang mở và lịch sử các bước
 //   POST /workflow/tasks/{id}/complete      nhận + hoàn thành bước với biến khai báo cho bước đó
 // Không gọi thẳng PostgREST, Flowable hay Garage; không cầm mật khẩu hay khóa nào.
 import { cauHinh as cauHinhMacDinh, type CauHinh } from "@/lib/cau-hinh";
 import { phatHanhGiayTo, type LoaiGiayTo } from "@/lib/giay-to";
+import { LoiApi, thongDiepLoi } from "@/lib/api";
 import { goiGateway } from "@/lib/goi-api";
 import type { BienGui, BienTheoBuoc } from "./form-buoc";
 
@@ -261,6 +264,50 @@ export interface GhiWiki {
   trang_thai?: TrangThaiWiki;
 }
 
+/** Lịch công tác (#117). */
+export type LoaiLich = "hop" | "tiep_dan" | "truc" | "cong_tac" | "khac";
+export type TrangThaiLich = "du_kien" | "da_duyet" | "da_huy";
+
+export interface LichCongTac {
+  id: string;
+  tieu_de: string;
+  loai: LoaiLich;
+  bat_dau: string;
+  ket_thuc: string;
+  dia_diem: string | null;
+  chu_tri: string | null;
+  thanh_phan: string | null;
+  ghi_chu: string | null;
+  trang_thai: TrangThaiLich;
+  ly_do_huy: string | null;
+  duyet_luc: string | null;
+}
+
+export interface GhiLich {
+  tieu_de?: string;
+  loai?: LoaiLich;
+  bat_dau?: string;
+  ket_thuc?: string;
+  dia_diem?: string | null;
+  chu_tri?: string | null;
+  thanh_phan?: string | null;
+  ghi_chu?: string | null;
+  trang_thai?: TrangThaiLich;
+  ly_do_huy?: string | null;
+}
+
+/** Lỗi ghi lịch qua PostgREST: trùng địa điểm (23P01) có câu tiếng Việt của trigger; lỗi khác dùng câu chung. */
+export const LOI_LICH_KHONG_HOP_LE =
+  "Lịch chưa hợp lệ: giờ kết thúc phải sau giờ bắt đầu (tối đa 7 ngày); hủy lịch phải ghi lý do; lịch đã hủy không sửa được.";
+
+interface LoiPostgrest {
+  code?: string;
+  message?: string;
+}
+
+const COT_LICH =
+  "id,tieu_de,loai,bat_dau,ket_thuc,dia_diem,chu_tri,thanh_phan,ghi_chu,trang_thai,ly_do_huy,duyet_luc";
+
 export class ApiCanBo {
   constructor(
     readonly token: string,
@@ -410,6 +457,48 @@ export class ApiCanBo {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(duLieu),
     });
+  }
+
+  /** Lịch có giao với khoảng [tu, den) (ISO), sắp theo giờ bắt đầu. RLS quyết định thấy lịch dự kiến hay không. */
+  layLich(tu: string, den: string) {
+    const q = new URLSearchParams({ select: COT_LICH, bat_dau: `lt.${den}`, ket_thuc: `gt.${tu}`, order: "bat_dau,id" });
+    return this.lay<LichCongTac[]>(`/api/lich_cong_tac?${q.toString()}`);
+  }
+
+  /** Thêm (không có id) hoặc sửa, duyệt, hủy (có id) một lịch; trả lịch sau khi CSDL ghi. */
+  async ghiLich(duLieu: GhiLich, id?: string): Promise<LichCongTac> {
+    if (id !== undefined && !UUID.test(id)) throw new LoiApi("Mã lịch không hợp lệ.", null);
+    const duong = id ? `/api/lich_cong_tac?id=eq.${id}&select=${COT_LICH}` : `/api/lich_cong_tac?select=${COT_LICH}`;
+    let res: Response;
+    try {
+      res = await this.goi(this.cauHinh.gatewayUrl + duong, {
+        method: id ? "PATCH" : "POST",
+        headers: {
+          Accept: "application/vnd.pgrst.object+json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(duLieu),
+      });
+    } catch {
+      throw new LoiApi("Không kết nối được tới máy chủ. Vui lòng kiểm tra mạng rồi thử lại.", null);
+    }
+    const than = await res.text();
+    let json: LoiPostgrest | null;
+    try {
+      json = than ? (JSON.parse(than) as LoiPostgrest) : null;
+    } catch {
+      json = null;
+    }
+    if (res.ok && json) return json as unknown as LichCongTac;
+    if (res.status === 401) throw new LoiApi("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401);
+    if (json?.code === "23P01" && json.message) throw new LoiApi(json.message, res.status);
+    if (json?.code === "23514" || json?.code === "22007" || json?.code === "22008") throw new LoiApi(LOI_LICH_KHONG_HOP_LE, res.status);
+    if (res.status === 403 || json?.code === "PGRST116") {
+      throw new LoiApi("Bạn không được thay đổi lịch này (có thể lịch đã được duyệt hoặc đã hủy).", res.status);
+    }
+    throw new LoiApi(thongDiepLoi(res.status), res.status);
   }
 
   layTienDo(hoSoId: string) {

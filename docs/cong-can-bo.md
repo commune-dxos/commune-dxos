@@ -113,6 +113,18 @@ Trang **Wiki văn bản** (`/can-bo/wiki`, nhóm "Văn bản" ở thanh bên) hi
 
 Khi bộ tìm kiếm (Meilisearch) tạm dừng, trang báo "Bộ tìm kiếm đang tạm dừng" và vẫn tìm trực tiếp trong CSDL theo đúng quyền. Thiết kế: [`architecture.md`](architecture.md) §4.16.
 
+## Lịch công tác (#117)
+
+Trang **Lịch công tác** (`/can-bo/lich`, nhóm "Công tác" ở thanh bên) hiện cho mọi vai của cổng. Lịch xem theo tuần, thứ Hai → Chủ nhật, theo giờ Việt Nam; nút "Tuần trước", "Tuần này", "Tuần sau"; tuần đang xem nằm trên URL (`/can-bo/lich?tuan=2026-11-02`) để gửi link. Mỗi lịch có giờ, nội dung, loại (họp, tiếp công dân, trực, đi công tác, khác), địa điểm, chủ trì, thành phần, ghi chú, trạng thái.
+
+| Vai | Thấy | Làm được |
+|---|---|---|
+| `can_bo` | lịch đã duyệt (kể cả lịch đã duyệt rồi bị hủy, gạch bỏ, kèm lý do) | xem |
+| `van_thu` | mọi lịch, kể cả lịch dự kiến chờ duyệt | thêm lịch dự kiến; sửa, hủy lịch dự kiến |
+| `lanh_dao` | mọi lịch | thêm (mặc định "Duyệt luôn"), duyệt, sửa, hủy mọi lịch chưa hủy |
+
+Hủy phải ghi lý do; lịch đã hủy không sửa được; không ai xóa được lịch. Hai lịch chưa hủy không được trùng địa điểm và chồng giờ: CSDL từ chối và trang hiện câu "Trùng địa điểm: … đã có lịch từ … đến …". Thiết kế: [`architecture.md`](architecture.md) §4.17.
+
 ## Hạ tầng
 
 | Thành phần | Cấu hình |
@@ -127,7 +139,7 @@ Không mở cổng nào ra host: web, API, Flowable, Garage chỉ đi qua APISIX
 ## Chạy thử
 
 ```bash
-make up && make smoke     # smoke mục 4i: trang /can-bo, client mot_cua_can_bo, E2E cán bộ → lãnh đạo; 4n: sổ văn bản; 4r: wiki văn bản
+make up && make smoke     # smoke mục 4i: trang /can-bo, client mot_cua_can_bo, E2E cán bộ → lãnh đạo; 4n: sổ văn bản; 4r: wiki văn bản; 4s: lịch công tác
 make demo-users           # đặt mật khẩu chung cho tài khoản mẫu và in ra
 ```
 

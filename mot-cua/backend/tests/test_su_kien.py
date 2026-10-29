@@ -66,10 +66,14 @@ class TaoSuKien(unittest.TestCase):
             su_kien.tao("ho_so.xoa", HS)
 
     def test_khong_chua_du_lieu_ca_nhan(self):
-        ev = su_kien.tao("ho_so.moi", {**HS, "ho_ten_nguoi_nop": "Nguyễn Văn A", "so_dien_thoai": "0900000000",
-                                       "nguoi_nop_sub": "abc"})
+        # Giá trị canh gác có ký tự ngoài [0-9a-f-] và id, luc cố định: không thể tình cờ trùng một đoạn của UUID
+        # ngẫu nhiên hay giờ ISO (trước đây "abc" làm test trượt khi id ngẫu nhiên chứa "abc", #115).
+        ev = su_kien.tao("ho_so.moi", {**HS, "ho_ten_nguoi_nop": "Nguyễn Văn A", "so_dien_thoai": "0912345678",
+                                       "nguoi_nop_sub": "BÍ-MẬT-SUB-XYZ"},
+                         ma="11111111-2222-4333-8444-555555555555",
+                         luc=datetime.datetime(2026, 10, 21, 1, 0, tzinfo=datetime.timezone.utc))
         raw = json.dumps(ev, ensure_ascii=False)
-        for gt in ("Nguyễn Văn A", "0900000000", "abc"):
+        for gt in ("Nguyễn Văn A", "0912345678", "BÍ-MẬT-SUB-XYZ"):
             self.assertNotIn(gt, raw)
         for khoa in ("hoTen", "soDienThoai", "nguoiNopSub"):
             with self.assertRaises(ValueError):

@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.7.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.8.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -1063,6 +1063,32 @@ sequenceDiagram
 | Đồng bộ chỉ mục: sau mỗi lần ghi + dựng lại toàn bộ khi khởi động và định kỳ (`DXOS_WIKI_DONG_BO_GIAY`, 300 giây) | Đơn giản, tự sửa khi chỉ mục mất hay lệch; số văn bản nội bộ của một xã nhỏ (hàng trăm) |
 
 Kiểm bằng `mot-cua/db/tests/wiki_van_ban.sql` (43 kiểm tra), `mot-cua/backend/tests/test_wiki.py`, Vitest `src/can-bo/wiki.test.tsx` và smoke 4r (`mot-cua/tests/smoke-wiki-van-ban.sh`).
+
+### 4.17 Lịch công tác (#117)
+
+Lịch họp, tiếp công dân, trực, đi công tác của Ủy ban xã trong cổng cán bộ (`/can-bo/lich`). Văn thư soạn lịch dự kiến, lãnh đạo duyệt; cán bộ chỉ thấy lịch đã duyệt. Không có dịch vụ mới: web gọi thẳng PostgREST qua APISIX (`/api/lich_cong_tac`) bằng token của người dùng, CSDL quyết định mọi quyền.
+
+```mermaid
+stateDiagram-v2
+  [*] --> du_kien: văn thư / lãnh đạo thêm
+  [*] --> da_duyet: lãnh đạo thêm, "Duyệt luôn"
+  du_kien --> da_duyet: lãnh đạo duyệt (CSDL ghi người duyệt, giờ duyệt)
+  du_kien --> da_huy: văn thư / lãnh đạo hủy, có lý do
+  da_duyet --> da_huy: lãnh đạo hủy, có lý do
+  da_huy --> [*]
+```
+
+| Quyết định | Lý do |
+|---|---|
+| **Không qua `mot-cua-api`**, web ghi thẳng PostgREST (`POST`/`PATCH /api/lich_cong_tac`) | Không có tệp, không có chỉ mục, không có bước ngoài CSDL: thêm một lớp API chỉ để chuyển tiếp là thừa. PostgREST nhận token của người dùng nên RLS áp đúng người |
+| **RLS theo vai và trạng thái**: cán bộ đọc `duyet_luc IS NOT NULL`; văn thư thêm/sửa lịch `du_kien`, chỉ được chuyển sang `du_kien` hoặc `da_huy`; lãnh đạo làm mọi bước | Quy trình của văn phòng xã: văn thư dự thảo lịch tuần, chủ tịch duyệt rồi mới công bố. Cán bộ không thấy lịch chưa chốt; lịch đã duyệt rồi hủy vẫn hiện để mọi người biết lịch bị bỏ |
+| **Người tạo, người sửa, người duyệt, giờ duyệt do trigger ghi** từ `sub` trong JWT; không cấp quyền cột cho các trường này | Không ai khai thay người khác, không ai tự đặt "đã duyệt" giả |
+| **Poka-yoke trùng địa điểm trong CSDL**: trigger khóa theo địa điểm (`pg_advisory_xact_lock`) rồi tìm lịch chưa hủy cùng địa điểm (không phân biệt hoa thường, khoảng trắng) có khoảng giờ chồng nhau (`tstzrange &&`), lỗi `exclusion_violation` → PostgREST 400 mã `23P01` kèm câu tiếng Việt (web nhận diện theo mã) | Hai người đặt cùng phòng cùng giờ là lỗi hay gặp; chặn ở CSDL nên mọi đường ghi đều bị chặn, kể cả ghi đồng thời. Không cần extension `btree_gist`. Lịch nối tiếp (10:00–11:00 sau 08:00–10:00) không tính là trùng |
+| **Hủy bắt buộc lý do, lịch đã hủy không sửa, không xóa** (trigger chặn cả superuser) | Truy được lịch nào bị bỏ, vì sao, ai bỏ |
+| Kiểm toán `lich.them|sua|duyet|huy` ghi loại, giờ, trạng thái, tên cột đổi; **không** ghi tiêu đề, thành phần, ghi chú, lý do | Các trường chữ có thể có tên người; chuỗi kiểm toán chỉ cần biết việc gì xảy ra lúc nào, ai làm |
+| Giờ lưu `timestamptz`, web gửi giờ Việt Nam kèm `+07:00` và hiện theo `Asia/Ho_Chi_Minh` | Không lệch ngày khi trình duyệt hay máy chủ ở múi giờ khác |
+
+Kiểm bằng `mot-cua/db/tests/lich_cong_tac.sql` (42 kiểm tra), Vitest `src/can-bo/lich-cong-tac.test.tsx` (7) và smoke 4s (`mot-cua/tests/smoke-lich-cong-tac.sh`). Dữ liệu mẫu: `mot-cua/db/seed/004_lich_mau.sql` (6 lịch của tuần lúc nạp seed).
 
 ## 5. MFA cho cán bộ
 

@@ -12,7 +12,7 @@ Cách dùng tệp này:
   - **V3** – OCR giấy tờ, trợ lý RAG, tìm kiếm (nhãn `vai-3`)
 - Ai phụ trách thì người đó commit bằng tài khoản của mình.
 
-**Hiện trạng (29/10/2026):** đội đi trước lịch. Đã phát hành 8 bản, mới nhất **v0.7.0** (29/10); số bản theo nhịp phát hành, không theo số dự kiến ban đầu ở tiêu đề mỗi tuần (v0.2.0, v0.3.0). Tuần 1–5 xong, trừ các dòng 🔒 chờ người hướng dẫn và lịch công tác của cán bộ. Tuần 6: phần đội tự làm được đã xong (dữ liệu mở #102, REUSE #104, tài liệu song ngữ #106, kịch bản trình bày + video dự phòng #108, v0.7.0 #112); còn tập trình bày thật cả đội và các dòng 🔒.
+**Hiện trạng (29/10/2026):** đội đi trước lịch. Đã phát hành 9 bản, mới nhất **v0.8.0** (29/10); số bản theo nhịp phát hành, không theo số dự kiến ban đầu ở tiêu đề mỗi tuần (v0.2.0, v0.3.0). Tuần 1–5 xong, trừ các dòng 🔒 chờ người hướng dẫn; lịch công tác của cán bộ xong ở #117 (v0.8.0). Tuần 6: phần đội tự làm được đã xong (dữ liệu mở #102, REUSE #104, tài liệu song ngữ #106, kịch bản trình bày + video dự phòng #108, v0.7.0 #112); còn tập trình bày thật cả đội và các dòng 🔒.
 
 | Bản | Ngày | Nội dung chính |
 |---|---|---|
@@ -24,6 +24,7 @@ Cách dùng tệp này:
 | v0.5.0 | 24/10 | Poka-yoke 2 lớp, cổng cán bộ, kiểm toán chuỗi băm, ký số, kho dữ liệu, Superset, sổ văn bản |
 | v0.6.0 | 27/10 | trợ lý RAG, OCR + cán bộ xác nhận, wiki văn bản, tra cứu tiến độ, thông báo sắp trễ hạn, gói KH01 + DD01 |
 | v0.7.0 | 29/10 | dữ liệu mở thủ tục cấp xã CC-BY-4.0, REUSE 3.3, tài liệu song ngữ, kịch bản trình bày + video dự phòng, sửa đăng nhập Superset |
+| v0.8.0 | 29/10 | lịch công tác trong cổng cán bộ (văn thư soạn, lãnh đạo duyệt, chặn trùng địa điểm), sửa test trượt ngẫu nhiên |
 
 ## Tuần 1 · 15–21/10 · Nền móng → v0.0.1 ✅
 - [x] V1 · Xác minh giấy phép trên repo gốc: Garage, Meilisearch, pyHanko, step-ca, Gotenberg, PostgREST, Flowable → `NOTICE`, `DEPENDENCIES.md`
@@ -52,7 +53,7 @@ Cách dùng tệp này:
 - [x] V2 · JSON Schema cho từng thủ tục + Poka-yoke: kiểm tra đủ thành phần hồ sơ trước khi khởi tạo quy trình Flowable – 2 lớp: cổng công dân (#53) + `mot-cua-api` 422 (#59, PR #71)
 - [x] V3 · Cổng công dân (React + Vite + shadcn/ui): chọn thủ tục, nộp hồ sơ, tra cứu trạng thái – khung + danh mục + đăng nhập (#52, PR #60); giao diện mới + form nộp hồ sơ (#63, #64, PR #65, #66); web trong compose qua APISIX (#57, PR #70); tra cứu tiến độ không đăng nhập + Hồ sơ của tôi + nộp bổ sung (#54, PR #88)
 - [x] V2 · Cổng cán bộ (SSO + MFA): danh sách task Flowable, xử lý, chuyển bước (#55, PR #72); trạng thái hồ sơ theo bước Flowable (#73, PR #74)
-- [ ] V2 · Lịch công tác trong cổng cán bộ – **còn mở**, chưa có issue (để sau tuần 7 nếu còn thời gian)
+- [x] V2 · Lịch công tác trong cổng cán bộ: văn thư soạn, lãnh đạo duyệt, cán bộ xem theo tuần, chặn trùng địa điểm + chồng giờ, kiểm toán `lich.*` (#117)
 - [x] V2 · Cảnh báo trễ hạn qua RabbitMQ (worker trong `mot-cua/`): sự kiện `ho_so.sap_tre_han` (#9); consumer thông báo tới cán bộ, chuông + trang Thông báo cập nhật qua SSE, email/SMS giả lập (#56, PR #89). Thông báo tới công dân: **còn mở**, chưa có issue
 - [x] V1 · Mô tả luồng hồ sơ một cửa chi tiết trong `docs/architecture.md` (từ nộp tới trả kết quả) (#82, v0.5.0)
 
@@ -81,6 +82,7 @@ Cách dùng tệp này:
 - [x] V1 · Release v0.7.0 – bản tuần 6: dữ liệu mở, REUSE 3.3, tài liệu song ngữ, kịch bản trình bày, sửa đăng nhập Superset (#112; thay dòng "Release v0.3.0" cũ: v0.3.0 đã phát hành 22/10)
 
 ## Tuần 7 · 26/11–06/12 · Đóng băng PoF, nộp bài → v1.0.0
+- [x] V1 · Release v0.8.0 – lịch công tác trong cổng cán bộ (#117), sửa test sự kiện trượt ngẫu nhiên (#115) (#119)
 - [ ] V1 · Rà đủ 6 tiêu chí PoF: LICENSE + SPDX mọi tệp, release có tag + `.tar.gz`, README song ngữ, CHANGELOG, hướng dẫn build từ máy sạch, bug tracker
 - [ ] V1 · Đóng băng tính năng, release v1.0.0 (tag trên `main` + `.tar.gz` tạo bằng `git archive`)
 - [ ] V1 · **Đóng băng PoF trước 17:00 Chủ nhật 06/12/2026**: PoF chấm theo hiện trạng kho mã lúc gửi bài. Sau mốc này chỉ commit để hoàn thiện demo, không làm hỏng build hay giấy phép
