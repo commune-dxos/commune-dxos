@@ -1,7 +1,8 @@
 # Khai báo phụ thuộc / Dependencies
 
-Từ OLP PMNM 2026, BTC yêu cầu đội tự rà và khai báo minh bạch giấy phép và nguồn gốc
-từng module bên ngoài; khai sai hoặc thiếu bị xử lý nặng hơn năm 2025.
+Thang điểm PoF của OLP PMNM 2026 (tiêu chí 2, giấy phép OSI) chấm giấy phép trong từng
+tệp mã và tính tương thích giấy phép. Đội khai báo minh bạch giấy phép và nguồn gốc của
+từng thành phần bên ngoài.
 Tệp này bổ sung cho [`NOTICE`](NOTICE): NOTICE ghi thành phần theo lớp kiến trúc,
 còn tệp này ghi **từng** image, gói npm, gói pip kèm phiên bản cụ thể.
 
