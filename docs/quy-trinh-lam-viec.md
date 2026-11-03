@@ -40,7 +40,8 @@ Mỗi issue và PR có ba loại nhãn:
 |---|---|---|
 | Thành phần | `nen-tang`, `mot-cua`, `thu-tuc`, `docs`, `ci` | PR: workflow `gan-nhan` tự gắn theo tệp sửa. Issue: người tạo |
 | Vai phụ trách | `vai-1-core`, `vai-2`, `vai-3` | Người tạo issue |
-| Khác | `pof` (ảnh hưởng điểm kho mã), `bug`, `enhancement`, `user-feedback`… | Người tạo issue |
+| Khác | `pof` (ảnh hưởng điểm kho mã), `bug`, `enhancement`… | Người tạo issue |
+| Phản hồi người dùng thật | `user-feedback` | Mẫu **Phản hồi dùng thử** tự gắn ([`thu-nghiem.md`](thu-nghiem.md)) |
 
 Nhãn thành phần ứng với thư mục:
 
