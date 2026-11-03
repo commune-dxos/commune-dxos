@@ -8,6 +8,13 @@
 
 ### Tính năng mới
 
+- **nen-tang:** Cấu hình địa chỉ công khai cho bản triển khai sau reverse proxy HTTPS ([#126](https://github.com/commune-dxos/commune-dxos/issues/126)) ([#127](https://github.com/commune-dxos/commune-dxos/issues/127))
+    - DXOS_KEYCLOAK_URL (mặc định http://localhost:${KEYCLOAK_PORT}) cho KC_HOSTNAME, issuer JWT của mot-cua-api,
+      URL Keycloak của web và Superset.
+    - tang2-realm thay http://localhost:9080 trong realm.json bằng DXOS_GATEWAY_URL khi nạp client.
+    - Route APISIX /realms/dxos/*, /resources/* tới Keycloak để chỉ cần một cổng công khai.
+    - DXOS_BIND (mặc định 0.0.0.0) cho cổng Keycloak, APISIX trên máy host.
+    - .env.example, docs/cai-dat.md: mục chạy sau reverse proxy HTTPS.
 - **web:** Tiêu đề tab cho các trang cổng công dân ([#123](https://github.com/commune-dxos/commune-dxos/issues/123)) ([#129](https://github.com/commune-dxos/commune-dxos/issues/129))
 
 ### Tài liệu
