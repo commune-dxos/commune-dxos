@@ -3,7 +3,7 @@
 // Tra cứu và Hồ sơ của tôi (#54): form tra cứu không gửi request khi nhập sai, kết quả hiện các bước;
 // danh sách hồ sơ; chi tiết hồ sơ chờ bổ sung hiện yêu cầu và nộp lại qua /workflow; chưa đăng nhập
 // thì mời đăng nhập. API giả bằng fetch.
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { User, UserManager } from "oidc-client-ts";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -124,7 +124,7 @@ describe("Hồ sơ của tôi", () => {
     ve("/ho-so");
     const ds = await screen.findByRole("list", { name: "Hồ sơ đã nộp" });
     expect(within(ds).getAllByRole("listitem")).toHaveLength(2);
-    expect(document.title).toBe("Hồ sơ của tôi – Cổng dịch vụ công xã");
+    await waitFor(() => expect(document.title).toBe("Hồ sơ của tôi – Cổng dịch vụ công xã"));
     expect(within(ds).getByText("Cần bổ sung: Ảnh giấy chứng sinh bị mờ")).toBeInTheDocument();
     expect(within(ds).getByText("Hoàn tất")).toBeInTheDocument();
     expect(String(goi.mock.calls[0][0])).toMatch(/\/api\/ho_so\?select=.*order=ngay_nhan\.desc/);
@@ -134,7 +134,7 @@ describe("Hồ sơ của tôi", () => {
   it("chi tiết chờ bổ sung: thấy yêu cầu, bước đang mở, tải thêm tệp rồi nộp lại → đang xử lý", async () => {
     ve(`/ho-so/${ID}`);
     expect(await screen.findByText("Yêu cầu của bộ phận một cửa")).toBeInTheDocument();
-    expect(document.title).toBe("Hồ sơ HS20261024-000123 – Cổng dịch vụ công xã");
+    await waitFor(() => expect(document.title).toBe("Hồ sơ HS20261024-000123 – Cổng dịch vụ công xã"));
     expect(screen.getAllByText("Ảnh giấy chứng sinh bị mờ").length).toBeGreaterThan(0);
     expect(screen.getByText("Công dân bổ sung hồ sơ")).toBeInTheDocument();
     expect(screen.getByText(/Tiếp nhận hồ sơ · xong/)).toBeInTheDocument();
