@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { LoiApi } from "@/lib/api";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 import {
   hoiTroLy,
   kiemCauHoi,
@@ -122,6 +123,7 @@ export function TroLy({
   const soLuot = useRef(0);
   const cuoi = useRef<HTMLDivElement>(null);
   const dangHoi = luot.some((l) => l.loai === "dang-hoi");
+  useTieuDeTrang("Hỏi đáp thủ tục");
 
   useEffect(() => {
     let huy = false;

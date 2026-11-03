@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { ThuTuc } from "@/lib/api";
 import { lePhi, thoiHan } from "@/lib/dinh-dang";
 import { docThanhPhan, type ThanhPhan } from "@/lib/thanh-phan";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 
 export function ViTri({ ten }: { ten: string }) {
   return (
@@ -118,6 +119,7 @@ function TomTat({ thuTuc }: { thuTuc: ThuTuc }) {
 }
 
 function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
+  useTieuDeTrang(thuTuc.ten);
   const tp = docThanhPhan(thuTuc.json_schema);
   const batBuoc = tp.filter((t) => t.batBuoc);
   const neuCo = tp.filter((t) => !t.batBuoc);
