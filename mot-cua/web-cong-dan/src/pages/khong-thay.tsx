@@ -4,8 +4,10 @@ import { Link } from "react-router";
 import { Khung } from "@/components/khung";
 import { ThongBao } from "@/components/thong-bao";
 import { buttonVariants } from "@/components/ui/button";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 
 export function KhongThay() {
+  useTieuDeTrang("Không tìm thấy trang");
   return (
     <Khung className="flex justify-center md:py-16">
       <ThongBao

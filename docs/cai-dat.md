@@ -97,7 +97,9 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 | `APISIX_PORT`, `KEYCLOAK_PORT` | `9080`, `8080` | cổng gateway, SSO trên máy host |
 | `POSTGRES_PORT`, `FLOWABLE_PORT` | `55432`, `8090` | cổng debug, chỉ 127.0.0.1 |
 | `DXOS_CORS_ORIGINS` | `http://localhost:5173` | origin web khác được gọi API (`npm run dev`); origin của gateway luôn được thêm |
-| `DXOS_GATEWAY_URL` | `http://localhost:9080` | địa chỉ gateway trong link tải tệp, origin của cổng công dân |
+| `DXOS_GATEWAY_URL` | `http://localhost:9080` | địa chỉ gateway trong link tải tệp, origin của cổng công dân, redirect URI của client web trong realm |
+| `DXOS_KEYCLOAK_URL` | `http://localhost:${KEYCLOAK_PORT}` | địa chỉ Keycloak mà trình duyệt dùng: `KC_HOSTNAME`, issuer của token |
+| `DXOS_BIND` | `0.0.0.0` | địa chỉ mở cổng Keycloak, APISIX trên máy host; `127.0.0.1` khi đứng sau reverse proxy |
 | `DXOS_FILE_MAX_BYTES` | `10485760` | cỡ tệp tối đa (≤ 10 MiB) |
 | `BAO_UNSEAL` | `file` | `file` (máy dev) hoặc `manual` (triển khai thật) |
 | `DXOS_SU_KIEN_QUET_GIAY`, `DXOS_SU_KIEN_SAP_TRE_NGAY` | `300`, `1` | chu kỳ quét và ngưỡng cảnh báo sắp trễ hạn |
@@ -106,6 +108,22 @@ Mọi cấu hình nằm trong `.env` (sao chép từ [`.env.example`](../.env.ex
 | `LLM_PROVIDER` | `tat` | trợ lý thủ tục (#91): `tat` chỉ tìm kiếm · `ollama` (Qwen2.5 7B + bge-m3) · `openai-compatible` (API ngoài) · `gia-lap` (CI, smoke); chi tiết ở [`mot-cua/README.md`](../mot-cua/README.md#trợ-lý-thủ-tục-hành-chính-91) |
 
 Đổi `.env` khi hệ thống đang chạy: `make up` lại (Compose tạo lại dịch vụ bị ảnh hưởng).
+
+### Chạy sau reverse proxy HTTPS (bản demo công khai, #126)
+
+Chỉ cần một tên miền và một cổng: reverse proxy (nginx, Caddy…) có chứng chỉ TLS chuyển mọi đường dẫn tới APISIX; APISIX chuyển `/realms/dxos/*`, `/resources/*` tới Keycloak nên trình duyệt đăng nhập qua cùng tên miền. Ví dụ `.env` cho `https://xa.example.vn`, proxy tới `127.0.0.1:19280`:
+
+```
+DXOS_BIND=127.0.0.1
+APISIX_PORT=19280
+KEYCLOAK_PORT=19281
+POSTGRES_PORT=19282
+FLOWABLE_PORT=19283
+DXOS_GATEWAY_URL=https://xa.example.vn
+DXOS_KEYCLOAK_URL=https://xa.example.vn
+```
+
+Đặt các biến này **trước** lần `make up` đầu tiên: `tang2-realm` chỉ ghi redirect URI khi tạo client, client đã có thì giữ nguyên (đổi sau thì sửa client `mot_cua_web`, `mot_cua_can_bo`, `bao_cao_superset` như mục 7). Bảng quản trị Keycloak (`/admin`) và realm `master` không đi qua gateway; quản trị bằng `kcadm.sh` trong container `keycloak`.
 
 ### Bật đọc giấy tờ bằng OCR (tùy chọn)
 

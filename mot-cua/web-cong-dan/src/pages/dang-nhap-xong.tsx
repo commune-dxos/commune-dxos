@@ -9,6 +9,7 @@ import { useXacThuc } from "@/auth/xac-thuc";
 import { Khung } from "@/components/khung";
 import { ThongBao } from "@/components/thong-bao";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 
 export function DangNhapXong() {
   const { hoanTatDangNhap, dangNhap } = useXacThuc();
@@ -16,6 +17,7 @@ export function DangNhapXong() {
   const [loi, datLoi] = useState(false);
   // StrictMode chạy effect hai lần ở dev; code chỉ đổi được một lần.
   const daGoi = useRef(false);
+  useTieuDeTrang("Đăng nhập");
 
   useEffect(() => {
     if (daGoi.current) return;

@@ -21,6 +21,7 @@ import { ApiDocGiayTo, type LoaiGiayTo } from "@/lib/doc-giay-to";
 import { phatHanhGiayTo } from "@/lib/giay-to";
 import { nopHoSo, tienDoMoi, type HoSoMoi, type TienDoNop } from "@/lib/ho-so";
 import { docThanhPhan, kiemThanhPhan } from "@/lib/thanh-phan";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 import { BuocGiayTo } from "./buoc-giay-to";
 import { BuocKiemTra } from "./buoc-kiem-tra";
 import { BuocNguoiNop } from "./buoc-nguoi-nop";
@@ -45,6 +46,7 @@ function kiemTep(thuTuc: ThuTuc, ds: ReturnType<typeof docThanhPhan>, tep: Recor
 }
 
 function Form({ thuTuc }: { thuTuc: ThuTuc }) {
+  useTieuDeTrang(`Nộp hồ sơ ${thuTuc.ten}`);
   const { buoc = "nguoi-nop" } = useParams();
   const { nguoiDung } = useXacThuc();
   const dieuHuong = useNavigate();
@@ -235,6 +237,7 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
 
 /** Chưa đăng nhập: thẻ giữa trang theo bố cục block login-03 của shadcn/ui, nội dung là khối thông báo chung. */
 function ChuaDangNhap({ thuTuc }: { thuTuc: ThuTuc }) {
+  useTieuDeTrang(`Nộp hồ sơ ${thuTuc.ten}`);
   const { dangNhap } = useXacThuc();
   return (
     <div className="flex-1 bg-surface">
@@ -270,6 +273,8 @@ function ChuaDangNhap({ thuTuc }: { thuTuc: ThuTuc }) {
 export function NopHoSo({ taiDanhMuc }: { taiDanhMuc?: () => Promise<ThuTuc[]> }) {
   const { ma = "" } = useParams();
   const { nguoiDung, dangTai } = useXacThuc();
+  // Form/ChuaDangNhap đặt tiêu đề có tên thủ tục; ở đây chỉ đặt khi chúng chưa hiện.
+  useTieuDeTrang(dangTai ? "Nộp hồ sơ" : undefined);
   if (dangTai) {
     return (
       <Khung>
