@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { layDanhMucThuTuc, LoiApi, type ThuTuc } from "@/lib/api";
 import { chuanHoa } from "@/lib/dinh-dang";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 
 type TrangThai =
   | { loai: "dang-tai" }
@@ -27,6 +28,7 @@ const CAC_BUOC: { so: number; ten: string; moTa: string; lienKet?: string }[] = 
 export function TrangChu({ taiDanhMuc = layDanhMucThuTuc }: { taiDanhMuc?: () => Promise<ThuTuc[]> }) {
   const [trangThai, datTrangThai] = useState<TrangThai>({ loai: "dang-tai" });
   const [tuKhoa, datTuKhoa] = useState("");
+  useTieuDeTrang("Danh mục thủ tục");
 
   const tai = useCallback(() => {
     datTrangThai({ loai: "dang-tai" });

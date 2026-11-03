@@ -19,6 +19,7 @@ import { LoiApi } from "@/lib/api";
 import { ngay } from "@/lib/dinh-dang";
 import { danhGiaHan, hanLuc, ngayGio } from "@/lib/han";
 import { cacBuoc, dongLichSu, LOI_NHAN } from "@/lib/tien-do";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 import { kiemNhapTraCuu, traCuuCongKhai, type KetQuaTraCuu } from "@/lib/tra-cuu";
 
 type TrangThai =
@@ -100,6 +101,7 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
   const [soCuoi, datSoCuoi] = useState("");
   const [loi, datLoi] = useState<{ ma?: string; soCuoi?: string }>({});
   const [trangThai, datTrangThai] = useState<TrangThai>({ loai: "nhap" });
+  useTieuDeTrang("Tra cứu hồ sơ");
 
   const gui = async (e: FormEvent) => {
     e.preventDefault();

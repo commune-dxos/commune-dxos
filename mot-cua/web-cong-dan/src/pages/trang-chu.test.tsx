@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -19,6 +19,12 @@ function ve(taiDanhMuc: () => Promise<ThuTuc[]>) {
 }
 
 describe("trang chủ – danh mục thủ tục", () => {
+  it("đặt tiêu đề tab trình duyệt", async () => {
+    ve(() => Promise.resolve(DS));
+    await screen.findByRole("article", { name: "Đăng ký khai sinh" });
+    await waitFor(() => expect(document.title).toBe("Danh mục thủ tục – Cổng dịch vụ công xã"));
+  });
+
   it("hiện mã, tên, lĩnh vực, thời hạn, lệ phí và nút nộp hồ sơ", async () => {
     ve(() => Promise.resolve(DS));
     const ks = await screen.findByRole("article", { name: "Đăng ký khai sinh" });
