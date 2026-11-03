@@ -84,7 +84,7 @@ x-superset: &superset
   environment: &superset-env
     SUPERSET_CONFIG_PATH: /nen-tang/superset/superset_config.py
     SUPERSET_APP_ROOT: /bao-cao
-    DXOS_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8080}
+    DXOS_KEYCLOAK_URL: ${DXOS_KEYCLOAK_URL:-http://localhost:${KEYCLOAK_PORT:-8080}}
     DXOS_KEYCLOAK_NOI_BO: http://keycloak:8080
     DXOS_KEYCLOAK_REALM: dxos
     DXOS_SUPERSET_CLIENT: bao_cao_superset
@@ -161,9 +161,9 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      # Issuer cố định theo địa chỉ trình duyệt dùng; APISIX/PostgREST gọi nội bộ
-      # qua http://keycloak:8080 nhờ backchannel động.
-      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8080}
+      # Issuer cố định theo địa chỉ trình duyệt dùng (DXOS_KEYCLOAK_URL, #126); APISIX/PostgREST
+      # gọi nội bộ qua http://keycloak:8080 nhờ backchannel động.
+      KC_HOSTNAME: ${DXOS_KEYCLOAK_URL:-http://localhost:${KEYCLOAK_PORT:-8080}}
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
@@ -172,7 +172,7 @@ services:
       - ./nen-tang/scripts/kc-start.sh:/nen-tang/scripts/kc-start.sh:ro
       - keycloak-secrets:/run/dxos-secrets:ro
     ports:
-      - "${KEYCLOAK_PORT:-8080}:8080"
+      - "${DXOS_BIND:-0.0.0.0}:${KEYCLOAK_PORT:-8080}:8080"
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -250,6 +250,8 @@ services:
     environment:
       DXOS_TANG2: *tang2
       KEYCLOAK_URL: http://keycloak:8080
+      # Địa chỉ gateway thay cho http://localhost:9080 trong redirect URI của realm.json (#126).
+      DXOS_GATEWAY_URL: ${DXOS_GATEWAY_URL:-http://localhost:9080}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       BAO_ADDR: http://openbao:8200
     volumes:
@@ -326,7 +328,7 @@ services:
       - ./nen-tang/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ./nen-tang/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
     ports:
-      - "${APISIX_PORT:-9080}:9080"
+      - "${DXOS_BIND:-0.0.0.0}:${APISIX_PORT:-9080}:9080"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -444,7 +446,7 @@ services:
       DXOS_FLOWABLE_USER: rest-admin
       DXOS_JWKS_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/certs
       # Issuer trong token = KC_HOSTNAME của Keycloak + /realms/dxos
-      DXOS_JWT_ISSUER: http://localhost:${KEYCLOAK_PORT:-8080}/realms/dxos
+      DXOS_JWT_ISSUER: ${DXOS_KEYCLOAK_URL:-http://localhost:${KEYCLOAK_PORT:-8080}}/realms/dxos
       DXOS_JWT_AUD: dxos_api
       DXOS_TOKEN_URL: http://keycloak:8080/realms/dxos/protocol/openid-connect/token
       DXOS_BAO_ADDR: http://openbao:8200
@@ -512,7 +514,7 @@ services:
     image: commune-dxos/mot-cua-web:local
     profiles: [core]
     environment:
-      DXOS_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8080}
+      DXOS_KEYCLOAK_URL: ${DXOS_KEYCLOAK_URL:-http://localhost:${KEYCLOAK_PORT:-8080}}
       DXOS_KEYCLOAK_REALM: dxos
       DXOS_OIDC_CLIENT_ID: mot_cua_web
       # Cổng cán bộ /can-bo (#55): client public riêng, Keycloak bắt OTP với can_bo, lanh_dao.
