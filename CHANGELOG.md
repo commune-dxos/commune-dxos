@@ -4,6 +4,28 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-03
+
+### Tính năng mới
+
+- **nen-tang:** Cấu hình địa chỉ công khai cho bản triển khai sau reverse proxy HTTPS ([#126](https://github.com/commune-dxos/commune-dxos/issues/126)) ([#127](https://github.com/commune-dxos/commune-dxos/issues/127))
+    - DXOS_KEYCLOAK_URL (mặc định http://localhost:${KEYCLOAK_PORT}) cho KC_HOSTNAME, issuer JWT của mot-cua-api,
+      URL Keycloak của web và Superset.
+    - tang2-realm thay http://localhost:9080 trong realm.json bằng DXOS_GATEWAY_URL khi nạp client.
+    - Route APISIX /realms/dxos/*, /resources/* tới Keycloak để chỉ cần một cổng công khai.
+    - DXOS_BIND (mặc định 0.0.0.0) cho cổng Keycloak, APISIX trên máy host.
+    - .env.example, docs/cai-dat.md: mục chạy sau reverse proxy HTTPS.
+- **web:** Tiêu đề tab cho các trang cổng công dân ([#123](https://github.com/commune-dxos/commune-dxos/issues/123)) ([#129](https://github.com/commune-dxos/commune-dxos/issues/129))
+
+### Tài liệu
+
+- **dependencies:** Bỏ câu chưa có căn cứ về năm 2025 ([#122](https://github.com/commune-dxos/commune-dxos/issues/122)) ([#128](https://github.com/commune-dxos/commune-dxos/issues/128))
+- **tra-cuu:** Hướng dẫn người dân tra cứu hồ sơ ([#125](https://github.com/commune-dxos/commune-dxos/issues/125)) ([#131](https://github.com/commune-dxos/commune-dxos/issues/131))
+
+### Kiểm thử
+
+- **web:** Kiểm thử trang tra cứu tiến độ hồ sơ ([#124](https://github.com/commune-dxos/commune-dxos/issues/124)) ([#130](https://github.com/commune-dxos/commune-dxos/issues/130))
+
 ## [0.8.0] - 2026-10-29
 
 ### Tính năng mới
@@ -422,7 +444,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.5.0...v0.6.0
