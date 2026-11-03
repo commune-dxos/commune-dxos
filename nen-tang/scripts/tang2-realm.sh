@@ -19,7 +19,8 @@ REALM="${DXOS_REALM:-dxos}"
 TEP="${TANG2_DIR:-/tang2}/keycloak/realm.json"
 KCADM=/opt/keycloak/bin/kcadm.sh
 CFG="/tmp/kcadm-$$.config"
-trap 'rm -f "$CFG"' EXIT
+NAP="/tmp/realm-$$.json"
+trap 'rm -f "$CFG" "$NAP"' EXIT
 BAO_ADDR="${BAO_ADDR:-http://openbao:8200}"
 BAO_HOST="${BAO_ADDR#http://}"; BAO_PORT="${BAO_HOST##*:}"; BAO_HOST="${BAO_HOST%%:*}"
 APPROLE_DIR="${BAO_APPROLE_DIR:-/run/dxos-secrets/approle}"
@@ -59,8 +60,18 @@ KC_ADMIN_PW="$(json_str password)"
   --user "${KEYCLOAK_ADMIN:-admin}" --password "$KC_ADMIN_PW" > /dev/null
 unset KC_ADMIN_PW
 
+# Địa chỉ gateway (#126): realm.json ghi redirect URI, web origin theo gateway mặc định
+# http://localhost:9080; bản triển khai sau reverse proxy đặt DXOS_GATEWAY_URL (ví dụ https://xa.example.vn)
+# và nạp bản đã thay. Chỉ áp dụng cho client chưa có (ifResourceExists=SKIP).
+GW_MAC_DINH="http://localhost:9080"
+GW="${DXOS_GATEWAY_URL:-$GW_MAC_DINH}"
+GW="${GW%/}"
+noi_dung="$(< "$TEP")"
+printf '%s\n' "${noi_dung//"$GW_MAC_DINH"/"$GW"}" > "$NAP"
+[ "$GW" = "$GW_MAC_DINH" ] || echo "tang2-realm: redirect URI theo gateway $GW"
+
 ket_qua="$("$KCADM" create partialImport --config "$CFG" -r "$REALM" \
-  -s ifResourceExists=SKIP -o -f "$TEP")"
+  -s ifResourceExists=SKIP -o -f "$NAP")"
 # Chỉ in số lượng, không in chi tiết người dùng. Image Keycloak không có grep: dùng bash.
 tom_tat=""
 for k in added skipped overwritten; do

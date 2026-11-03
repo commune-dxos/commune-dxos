@@ -20,6 +20,8 @@
 # | /tro-ly/*     | không           | tro-ly, chỉ GET/HEAD         | 60 req/phút/IP      |
 # | /can-bo,      | không (trang)   | mot-cua-web (cổng cán bộ),   | 300 req/phút/IP     |
 # | /can-bo/*     |                 | chỉ GET/HEAD, noindex, #55   |                     |
+# | /realms/dxos/*| Keycloak tự xử  | Keycloak (đăng nhập realm    | 300 req/phút/IP     |
+# | /resources/*  |                 | dxos), #126                  |                     |
 # | /* (còn lại)  | không           | mot-cua-web (cổng công dân), | 600 req/phút/IP     |
 # |               |                 | chỉ GET/HEAD, #57            |                     |
 # Đường dẫn API quản trị Flowable (repository, management, identity…) bị chặn 403 ở
@@ -70,6 +72,13 @@ upstreams:
     type: roundrobin
     nodes:
       "superset:8088": 1
+
+  # Keycloak (SSO của lõi, #126): trang đăng nhập và endpoint OIDC của realm dxos cho bản triển khai
+  # chỉ có một cổng công khai (reverse proxy HTTPS → APISIX).
+  - id: keycloak
+    type: roundrobin
+    nodes:
+      "keycloak:8080": 1
 
   # API S3 của Garage (object storage của lõi). Chỉ dùng cho link GET đã ký sẵn.
   - id: garage-s3
@@ -330,6 +339,22 @@ routes:
         uri: /bao-cao/login/keycloak
         append_query_string: true
         ret_code: 302
+
+  # SSO Keycloak qua gateway (#126): khi DXOS_KEYCLOAK_URL trỏ về chính địa chỉ gateway (bản demo công khai,
+  # docs/cai-dat.md), trình duyệt đăng nhập ở /realms/dxos/… và tải giao diện ở /resources/…. Chỉ realm dxos:
+  # realm master và bảng quản trị /admin không đi qua gateway. Cookie phiên đăng nhập giữ nguyên.
+  - id: keycloak
+    uris: [/realms/dxos/*, /resources/*]
+    priority: -4
+    plugins:
+      limit-count:
+        count: 300
+        time_window: 60
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        policy: local
+    upstream_id: keycloak
 
   # Cổng công dân (web Tầng 2, #57): mọi đường dẫn không thuộc route nào ở trên, ưu tiên thấp nhất
   # nên không che /public, /api, /workflow, /files. Không cần token (trang tĩnh; dữ liệu vẫn đi qua
