@@ -24,6 +24,7 @@ import { phatHanhGiayTo } from "@/lib/giay-to";
 import { danhGiaHan, hanLuc, ngayGio } from "@/lib/han";
 import { layIdThanhPhan, taiTep } from "@/lib/ho-so";
 import { docThanhPhan } from "@/lib/thanh-phan";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 import { ApiHoSoCongDan, type HoSoCuaToi, type MocTrangThai, type TepDaNop, type TienDoQuyTrinh } from "@/lib/tra-cuu";
 import { dungLuong, kiemMotTep, NHAN_TEP } from "./nop-ho-so/kieu";
 import { KetQuaHoSo } from "./tra-cuu";
@@ -167,6 +168,7 @@ function DanhSach({ token, taoApi }: { token: string; taoApi: TaoApi }) {
 }
 
 export function HoSoCuaToiTrang({ taoApi = taoApiMacDinh }: { taoApi?: TaoApi }) {
+  useTieuDeTrang("Hồ sơ của tôi");
   return (
     <CanDangNhap quayVe="/ho-so">
       {(token) => (
@@ -349,6 +351,7 @@ function ChiTiet({ token, id, taoApi }: { token: string; id: string; taoApi: Tao
   const [duLieu, datDuLieu] = useState<DuLieu | null | "khong-thay">(null);
   const [loi, datLoi] = useState<string | null>(null);
   const [daNopLai, datDaNopLai] = useState(false);
+  useTieuDeTrang(duLieu && duLieu !== "khong-thay" ? `Hồ sơ ${duLieu.hoSo.ma_ho_so}` : "Chi tiết hồ sơ");
 
   const tai = useCallback(() => {
     datLoi(null);
@@ -503,6 +506,8 @@ function ChiTiet({ token, id, taoApi }: { token: string; id: string; taoApi: Tao
 
 export function ChiTietHoSoCongDan({ taoApi = taoApiMacDinh }: { taoApi?: TaoApi }) {
   const { id = "" } = useParams();
+  // Khi chưa đăng nhập; đã đăng nhập thì ChiTiet đổi thành "Hồ sơ <mã>" sau khi tải xong.
+  useTieuDeTrang("Chi tiết hồ sơ");
   return (
     <CanDangNhap quayVe={`/ho-so/${encodeURIComponent(id)}`}>
       {(token) => <ChiTiet key={id} token={token} id={id} taoApi={taoApi} />}

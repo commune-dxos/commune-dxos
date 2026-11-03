@@ -10,6 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ThuTuc } from "@/lib/api";
 import { useThuTuc } from "@/lib/dung-thu-tuc";
+import { useTieuDeTrang } from "@/lib/tieu-de";
 
 export function TaiThuTuc({
   ma,
@@ -21,6 +22,12 @@ export function TaiThuTuc({
   children: (thuTuc: ThuTuc) => ReactNode;
 }) {
   const { trangThai, taiLai } = useThuTuc(ma, taiDanhMuc);
+  // Đã tải xong thì trang con đặt tiêu đề có tên thủ tục.
+  useTieuDeTrang(
+    { "dang-tai": "Đang tải thủ tục", loi: "Chưa tải được thủ tục", "khong-co": `Không có thủ tục mã ${ma}`, xong: undefined }[
+      trangThai.loai
+    ],
+  );
   if (trangThai.loai === "xong") return children(trangThai.thuTuc);
   return (
     <Khung>
