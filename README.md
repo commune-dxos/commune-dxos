@@ -26,7 +26,7 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.9.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.9.1**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
 
 | Trước | Sau |
 |---|---|
@@ -110,6 +110,8 @@ Tài khoản mẫu (dữ liệu giả): `congdan01` (người dân), `canbo01` (
 
 Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md`](docs/cai-dat.md).
 
+**Dùng thử với người dùng thật:** 6 nhiệm vụ theo vai (công dân, cán bộ, lãnh đạo), mỗi nhiệm vụ một câu hỏi, báo lại bằng mẫu issue **Phản hồi dùng thử**: [`docs/thu-nghiem.md`](docs/thu-nghiem.md). Bản demo công khai: https://commune.dzfullstack.com (profile `core`, chưa có dashboard và trợ lý dùng mô hình ngôn ngữ).
+
 ## Demo
 
 Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make quay-demo`), mọi lời gọi đi qua APISIX.
@@ -137,6 +139,7 @@ Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make qua
 | Cách làm một việc, nhãn, quy ước commit | [`docs/quy-trinh-lam-viec.md`](docs/quy-trinh-lam-viec.md), [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Đã thay đổi gì | [`CHANGELOG.md`](CHANGELOG.md) (sinh bằng git-cliff), [Releases](https://github.com/commune-dxos/commune-dxos/releases) |
 | Báo lỗi, đề xuất thủ tục mới | [Issues](https://github.com/commune-dxos/commune-dxos/issues) |
+| Góp ý sau khi dùng thử | mẫu issue **Phản hồi dùng thử** (nhãn `user-feedback`), hướng dẫn ở [`docs/thu-nghiem.md`](docs/thu-nghiem.md) |
 
 Trước mỗi commit: `make check`. Cùng lệnh với CI: `make lint` (gồm `reuse lint`: toàn repo đạt đặc tả [REUSE 3.3](https://reuse.software)), `make test`.
 
