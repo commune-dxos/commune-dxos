@@ -95,7 +95,7 @@ function ThanhBen() {
           </span>
           <span className="flex min-w-0 flex-col leading-tight">
             <span className="text-lg font-black tracking-tight">Cổng cán bộ</span>
-            <span className="truncate text-sm font-bold tracking-[0.25em] text-teal-300 uppercase">Commune DX-OS</span>
+            <span className="truncate font-semibold text-teal-300">Commune DX-OS</span>
           </span>
         </Link>
       </SidebarHeader>
