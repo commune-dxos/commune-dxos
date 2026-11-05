@@ -176,7 +176,7 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
           </Button>
         </form>
 
-        <aside aria-labelledby="ma-o-dau" className="flex flex-col gap-4 rounded-2xl bg-primary-soft p-5 sm:p-6">
+        <aside className="flex flex-col gap-4 rounded-2xl bg-primary-soft p-5 sm:p-6">
           <h2 id="ma-o-dau" className="text-xl font-bold text-primary-soft-foreground">
             Mã hồ sơ nằm ở đâu?
           </h2>
