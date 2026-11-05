@@ -29,7 +29,7 @@ import { TEN_VAI_TRO } from "../lib/quyen";
 export const DUONG_BAO_CAO = "/bao-cao/superset/dashboard/hieu-suat-mot-cua/";
 
 const LOP_MUC =
-  "flex min-h-11 items-center gap-3 rounded-xl px-4 py-2.5 text-base font-semibold no-underline transition-all duration-200";
+  "flex min-h-11 items-center gap-3 rounded-xl px-4 py-2 text-base font-semibold no-underline transition-all duration-200";
 const LOP_MUC_MO = "bg-primary text-white shadow-lg shadow-primary/25 ring-1 ring-white/10";
 const LOP_MUC_THUONG = "text-slate-300 hover:bg-slate-800 hover:text-white";
 
@@ -85,8 +85,8 @@ function MucMenu({
 function Nhom({ nhan, children }: { nhan: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <h2 className="px-4 pt-4 pb-1 text-sm font-bold tracking-[0.2em] text-slate-400 uppercase">{nhan}</h2>
-      <ul className="flex flex-col gap-1">{children}</ul>
+      <h2 className="px-4 pt-3 pb-1 text-sm font-bold tracking-[0.2em] text-slate-400 uppercase">{nhan}</h2>
+      <ul className="flex flex-col gap-0.5">{children}</ul>
     </div>
   );
 }
@@ -101,8 +101,8 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
   const loc = q.get("han") ?? q.get("trang_thai") ?? "";
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
   return (
-    <aside className={cn("nen-toi flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-300", className)}>
-      <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-5">
+    <aside className={cn("nen-toi flex h-full w-64 flex-col overflow-y-auto border-r border-slate-800 bg-slate-900 text-slate-300", className)}>
+      <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-4">
         <Link to={GOC_CAN_BO} onClick={onChon} className="group flex min-w-0 items-center gap-3 rounded-xl text-white no-underline">
           {/* Quy tắc nhận diện: biểu tượng trong suốt đặt trong ô nền trắng khi nằm trên nền tối. */}
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white p-1 transition-transform group-hover:scale-105">
@@ -124,7 +124,7 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
           </button>
         )}
       </div>
-      <nav aria-label="Cổng cán bộ" className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
+      <nav aria-label="Cổng cán bộ" className="flex flex-1 flex-col gap-1 p-3">
         {vaiTro !== "van_thu" && (
           <Nhom nhan="Xử lý hồ sơ">
             <MucMenu den={GOC_CAN_BO} nhan="Hộp việc" bieuTuong={Inbox} dem={viec.length} dangMo={oHopViec && loc === ""} onChon={onChon} />
@@ -161,7 +161,7 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
           <MucMenu den="/" nhan="Cổng công dân" bieuTuong={ExternalLink} ngoai />
         </Nhom>
       </nav>
-      <div className="m-3 flex flex-col gap-1 rounded-2xl bg-slate-800 p-4">
+      <div className="mx-3 mb-3 flex flex-col gap-0.5 rounded-2xl bg-slate-800 px-4 py-3">
         <p className="font-bold text-white">{TEN_VAI_TRO[vaiTro]}</p>
         <p className="text-slate-400">
           {vaiTro === "lanh_dao"
