@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Layout cổng cán bộ (#55, dựng lại #142): thanh bên tối cố định rộng 16 rem bên trái từ 1024 px (ThanhBenCanBo); dưới
+// Layout cổng cán bộ (#55; dựng lại ở #142): thanh bên tối cố định rộng 16 rem bên trái từ 1024 px (ThanhBenCanBo); dưới
 // 1024 px cùng thanh bên đó nằm trong ngăn kéo (Sheet) mở bằng nút Menu. Phần phải: đầu trang dính, nền trắng mờ, có
 // đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung nền slate nhạt, rộng tối đa 80 rem.
 import { Menu } from "lucide-react";
