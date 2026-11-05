@@ -49,7 +49,7 @@ Cổng 5173 khớp `DXOS_CORS_ORIGINS` mặc định (`.env.example` ở gốc) 
 Tài khoản thử (sau `make demo-users` ở gốc repo, dữ liệu giả): cổng công dân `congdan01`, `congdan02`; cổng cán bộ http://localhost:9080/can-bo (dev: http://localhost:5173/can-bo) `canbo01` (hộ tịch), `canbo02` (chứng thực), `lanhdao01` – lần đầu Keycloak đòi cài OTP. `npm run dev:gia` chỉ có dữ liệu giả cho cổng công dân; cổng cán bộ cần lõi chạy.
 
 <p>
-  <img src="../../docs/images/cong-can-bo-hop-viec.webp" alt="Hộp việc cổng cán bộ trên máy tính: thanh bên, ô số liệu, bảng hồ sơ có hạn xử lý đổi màu" width="68%">
+  <img src="../../docs/images/cong-can-bo-hop-viec.webp" alt="Hộp việc cổng cán bộ trên máy tính: thanh bên tối, 4 thẻ số liệu nền màu, bảng hồ sơ có hạn xử lý" width="68%">
   <img src="../../docs/images/cong-can-bo-dien-thoai.webp" alt="Hộp việc cổng cán bộ trên điện thoại" width="28%">
 </p>
 
