@@ -78,11 +78,11 @@ export function BoCucCanBo() {
           <span aria-hidden="true" className="hidden h-8 w-px bg-slate-200 sm:block" />
           <MenuNguoiDung />
         </header>
-        <div id="noi-dung" tabIndex={-1} className="flex min-w-0 flex-1 flex-col outline-none">
+        <main id="noi-dung" tabIndex={-1} className="flex min-w-0 flex-1 flex-col outline-none">
           <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">
             <Outlet />
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
