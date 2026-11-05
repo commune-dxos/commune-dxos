@@ -163,7 +163,9 @@ describe("thông báo trong cổng cán bộ", () => {
   it("dưới 1024 px: nút Mở menu mở ngăn kéo cùng thanh bên, chọn mục thì đóng (#142)", async () => {
     const u = userEvent.setup();
     ve("/can-bo");
-    await u.click(await screen.findByRole("button", { name: "Mở menu" }));
+    const nut = await screen.findByRole("button", { name: "Mở menu" });
+    expect(screen.getByRole("main")).toHaveAttribute("id", "noi-dung");
+    await u.click(nut);
     const ngan = await screen.findByRole("dialog", { name: "Menu cổng cán bộ" });
     await u.click(within(ngan).getByRole("link", { name: /^Thông báo/ }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
