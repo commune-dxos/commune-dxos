@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Khung trang: đầu trang trắng một hàng (biểu tượng, tên cổng, đăng nhập/đăng xuất), dải "bản thử
-// nghiệm", nội dung, chân trang. Bố cục tham khảo shadcn-admin (satnaing, MIT); không chép mã.
+// Khung trang: dải "bản thử nghiệm" tối, đầu trang trắng dính trên cùng (biểu tượng, tên cổng, ô tìm thủ tục bo tròn,
+// liên kết, đăng nhập), nội dung, chân trang tối 4 cột (#141).
 // Điện thoại, máy tính bảng (< 1024 px, #140): chỉ biểu tượng, tên ngắn và nút "Menu"; liên kết và tài khoản nằm trong ngăn kéo
 // (Sheet của shadcn/ui) để tên cổng không bị ép thành cột hẹp.
 import { FolderOpen, LogIn, LogOut, Menu, MessageCircleQuestionMark, Search, UserRound, X } from "lucide-react";
-import { useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { useState, type FormEvent } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { tenHienThi, useXacThuc } from "@/auth/xac-thuc";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -17,7 +16,7 @@ function NutTaiKhoan() {
   if (dangTai) return <span className="h-11 w-32" aria-hidden="true" />;
   if (!nguoiDung) {
     return (
-      <Button variant="outline" size="sm" onClick={() => dangNhap()}>
+      <Button size="sm" onClick={() => dangNhap()}>
         <LogIn aria-hidden="true" />
         Đăng nhập
       </Button>
@@ -25,9 +24,14 @@ function NutTaiKhoan() {
   }
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden items-center gap-2 text-base md:flex">
-        <UserRound aria-hidden="true" className="size-5 text-muted-foreground" />
-        <span className="font-semibold">{tenHienThi(nguoiDung)}</span>
+      <span className="hidden items-center gap-2 text-base xl:flex">
+        <span
+          aria-hidden="true"
+          className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-teal-600 font-black text-white shadow-md shadow-primary/20"
+        >
+          {tenHienThi(nguoiDung).trim().split(/\s+/).pop()?.charAt(0) ?? "?"}
+        </span>
+        <span className="font-bold">{tenHienThi(nguoiDung)}</span>
       </span>
       <Button variant="outline" size="sm" onClick={() => dangXuat()}>
         <LogOut aria-hidden="true" />
@@ -47,7 +51,7 @@ const LIEN_KET = [
 function LienKetHoSo({ doc = false, onChon }: { doc?: boolean; onChon?: () => void }) {
   const { nguoiDung } = useXacThuc();
   const lop = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-11 items-center gap-2 rounded-md px-3 font-semibold no-underline ${doc ? "min-h-12 text-lg" : ""} ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`;
+    `flex min-h-11 items-center gap-2 rounded-full px-4 font-bold no-underline ${doc ? "min-h-12 rounded-xl text-lg" : ""} ${isActive ? "bg-primary-soft text-primary-soft-foreground" : "text-slate-700 hover:bg-slate-100 hover:text-foreground"}`;
   return (
     <>
       {LIEN_KET.filter((l) => !l.canDangNhap || nguoiDung).map(({ den, ten, bieuTuong: BieuTuong }) => (
@@ -89,7 +93,7 @@ function MenuDienThoai() {
             end
             onClick={() => datMo(false)}
             className={({ isActive }) =>
-              `flex min-h-12 items-center rounded-md px-3 text-lg font-semibold no-underline ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`
+              `flex min-h-12 items-center rounded-xl px-4 text-lg font-bold no-underline ${isActive ? "bg-primary-soft text-primary-soft-foreground" : "text-foreground hover:bg-muted"}`
             }
           >
             Danh mục thủ tục
@@ -123,9 +127,11 @@ function MenuDienThoai() {
 
 function DaiThuNghiem() {
   return (
-    <div className="border-b bg-surface">
+    <div className="bg-slate-900 text-slate-200">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
-        <Badge variant="secondary">Thử nghiệm</Badge>
+        <span className="rounded-full bg-teal-400/15 px-3 py-0.5 text-sm font-bold tracking-[0.15em] text-teal-200 uppercase">
+          Thử nghiệm
+        </span>
         <span>
           <span className="hidden sm:inline">Dữ liệu trên cổng là dữ liệu mẫu, không phải hồ sơ thật.</span>
           <span className="sm:hidden">Dữ liệu mẫu, không phải hồ sơ thật.</span>
@@ -135,7 +141,46 @@ function DaiThuNghiem() {
   );
 }
 
+/** Ô tìm thủ tục bo tròn ở đầu trang (trừ trang chủ, nơi đã có ô tìm lớn): chuyển về danh mục với ?tim=. */
+function OTimNhanh() {
+  const [q, datQ] = useState("");
+  const dieuHuong = useNavigate();
+  const gui = (e: FormEvent) => {
+    e.preventDefault();
+    dieuHuong(`/?tim=${encodeURIComponent(q.trim())}#danh-muc`);
+  };
+  return (
+    <form role="search" onSubmit={gui} className="relative hidden w-full max-w-xs lg:block">
+      <label htmlFor="tim-nhanh" className="sr-only">
+        Tìm nhanh thủ tục
+      </label>
+      <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-slate-500" />
+      <input
+        id="tim-nhanh"
+        type="search"
+        value={q}
+        onChange={(e) => datQ(e.target.value)}
+        placeholder="Tìm thủ tục…"
+        autoComplete="off"
+        className="h-11 w-full rounded-full border-2 border-slate-200 bg-slate-50 pr-4 pl-11 text-base outline-none placeholder:text-slate-500 focus-visible:border-ring focus-visible:bg-white focus-visible:ring-[3px] focus-visible:ring-ring/30"
+      />
+    </form>
+  );
+}
+
+function CotChanTrang({ tieuDe, children }: { tieuDe: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-sm font-bold tracking-[0.2em] text-white uppercase">{tieuDe}</h2>
+      <ul className="flex flex-col gap-3">{children}</ul>
+    </div>
+  );
+}
+
+const LOP_LIEN_KET_CHAN = "text-slate-300 no-underline underline-offset-4 hover:text-white hover:underline";
+
 export function BoCuc() {
+  const { pathname } = useLocation();
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -144,52 +189,93 @@ export function BoCuc() {
       >
         Bỏ qua, tới nội dung chính
       </a>
-      <header className="border-b-4 border-primary bg-background">
+      <DaiThuNghiem />
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur-md supports-[backdrop-filter]:bg-white/75">
         <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link to="/" className="flex min-w-0 items-center gap-3 rounded-md text-foreground no-underline">
-            <img src="/mark-64.png" alt="" width={44} height={44} className="size-11 shrink-0" />
-            <span className="flex min-w-0 flex-col leading-tight">
-              <span className="text-lg font-bold whitespace-nowrap">
+          <Link to="/" className="group flex min-w-0 shrink-0 items-center gap-3 rounded-xl text-foreground no-underline">
+            <img src="/mark-64.png" alt="" width={44} height={44} className="size-11 shrink-0 transition-transform group-hover:scale-105" />
+            <span className="flex min-w-0 flex-col leading-none">
+              <span className="text-lg font-black tracking-tight whitespace-nowrap">
                 <span className="hidden sm:inline">Cổng dịch vụ công xã</span>
                 <span className="sm:hidden">Dịch vụ công xã</span>
               </span>
-              <span className="hidden text-sm text-muted-foreground xl:block">Commune DX-OS · Chính quyền số Cấp xã</span>
+              <span className="mt-1 hidden text-sm font-bold tracking-[0.2em] text-primary uppercase xl:block">Commune DX-OS</span>
             </span>
           </Link>
-          <nav aria-label="Tài khoản" className="hidden shrink-0 items-center gap-2 lg:flex">
+          {pathname !== "/" && <OTimNhanh />}
+          <nav aria-label="Tài khoản" className="hidden shrink-0 items-center gap-1 lg:flex">
             <LienKetHoSo />
+            <span aria-hidden="true" className="mx-2 h-8 w-px bg-slate-200" />
             <NutTaiKhoan />
           </nav>
           <MenuDienThoai />
         </div>
       </header>
-      <DaiThuNghiem />
       <main id="noi-dung" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         <Outlet />
       </main>
-      <footer className="border-t bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-            <img src="/logo-ngang.png" alt="Commune DX-OS – Chính quyền số Cấp xã" width={240} height={73} className="h-auto w-48" />
-            <p className="max-w-sm">Phần mềm mã nguồn mở, giấy phép GPL-3.0-or-later. Bản thử nghiệm, dữ liệu mẫu.</p>
+      <footer className="nen-toi border-t border-slate-800 bg-slate-900 text-slate-300">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+          <div className="flex flex-col gap-4">
+            <span className="flex items-center gap-3">
+              {/* Quy tắc nhận diện: biểu tượng trong suốt đặt trong ô nền trắng khi nằm trên nền tối. */}
+              <span className="flex size-12 items-center justify-center rounded-xl bg-white p-1">
+                <img src="/mark-64.png" alt="" width={40} height={40} className="size-10" />
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-lg font-black tracking-tight text-white">COMMUNE DX-OS</span>
+                <span className="text-slate-400">Chính quyền số Cấp xã</span>
+              </span>
+            </span>
+            <p>Làm thủ tục hành chính của xã trực tuyến: xem giấy tờ cần có, nộp hồ sơ, theo dõi kết quả.</p>
           </div>
-          <nav aria-label="Chân trang" className="flex flex-wrap gap-x-6 gap-y-2 font-semibold">
-            <Link to="/tra-cuu" className="text-link underline-offset-4 hover:underline">
-              Tra cứu hồ sơ
-            </Link>
-            <Link to="/hoi-dap" className="text-link underline-offset-4 hover:underline">
-              Hỏi đáp
-            </Link>
-            <a className="text-link underline-offset-4 hover:underline" href="https://commune-dxos.github.io/commune-dxos/">
-              Tài liệu
-            </a>
-            <a className="text-link underline-offset-4 hover:underline" href="https://github.com/commune-dxos/commune-dxos">
-              Mã nguồn
-            </a>
-          </nav>
+          <CotChanTrang tieuDe="Dịch vụ">
+            <li>
+              <Link to="/#danh-muc" className={LOP_LIEN_KET_CHAN}>
+                Danh mục thủ tục
+              </Link>
+            </li>
+            <li>
+              <Link to="/tra-cuu" className={LOP_LIEN_KET_CHAN}>
+                Tra cứu hồ sơ
+              </Link>
+            </li>
+            <li>
+              <Link to="/hoi-dap" className={LOP_LIEN_KET_CHAN}>
+                Hỏi đáp thủ tục
+              </Link>
+            </li>
+            <li>
+              <Link to="/ho-so" className={LOP_LIEN_KET_CHAN}>
+                Hồ sơ của tôi
+              </Link>
+            </li>
+          </CotChanTrang>
+          <CotChanTrang tieuDe="Tài liệu">
+            <li>
+              <a className={LOP_LIEN_KET_CHAN} href="https://commune-dxos.github.io/commune-dxos/">
+                Tài liệu dự án
+              </a>
+            </li>
+            <li>
+              <a className={LOP_LIEN_KET_CHAN} href="https://commune-dxos.github.io/commune-dxos/thu-nghiem/">
+                Hướng dẫn dùng thử
+              </a>
+            </li>
+            <li>
+              <a className={LOP_LIEN_KET_CHAN} href="https://github.com/commune-dxos/commune-dxos">
+                Mã nguồn
+              </a>
+            </li>
+          </CotChanTrang>
+          <CotChanTrang tieuDe="Dự án">
+            <li>Đội DTU_DZ_2 · OLP PMNM 2026</li>
+            <li>Giấy phép GPL-3.0-or-later</li>
+            <li>Bản thử nghiệm, dữ liệu mẫu</li>
+          </CotChanTrang>
         </div>
-        <div className="border-t">
-          <p className="mx-auto max-w-6xl px-4 py-3 text-muted-foreground sm:px-6">DTU_DZ_2 · OLP PMNM 2026</p>
+        <div className="border-t border-slate-800">
+          <p className="mx-auto max-w-6xl px-4 py-5 text-slate-400 sm:px-6">© 2026 DTU_DZ_2 · Phần mềm mã nguồn mở</p>
         </div>
       </footer>
     </div>

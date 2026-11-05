@@ -6,8 +6,8 @@ import { ArrowRight, Banknote, Building2, CircleCheck, Clock, FileText, MessageC
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { Khung } from "@/components/khung";
+import { DauTrang } from "@/components/tieu-de-muc";
 import { TaiThuTuc } from "@/components/tai-thu-tuc";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,7 +44,7 @@ export function ViTri({ ten }: { ten: string }) {
 function Muc({ id, tieuDe, children }: { id: string; tieuDe: string; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-4">
-      <h2 id={id} className="text-2xl font-bold">
+      <h2 id={id} className="text-3xl font-black tracking-tighter">
         {tieuDe}
       </h2>
       {children}
@@ -54,7 +54,7 @@ function Muc({ id, tieuDe, children }: { id: string; tieuDe: string; children: R
 
 function DanhSachGiayTo({ ds }: { ds: ThanhPhan[] }) {
   return (
-    <ul className="flex flex-col divide-y rounded-md border bg-card">
+    <ul className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-card shadow-the">
       {ds.map((t) => (
         <li key={t.ma} className="flex gap-3 p-4">
           <FileText aria-hidden="true" className="mt-1 size-5 shrink-0 text-primary" />
@@ -70,7 +70,7 @@ function DanhSachGiayTo({ ds }: { ds: ThanhPhan[] }) {
 
 function TomTat({ thuTuc }: { thuTuc: ThuTuc }) {
   return (
-    <Card className="gap-5 py-6">
+    <Card className="gap-5 border-slate-100 py-6 shadow-xl shadow-slate-900/10">
       <CardContent className="flex flex-col gap-5">
         <dl className="flex flex-col gap-4">
           {[
@@ -130,22 +130,30 @@ function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
     { ten: "Nhận kết quả", moTa: `Trong ${thoiHan(thuTuc.so_ngay_xu_ly).toLowerCase()} kể từ khi hồ sơ được tiếp nhận.` },
   ];
   return (
+    <>
+    <DauTrang
+      truoc={
+        <nav aria-label="breadcrumb">
+          <ol className="flex flex-wrap items-center gap-2 text-slate-300">
+            <li>
+              <Link to="/" className="text-slate-200 underline-offset-4 hover:text-white hover:underline">
+                Trang chủ
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" className="font-semibold text-white">
+              {thuTuc.ten}
+            </li>
+          </ol>
+        </nav>
+      }
+      nhan={thuTuc.linh_vuc ? `${thuTuc.linh_vuc.ten} · Mã ${thuTuc.ma}` : `Mã thủ tục ${thuTuc.ma}`}
+      tieuDe={thuTuc.ten}
+      moTa="Chuẩn bị giấy tờ theo danh sách dưới đây, nộp trực tuyến rồi theo dõi hồ sơ đang ở bước nào."
+    />
     <Khung className="flex flex-col gap-6">
-      <ViTri ten={thuTuc.ten} />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
-        <div className="flex flex-col gap-10">
-          <header className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              {thuTuc.linh_vuc && <Badge variant="secondary">{thuTuc.linh_vuc.ten}</Badge>}
-              <span className="text-sm text-muted-foreground">
-                Mã thủ tục <span className="font-semibold text-foreground">{thuTuc.ma}</span>
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold sm:text-4xl">{thuTuc.ten}</h1>
-            <p className="max-w-2xl text-lg">
-              Chuẩn bị giấy tờ theo danh sách dưới đây, nộp trực tuyến rồi theo dõi hồ sơ đang ở bước nào.
-            </p>
-          </header>
+        <div className="flex flex-col gap-12">
 
           <div className="lg:hidden">
             <TomTat thuTuc={thuTuc} />
@@ -194,12 +202,13 @@ function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
         </div>
 
         <aside aria-label="Tóm tắt thủ tục" className="hidden lg:block">
-          <div className="sticky top-6">
+          <div className="sticky top-24 lg:-mt-28">
             <TomTat thuTuc={thuTuc} />
           </div>
         </aside>
       </div>
     </Khung>
+    </>
   );
 }
 

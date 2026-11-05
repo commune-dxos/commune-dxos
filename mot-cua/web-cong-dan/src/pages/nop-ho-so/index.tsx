@@ -181,7 +181,7 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
           <p className="text-lg text-muted-foreground">
             {thuTuc.ten} · Bước {chiSo + 1} trên {CAC_BUOC.length}
           </p>
-          <h1 className="text-3xl font-bold sm:text-4xl">{TIEU_DE[duong]}</h1>
+          <h1 className="text-4xl font-black tracking-tighter sm:text-5xl">{TIEU_DE[duong]}</h1>
         </header>
       </div>
       <form noValidate onSubmit={gui} className="flex flex-col gap-10" aria-label={TIEU_DE[duong]}>

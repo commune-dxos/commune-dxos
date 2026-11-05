@@ -47,7 +47,7 @@ export function ThongBao({
         <EmptyMedia className={cn("size-14 rounded-full [&_svg]:size-7", mau)}>
           <BieuTuong aria-hidden="true" />
         </EmptyMedia>
-        <EmptyTitle className={capTieuDe === "h1" ? "text-2xl font-bold" : undefined}>
+        <EmptyTitle className={capTieuDe === "h1" ? "text-2xl font-black tracking-tight" : undefined}>
           <TieuDe className="text-balance">{tieuDe}</TieuDe>
         </EmptyTitle>
         {children && <EmptyDescription className="text-base text-foreground">{children}</EmptyDescription>}

@@ -10,6 +10,7 @@ import { Link, useParams } from "react-router";
 import { useXacThuc } from "@/auth/xac-thuc";
 import { NhanTrangThai } from "@/components/cac-buoc-ho-so";
 import { Khung } from "@/components/khung";
+import { DauTrang } from "@/components/tieu-de-muc";
 import { NutGiayTo } from "@/components/nut-giay-to";
 import { TheHan } from "@/components/the-han";
 import { ThongBao } from "@/components/thong-bao";
@@ -141,7 +142,7 @@ function DanhSach({ token, taoApi }: { token: string; taoApi: TaoApi }) {
           <li key={h.id}>
             <Link
               to={`/ho-so/${h.id}`}
-              className="group flex items-center gap-4 rounded-md border bg-card p-5 text-foreground no-underline shadow-the hover:border-primary"
+              className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-card p-6 text-foreground no-underline shadow-the hover:border-primary"
             >
               <span className="flex min-w-0 flex-1 flex-col gap-2">
                 <span className="text-muted-foreground">{h.thu_tuc?.ten ?? "Thủ tục"}</span>
@@ -172,13 +173,12 @@ export function HoSoCuaToiTrang({ taoApi = taoApiMacDinh }: { taoApi?: TaoApi })
   return (
     <CanDangNhap quayVe="/ho-so">
       {(token) => (
-        <Khung className="flex max-w-4xl flex-col gap-8">
-          <div className="flex flex-col gap-3">
-            <h1 className="text-3xl font-bold">Hồ sơ của tôi</h1>
-            <p className="text-lg text-muted-foreground">Hồ sơ mới nộp ở trên cùng. Bấm vào một hồ sơ để xem từng bước.</p>
-          </div>
-          <DanhSach token={token} taoApi={taoApi} />
-        </Khung>
+        <>
+          <DauTrang hep nhan="Tài khoản công dân" tieuDe="Hồ sơ của tôi" moTa="Hồ sơ mới nộp ở trên cùng. Bấm vào một hồ sơ để xem từng bước." />
+          <Khung className="flex max-w-5xl flex-col gap-8">
+            <DanhSach token={token} taoApi={taoApi} />
+          </Khung>
+        </>
       )}
     </CanDangNhap>
   );
@@ -196,7 +196,7 @@ function GiayToDaNop({ tep }: { tep: TepDaNop[] }) {
   return tep.length === 0 ? (
     <p className="text-muted-foreground">Chưa có giấy tờ nào.</p>
   ) : (
-    <ul className="flex flex-col divide-y rounded-md border">
+    <ul className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-100">
       {tep.map((t) => (
         <li key={t.id} className="flex items-center gap-3 px-4 py-3">
           <FileText aria-hidden="true" className="size-5 shrink-0 text-primary" />
@@ -283,8 +283,8 @@ function BoSung({
   const tepCua = (ma: string) => tep.filter((t) => idThanhPhan[ma] && t.thanh_phan_yeu_cau_id === idThanhPhan[ma]);
 
   return (
-    <section aria-labelledby="bo-sung" className="flex flex-col gap-5 rounded-md border-2 border-warning bg-card p-5 shadow-the">
-      <h2 id="bo-sung" className="text-2xl font-bold">
+    <section aria-labelledby="bo-sung" className="flex flex-col gap-5 rounded-2xl border-2 border-warning bg-card p-6 shadow-the">
+      <h2 id="bo-sung" className="text-2xl font-black tracking-tight">
         Bổ sung hồ sơ
       </h2>
       <Alert variant="destructive">

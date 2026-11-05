@@ -20,16 +20,16 @@ export function TheThuTuc({ thuTuc }: { thuTuc: ThuTuc }) {
     <article
       aria-labelledby={idTieuDe}
       className={cn(
-        "group relative flex w-full flex-col gap-4 rounded-xl border bg-card p-5 shadow-the transition-colors",
-        "hover:border-primary focus-within:border-primary",
-        !trucTuyen && "bg-surface shadow-none",
+        "group relative flex w-full flex-col gap-5 rounded-2xl border border-slate-100 bg-card p-6 shadow-the transition-all duration-300",
+        "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-xl hover:shadow-slate-900/10 focus-within:border-primary",
+        !trucTuyen && "bg-slate-50 shadow-none",
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         {thuTuc.linh_vuc && <Badge variant="secondary">{thuTuc.linh_vuc.ten}</Badge>}
-        <span className="font-semibold text-muted-foreground tabular-nums">{thuTuc.ma}</span>
+        <span className="rounded-full bg-slate-900 px-3 py-0.5 font-bold tracking-wider text-white tabular-nums">{thuTuc.ma}</span>
       </div>
-      <h3 id={idTieuDe} className="text-xl font-bold">
+      <h3 id={idTieuDe} className="text-2xl leading-tight font-black tracking-tight">
         <Link
           to={`/thu-tuc/${encodeURIComponent(thuTuc.ma)}`}
           className="rounded-sm text-foreground no-underline group-hover:text-primary hover:underline"
@@ -37,25 +37,25 @@ export function TheThuTuc({ thuTuc }: { thuTuc: ThuTuc }) {
           {thuTuc.ten}
         </Link>
       </h3>
-      <dl className="flex flex-wrap gap-x-5 gap-y-2">
-        <div className="flex items-center gap-2">
+      <dl className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1">
           <dt>
             <Clock aria-hidden="true" className="size-5 text-primary" />
             <span className="sr-only">Thời hạn</span>
           </dt>
-          <dd className="font-semibold">{thoiHan(thuTuc.so_ngay_xu_ly)}</dd>
+          <dd className="font-bold">{thoiHan(thuTuc.so_ngay_xu_ly)}</dd>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1">
           <dt>
             <Banknote aria-hidden="true" className="size-5 text-primary" />
             <span className="sr-only">Lệ phí</span>
           </dt>
-          <dd className="font-semibold">{lePhi(thuTuc.le_phi)}</dd>
+          <dd className="font-bold">{lePhi(thuTuc.le_phi)}</dd>
         </div>
       </dl>
       {giayTo.length > 0 && (
         <div className="flex flex-col gap-1">
-          <p className="flex items-center gap-2 font-semibold">
+          <p className="flex items-center gap-2 font-bold">
             <FileText aria-hidden="true" className="size-5 text-primary" />
             Giấy tờ cần có ({giayTo.length})
           </p>
@@ -77,7 +77,7 @@ export function TheThuTuc({ thuTuc }: { thuTuc: ThuTuc }) {
             <ArrowRight aria-hidden="true" />
           </Link>
         ) : (
-          <p className="flex items-start gap-2 rounded-md border border-dashed bg-background px-3 py-2">
+          <p className="flex items-start gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3">
             <Building2 aria-hidden="true" className="mt-1 size-5 shrink-0 text-primary" />
             <span>Chưa nhận hồ sơ trực tuyến, nộp tại bộ phận một cửa.</span>
           </p>
