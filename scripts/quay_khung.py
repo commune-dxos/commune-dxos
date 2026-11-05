@@ -8,11 +8,16 @@ rồi ghép 30 khung/giây. Không rơi khung khi máy bận, chữ vẫn nét k
 trỏ, phần tử đang thao tác ở đâu. Trang được mở với "giảm chuyển động" (src/index.css tắt hiệu ứng chuyển tiếp) và chỉ
 chụp khi đã đứng yên, nên không có khung chồng hai trạng thái.
 
+Nhịp theo người thật (video hướng dẫn): đồng hồ của bản quay là số khung, cố định 30 khung/giây. Con trỏ trượt 24 khung
+(0,8 giây, nhanh dần rồi chậm) với vị trí riêng từng khung; cuộn trang 24–40 khung, chụp thật từng khung; gõ 10 ký
+tự/giây (3 khung/ký tự). Khung chỉ giữ nguyên khi trang thật sự đứng yên (đang chờ, đang đọc kết quả).
+
 Ra (thư mục ghi NGOÀI repo):
   <đoạn>.mp4   3840×2160, 30 khung/giây, H.264
   meta.json    { fps, w, h, dpr, doan: { <đoạn>: { tep, khung, vai, tieu_de, con_tro[], su_kien[], moc{} } }, lenh{} }
     con_tro[i]  = [x, y, bấm] theo pixel video, null = ẩn
-    su_kien     = [{ f, loai: bam|go|nhan_manh|tai_len, bbox: [x, y, w, h] (pixel video), nhan }]
+    su_kien     = [{ f, f0, loai: bam|go|nhan_manh|tai_len, bbox: [x, y, w, h] (pixel video), nhan }]
+                  f0 = khung bắt đầu thao tác (cuộn/trượt/gõ), f = khung bấm hoặc gõ xong
     moc         = khung bắt đầu/kết thúc của từng bước (vd. "go_cau_hoi", "da_nop")
     lenh        = kết quả thật của lệnh ở đoạn ket-qua (xác minh chữ ký), kiem-toan, cam-goi, để bản dựng vẽ khung terminal
 
@@ -70,12 +75,17 @@ class Doan:
         self.con_tro_hien = None  # [x, y] theo px CSS của khung nhìn
         self.bam_cho = 0
         self.con_tro, self.su_kien, self.moc_k = [], [], {}
+        self.anh_cuoi = None
 
     # --- khung hình ---
-    def snap(self, giu=1):
-        anh = self.dir / f"s{self.so_anh:05d}.jpg"
-        self.so_anh += 1
-        self.trang.screenshot(path=str(anh), type="jpeg", quality=92)
+    def snap(self, giu=1, chup=True):
+        """chup=False: trang không đổi (vd. chỉ con trỏ đang trượt, con trỏ do bản dựng vẽ) → dùng lại ảnh vừa chụp."""
+        if chup or self.anh_cuoi is None:
+            anh = self.dir / f"s{self.so_anh:05d}.jpg"
+            self.so_anh += 1
+            self.trang.screenshot(path=str(anh), type="jpeg", quality=92)
+            self.anh_cuoi = anh
+        anh = self.anh_cuoi
         for i in range(giu):
             os.link(anh, self.dir / f"f{self.n:05d}.jpg")
             c = self.con_tro_hien
@@ -96,13 +106,15 @@ class Doan:
             raise RuntimeError(f"không thấy phần tử để lấy khung bao ({self.ten})")
         return b
 
-    def su(self, loai, loc, nhan, hop=None):
+    def su(self, loai, loc, nhan, hop=None, f0=None):
+        """f0: khung bắt đầu thao tác (con trỏ bắt đầu trượt / bắt đầu gõ), để bản dựng canh nhịp báo trước."""
         b = hop or self.hop(loc)
-        self.su_kien.append({"f": self.n, "loai": loai, "nhan": nhan,
+        self.su_kien.append({"f": self.n, "f0": self.n if f0 is None else f0, "loai": loai, "nhan": nhan,
                              "bbox": [round(b["x"] * DPR), round(b["y"] * DPR), round(b["width"] * DPR), round(b["height"] * DPR)]})
 
-    def cuon_toi(self, loc, vi_tri=0.38, nac=16):
-        """Cuộn mượt (mỗi nấc một khung) để phần tử nằm ở khoảng vi_tri chiều cao khung nhìn, nếu đang ở ngoài vùng giữa."""
+    def cuon_toi(self, loc, vi_tri=0.38, nac=None):
+        """Cuộn mượt, chụp thật từng khung (0,8–1,3 giây ở 30 khung/giây, nhanh dần rồi chậm), để phần tử nằm ở khoảng
+        vi_tri chiều cao khung nhìn, nếu đang ở ngoài vùng giữa."""
         b = self.hop(loc)
         h = KHUNG["height"]
         if 0.12 * h < b["y"] and b["y"] + b["height"] < 0.86 * h:
@@ -113,25 +125,30 @@ class Doan:
         dich = min(dich, max(0, toi_da))
         if abs(dich - y0) < 4:
             return
+        nac = nac or max(24, min(40, round(abs(dich - y0) / 35)))
         for i in range(1, nac + 1):
             self.trang.evaluate("y => window.scrollTo(0, y)", y0 + (dich - y0) * em(i / nac))
             self.snap()
 
-    def luot(self, x, y, nhip=9):
+    def luot(self, x, y, nhip=24):
+        """Con trỏ trượt tới (x, y) trong nhip khung (0,8 giây), nhanh dần rồi chậm, mỗi khung một vị trí. Trang không
+        đổi khi con trỏ đang trượt nên chỉ chụp ở khung cuối (hiệu ứng rê chuột); các khung giữa dùng lại ảnh."""
         x0, y0 = self.con_tro_hien or (KHUNG["width"] * 0.62, KHUNG["height"] * 0.72)
         for i in range(1, nhip + 1):
-            k = 1 - (1 - i / nhip) ** 3
+            k = em(i / nhip)
             self.con_tro_hien = [x0 + (x - x0) * k, y0 + (y - y0) * k]
-            self.trang.mouse.move(*self.con_tro_hien)
-            self.snap()
+            if i == nhip:
+                self.trang.mouse.move(*self.con_tro_hien)
+            self.snap(chup=i == nhip)
 
     # --- thao tác ---
     def bam(self, loc, nhan, cho=None, giu=8, hop_loc=None):
         loc.wait_for()
+        f0 = self.n
         self.cuon_toi(hop_loc or loc)
         b = self.hop(hop_loc or loc)
         self.luot(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2)
-        self.su("bam", None, nhan, hop=b)
+        self.su("bam", None, nhan, hop=b, f0=f0)
         self.bam_cho = 1
         loc.click()
         if cho:
@@ -139,22 +156,25 @@ class Doan:
         self.trang.wait_for_timeout(350)
         self.snap(giu)
 
-    def go(self, loc, chu, nhan, nhip=1, giu=10):
+    def go(self, loc, chu, nhan, nhip=3, giu=10):
+        """Gõ từng ký tự, mỗi ký tự giữ nhip khung (3 khung = 10 ký tự/giây, tốc độ người thật)."""
         self.bam(loc, nhan, giu=3)
         self.moc(f"go_{nhan}")
+        f0 = self.n
         b = self.hop(loc)
         for ch in chu:
             loc.press_sequentially(ch)
             self.snap(nhip)
-        self.su("go", None, nhan, hop=b)
+        self.su("go", None, nhan, hop=b, f0=f0)
         self.snap(giu)
 
     def tai_len(self, o_tep, tep, nhan):
         nhan_o = o_tep.locator("xpath=ancestor::label[1]")
+        f0 = self.n
         self.cuon_toi(nhan_o)
         b = self.hop(nhan_o)
         self.luot(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2)
-        self.su("tai_len", None, nhan, hop=b)
+        self.su("tai_len", None, nhan, hop=b, f0=f0)
         self.bam_cho = 1
         o_tep.set_input_files(files=[tep])
         self.trang.wait_for_timeout(300)
@@ -163,8 +183,9 @@ class Doan:
     def nhan_manh(self, loc, nhan, giu=45):
         """Thông tin then chốt: bản dựng khoanh/tô dạ quang và giữ camera ≥ 1 giây."""
         loc.wait_for()
+        f0 = self.n
         self.cuon_toi(loc)
-        self.su("nhan_manh", loc, nhan)
+        self.su("nhan_manh", loc, nhan, f0=f0)
         self.snap(giu)
 
     def xong(self, ra):
