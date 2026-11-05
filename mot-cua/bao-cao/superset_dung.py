@@ -61,12 +61,20 @@ COT_THOI_GIAN = {"thang", "ngay_nhan", "ngay_hoan_tat", "han_xu_ly"}
 NHAN_COT = {"thang": "Tháng", "ten_thu_tuc": "Thủ tục", "ten_linh_vuc": "Lĩnh vực", "thu_tuc": "Mã thủ tục",
             "linh_vuc": "Mã lĩnh vực", "ket_qua": "Kết quả", "tre_han": "Trễ hạn"}
 
+CO_BIG_NUMBER = {"header_font_size": 0.5, "subtitle_font_size": 0.08}
+# Chủ sở hữu hiển thị trên dashboard (#144): Superset chỉ có người dùng SSO, dashboard dựng bằng mã nên trước đây
+# không có chủ ("Not available"). Dùng một tài khoản hệ thống không đăng nhập được.
+CHU = {"username": "bao_cao_mot_cua", "first_name": "Bộ phận", "last_name": "Một cửa",
+       "email": "bao-cao@mot-cua.invalid"}
+
 # Chart: tên → (dataset, viz_type, cột nhóm, metric, form_data thêm). Cột "thang" là trục thời gian.
 CHART = {
+    # Big Number (#144): con số to (header 0,5), dòng phụ nhỏ (subtitle 0,08 chiều cao thẻ). Superset 6.1 đọc "subtitle";
+    # "subheader" cũ bị đổi sang subtitle với cỡ mặc định 0,15 nên gần bằng con số khi khung thấp.
     "Hồ sơ đã đóng": ("fct_ho_so", "big_number_total", [], ["so_ho_so"],
-                      {"subheader": "hoàn tất hoặc từ chối", "y_axis_format": ",d"}),
+                      {"subtitle": "hoàn tất hoặc từ chối", "y_axis_format": ",d", **CO_BIG_NUMBER}),
     "Tỷ lệ trễ hạn": ("fct_ho_so", "big_number_total", [], ["ty_le_tre_han"],
-                      {"subheader": "đóng sau 17:00 ngày hạn", "y_axis_format": ".1%"}),
+                      {"subtitle": "đóng sau 17:00 ngày hạn", "y_axis_format": ".1%", **CO_BIG_NUMBER}),
     "Thời gian giải quyết theo thủ tục và tháng": (
         "fct_ho_so", "table", ["thang", "ten_thu_tuc"],
         ["so_ho_so", "tb_ngay_lam_viec", "trung_vi_ngay_lam_viec", "tb_gio_giai_quyet", "trung_vi_gio_giai_quyet",
@@ -74,10 +82,13 @@ CHART = {
         {"query_mode": "aggregate", "order_desc": True, "table_timestamp_format": "%m/%Y"}),
     "Tỷ lệ trễ hạn theo tháng và thủ tục": (
         "hieu_suat_thang", "echarts_timeseries_bar", ["ten_thu_tuc"], ["ty_le_tre_han"],
+        # show_value: tháng có tỷ lệ 0% vẫn hiện nhãn "0%" thay vì ô trống (#144)
         {"x_axis": "thang", "time_grain_sqla": "P1M", "y_axis_format": ".0%", "show_legend": True,
-         "x_axis_time_format": "%m/%Y"}),
+         "x_axis_time_format": "%m/%Y", "show_value": True}),
+    # Nhãn quanh bánh đã ghi tên lĩnh vực: bỏ chú giải (cũng bỏ nút "All/Inv" tiếng Anh của chú giải).
     "Số hồ sơ theo lĩnh vực": ("fct_ho_so", "pie", ["ten_linh_vuc"], ["so_ho_so"],
-                               {"show_legend": True, "show_labels": True, "label_type": "key_value"}),
+                               {"show_legend": False, "show_labels": True, "label_type": "key_value",
+                                "number_format": ",d"}),
 }
 # Bố cục: mỗi dòng là danh sách (tên chart, độ rộng trên 12 cột).
 BO_CUC = [
@@ -192,6 +203,17 @@ def dung():
         chart[ten] = s
     db.session.flush()
 
+    chu = sm.find_user(username=CHU["username"])
+    if chu is None:
+        chu = sm.add_user(CHU["username"], CHU["first_name"], CHU["last_name"], CHU["email"],
+                          sm.find_role("Public"), password=uuid.uuid4().hex + uuid.uuid4().hex)
+        if not chu:
+            raise RuntimeError(f"không tạo được người dùng hệ thống {CHU['username']}")
+    chu.active = False  # không đăng nhập được (AUTH_OAUTH cũng không dùng mật khẩu)
+    for s in chart.values():
+        s.owners = [chu]
+    db.session.flush()
+
     d = db.session.query(Dashboard).filter_by(uuid=_uuid("dashboard")).one_or_none()
     if d is None:
         d = Dashboard(uuid=_uuid("dashboard"))
@@ -202,6 +224,8 @@ def dung():
     d.json_metadata = json.dumps({"refresh_frequency": 0, "color_scheme": "supersetColors",
                                   "cross_filters_enabled": True}, ensure_ascii=False)
     d.roles = [vai]
+    d.owners = [chu]
+    d.created_by = d.changed_by = chu
     db.session.commit()
     print(f"superset-init: báo cáo một cửa: kết nối \"{TEN_KET_NOI}\", {len(ds)} dataset, {len(chart)} chart, "
           f"dashboard /superset/dashboard/{SLUG}/ (vai \"{VAI_XEM}\")", flush=True)

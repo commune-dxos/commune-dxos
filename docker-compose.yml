@@ -89,12 +89,18 @@ x-superset: &superset
     DXOS_KEYCLOAK_REALM: dxos
     DXOS_SUPERSET_CLIENT: bao_cao_superset
     DXOS_SUPERSET_TEN: Báo cáo một cửa
+    # Nhận diện của Tầng 2 cho thanh trên cùng của Superset (#144): logo ngang của cổng (mount vào thư mục tĩnh
+    # của Superset ở dưới, vì Superset tự thêm tiền tố /bao-cao), bấm logo về dashboard một cửa, màu xanh ngọc.
+    DXOS_SUPERSET_LOGO: /./static/assets/images/dxos-logo.png
+    DXOS_SUPERSET_LOGO_LINK: /superset/dashboard/hieu-suat-mot-cua/
+    DXOS_SUPERSET_MAU_CHINH: "#0F766E"
     # Client role của dxos_api (do dịch vụ Tầng 2 khai) → vai Superset (do mot-cua/bao-cao/ dựng).
     DXOS_SUPERSET_VAI_TRO: '{"lanh_dao": ["Lãnh đạo xã"]}'
     DXOS_BAO_CAO_DB: ${POSTGRES_DB:-commune}
   volumes:
     - ./nen-tang/superset:/nen-tang/superset:ro
     - ./mot-cua:/tang2:ro
+    - ./mot-cua/web-cong-dan/public/logo-ngang.png:/app/superset/static/assets/images/dxos-logo.png:ro
     - superset-secrets:/run/dxos-secrets:ro
 
 services:
