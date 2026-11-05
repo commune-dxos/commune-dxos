@@ -131,17 +131,20 @@ describe("form nộp hồ sơ (bản mẫu)", () => {
     expect(await screen.findByRole("heading", { name: "Đăng nhập để nộp hồ sơ" })).toBeInTheDocument();
   });
 
-  it("Poka-yoke: thiếu giấy tờ bắt buộc thì tóm tắt lỗi đầu form, đủ thì sang kiểm tra lại rồi nộp", async () => {
+  it("Poka-yoke: thiếu giấy tờ bắt buộc thì báo lỗi tại ô, đủ thì sang kiểm tra lại rồi nộp", async () => {
     const u = userEvent.setup();
     ve("/nop-ho-so/KS01");
     expect(await screen.findByRole("heading", { level: 1, name: "Người nộp hồ sơ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Họ và tên")).toHaveValue("Nguyễn Văn Mẫu");
 
     await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    const loi1 = screen.getByRole("alert");
-    expect(within(loi1).getByRole("link", { name: "Nhập số điện thoại" })).toBeInTheDocument();
-    expect(loi1).toHaveFocus();
+    // Lỗi chỉ hiện một lần, ngay tại ô (#140); con trỏ về ô sai đầu tiên, trình đọc màn hình nghe câu tóm tắt.
+    expect(screen.getAllByText("Nhập số điện thoại")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Còn 1 mục cần sửa: Nhập số điện thoại.");
+    expect(screen.getByRole("alert")).toHaveClass("sr-only");
     expect(screen.getByLabelText("Số điện thoại")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Số điện thoại")).toHaveFocus();
+    expect(screen.getByLabelText("Số điện thoại")).toHaveAccessibleDescription(/Nhập số điện thoại/);
 
     await u.type(screen.getByLabelText("Số điện thoại"), "0900000001");
     await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
@@ -149,11 +152,11 @@ describe("form nộp hồ sơ (bản mẫu)", () => {
 
     await u.upload(screen.getByLabelText(/Chọn tệp cho Tờ khai/), anh("to-khai.png"));
     await u.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    const loi2 = screen.getByRole("alert");
-    expect(within(loi2).getAllByRole("link").map((a) => a.textContent)).toEqual([
-      "Chưa tải giấy chứng sinh",
-      "Chưa tải giấy tờ tùy thân của người đi đăng ký",
-    ]);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Còn 2 mục cần sửa: Chưa tải giấy chứng sinh; Chưa tải giấy tờ tùy thân của người đi đăng ký.",
+    );
+    expect(screen.getAllByText("Chưa tải giấy chứng sinh")).toHaveLength(1);
+    expect(screen.getByLabelText(/Chọn tệp cho Giấy chứng sinh/)).toHaveFocus();
 
     await u.upload(screen.getByLabelText(/Chọn tệp cho Giấy chứng sinh/), anh("chung-sinh.png"));
     await u.upload(screen.getByLabelText(/Chọn tệp cho Giấy tờ tùy thân/), anh("cccd.png"));

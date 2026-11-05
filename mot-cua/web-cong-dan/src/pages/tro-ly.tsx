@@ -4,13 +4,13 @@
 // liên kết tới nguồn n ngay bên dưới (đoạn tài liệu, mã thủ tục, đường dẫn trang thủ tục). Khi trợ lý chỉ tìm
 // kiếm (chưa bật mô hình) hay mô hình lỗi, hiện các đoạn tài liệu liên quan kèm lời giải thích. Câu hỏi chỉ nằm
 // trong trang (không lưu); ?ma=KS01 hỏi riêng về một thủ tục, ?q=… điền sẵn câu hỏi.
-import { BookOpenText, MessageCircleQuestionMark, SendHorizontal, UserRound, X } from "lucide-react";
+import { BookOpenText, MessageCircleQuestionMark, PowerOff, Search, SendHorizontal, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Khung } from "@/components/khung";
 import { ThongBao } from "@/components/thong-bao";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { LoiApi } from "@/lib/api";
@@ -18,10 +18,11 @@ import { useTieuDeTrang } from "@/lib/tieu-de";
 import {
   hoiTroLy,
   kiemCauHoi,
+  kiemTroLy,
   nhanCheDo,
   tachTrichDan,
-  thongTinTroLy,
   TOI_DA_CAU_HOI,
+  troLyKhongSanSang,
   type ThongTinTroLy,
   type TraLoiTroLy,
 } from "@/lib/tro-ly";
@@ -36,6 +37,7 @@ const GOI_Y = [
 type Luot =
   | { id: number; cauHoi: string; loai: "dang-hoi" }
   | { id: number; cauHoi: string; loai: "loi"; thongDiep: string }
+  | { id: number; cauHoi: string; loai: "tam-ngung" }
   | { id: number; cauHoi: string; loai: "xong"; traLoi: TraLoiTroLy };
 
 function CauTraLoi({ luotId, traLoi }: { luotId: number; traLoi: TraLoiTroLy }) {
@@ -107,9 +109,36 @@ function CauTraLoi({ luotId, traLoi }: { luotId: number; traLoi: TraLoiTroLy }) 
   );
 }
 
+/** Trợ lý không chạy trên bản triển khai này (demo chỉ bật profile core, chưa nạp kho tri thức): thông báo trung
+ *  tính, không kiểu báo lỗi, chỉ người dân sang danh mục thủ tục và tra cứu. */
+function TroLyChuaBat() {
+  return (
+    <ThongBao
+      loai="thong_tin"
+      bieuTuong={PowerOff}
+      tieuDe="Trợ lý AI chưa bật trên bản demo này"
+      role="status"
+      hanhDong={
+        <>
+          <Link to="/#danh-muc" className={buttonVariants()}>
+            Xem danh mục thủ tục
+          </Link>
+          <Link to="/tra-cuu" className={buttonVariants({ variant: "outline" })}>
+            <Search aria-hidden="true" />
+            Tra cứu hồ sơ
+          </Link>
+        </>
+      }
+    >
+      Giấy tờ cần có, thời hạn và lệ phí của từng thủ tục đều có trong danh mục. Cần hỏi thêm, hãy liên hệ bộ phận một
+      cửa của xã.
+    </ThongBao>
+  );
+}
+
 export function TroLy({
   hoi = hoiTroLy,
-  layThongTin = thongTinTroLy,
+  layThongTin = kiemTroLy,
 }: {
   hoi?: (cauHoi: string, ma: string | null) => Promise<TraLoiTroLy>;
   layThongTin?: () => Promise<ThongTinTroLy>;
@@ -120,6 +149,8 @@ export function TroLy({
   const [loi, datLoi] = useState<string | null>(null);
   const [luot, datLuot] = useState<Luot[]>([]);
   const [thongTin, datThongTin] = useState<ThongTinTroLy | null>(null);
+  /** null: đang kiểm; false: trợ lý không dùng được trên bản này. */
+  const [sanSang, datSanSang] = useState<boolean | null>(null);
   const soLuot = useRef(0);
   const cuoi = useRef<HTMLDivElement>(null);
   const dangHoi = luot.some((l) => l.loai === "dang-hoi");
@@ -128,8 +159,12 @@ export function TroLy({
   useEffect(() => {
     let huy = false;
     layThongTin()
-      .then((tt) => !huy && datThongTin(tt))
-      .catch(() => undefined);
+      .then((tt) => {
+        if (huy) return;
+        datThongTin(tt);
+        datSanSang(true);
+      })
+      .catch((e: unknown) => !huy && datSanSang(!troLyKhongSanSang(e)));
     return () => {
       huy = true;
     };
@@ -150,6 +185,12 @@ export function TroLy({
       const traLoi = await hoi(q, ma);
       datLuot((ds) => ds.map((x) => (x.id === id ? { id, cauHoi: x.cauHoi, loai: "xong", traLoi } : x)));
     } catch (e) {
+      if (troLyKhongSanSang(e)) {
+        datLuot((ds) => ds.map((x) => (x.id === id ? { id, cauHoi: x.cauHoi, loai: "tam-ngung" } : x)));
+        // Kiểm lại: trợ lý tắt hẳn thì đổi cả trang sang thông báo "chưa bật"; chỉ bận thì vẫn hỏi tiếp được.
+        layThongTin().catch((e2: unknown) => troLyKhongSanSang(e2) && datSanSang(false));
+        return;
+      }
       const thongDiep = e instanceof LoiApi ? e.message : "Trợ lý chưa trả lời được. Vui lòng thử lại.";
       datLuot((ds) => ds.map((x) => (x.id === id ? { id, cauHoi: x.cauHoi, loai: "loi", thongDiep } : x)));
     }
@@ -196,7 +237,8 @@ export function TroLy({
       </div>
 
       <div aria-live="polite" className="flex flex-col gap-6">
-        {luot.length === 0 && (
+        {sanSang === false && luot.length === 0 && <TroLyChuaBat />}
+        {sanSang !== false && luot.length === 0 && (
           <div className="flex flex-col gap-3">
             <p className="font-semibold">Câu hỏi gợi ý</p>
             <ul className="flex flex-wrap gap-2">
@@ -226,6 +268,18 @@ export function TroLy({
                     Đang tra cứu tài liệu và soạn câu trả lời… (có thể mất đến một phút)
                   </p>
                 )}
+                {l.loai === "tam-ngung" &&
+                  (sanSang === false ? (
+                    <TroLyChuaBat />
+                  ) : (
+                    <p role="status" className="rounded-md border-l-4 border-primary bg-surface px-4 py-3 text-lg">
+                      Trợ lý đang bận, chưa trả lời được câu này. Vui lòng hỏi lại sau ít phút hoặc{" "}
+                      <Link to="/#danh-muc" className="text-link underline">
+                        xem danh mục thủ tục
+                      </Link>
+                      .
+                    </p>
+                  ))}
                 {l.loai === "loi" && (
                   <ThongBao loai="loi" tieuDe="Chưa trả lời được" role="alert" className="items-start text-left">
                     {l.thongDiep}
@@ -239,42 +293,44 @@ export function TroLy({
         <div ref={cuoi} />
       </div>
 
-      <form noValidate onSubmit={onSubmit} aria-label="Gửi câu hỏi cho trợ lý" className="flex flex-col gap-3">
-        <Field data-invalid={!!loi}>
-          <FieldLabel htmlFor="cau-hoi">Câu hỏi của bạn</FieldLabel>
-          <FieldDescription id="cau-hoi-goi-y">
-            Không nhập số giấy tờ, số điện thoại hay thông tin cá nhân. Enter để gửi, Shift+Enter để xuống dòng.
-          </FieldDescription>
-          {loi && (
-            <FieldError role={undefined} id="cau-hoi-loi">
-              {loi}
-            </FieldError>
-          )}
-          <Textarea
-            id="cau-hoi"
-            rows={2}
-            maxLength={TOI_DA_CAU_HOI}
-            aria-describedby={["cau-hoi-goi-y", loi && "cau-hoi-loi"].filter(Boolean).join(" ")}
-            aria-invalid={loi ? true : undefined}
-            value={cauHoi}
-            onChange={(e) => datCauHoi(e.target.value)}
-            onKeyDown={onKeyDown}
-          />
-        </Field>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Trợ lý tự động chỉ để tham khảo. Cần chắc chắn, hãy hỏi Bộ phận Một cửa hoặc{" "}
-            <Link to="/" className="text-link underline">
-              xem danh mục thủ tục
-            </Link>
-            .
-          </p>
-          <Button type="submit" disabled={dangHoi}>
-            <SendHorizontal aria-hidden="true" />
-            Gửi câu hỏi
-          </Button>
-        </div>
-      </form>
+      {sanSang !== false && (
+        <form noValidate onSubmit={onSubmit} aria-label="Gửi câu hỏi cho trợ lý" className="flex flex-col gap-3">
+          <Field data-invalid={!!loi}>
+            <FieldLabel htmlFor="cau-hoi">Câu hỏi của bạn</FieldLabel>
+            <FieldDescription id="cau-hoi-goi-y">
+              Không nhập số giấy tờ, số điện thoại hay thông tin cá nhân. Enter để gửi, Shift+Enter để xuống dòng.
+            </FieldDescription>
+            {loi && (
+              <FieldError role={undefined} id="cau-hoi-loi">
+                {loi}
+              </FieldError>
+            )}
+            <Textarea
+              id="cau-hoi"
+              rows={2}
+              maxLength={TOI_DA_CAU_HOI}
+              aria-describedby={["cau-hoi-goi-y", loi && "cau-hoi-loi"].filter(Boolean).join(" ")}
+              aria-invalid={loi ? true : undefined}
+              value={cauHoi}
+              onChange={(e) => datCauHoi(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </Field>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Trợ lý tự động chỉ để tham khảo. Cần chắc chắn, hãy hỏi Bộ phận Một cửa hoặc{" "}
+              <Link to="/" className="text-link underline">
+                xem danh mục thủ tục
+              </Link>
+              .
+            </p>
+            <Button type="submit" disabled={dangHoi}>
+              <SendHorizontal aria-hidden="true" />
+              Gửi câu hỏi
+            </Button>
+          </div>
+        </form>
+      )}
     </Khung>
   );
 }

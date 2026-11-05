@@ -63,6 +63,22 @@ export async function thongTinTroLy(cauHinh: CauHinh = cauHinhMacDinh, goi: type
   return goiGateway<ThongTinTroLy>(cauHinh, goi, "/tro-ly/thong-tin", { method: "GET" });
 }
 
+/** Kiểm trợ lý dùng được trước khi người dân hỏi: lấy chế độ rồi thử tìm một từ khóa (GET /tro-ly/tim). Bản triển
+ *  khai chưa nạp kho tri thức hay chưa chạy dịch vụ tìm kiếm (ví dụ demo chỉ bật profile core) trả 503 ở đây, nên
+ *  trang hiện thông báo "chưa bật" ngay thay vì để người dân hỏi rồi gặp lỗi. */
+export async function kiemTroLy(cauHinh: CauHinh = cauHinhMacDinh, goi: typeof fetch = (...a) => fetch(...a)) {
+  const tt = await thongTinTroLy(cauHinh, goi);
+  await goiGateway<unknown>(cauHinh, goi, "/tro-ly/tim?q=" + encodeURIComponent("thủ tục"), { method: "GET" });
+  return tt;
+}
+
+/** Lỗi do phía máy chủ (trợ lý không chạy, chưa có kho tri thức, đang bận, mất kết nối): không phải lỗi của người
+ *  dân, trang hiện thông báo trung tính. 400 (câu hỏi không hợp lệ) và 429 (hỏi quá nhanh) vẫn là lỗi cần sửa. */
+export function troLyKhongSanSang(e: unknown) {
+  if (!(e instanceof LoiApi)) return true;
+  return e.trangThai === null || e.trangThai === 404 || e.trangThai >= 500;
+}
+
 export type PhanTraLoi = { loai: "chu"; noiDung: string } | { loai: "trich"; so: number };
 
 /** Tách câu trả lời thành đoạn chữ và trích dẫn [n] (n có trong danh sách nguồn) để hiện thành liên kết. */
