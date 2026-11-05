@@ -102,14 +102,14 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
   return (
     <aside className={cn("nen-toi flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-300", className)}>
-      <div className="flex items-center justify-between gap-2 border-b border-slate-800 p-5">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-5">
         <Link to={GOC_CAN_BO} onClick={onChon} className="group flex min-w-0 items-center gap-3 rounded-xl text-white no-underline">
           {/* Quy tắc nhận diện: biểu tượng trong suốt đặt trong ô nền trắng khi nằm trên nền tối. */}
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white p-1 transition-transform group-hover:scale-105">
             <img src="/mark-64.png" alt="" width={36} height={36} className="size-9" />
           </span>
           <span className="flex min-w-0 flex-col leading-tight">
-            <span className="text-lg font-black tracking-tight">Cổng cán bộ</span>
+            <span className="text-lg font-black tracking-tight whitespace-nowrap">Cổng cán bộ</span>
             <span className="truncate font-semibold text-teal-300">Commune DX-OS</span>
           </span>
         </Link>
