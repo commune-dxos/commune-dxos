@@ -34,7 +34,7 @@ const TEN_TRANG_THAI: Record<TrangThaiLich, string> = {
 const TEN_THU = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ nhật"];
 const MUI_GIO = "Asia/Ho_Chi_Minh";
 const LOP_CHON =
-  "h-12 w-full rounded-md border-2 border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring";
+  "h-12 w-full rounded-xl border-2 border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring";
 
 // --- Ngày giờ theo giờ Việt Nam (UTC+7, không có giờ mùa hè) -----------------------------------------------
 const dinhDangVN = new Intl.DateTimeFormat("en-CA", {
@@ -406,7 +406,7 @@ export function LichCongTacTrang() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Lịch công tác</h1>
+          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Lịch công tác</h1>
           <p className="text-lg text-muted-foreground">
             Tuần từ {ngayDu(tuan)} đến {ngayDu(congNgay(tuan, 6))}
             {vaiTro !== "can_bo" && choDuyet > 0 && ` · ${choDuyet} lịch chờ duyệt`}

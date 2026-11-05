@@ -93,7 +93,7 @@ export function FormXuLy({
                     <Label
                       key={v}
                       htmlFor={`${ma}-${v}`}
-                      className="flex h-12 cursor-pointer items-center gap-3 rounded-md border-2 border-input px-4 text-base font-semibold has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-soft"
+                      className="flex h-12 cursor-pointer items-center gap-3 rounded-xl border-2 border-input px-4 text-base font-semibold has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-soft"
                     >
                       <RadioGroupItem value={v} id={`${ma}-${v}`} />
                       {v === "co" ? "Có" : "Không"}
