@@ -1,0 +1,99 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Mẫu phản hồi của người dùng thật trong buổi dùng thử (giai đoạn B, #135).
+# Mỗi phản hồi một issue, tự gắn nhãn user-feedback. Hướng dẫn buổi thử: docs/thu-nghiem.md.
+name: Phản hồi dùng thử
+description: Dành cho người thử Commune DX-OS – báo lỗi, chỗ khó hiểu, góp ý hoặc điều bạn thấy tốt
+title: "[Dùng thử] "
+labels:
+  - user-feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã dùng thử. Mỗi lần gửi chỉ ghi **một** chuyện; có nhiều chuyện thì gửi nhiều lần.
+        Danh sách nhiệm vụ và câu hỏi: [Hướng dẫn dùng thử](https://github.com/commune-dxos/commune-dxos/blob/develop/docs/thu-nghiem.md).
+
+        > **Không dán mật khẩu, mã OTP, họ tên, số điện thoại, số CCCD hay ảnh giấy tờ thật.**
+        > Issue này công khai. Mọi tài khoản và hồ sơ trong bản thử là dữ liệu giả; khi cần nói tới một hồ sơ thì ghi mã hồ sơ (dạng `HS20261101-000042`).
+  - type: dropdown
+    id: vai-tro
+    attributes:
+      label: Bạn thử với vai trò nào?
+      options:
+        - Công dân (người nộp hồ sơ)
+        - Cán bộ một cửa, cán bộ chuyên môn
+        - Lãnh đạo xã
+        - Văn thư
+        - Sinh viên, người phát triển
+    validations:
+      required: true
+  - type: dropdown
+    id: nhiem-vu
+    attributes:
+      label: Bạn đang làm nhiệm vụ nào?
+      description: Theo số nhiệm vụ trong hướng dẫn dùng thử.
+      options:
+        - 1. Tìm thủ tục và nộp hồ sơ
+        - 2. Tra cứu tiến độ hồ sơ
+        - 3. Cán bộ tiếp nhận, thẩm định hồ sơ
+        - 4. Lãnh đạo phê duyệt hồ sơ, ký văn bản
+        - 5. Hỏi đáp thủ tục (trợ lý)
+        - 6. Dashboard báo cáo
+        - Việc khác, không có trong danh sách
+    validations:
+      required: true
+  - type: dropdown
+    id: loai
+    attributes:
+      label: Loại phản hồi
+      options:
+        - Lỗi – hệ thống làm sai hoặc báo lỗi
+        - Khó hiểu – không biết bấm gì, chữ khó hiểu
+        - Góp ý – muốn thêm hoặc đổi một điều
+        - Khen – điều bạn thấy tốt, nên giữ
+    validations:
+      required: true
+  - type: textarea
+    id: chuyen-gi
+    attributes:
+      label: Chuyện gì đã xảy ra?
+      description: Bạn đã bấm gì, ở trang nào, thấy gì, và bạn mong thấy gì. Có thể kéo thả ảnh chụp màn hình (che thông tin cá nhân trước khi gửi).
+      placeholder: |
+        Ở trang Nộp hồ sơ, bước Giấy tờ, tôi bấm "Tiếp tục" thì …
+        Tôi mong …
+    validations:
+      required: true
+  - type: dropdown
+    id: muc-do
+    attributes:
+      label: Mức độ ảnh hưởng
+      options:
+        - Chặn – không làm tiếp được
+        - Khó chịu – làm được nhưng mất công, phải thử nhiều lần
+        - Nhỏ – không ảnh hưởng tới việc đang làm
+        - Không áp dụng (góp ý, khen)
+    validations:
+      required: true
+  - type: input
+    id: thiet-bi
+    attributes:
+      label: Thiết bị và trình duyệt
+      placeholder: "Ví dụ: điện thoại Android, Chrome · máy tính Windows, Edge"
+    validations:
+      required: true
+  - type: input
+    id: dia-chi
+    attributes:
+      label: Bạn thử ở đâu?
+      description: Bản demo công khai hay bản chạy trên máy.
+      placeholder: "https://commune.dzfullstack.com hoặc http://localhost:9080"
+    validations:
+      required: false
+  - type: checkboxes
+    id: cam-ket
+    attributes:
+      label: Trước khi gửi
+      options:
+        - label: Tôi không dán mật khẩu, mã OTP hay thông tin cá nhân thật vào phản hồi này.
+          required: true
