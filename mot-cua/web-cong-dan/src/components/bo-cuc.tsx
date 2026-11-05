@@ -122,17 +122,14 @@ function MenuDienThoai() {
 }
 
 function DaiThuNghiem() {
-  const { nguoiDung } = useXacThuc();
   return (
     <div className="border-b bg-surface">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-base sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
         <Badge variant="secondary">Thử nghiệm</Badge>
-        <span className="text-muted-foreground">Dữ liệu trên cổng là dữ liệu mẫu, không phải hồ sơ thật.</span>
-        {nguoiDung && (
-          <span className="basis-full lg:hidden">
-            Đã đăng nhập: <strong>{tenHienThi(nguoiDung)}</strong>
-          </span>
-        )}
+        <span>
+          <span className="hidden sm:inline">Dữ liệu trên cổng là dữ liệu mẫu, không phải hồ sơ thật.</span>
+          <span className="sm:hidden">Dữ liệu mẫu, không phải hồ sơ thật.</span>
+        </span>
       </div>
     </div>
   );
@@ -171,23 +168,28 @@ export function BoCuc() {
         <Outlet />
       </main>
       <footer className="border-t bg-surface">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[auto_1fr] md:gap-16">
-          <img src="/logo-ngang.png" alt="Commune DX-OS – Chính quyền số Cấp xã" width={240} height={73} className="h-auto w-60" />
-          <div className="flex flex-col gap-3 text-base text-muted-foreground">
-            <p>
-              Bản thử nghiệm của dự án mã nguồn mở Commune DX-OS, giấy phép GPL-3.0-or-later. Dữ liệu trên cổng là dữ liệu
-              mẫu, không phải hồ sơ thật.
-            </p>
-            <p className="flex flex-wrap gap-x-6 gap-y-2">
-              <a className="text-link underline" href="https://github.com/commune-dxos/commune-dxos">
-                Mã nguồn
-              </a>
-              <a className="text-link underline" href="https://commune-dxos.github.io/commune-dxos/">
-                Tài liệu
-              </a>
-              <span>DTU_DZ_2 · OLP PMNM 2026</span>
-            </p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+            <img src="/logo-ngang.png" alt="Commune DX-OS – Chính quyền số Cấp xã" width={240} height={73} className="h-auto w-48" />
+            <p className="max-w-sm">Phần mềm mã nguồn mở, giấy phép GPL-3.0-or-later. Bản thử nghiệm, dữ liệu mẫu.</p>
           </div>
+          <nav aria-label="Chân trang" className="flex flex-wrap gap-x-6 gap-y-2 font-semibold">
+            <Link to="/tra-cuu" className="text-link underline-offset-4 hover:underline">
+              Tra cứu hồ sơ
+            </Link>
+            <Link to="/hoi-dap" className="text-link underline-offset-4 hover:underline">
+              Hỏi đáp
+            </Link>
+            <a className="text-link underline-offset-4 hover:underline" href="https://commune-dxos.github.io/commune-dxos/">
+              Tài liệu
+            </a>
+            <a className="text-link underline-offset-4 hover:underline" href="https://github.com/commune-dxos/commune-dxos">
+              Mã nguồn
+            </a>
+          </nav>
+        </div>
+        <div className="border-t">
+          <p className="mx-auto max-w-6xl px-4 py-3 text-muted-foreground sm:px-6">DTU_DZ_2 · OLP PMNM 2026</p>
         </div>
       </footer>
     </div>

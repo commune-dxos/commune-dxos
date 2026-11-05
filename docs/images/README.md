@@ -3,7 +3,7 @@
 | Tệp | Nội dung | Dùng ở | Nguồn |
 |---|---|---|---|
 | `banner.webp` | Ảnh đầu README có tiêu đề "DTU_DZ_2 · OLP PMNM 2026 · COMMUNE DX-OS": bộ phận một cửa của xã, hồ sơ giấy chuyển thành hồ sơ điện tử | `README.md` | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
-| `mot-cua-so.webp` | Công dân nộp hồ sơ khai sinh từ điện thoại, hồ sơ được quét an toàn rồi đi qua các bước xử lý | Không còn dùng ở README (từ #38); giữ tệp | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
+| `mot-cua-so.webp` | Công dân nộp hồ sơ khai sinh từ điện thoại, hồ sơ được quét an toàn rồi đi qua các bước xử lý | Phần đầu trang chủ cổng công dân (#141): bản thu nhỏ 1200 px `mot-cua/web-cong-dan/public/minh-hoa-nop-ho-so.webp` (`cwebp -resize 1200 0 -q 78`). Không còn dùng ở README (từ #38) | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `vong-chuc-nang.webp` | Vòng tròn 6 chức năng, nhãn tiếng Việt | Không còn dùng ở README (từ #38, thay bằng bảng "Trước và sau chuyển đổi số"); giữ tệp | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `kien-truc-tong-quan.webp` | Kiến trúc tổng quan dạng biểu tượng, ít chữ (tên thành phần giữ tiếng Anh) | Không còn dùng ở README (từ #43, thay bằng `kien-truc-dong.svg`: ảnh này không thể hiện 2 tầng và gói thủ tục); giữ tệp | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |
 | `luong-ho-so.webp` | Luồng hồ sơ 5 bước và cảnh báo trễ hạn, nhãn tiếng Việt | `README.md` | Đội DTU_DZ_2 tạo bằng công cụ AI tạo ảnh |

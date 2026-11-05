@@ -50,7 +50,7 @@ export function ThongBao({
         <EmptyTitle className={capTieuDe === "h1" ? "text-2xl font-bold" : undefined}>
           <TieuDe className="text-balance">{tieuDe}</TieuDe>
         </EmptyTitle>
-        {children && <EmptyDescription className="text-base text-muted-foreground">{children}</EmptyDescription>}
+        {children && <EmptyDescription className="text-base text-foreground">{children}</EmptyDescription>}
       </EmptyHeader>
       {hanhDong && <EmptyContent className="flex-row flex-wrap justify-center">{hanhDong}</EmptyContent>}
     </Empty>

@@ -211,12 +211,17 @@ export function TroLy({
   return (
     <Khung className="flex max-w-3xl flex-col gap-8">
       <div className="flex flex-col gap-3">
-        <h1 className="text-3xl font-bold">Hỏi đáp thủ tục</h1>
-        <p className="text-lg text-muted-foreground">
-          Hỏi về giấy tờ, thời hạn, lệ phí, nơi nộp của các thủ tục hành chính cấp xã. Trợ lý chỉ trả lời từ tài liệu
-          thủ tục của xã và ghi rõ nguồn; không cần đăng nhập, câu hỏi không được lưu.
+        <h1 className="text-3xl font-bold sm:text-4xl">Hỏi đáp thủ tục</h1>
+        <p className="text-lg">
+          Hỏi về giấy tờ, thời hạn, lệ phí, nơi nộp. Trợ lý trả lời từ tài liệu thủ tục của xã và ghi rõ nguồn; câu hỏi
+          không được lưu.
         </p>
-        {thongTin && <p className="text-base text-muted-foreground">{nhanCheDo(thongTin)}</p>}
+        {thongTin && (
+          <p className="flex w-fit items-start gap-2 rounded-md bg-primary-soft px-3 py-2 text-primary-soft-foreground">
+            <BookOpenText aria-hidden="true" className="mt-1 size-5 shrink-0" />
+            {nhanCheDo(thongTin)}
+          </p>
+        )}
         {ma && (
           <p className="flex flex-wrap items-center gap-2">
             Đang hỏi riêng về thủ tục <Badge>{ma}</Badge>
@@ -240,11 +245,16 @@ export function TroLy({
         {sanSang === false && luot.length === 0 && <TroLyChuaBat />}
         {sanSang !== false && luot.length === 0 && (
           <div className="flex flex-col gap-3">
-            <p className="font-semibold">Câu hỏi gợi ý</p>
-            <ul className="flex flex-wrap gap-2">
+            <p className="text-lg font-bold">Câu hỏi gợi ý</p>
+            <ul className="grid gap-3 sm:grid-cols-2">
               {GOI_Y.map((g) => (
-                <li key={g}>
-                  <Button variant="outline" size="sm" className="h-auto min-h-11 py-2 text-left whitespace-normal" onClick={() => void gui(g)}>
+                <li key={g} className="flex">
+                  <Button
+                    variant="outline"
+                    className="h-auto min-h-14 w-full justify-start rounded-xl bg-card px-4 py-3 text-left text-base font-semibold whitespace-normal shadow-the hover:border-primary"
+                    onClick={() => void gui(g)}
+                  >
+                    <MessageCircleQuestionMark aria-hidden="true" className="text-primary" />
                     {g}
                   </Button>
                 </li>
@@ -294,7 +304,12 @@ export function TroLy({
       </div>
 
       {sanSang !== false && (
-        <form noValidate onSubmit={onSubmit} aria-label="Gửi câu hỏi cho trợ lý" className="flex flex-col gap-3">
+        <form
+          noValidate
+          onSubmit={onSubmit}
+          aria-label="Gửi câu hỏi cho trợ lý"
+          className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-the sm:p-6"
+        >
           <Field data-invalid={!!loi}>
             <FieldLabel htmlFor="cau-hoi">Câu hỏi của bạn</FieldLabel>
             <FieldDescription id="cau-hoi-goi-y">
@@ -317,14 +332,14 @@ export function TroLy({
             />
           </Field>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Trợ lý tự động chỉ để tham khảo. Cần chắc chắn, hãy hỏi Bộ phận Một cửa hoặc{" "}
-              <Link to="/" className="text-link underline">
+            <p className="text-muted-foreground">
+              Chỉ để tham khảo. Cần chắc chắn, hãy hỏi bộ phận một cửa hoặc{" "}
+              <Link to="/#danh-muc" className="text-link underline">
                 xem danh mục thủ tục
               </Link>
               .
             </p>
-            <Button type="submit" disabled={dangHoi}>
+            <Button type="submit" size="lg" disabled={dangHoi}>
               <SendHorizontal aria-hidden="true" />
               Gửi câu hỏi
             </Button>
