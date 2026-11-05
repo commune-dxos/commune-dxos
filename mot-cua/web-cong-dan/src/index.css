@@ -8,33 +8,33 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Bo góc vừa phải: nút, ô nhập 8px; thẻ 12px. */
-  --radius: 0.5rem;
+  /* Bo góc lớn (#141): ô nhập 12px, thẻ 16–24px, nút bo tròn hẳn (button.tsx). */
+  --radius: 0.75rem;
 
-  /* Nền và chữ. Chữ #0B1220 trên trắng 18.7:1, trên nền trang 17.4:1. */
+  /* Nền và chữ theo thang slate (#141). Chữ slate-900 #0F172A trên trắng 17.9:1, trên slate-50 17.1:1. */
   --background: #ffffff;
-  --foreground: #0b1220;
-  --surface: #f4f7f7; /* nền dải, chân trang */
+  --foreground: #0f172a;
+  --surface: #f8fafc; /* slate-50: nền dải, khối phụ */
   --card: #ffffff;
-  --card-foreground: #0b1220;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #0b1220;
+  --popover-foreground: #0f172a;
 
   /* Xanh ngọc: nút chính, khối tìm kiếm. Chữ trắng 5.47:1. */
   --primary: #0f766e;
   --primary-hover: #115e59; /* chữ trắng 7.58:1 */
   --primary-foreground: #ffffff;
-  --primary-soft: #e6f4f2;
-  --primary-soft-foreground: #134e4a; /* 8.39:1 */
+  --primary-soft: #f0fdfa; /* teal-50 */
+  --primary-soft-foreground: #134e4a; /* 9.3:1 */
 
   /* Chàm: liên kết, nhãn lĩnh vực, bước đang làm. Trên trắng 7.9:1. */
   --secondary: #eef2ff;
   --secondary-foreground: #3730a3; /* 8.88:1 */
   --link: #4338ca;
 
-  --muted: #edf2f2;
-  --muted-foreground: #3d4a5c; /* 9.0:1 trên trắng, 7.97:1 trên --muted */
-  --accent: #e6f4f2;
+  --muted: #f1f5f9; /* slate-100 */
+  --muted-foreground: #475569; /* slate-600: 7.58:1 trên trắng, 6.92:1 trên --muted */
+  --accent: #f0fdfa;
   --accent-foreground: #134e4a;
 
   /* Đỏ son chỉ cho cảnh báo, lỗi và dấu tích. #D9480F (4.3:1) chỉ làm viền/biểu tượng;
@@ -44,25 +44,32 @@
   --destructive-soft: #fff4ed;
   --destructive-foreground: #ffffff;
 
-  --border: #c9d2db; /* đường chia, viền thẻ (trang trí) */
-  --input: #6b7788; /* viền ô nhập 4.55:1 (≥ 3:1 thành phần UI) */
+  --border: #e2e8f0; /* slate-200: đường chia, viền thẻ (trang trí) */
+  --input: #64748b; /* slate-500: viền ô nhập 4.76:1 (≥ 3:1 thành phần UI) */
   /* Vòng focus chàm 7.9:1 trên nền sáng; trong vùng .nen-dam đổi sang trắng. */
   --ring: #4338ca;
 
-  /* Thanh bên cổng cán bộ (#55, thành phần sidebar của shadcn/ui): nền dải, mục đang mở xanh ngọc nhạt. */
-  --sidebar: #f4f7f7;
-  --sidebar-foreground: #0b1220;
+  /* Thanh bên cổng cán bộ (#55, #142, thành phần sidebar của shadcn/ui): nền tối slate-900, chữ slate-300
+     12.0:1; mục rê chuột slate-800; mục đang mở nền xanh ngọc, chữ trắng 5.47:1; vòng focus teal-300 11.6:1. */
+  --sidebar: #0f172a;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-muted-foreground: #94a3b8; /* slate-400: 6.96:1 trên --sidebar */
   --sidebar-primary: #0f766e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e6f4f2;
-  --sidebar-accent-foreground: #134e4a; /* 7.8:1 trên --sidebar-accent */
-  --sidebar-border: #c9d2db;
-  --sidebar-ring: #4338ca;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #5eead4;
 }
 
 /* Vùng nền xanh ngọc đậm (khối tìm kiếm, khung "Đã nộp"): vòng focus trắng 5.47:1. */
 .nen-dam {
   --ring: #ffffff;
+}
+
+/* Vùng nền tối slate (hero cổng công dân, chân trang, thanh bên cán bộ, #141/#142): vòng focus teal-300. */
+.nen-toi {
+  --ring: #5eead4;
 }
 
 @theme inline {
@@ -118,7 +125,7 @@
   --radius-lg: calc(var(--radius) + 4px);
   --radius-xl: calc(var(--radius) + 8px);
 
-  --shadow-the: 0 1px 2px rgb(11 18 32 / 0.06), 0 2px 8px -2px rgb(11 18 32 / 0.08);
+  --shadow-the: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px -4px rgb(15 23 42 / 0.08);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -128,6 +135,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
 }
 
 @layer base {

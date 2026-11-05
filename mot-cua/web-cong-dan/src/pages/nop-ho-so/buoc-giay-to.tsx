@@ -48,7 +48,7 @@ export function BuocGiayTo({
           // Khung thẻ nằm ở div ngoài: legend của fieldset luôn bị trình duyệt vẽ đè lên viền.
           <div
             key={tp.ma}
-            className={cn("rounded-md border bg-card p-5 shadow-the", thongDiep && "border-2 border-warning")}
+            className={cn("rounded-2xl border border-slate-100 bg-card p-6 shadow-the", thongDiep && "border-2 border-warning")}
           >
           <FieldSet data-invalid={!!thongDiep} className="gap-3">
             <FieldLegend className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-lg font-semibold">
@@ -62,7 +62,7 @@ export function BuocGiayTo({
               </FieldError>
             )}
             {ds.length > 0 && (
-              <ul className="flex flex-col divide-y rounded-md border" aria-label={`Tệp đã chọn cho ${tp.ten}`}>
+              <ul className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-100" aria-label={`Tệp đã chọn cho ${tp.ten}`}>
                 {ds.map((f, i) => (
                   <li key={`${f.name}-${i}`} className="flex items-center gap-3 py-1 pr-1 pl-3">
                     <FileText aria-hidden="true" className="size-5 shrink-0 text-primary" />

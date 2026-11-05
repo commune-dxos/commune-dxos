@@ -9,6 +9,7 @@ import { Link, useSearchParams } from "react-router";
 import { useXacThuc } from "@/auth/xac-thuc";
 import { CacBuocHoSo, NhanTrangThai } from "@/components/cac-buoc-ho-so";
 import { Khung } from "@/components/khung";
+import { DauTrang } from "@/components/tieu-de-muc";
 import { TheHan } from "@/components/the-han";
 import { ThongBao } from "@/components/thong-bao";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -79,7 +80,7 @@ export function KetQuaHoSo({
             <h3 id="moc-thoi-gian" className="text-lg font-bold">
               Các mốc thời gian
             </h3>
-            <ul className="flex flex-col divide-y rounded-md border">
+            <ul className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-100">
               {hoSo.lich_su.map((m, i) => (
                 <li key={`${m.luc}-${i}`} className="flex flex-wrap justify-between gap-x-6 gap-y-1 px-4 py-3">
                   <span>{dongLichSu(m)}</span>
@@ -125,16 +126,14 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
   });
 
   return (
+    <>
+    <DauTrang hep nhan="Theo dõi hồ sơ" tieuDe="Tra cứu hồ sơ" moTa="Xem hồ sơ đang ở bước nào, không cần đăng nhập." />
     <Khung className="flex max-w-5xl flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-3xl font-bold sm:text-4xl">Tra cứu hồ sơ</h1>
-        <p className="max-w-2xl text-lg">Xem hồ sơ đang ở bước nào, không cần đăng nhập.</p>
-      </div>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-6 lg:-mt-20 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <form
           noValidate
           onSubmit={(e) => void gui(e)}
-          className="flex flex-col gap-7 rounded-2xl border bg-card p-5 shadow-the sm:p-8"
+          className="relative flex flex-col gap-7 rounded-3xl border border-slate-100 bg-card p-6 shadow-xl shadow-slate-900/10 sm:p-8"
           aria-label="Tra cứu hồ sơ"
         >
           <FieldGroup className="gap-7 [&_[data-invalid=true]]:border-l-4 [&_[data-invalid=true]]:border-warning [&_[data-invalid=true]]:pl-4">
@@ -176,8 +175,8 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
           </Button>
         </form>
 
-        <aside className="flex flex-col gap-4 rounded-2xl bg-primary-soft p-5 sm:p-6">
-          <h2 id="ma-o-dau" className="text-xl font-bold text-primary-soft-foreground">
+        <aside className="relative flex flex-col gap-4 rounded-3xl border border-teal-100 bg-primary-soft p-6">
+          <h2 id="ma-o-dau" className="text-2xl font-black tracking-tight text-primary-soft-foreground">
             Mã hồ sơ nằm ở đâu?
           </h2>
           <ul className="flex flex-col gap-4">
@@ -187,7 +186,7 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
               { bt: FolderOpen, ten: "Hồ sơ của tôi", moTa: "khi đăng nhập bằng tài khoản đã nộp hồ sơ." },
             ].map(({ bt: BieuTuong, ten, moTa }) => (
               <li key={ten} className="flex gap-3">
-                <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background text-primary [&_svg]:size-5">
+                <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 [&_svg]:size-5">
                   <BieuTuong />
                 </span>
                 <span>
@@ -232,5 +231,6 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
         )}
       </div>
     </Khung>
+    </>
   );
 }
