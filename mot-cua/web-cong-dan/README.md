@@ -10,7 +10,7 @@
 Chung một ứng dụng thay vì thư mục `web-can-bo/` riêng để dùng chung theme, phông, thành phần shadcn/ui, lớp gọi APISIX, cấu hình lúc chạy, Dockerfile và nginx; không lặp `package.json` hay lockfile. Mỗi cổng một client OIDC public và một phiên riêng; cổng cán bộ là gói JS nạp lười nên người dân không tải mã của cán bộ. React 19 + Vite 7 + TypeScript + Tailwind CSS 4 + thành phần shadcn/ui (lấy bằng shadcn CLI, MIT) + phông Be Vietnam Pro tự host. Giấy phép từng gói: [`DEPENDENCIES.md`](../../DEPENDENCIES.md) mục 2.
 
 <p>
-  <img src="../../docs/images/cong-cong-dan-may-tinh.webp" alt="Trang chủ cổng công dân trên máy tính: phần đầu có tiêu đề, ô Tìm thủ tục lớn, lối tắt Tra cứu hồ sơ và Hỏi đáp thủ tục, ảnh minh họa người dân nộp hồ sơ từ điện thoại; bên dưới là lưới thẻ thủ tục nộp trực tuyến" width="68%">
+  <img src="../../docs/images/cong-cong-dan-may-tinh.webp" alt="Trang chủ cổng công dân trên máy tính: phần đầu nền tối có tiêu đề rất đậm, ô Tìm thủ tục bo tròn, lối tắt Tra cứu hồ sơ và Hỏi đáp thủ tục, số liệu thủ tục, ảnh minh họa người dân nộp hồ sơ từ điện thoại" width="68%">
   <img src="../../docs/images/cong-cong-dan-dien-thoai.webp" alt="Cùng trang trên điện thoại: đầu trang có nút Menu, ô tìm, lối tắt và thẻ thủ tục một cột" width="28%">
 </p>
 <p>
