@@ -84,11 +84,11 @@ function OSo({
 function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) => void; thuTuc: { ma: string; ten: string }[] }) {
   const coLoc = loc.trangThai !== "tat_ca" || loc.thuTuc !== "" || loc.han !== "tat_ca";
   return (
-    <div role="group" aria-label="Lọc hộp việc" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+    <div role="group" aria-label="Lọc hộp việc" className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-the sm:flex-row sm:flex-wrap sm:items-end">
       <label className="flex flex-col gap-1">
         <span className="font-semibold">Trạng thái</span>
         <Select value={loc.trangThai} onValueChange={(v) => datLoc({ ...loc, trangThai: v as LocTrangThai })}>
-          <SelectTrigger className="h-11 w-full text-base sm:w-52" aria-label="Lọc theo trạng thái nhận">
+          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-52" aria-label="Lọc theo trạng thái nhận">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -106,7 +106,7 @@ function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) 
           value={loc.thuTuc || TAT_CA_THU_TUC}
           onValueChange={(v) => datLoc({ ...loc, thuTuc: v === TAT_CA_THU_TUC ? "" : v })}
         >
-          <SelectTrigger className="h-11 w-full text-base sm:w-64" aria-label="Lọc theo thủ tục">
+          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-64" aria-label="Lọc theo thủ tục">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -124,7 +124,7 @@ function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) 
       <label className="flex flex-col gap-1">
         <span className="font-semibold">Hạn xử lý</span>
         <Select value={loc.han} onValueChange={(v) => datLoc({ ...loc, han: v as LocHan })}>
-          <SelectTrigger className="h-11 w-full text-base sm:w-60" aria-label="Lọc theo hạn xử lý">
+          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-60" aria-label="Lọc theo hạn xử lý">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
