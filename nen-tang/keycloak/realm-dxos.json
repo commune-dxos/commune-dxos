@@ -11,6 +11,9 @@
   "otpPolicyAlgorithm": "HmacSHA1",
   "otpPolicyDigits": 6,
   "otpPolicyPeriod": 30,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["vi"],
+  "defaultLocale": "vi",
   "components": {
     "org.keycloak.keys.KeyProvider": [
       {
@@ -67,5 +70,50 @@
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect"
     }
-  ]
+  ],
+  "localizationTexts": {
+    "vi": {
+      "loginAccountTitle": "Đăng nhập vào tài khoản",
+      "loginTitle": "Đăng nhập {0}",
+      "doLogIn": "Đăng nhập",
+      "doSubmit": "Xác nhận",
+      "doCancel": "Hủy",
+      "doForgotPassword": "Quên mật khẩu?",
+      "username": "Tên đăng nhập",
+      "usernameOrEmail": "Tên đăng nhập hoặc email",
+      "password": "Mật khẩu",
+      "showPassword": "Hiện mật khẩu",
+      "hidePassword": "Ẩn mật khẩu",
+      "rememberMe": "Ghi nhớ đăng nhập",
+      "restartLoginTooltip": "Đăng nhập lại từ đầu",
+      "requiredFields": "Trường bắt buộc",
+      "loginOtpOneTime": "Mã OTP một lần",
+      "loginTotpTitle": "Cài ứng dụng xác thực trên điện thoại",
+      "loginTotpStep1": "Cài một trong các ứng dụng sau trên điện thoại:",
+      "loginTotpStep2": "Mở ứng dụng và quét mã QR:",
+      "loginTotpStep3": "Nhập mã một lần do ứng dụng hiện rồi bấm Xác nhận để hoàn tất.",
+      "loginTotpStep3DeviceName": "Đặt tên thiết bị để dễ quản lý các thiết bị OTP.",
+      "loginTotpManualStep2": "Mở ứng dụng và nhập khóa:",
+      "loginTotpManualStep3": "Dùng các giá trị cấu hình sau nếu ứng dụng cho phép:",
+      "loginTotpUnableToScan": "Không quét được?",
+      "loginTotpScanBarcode": "Quét mã QR?",
+      "loginTotpDeviceName": "Tên thiết bị",
+      "loginChooseAuthenticator": "Chọn cách đăng nhập",
+      "backToLogin": "&laquo; Quay lại đăng nhập",
+      "loginTimeout": "Phiên đăng nhập đã hết thời gian. Vui lòng đăng nhập lại từ đầu.",
+      "pageExpiredTitle": "Trang đã hết hạn",
+      "pageExpiredMsg1": "Để đăng nhập lại từ đầu",
+      "pageExpiredMsg2": "Để tiếp tục đăng nhập",
+      "errorTitle": "Rất tiếc…",
+      "invalidUserMessage": "Tên đăng nhập hoặc mật khẩu không đúng.",
+      "invalidTotpMessage": "Mã OTP không đúng.",
+      "missingUsernameMessage": "Vui lòng nhập tên đăng nhập.",
+      "missingPasswordMessage": "Vui lòng nhập mật khẩu.",
+      "missingTotpMessage": "Vui lòng nhập mã OTP.",
+      "expiredActionMessage": "Thao tác đã hết hạn. Vui lòng tiếp tục đăng nhập.",
+      "logoutConfirmTitle": "Đăng xuất",
+      "logoutConfirmHeader": "Bạn có muốn đăng xuất?",
+      "doLogout": "Đăng xuất"
+    }
+  }
 }
