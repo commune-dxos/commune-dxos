@@ -47,7 +47,7 @@ describe("trang chủ – danh mục thủ tục", () => {
     ve(() => Promise.resolve([{ ...DS[1], quy_trinh: null }]));
     await screen.findByRole("article", { name: "Đăng ký khai sinh" });
     expect(screen.queryByRole("link", { name: /Nộp hồ sơ/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/chưa nhận hồ sơ trực tuyến/)).toBeInTheDocument();
+    expect(screen.getByText(/chưa nhận hồ sơ trực tuyến/i)).toBeInTheDocument();
   });
 
   it("tìm không dấu lọc danh mục", async () => {

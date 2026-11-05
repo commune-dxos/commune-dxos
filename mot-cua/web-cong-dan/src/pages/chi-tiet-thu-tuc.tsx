@@ -142,7 +142,7 @@ function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
               </span>
             </div>
             <h1 className="text-3xl font-bold sm:text-4xl">{thuTuc.ten}</h1>
-            <p className="max-w-2xl text-lg text-muted-foreground">
+            <p className="max-w-2xl text-lg">
               Chuẩn bị giấy tờ theo danh sách dưới đây, nộp trực tuyến rồi theo dõi hồ sơ đang ở bước nào.
             </p>
           </header>
