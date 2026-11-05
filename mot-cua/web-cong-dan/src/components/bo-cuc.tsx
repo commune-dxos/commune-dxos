@@ -24,14 +24,14 @@ function NutTaiKhoan() {
   }
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden items-center gap-2 text-base xl:flex">
+      <span className="flex items-center gap-2 text-base">
         <span
           aria-hidden="true"
           className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-teal-600 font-black text-white shadow-md shadow-primary/20"
         >
           {tenHienThi(nguoiDung).trim().split(/\s+/).pop()?.charAt(0) ?? "?"}
         </span>
-        <span className="font-bold">{tenHienThi(nguoiDung)}</span>
+        <span className="sr-only font-bold 2xl:not-sr-only">Đã đăng nhập: {tenHienThi(nguoiDung)}</span>
       </span>
       <Button variant="outline" size="sm" onClick={() => dangXuat()}>
         <LogOut aria-hidden="true" />
@@ -150,7 +150,7 @@ function OTimNhanh() {
     dieuHuong(`/?tim=${encodeURIComponent(q.trim())}#danh-muc`);
   };
   return (
-    <form role="search" onSubmit={gui} className="relative hidden w-full max-w-xs lg:block">
+    <form role="search" onSubmit={gui} className="relative hidden w-full max-w-64 min-w-40 xl:block">
       <label htmlFor="tim-nhanh" className="sr-only">
         Tìm nhanh thủ tục
       </label>
