@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Đầu mục và dải đầu trang dùng chung của cổng công dân (#141).
 //  - TieuDeMuc: nhãn nhỏ in hoa có gạch màu nhấn phía trước, dưới là tiêu đề rất đậm.
-//  - DauTrang: dải tối tràn viền (slate-950, hoa văn chấm mờ) cho tiêu đề h1 của các trang trong.
+//  - DaiTieuDe: dải tối tràn viền (slate-950, hoa văn chấm mờ) cho tiêu đề h1 của các trang trong.
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -70,7 +70,7 @@ export function HoaVanCham() {
   );
 }
 
-export function DauTrang({
+export function DaiTieuDe({
   nhan,
   tieuDe,
   moTa,

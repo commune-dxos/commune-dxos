@@ -6,7 +6,7 @@ import { ArrowRight, Banknote, Building2, CircleCheck, Clock, FileText, MessageC
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { Khung } from "@/components/khung";
-import { DauTrang } from "@/components/tieu-de-muc";
+import { DaiTieuDe } from "@/components/tieu-de-muc";
 import { TaiThuTuc } from "@/components/tai-thu-tuc";
 import {
   Breadcrumb,
@@ -131,7 +131,7 @@ function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
   ];
   return (
     <>
-    <DauTrang
+    <DaiTieuDe
       truoc={
         <nav aria-label="breadcrumb">
           <ol className="flex flex-wrap items-center gap-2 text-slate-300">
