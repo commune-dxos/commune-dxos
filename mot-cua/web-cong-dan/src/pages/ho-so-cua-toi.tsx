@@ -10,7 +10,7 @@ import { Link, useParams } from "react-router";
 import { useXacThuc } from "@/auth/xac-thuc";
 import { NhanTrangThai } from "@/components/cac-buoc-ho-so";
 import { Khung } from "@/components/khung";
-import { DauTrang } from "@/components/tieu-de-muc";
+import { DaiTieuDe } from "@/components/tieu-de-muc";
 import { NutGiayTo } from "@/components/nut-giay-to";
 import { TheHan } from "@/components/the-han";
 import { ThongBao } from "@/components/thong-bao";
@@ -174,7 +174,7 @@ export function HoSoCuaToiTrang({ taoApi = taoApiMacDinh }: { taoApi?: TaoApi })
     <CanDangNhap quayVe="/ho-so">
       {(token) => (
         <>
-          <DauTrang hep nhan="Tài khoản công dân" tieuDe="Hồ sơ của tôi" moTa="Hồ sơ mới nộp ở trên cùng. Bấm vào một hồ sơ để xem từng bước." />
+          <DaiTieuDe hep nhan="Tài khoản công dân" tieuDe="Hồ sơ của tôi" moTa="Hồ sơ mới nộp ở trên cùng. Bấm vào một hồ sơ để xem từng bước." />
           <Khung className="flex max-w-5xl flex-col gap-8">
             <DanhSach token={token} taoApi={taoApi} />
           </Khung>

@@ -9,7 +9,7 @@ import { Link, useSearchParams } from "react-router";
 import { useXacThuc } from "@/auth/xac-thuc";
 import { CacBuocHoSo, NhanTrangThai } from "@/components/cac-buoc-ho-so";
 import { Khung } from "@/components/khung";
-import { DauTrang } from "@/components/tieu-de-muc";
+import { DaiTieuDe } from "@/components/tieu-de-muc";
 import { TheHan } from "@/components/the-han";
 import { ThongBao } from "@/components/thong-bao";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -127,7 +127,7 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
 
   return (
     <>
-    <DauTrang hep nhan="Theo dõi hồ sơ" tieuDe="Tra cứu hồ sơ" moTa="Xem hồ sơ đang ở bước nào, không cần đăng nhập." />
+    <DaiTieuDe hep nhan="Theo dõi hồ sơ" tieuDe="Tra cứu hồ sơ" moTa="Xem hồ sơ đang ở bước nào, không cần đăng nhập." />
     <Khung className="flex max-w-5xl flex-col gap-8">
       <div className="grid items-start gap-6 lg:-mt-20 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <form

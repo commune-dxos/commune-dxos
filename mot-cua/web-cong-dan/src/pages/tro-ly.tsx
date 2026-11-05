@@ -8,7 +8,7 @@ import { BookOpenText, MessageCircleQuestionMark, PowerOff, Search, SendHorizont
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Khung } from "@/components/khung";
-import { DauTrang } from "@/components/tieu-de-muc";
+import { DaiTieuDe } from "@/components/tieu-de-muc";
 import { ThongBao } from "@/components/thong-bao";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -211,7 +211,7 @@ export function TroLy({
 
   return (
     <>
-    <DauTrang
+    <DaiTieuDe
       hep
       nhan="Trợ lý thủ tục"
       tieuDe="Hỏi đáp thủ tục"
