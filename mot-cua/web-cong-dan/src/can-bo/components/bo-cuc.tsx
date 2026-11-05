@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Khung cổng cán bộ theo bố cục shadcn-admin (satnaing/shadcn-admin, MIT; tham khảo bố cục, không
-// chép mã): thanh bên (Sidebar của shadcn/ui; dưới 768px thành ngăn kéo), đầu trang có nút thu thanh
-// bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung bên phải. Lãnh đạo có
+// Khung cổng cán bộ (#55, làm mới #142): thanh bên tối slate-900 rộng 16 rem (Sidebar của shadcn/ui, token ở
+// src/index.css; dưới 768px thành ngăn kéo), mục đang mở nền xanh ngọc; đầu trang dính, nền trắng mờ, có nút thu
+// thanh bên, đường dẫn trang, chuông hồ sơ sắp trễ hạn và menu người dùng; nội dung nền slate nhạt, rộng tối đa
+// 80 rem. Lãnh đạo có
 // thêm liên kết dashboard báo cáo (Superset ở /bao-cao, đăng nhập SSO cùng Keycloak, #82).
 import { AlarmClockOff, Bell, BookOpen, CalendarDays, ChartColumn, ExternalLink, Hourglass, Inbox, LibraryBig, UserCheck } from "lucide-react";
 import { Link, Outlet, useLocation, useMatch } from "react-router";
@@ -31,7 +32,11 @@ import { TEN_VAI_TRO } from "../lib/quyen";
 import { ChuongThongBao } from "./chuong-thong-bao";
 import { MenuNguoiDung } from "./menu-nguoi-dung";
 
-const LOP_MUC = "h-11 gap-3 px-3 text-base [&>svg]:size-5";
+const LOP_MUC =
+  "h-11 gap-3 rounded-xl px-3 text-base font-semibold text-sidebar-foreground transition-all [&>svg]:size-5 [&>svg]:text-sidebar-muted-foreground " +
+  "hover:bg-sidebar-accent hover:text-white hover:[&>svg]:text-white " +
+  "data-[active=true]:bg-sidebar-primary data-[active=true]:font-bold data-[active=true]:text-white data-[active=true]:shadow-lg data-[active=true]:shadow-primary/30 data-[active=true]:[&>svg]:text-white";
+const LOP_NHOM = "h-9 px-3 text-sm font-bold tracking-[0.2em] text-sidebar-muted-foreground uppercase";
 
 function MucMenu({
   den,
@@ -59,7 +64,7 @@ function MucMenu({
         </Link>
       </SidebarMenuButton>
       {dem !== undefined && dem > 0 && (
-        <SidebarMenuBadge className="top-2.5 right-2 text-sm">
+        <SidebarMenuBadge className="top-2.5 right-2 rounded-full bg-white/10 px-2 text-sm font-bold text-white peer-data-[active=true]/menu-button:text-white">
           {dem}
           <span className="sr-only"> {donVi}</span>
         </SidebarMenuBadge>
@@ -81,20 +86,23 @@ function ThanhBen() {
   const loc = q.get("han") ?? q.get("trang_thai") ?? "";
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border">
-        <Link to={GOC_CAN_BO} className="flex items-center gap-3 rounded-md p-2 text-sidebar-foreground no-underline">
-          <img src="/mark-64.png" alt="" width={40} height={40} className="size-10 shrink-0" />
+    <Sidebar className="nen-toi">
+      <SidebarHeader className="border-b border-sidebar-border p-4">
+        <Link to={GOC_CAN_BO} className="group flex items-center gap-3 rounded-xl p-1 text-white no-underline">
+          {/* Quy tắc nhận diện: biểu tượng trong suốt đặt trong ô nền trắng khi nằm trên nền tối. */}
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white p-1 transition-transform group-hover:scale-105">
+            <img src="/mark-64.png" alt="" width={36} height={36} className="size-9" />
+          </span>
           <span className="flex min-w-0 flex-col leading-tight">
-            <span className="text-base font-bold">Cổng cán bộ</span>
-            <span className="truncate text-sm text-muted-foreground">Commune DX-OS</span>
+            <span className="text-lg font-black tracking-tight">Cổng cán bộ</span>
+            <span className="truncate text-sm font-bold tracking-[0.25em] text-teal-300 uppercase">Commune DX-OS</span>
           </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         {vaiTro !== "van_thu" && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Xử lý hồ sơ</SidebarGroupLabel>
+          <SidebarGroupLabel className={LOP_NHOM}>Xử lý hồ sơ</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <MucMenu den={GOC_CAN_BO} nhan="Hộp việc" bieuTuong={Inbox} dem={viec.length} dangMo={oHopViec && loc === ""} />
@@ -132,7 +140,7 @@ function ThanhBen() {
         </SidebarGroup>
         )}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Công tác</SidebarGroupLabel>
+          <SidebarGroupLabel className={LOP_NHOM}>Công tác</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <MucMenu den={`${GOC_CAN_BO}/lich`} nhan="Lịch công tác" bieuTuong={CalendarDays} dangMo={oLich} />
@@ -140,7 +148,7 @@ function ThanhBen() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Văn bản</SidebarGroupLabel>
+          <SidebarGroupLabel className={LOP_NHOM}>Văn bản</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <MucMenu den={`${GOC_CAN_BO}/van-ban`} nhan="Sổ văn bản" bieuTuong={BookOpen} dangMo={oSoVanBan} />
@@ -149,7 +157,7 @@ function ThanhBen() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Khác</SidebarGroupLabel>
+          <SidebarGroupLabel className={LOP_NHOM}>Khác</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {vaiTro === "lanh_dao" && (
@@ -174,9 +182,9 @@ function ThanhBen() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-4 text-sm">
-        <p className="font-semibold">{TEN_VAI_TRO[vaiTro]}</p>
-        <p className="text-muted-foreground">
+      <SidebarFooter className="m-3 gap-1 rounded-2xl bg-sidebar-accent p-4 text-sm">
+        <p className="font-bold text-white">{TEN_VAI_TRO[vaiTro]}</p>
+        <p className="text-sidebar-muted-foreground">
           {vaiTro === "lanh_dao"
             ? "Phê duyệt, ký các bước của lãnh đạo"
             : vaiTro === "van_thu"
@@ -207,7 +215,7 @@ function TieuDeTrang() {
     viec.find((v) => v.task.hoSoId === hoSo.params.id)?.task.maHoSo;
   return (
     <nav aria-label="Đường dẫn" className="flex min-w-0 items-center gap-2">
-      <Link to={GOC_CAN_BO} className="text-link">
+      <Link to={GOC_CAN_BO} className="font-semibold text-link">
         Hộp việc
       </Link>
       <span aria-hidden="true" className="text-muted-foreground">
@@ -234,17 +242,20 @@ export function BoCucCanBo() {
       </a>
       <ThanhBen />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b bg-background px-3 sm:px-4">
-          <SidebarTrigger className="size-11" />
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/80 px-3 backdrop-blur-md sm:px-6">
+          <SidebarTrigger className="size-11 rounded-xl hover:bg-slate-100" />
           <Separator orientation="vertical" className="h-6!" />
           <div className="min-w-0 flex-1">
             <TieuDeTrang />
           </div>
           <ChuongThongBao />
+          <span aria-hidden="true" className="hidden h-8 w-px bg-slate-200 sm:block" />
           <MenuNguoiDung />
         </header>
-        <div id="noi-dung" tabIndex={-1} className="flex min-w-0 flex-1 flex-col gap-6 p-4 outline-none md:p-6">
-          <Outlet />
+        <div id="noi-dung" tabIndex={-1} className="flex min-w-0 flex-1 flex-col bg-slate-50/60 outline-none">
+          <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">
+            <Outlet />
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

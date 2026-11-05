@@ -14,12 +14,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 function NenGiua({ children }: { children: ReactNode }) {
   return (
-    <main id="noi-dung" className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-surface p-4">
-      <a href="/" className="flex items-center gap-3 text-foreground no-underline">
-        <img src="/mark-64.png" alt="" width={48} height={48} className="size-12" />
+    <main id="noi-dung" className="nen-toi relative isolate flex min-h-dvh flex-col items-center justify-center gap-8 overflow-hidden bg-slate-950 p-4">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-50" />
+      <div aria-hidden="true" className="pointer-events-none absolute -top-40 -right-40 -z-10 size-[36rem] rounded-full bg-primary/40 blur-[120px]" />
+      <a href="/" className="flex items-center gap-3 text-white no-underline">
+        <span className="flex size-14 items-center justify-center rounded-2xl bg-white p-1.5">
+          <img src="/mark-64.png" alt="" width={44} height={44} className="size-11" />
+        </span>
         <span className="flex flex-col leading-tight">
-          <span className="text-lg font-bold">Commune DX-OS</span>
-          <span className="text-muted-foreground">Chính quyền số Cấp xã</span>
+          <span className="text-2xl font-black tracking-tight">COMMUNE DX-OS</span>
+          <span className="text-sm font-bold tracking-[0.25em] text-teal-300 uppercase">Chính quyền số Cấp xã</span>
         </span>
       </a>
       {children}
@@ -31,10 +35,10 @@ export function ChuaDangNhap() {
   const { dangNhap } = useXacThuc();
   return (
     <NenGiua>
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md rounded-3xl border-0 shadow-2xl shadow-black/40">
         <CardHeader>
           <CardTitle>
-            <h1 className="text-2xl font-bold">Cổng cán bộ</h1>
+            <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Cổng cán bộ</h1>
           </CardTitle>
           <CardDescription className="text-base">
             Dành cho cán bộ một cửa, cán bộ chuyên môn và lãnh đạo xã: xử lý hồ sơ theo lĩnh vực phụ trách.
