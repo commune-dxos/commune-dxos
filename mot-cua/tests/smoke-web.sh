@@ -34,7 +34,7 @@ kiem "mã ứng dụng $WEB_JS → 200 JavaScript" "200|application/javascript; 
 kiem "tài nguyên băm tên: cache lâu dài" "public, max-age=31536000, immutable" "$(web_header Cache-Control)"
 kiem "CSS $WEB_CSS → 200" "200|text/css" "$(web_tai "${WEB_CSS:-/assets/khong-thay.css}" | cut -d';' -f1)"
 WEB_PHONG="$(grep -oE '/assets/be-vietnam-pro-[a-z]+-[0-9]+-normal-[A-Za-z0-9_-]+\.woff2' "$WEB_TD/b" | sort -u)"
-kiem "CSS dùng 8 tệp phông Be Vietnam Pro tự host (latin + vietnamese, 4 độ đậm)" "8" "$(grep -c . <<<"$WEB_PHONG")"
+kiem "CSS dùng 12 tệp phông Be Vietnam Pro tự host (latin + vietnamese, 6 độ đậm: 400–700, 800/900 cho tiêu đề)" "12" "$(grep -c . <<<"$WEB_PHONG")"
 web_loi_phong=0
 for web_p in $WEB_PHONG; do [ "$(web_tai "$web_p")" = "200|font/woff2" ] || web_loi_phong=$((web_loi_phong + 1)); done
 kiem "mọi tệp phông woff2 tải được (200 font/woff2)" "0" "$web_loi_phong"
