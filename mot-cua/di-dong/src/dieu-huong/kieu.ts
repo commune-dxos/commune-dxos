@@ -14,6 +14,8 @@ export type CacManGoc = {
   Tab: NavigatorScreenParams<CacTab> | undefined;
   ChiTietThuTuc: { ma: string };
   ChiTietHoSo: { id: string };
+  NopHoSo: { ma: string };
+  DaNop: { maHoSo: string; hanXuLy: string; tenThuTuc: string };
 };
 
 declare global {
