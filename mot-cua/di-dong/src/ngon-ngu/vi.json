@@ -49,7 +49,9 @@
   "man": {
     "chiTietThuTuc": "Thủ tục",
     "traCuu": "Tra cứu hồ sơ",
-    "chiTietHoSo": "Chi tiết hồ sơ"
+    "chiTietHoSo": "Chi tiết hồ sơ",
+    "nopHoSo": "Nộp hồ sơ",
+    "daNop": "Đã nộp"
   },
   "traCuu": {
     "gioiThieu": "Không cần đăng nhập. Nhập mã hồ sơ in trên biên nhận và 4 số cuối số điện thoại đã khai khi nộp.",
@@ -82,5 +84,35 @@
     "chuaCoGiayTo": "Chưa có giấy tờ nào.",
     "chuaTaiDuocGiayTo": "Chưa tải được danh sách giấy tờ. Kéo xuống để thử lại.",
     "daQuet": "Đã kiểm tra an toàn"
+  },
+  "nop": {
+    "nut": "Nộp hồ sơ",
+    "canDangNhap": "Đăng nhập bằng tài khoản công dân để nộp hồ sơ trực tuyến và theo dõi kết quả.",
+    "nguoiNop": "1. Người nộp",
+    "hoTen": "Họ và tên",
+    "soDienThoai": "Số điện thoại",
+    "goiYSoDienThoai": "Dùng để nhận thông báo và tra cứu hồ sơ (4 số cuối).",
+    "giayTo": "2. Ảnh giấy tờ",
+    "goiYAnh": "Chụp rõ cả trang giấy, đủ sáng, không bị lóa. Mỗi giấy tờ có thể gửi nhiều ảnh.",
+    "chup": "Chụp ảnh",
+    "chon": "Chọn ảnh",
+    "boAnh": "Bỏ ảnh {{so}}",
+    "loiAnhTieuDe": "Chưa thêm được ảnh",
+    "loiAnh": "Vui lòng thử lại hoặc chọn ảnh khác.",
+    "khongCoCamera": "Máy chưa mở được camera. Bạn có thể chọn ảnh có sẵn.",
+    "chuaDuTieuDe": "Hồ sơ chưa đủ",
+    "chuaDu": "Vui lòng xem các mục được đánh dấu rồi gửi lại.",
+    "chuaGuiXong": "Hồ sơ chưa gửi xong",
+    "thuLaiTiep": "Phần đã gửi được giữ lại. Bấm Thử lại để gửi tiếp, hồ sơ không bị tạo trùng.",
+    "dangGui": "Đang gửi…",
+    "dangTao": "Đang tạo hồ sơ…",
+    "dangTai": "Đang gửi ảnh {{thu}}/{{tong}}…",
+    "dangKhoiTao": "Đang chuyển hồ sơ tới bộ phận một cửa…"
+  },
+  "daNop": {
+    "tieuDe": "Đã nộp hồ sơ",
+    "ghiChu": "Hãy giữ mã hồ sơ để tra cứu. Bộ phận một cửa sẽ kiểm tra và báo nếu cần bổ sung giấy tờ.",
+    "xemHoSo": "Xem hồ sơ của tôi",
+    "veThuTuc": "Về danh sách thủ tục"
   }
 }
