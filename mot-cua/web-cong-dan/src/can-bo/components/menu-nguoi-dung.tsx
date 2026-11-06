@@ -24,14 +24,14 @@ export function MenuNguoiDung() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-11 gap-2 px-2" aria-label={`Tài khoản: ${ten}`}>
-          <Avatar className="size-9">
-            <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">{chuVietTat(ten)}</AvatarFallback>
-          </Avatar>
-          <span className="hidden max-w-48 flex-col items-start leading-tight lg:flex">
-            <span className="truncate text-base font-semibold">{ten}</span>
-            <span className="truncate text-sm font-normal text-muted-foreground">{TEN_VAI_TRO[vaiTro]}</span>
+        <Button variant="ghost" className="h-12 gap-3 rounded-2xl px-2 hover:bg-slate-100" aria-label={`Tài khoản: ${ten}`}>
+          <span className="hidden max-w-48 flex-col items-end leading-tight lg:flex">
+            <span className="truncate text-base font-bold">{ten}</span>
+            <span className="truncate text-sm font-semibold tracking-wider text-muted-foreground uppercase">{TEN_VAI_TRO[vaiTro]}</span>
           </span>
+          <Avatar className="size-10 rounded-xl shadow-lg shadow-primary/20 ring-2 ring-white">
+            <AvatarFallback className="rounded-xl bg-gradient-to-br from-primary to-teal-600 text-sm font-black text-white">{chuVietTat(ten)}</AvatarFallback>
+          </Avatar>
           <ChevronDown aria-hidden="true" className="hidden size-4 lg:block" />
         </Button>
       </DropdownMenuTrigger>

@@ -48,7 +48,7 @@ const TEN_PHAM_VI: Record<PhamViWiki, string> = {
 };
 const GOC_WIKI = `${GOC_CAN_BO}/wiki`;
 const LOP_CHON =
-  "h-12 w-full rounded-md border-2 border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring";
+  "h-12 w-full rounded-xl border-2 border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring";
 
 function thongDiep(e: unknown, macDinh: string) {
   return e instanceof Error ? e.message : macDinh;
@@ -169,7 +169,7 @@ export function WikiVanBan() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Wiki văn bản</h1>
+          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Wiki văn bản</h1>
           <p className="text-muted-foreground">
             Quy chế, hướng dẫn nghiệp vụ, quy trình và biểu mẫu nội bộ của xã. Bạn chỉ thấy văn bản thuộc phạm vi của mình.
           </p>
@@ -327,7 +327,7 @@ export function ChiTietWiki() {
       {vb && (
         <>
           <div className="flex flex-col gap-3">
-            <h1 className="text-2xl font-bold">{vb.tieu_de}</h1>
+            <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">{vb.tieu_de}</h1>
             <NhanVanBan vb={vb} linhVuc={linhVuc} />
             <p className="text-sm text-muted-foreground">
               Phiên bản {vb.phien_ban} · cập nhật {new Date(vb.sua_luc).toLocaleString("vi-VN")}
@@ -349,14 +349,14 @@ export function ChiTietWiki() {
           {vb.tom_tat && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg"><h2>Tóm tắt</h2></CardTitle>
+                <CardTitle className="text-xl"><h2>Tóm tắt</h2></CardTitle>
               </CardHeader>
               <CardContent><p>{vb.tom_tat}</p></CardContent>
             </Card>
           )}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg"><h2>Nội dung</h2></CardTitle>
+              <CardTitle className="text-xl"><h2>Nội dung</h2></CardTitle>
             </CardHeader>
             <CardContent>
               <div className="max-w-prose whitespace-pre-wrap leading-relaxed">{vb.noi_dung}</div>
@@ -376,7 +376,7 @@ export function ChiTietWiki() {
                 <ul className="flex flex-col gap-2">
                   {lichSu.map((p) => (
                     <li key={p.phien_ban}>
-                      <details className="rounded-md border border-border p-3">
+                      <details className="rounded-xl border border-slate-200 p-3">
                         <summary className="cursor-pointer font-medium">
                           Phiên bản {p.phien_ban} · {new Date(p.sua_luc).toLocaleString("vi-VN")}
                           {p.trang_thai === "het_hieu_luc" ? " · hết hiệu lực" : ""}
@@ -466,7 +466,7 @@ export function SoanWiki() {
         <ArrowLeft aria-hidden="true" className="size-4" />
         {id ? "Về văn bản" : "Về danh sách"}
       </Link>
-      <h1 className="text-2xl font-bold">{id ? "Sửa văn bản" : "Thêm văn bản nội bộ"}</h1>
+      <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">{id ? "Sửa văn bản" : "Thêm văn bản nội bộ"}</h1>
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={(e) => void gui(e)} className="grid gap-4 sm:grid-cols-2">
