@@ -133,8 +133,8 @@ xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-tru
 # VIDEO=<thư mục ngoài repo> (#108): video dự phòng MP4 3–5 phút đủ luồng H-P-D-I cho buổi trình bày
 # (docs/trinh-bay/kich-ban-demo.md); cần thêm make up-ai, make up-bi, make du-lieu-demo. Trả congdan01, canbo01,
 # lanhdao01 về như realm.json: sau đó chạy lại make demo-users.
-quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif; VIDEO=<thư mục>: video dự phòng đủ luồng. Cần make up
-	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py $(if $(VIDEO),--video $(VIDEO))
+quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif; VIDEO=<thư mục>: video dự phòng đủ luồng; KHUNG=<thư mục>: khung hình nét + meta.json cho dựng video (#143). Cần make up
+	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py $(if $(VIDEO),--video $(VIDEO)) $(if $(KHUNG),--khung $(KHUNG))
 
 # CHANGELOG và ghi chú phát hành sinh bằng git-cliff (D-009 hướng 4, #36), không cần Docker.
 # Cài: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements-phat-hanh.txt

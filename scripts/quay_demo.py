@@ -23,6 +23,8 @@ Cần: hệ thống đang chạy (make up), venv như make xuat-kien-truc, ffmpe
     .venv/bin/playwright install chromium
 Chạy: make quay-demo XUAT_PY=.venv/bin/python
 Video dự phòng đủ luồng cho buổi trình bày (#108): --video THU_MUC (make quay-demo VIDEO=…), xem scripts/quay_video_demo.py.
+Khung hình nét 1920×1080 DPR 2 + meta.json cho bản dựng chuyên nghiệp (#143): --khung THU_MUC (make quay-demo KHUNG=…),
+xem scripts/quay_khung.py.
 """
 import argparse
 import hashlib
@@ -206,6 +208,14 @@ def ra_gif(video, gif, rong, fps):
 
 
 def main():
+    if "--khung" in sys.argv[1:]:
+        import quay_khung
+        ap = argparse.ArgumentParser(description="Quay 8 đoạn dạng khung hình nét + meta.json cho dựng video (#143)")
+        ap.add_argument("--khung", required=True, help="thư mục ghi MP4 + meta.json (ngoài repo)")
+        ap.add_argument("--chi", help="chỉ quay các đoạn này, phân cách bằng dấu phẩy (gỡ lỗi)")
+        ap.add_argument("--kenh")
+        a = ap.parse_args()
+        return quay_khung.main(a.khung, set(a.chi.split(",")) if a.chi else None, a.kenh)
     if "--video" in sys.argv[1:]:
         import quay_video_demo
         return quay_video_demo.main(sys.argv[1:])
