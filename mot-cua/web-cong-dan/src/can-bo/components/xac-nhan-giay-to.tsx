@@ -65,7 +65,7 @@ function MotGiayTo({
   };
 
   return (
-    <section aria-label={`${loai.ten}: ${tenTep}`} className="flex flex-col gap-3 rounded-md border p-4">
+    <section aria-label={`${loai.ten}: ${tenTep}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex flex-wrap items-center gap-2 font-semibold">
           {loai.ten}

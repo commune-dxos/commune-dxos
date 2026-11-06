@@ -62,7 +62,7 @@ function DongTep({ tep }: { tep: TepHoSo }) {
     }
   };
   return (
-    <li className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+    <li className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="flex min-w-0 items-start gap-2">
         <FileText aria-hidden="true" className="mt-1 size-5 shrink-0 text-muted-foreground" />
         <span className="min-w-0">
@@ -104,7 +104,7 @@ function ThanhPhan({ yeuCau, tep }: { yeuCau: ThanhPhanYeuCau[]; tep: TepHoSo[] 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="text-xl">
           <h2>Thành phần hồ sơ</h2>
         </CardTitle>
         <CardDescription>Tệp công dân đã nộp, đã quét mã độc trước khi lưu. Link xem hết hạn sau ít phút.</CardDescription>
@@ -152,7 +152,7 @@ function GiayToKySo({ hoSo }: { hoSo: HoSoCanBo }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="text-xl">
           <h2>Giấy tờ có ký số</h2>
         </CardTitle>
         <CardDescription>PDF ký số bằng chứng thư của xã, tải để in hoặc gửi công dân.</CardDescription>
@@ -172,7 +172,7 @@ function LichSu({ tienDo }: { tienDo: TienDo | null }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="text-xl">
           <h2>Lịch sử xử lý</h2>
         </CardTitle>
       </CardHeader>
@@ -315,7 +315,7 @@ export function ChiTietHoSo() {
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Hồ sơ {hoSo.ma_ho_so}</h1>
+            <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Hồ sơ {hoSo.ma_ho_so}</h1>
             <p className="text-muted-foreground">
               {hoSo.thu_tuc ? `${hoSo.thu_tuc.ma} · ${hoSo.thu_tuc.ten}` : ""}
               {hoSo.thu_tuc?.linh_vuc ? ` · Lĩnh vực ${hoSo.thu_tuc.linh_vuc.ten}` : ""}
@@ -352,7 +352,7 @@ export function ChiTietHoSo() {
         <div className="flex min-w-0 flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
+              <CardTitle className="text-xl">
                 <h2>Người nộp</h2>
               </CardTitle>
             </CardHeader>
@@ -393,9 +393,9 @@ export function ChiTietHoSo() {
         </div>
 
         <aside aria-labelledby="xu-ly-tieu-de" className="lg:sticky lg:top-20 lg:self-start">
-          <Card className="border-2 border-primary">
+          <Card className="border-2 border-primary shadow-xl shadow-primary/10">
             <CardHeader>
-              <CardTitle className="text-lg">
+              <CardTitle className="text-xl">
                 <h2 id="xu-ly-tieu-de">Xử lý bước</h2>
               </CardTitle>
               {v && <CardDescription className="text-base text-foreground">{v.task.ten}</CardDescription>}
