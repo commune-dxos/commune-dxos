@@ -5,6 +5,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type CacTab = {
   ThuTuc: undefined;
+  TraCuu: undefined;
   TaiKhoan: undefined;
 };
 
