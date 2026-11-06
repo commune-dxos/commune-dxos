@@ -1,89 +1,88 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Một thủ tục trong danh mục (dòng danh sách dựng trên Item của shadcn/ui): tên, lĩnh vực, mã,
-// thời hạn, lệ phí, giấy tờ cần mang (từ JSON Schema của gói), nút nộp hồ sơ.
-import { ArrowRight, Banknote, Clock, FileText } from "lucide-react";
-import type { ReactNode } from "react";
+// Một thủ tục trong lưới danh mục (#141): lĩnh vực, mã, tên đậm (liên kết tới trang chi tiết), thời hạn, lệ phí,
+// giấy tờ bắt buộc (từ JSON Schema của gói), nút "Nộp hồ sơ" ở chân thẻ; thủ tục chưa nhận hồ sơ trực tuyến ghi
+// rõ nơi nộp. Cả thẻ bấm được qua tên thủ tục (liên kết duy nhất, không lồng nút vào liên kết).
+import { ArrowRight, Banknote, Building2, Clock, FileText } from "lucide-react";
 import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Item, ItemActions, ItemContent } from "@/components/ui/item";
 import type { ThuTuc } from "@/lib/api";
 import { lePhi, thoiHan } from "@/lib/dinh-dang";
 import { docThanhPhan } from "@/lib/thanh-phan";
-
-function Dong({ bieuTuong, nhan, children }: { bieuTuong: ReactNode; nhan: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      <span className="mt-1 text-primary [&_svg]:size-5" aria-hidden="true">
-        {bieuTuong}
-      </span>
-      <div className="min-w-0">
-        <dt className="text-sm text-muted-foreground">{nhan}</dt>
-        <dd className="font-semibold">{children}</dd>
-      </div>
-    </div>
-  );
-}
+import { cn } from "@/lib/utils";
 
 export function TheThuTuc({ thuTuc }: { thuTuc: ThuTuc }) {
   const idTieuDe = `thu-tuc-${thuTuc.ma}`;
   const giayTo = docThanhPhan(thuTuc.json_schema).filter((t) => t.batBuoc);
+  const trucTuyen = !!thuTuc.quy_trinh;
   return (
-    <Item
-      variant="outline"
-      role="article"
+    <article
       aria-labelledby={idTieuDe}
-      className="items-start gap-5 bg-card p-5 shadow-the sm:p-6 md:flex-nowrap"
+      className={cn(
+        "group relative flex w-full flex-col gap-5 rounded-2xl border border-slate-100 bg-card p-6 shadow-the transition-all duration-300",
+        "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-xl hover:shadow-slate-900/10 focus-within:border-primary",
+        !trucTuyen && "bg-slate-50 shadow-none",
+      )}
     >
-      <ItemContent className="gap-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          {thuTuc.linh_vuc && <Badge variant="secondary">{thuTuc.linh_vuc.ten}</Badge>}
-          <span className="text-sm text-muted-foreground">
-            Mã thủ tục <span className="font-semibold text-foreground">{thuTuc.ma}</span>
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {thuTuc.linh_vuc && <Badge variant="secondary">{thuTuc.linh_vuc.ten}</Badge>}
+        <span className="rounded-full bg-slate-900 px-3 py-0.5 font-bold tracking-wider text-white tabular-nums">{thuTuc.ma}</span>
+      </div>
+      <h3 id={idTieuDe} className="text-2xl leading-tight font-black tracking-tight">
+        <Link
+          to={`/thu-tuc/${encodeURIComponent(thuTuc.ma)}`}
+          className="rounded-sm text-foreground no-underline group-hover:text-primary hover:underline"
+        >
+          {thuTuc.ten}
+        </Link>
+      </h3>
+      <dl className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1">
+          <dt>
+            <Clock aria-hidden="true" className="size-5 text-primary" />
+            <span className="sr-only">Thời hạn</span>
+          </dt>
+          <dd className="font-bold">{thoiHan(thuTuc.so_ngay_xu_ly)}</dd>
         </div>
-        <h3 id={idTieuDe} className="text-xl font-bold">
-          <Link to={`/thu-tuc/${encodeURIComponent(thuTuc.ma)}`} className="-my-1.5 inline-block rounded-sm py-1.5 text-link underline decoration-1 hover:decoration-2">
-            {thuTuc.ten}
-          </Link>
-        </h3>
-        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,10rem)_minmax(0,10rem)_1fr]">
-          <Dong bieuTuong={<Clock />} nhan="Thời hạn">
-            {thoiHan(thuTuc.so_ngay_xu_ly)}
-          </Dong>
-          <Dong bieuTuong={<Banknote />} nhan="Lệ phí">
-            {lePhi(thuTuc.le_phi)}
-          </Dong>
-          {giayTo.length > 0 && (
-            <div className="sm:col-span-2 lg:col-span-1">
-              <Dong bieuTuong={<FileText />} nhan={`Giấy tờ cần có (${giayTo.length})`}>
-                <ul className="flex flex-col gap-0.5 font-normal">
-                  {giayTo.map((t) => (
-                    <li key={t.ma}>{t.ten}</li>
-                  ))}
-                </ul>
-              </Dong>
-            </div>
-          )}
-        </dl>
-      </ItemContent>
-      <ItemActions className="w-full md:w-auto md:self-center">
-        {thuTuc.quy_trinh ? (
+        <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1">
+          <dt>
+            <Banknote aria-hidden="true" className="size-5 text-primary" />
+            <span className="sr-only">Lệ phí</span>
+          </dt>
+          <dd className="font-bold">{lePhi(thuTuc.le_phi)}</dd>
+        </div>
+      </dl>
+      {giayTo.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="flex items-center gap-2 font-bold">
+            <FileText aria-hidden="true" className="size-5 text-primary" />
+            Giấy tờ cần có ({giayTo.length})
+          </p>
+          <ul className="ml-7 list-disc pl-1 marker:text-primary">
+            {giayTo.map((t) => (
+              <li key={t.ma}>{t.ten}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="mt-auto pt-1">
+        {trucTuyen ? (
           <Link
             to={`/nop-ho-so/${encodeURIComponent(thuTuc.ma)}`}
-            className={buttonVariants({ className: "w-full md:w-auto" })}
+            className={buttonVariants({ className: "w-full" })}
             aria-label={`Nộp hồ sơ: ${thuTuc.ten}`}
           >
             Nộp hồ sơ
             <ArrowRight aria-hidden="true" />
           </Link>
         ) : (
-          <p className="text-base text-muted-foreground md:max-w-56">
-            Thủ tục này chưa nhận hồ sơ trực tuyến, vui lòng nộp tại bộ phận một cửa.
+          <p className="flex items-start gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3">
+            <Building2 aria-hidden="true" className="mt-1 size-5 shrink-0 text-primary" />
+            <span>Chưa nhận hồ sơ trực tuyến, nộp tại bộ phận một cửa.</span>
           </p>
         )}
-      </ItemActions>
-    </Item>
+      </div>
+    </article>
   );
 }

@@ -23,6 +23,8 @@ Cần: hệ thống đang chạy (make up), venv như make xuat-kien-truc, ffmpe
     .venv/bin/playwright install chromium
 Chạy: make quay-demo XUAT_PY=.venv/bin/python
 Video dự phòng đủ luồng cho buổi trình bày (#108): --video THU_MUC (make quay-demo VIDEO=…), xem scripts/quay_video_demo.py.
+Khung hình nét 1920×1080 DPR 2 + meta.json cho bản dựng chuyên nghiệp (#143): --khung THU_MUC (make quay-demo KHUNG=…),
+xem scripts/quay_khung.py.
 """
 import argparse
 import hashlib
@@ -138,7 +140,7 @@ def luong_cong_dan(trang, mat_khau):
         files=[{"name": "to-khai.png", "mimeType": "image/png", "buffer": anh}])
     dung(trang, 0.8)
     trang.get_by_role("button", name="Tiếp tục").click()
-    trang.get_by_role("alert").wait_for()  # Poka-yoke: thiếu giấy chứng sinh → không gửi
+    trang.get_by_text("Chưa tải giấy chứng sinh").first.wait_for()  # Poka-yoke: thiếu giấy chứng sinh → không gửi
     dung(trang, 2.2)
     trang.get_by_label(re.compile("Chọn tệp cho Giấy chứng sinh")).set_input_files(
         files=[{"name": "giay-chung-sinh.png", "mimeType": "image/png", "buffer": anh}])
@@ -206,6 +208,14 @@ def ra_gif(video, gif, rong, fps):
 
 
 def main():
+    if "--khung" in sys.argv[1:]:
+        import quay_khung
+        ap = argparse.ArgumentParser(description="Quay 8 đoạn dạng khung hình nét + meta.json cho dựng video (#143)")
+        ap.add_argument("--khung", required=True, help="thư mục ghi MP4 + meta.json (ngoài repo)")
+        ap.add_argument("--chi", help="chỉ quay các đoạn này, phân cách bằng dấu phẩy (gỡ lỗi)")
+        ap.add_argument("--kenh")
+        a = ap.parse_args()
+        return quay_khung.main(a.khung, set(a.chi.split(",")) if a.chi else None, a.kenh)
     if "--video" in sys.argv[1:]:
         import quay_video_demo
         return quay_video_demo.main(sys.argv[1:])

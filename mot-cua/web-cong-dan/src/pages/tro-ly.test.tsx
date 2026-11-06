@@ -24,10 +24,15 @@ function traLoi(p: Partial<TraLoiTroLy> = {}): TraLoiTroLy {
   };
 }
 
-function ve(hoi: (q: string, ma: string | null) => Promise<TraLoiTroLy>, url = "/hoi-dap", tt = TT) {
+function ve(
+  hoi: (q: string, ma: string | null) => Promise<TraLoiTroLy>,
+  url = "/hoi-dap",
+  tt = TT,
+  layThongTin: () => Promise<ThongTinTroLy> = () => Promise.resolve(tt),
+) {
   return render(
     <MemoryRouter initialEntries={[url]}>
-      <TroLy hoi={hoi} layThongTin={() => Promise.resolve(tt)} />
+      <TroLy hoi={hoi} layThongTin={layThongTin} />
     </MemoryRouter>,
   );
 }
@@ -117,5 +122,44 @@ describe("trang hỏi đáp", () => {
     await userEvent.type(screen.getByLabelText("Câu hỏi của bạn"), "câu hai{Enter}");
     expect(await screen.findByRole("article", { name: "Câu hỏi: câu hai" })).toBeInTheDocument();
     expect(hoi).toHaveBeenCalledTimes(2);
+  });
+
+  it("trợ lý không chạy trên bản này (kiểm trước trả 503): thông báo trung tính, không có ô hỏi (#140)", async () => {
+    const hoi = vi.fn();
+    ve(hoi, "/hoi-dap", TT, () => Promise.reject(new LoiApi("Hệ thống đang bận hoặc bảo trì.", 503)));
+    const bao = await screen.findByRole("status");
+    expect(bao).toHaveTextContent("Trợ lý AI chưa bật trên bản demo này");
+    expect(within(bao).getByRole("link", { name: "Xem danh mục thủ tục" })).toHaveAttribute("href", "/#danh-muc");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Câu hỏi của bạn")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Đăng ký kết hôn cần/ })).not.toBeInTheDocument();
+  });
+
+  it("hỏi thì gặp 503 và kiểm lại thấy trợ lý tắt: đổi sang thông báo chưa bật, không báo lỗi đỏ", async () => {
+    const lay = vi
+      .fn<() => Promise<ThongTinTroLy>>()
+      .mockResolvedValueOnce(TT)
+      .mockRejectedValue(new LoiApi("Hệ thống đang bận hoặc bảo trì.", 503));
+    const hoi = vi.fn().mockRejectedValue(new LoiApi("Hệ thống đang bận hoặc bảo trì.", 503));
+    ve(hoi, "/hoi-dap", TT, lay);
+    await userEvent.click(await screen.findByRole("button", { name: "Lệ phí chứng thực bản sao bao nhiêu tiền?" }));
+    const luot = await screen.findByRole("article", { name: "Câu hỏi: Lệ phí chứng thực bản sao bao nhiêu tiền?" });
+    expect(await within(luot).findByText("Trợ lý AI chưa bật trên bản demo này")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Câu hỏi của bạn")).not.toBeInTheDocument();
+  });
+
+  it("trợ lý bận (503 nhưng vẫn chạy): báo trung tính, vẫn hỏi tiếp được", async () => {
+    const hoi = vi
+      .fn()
+      .mockRejectedValueOnce(new LoiApi("Hệ thống đang bận hoặc bảo trì.", 503))
+      .mockResolvedValueOnce(traLoi());
+    ve(hoi);
+    await userEvent.type(await screen.findByLabelText("Câu hỏi của bạn"), "câu một{Enter}");
+    const luot = await screen.findByRole("article", { name: "Câu hỏi: câu một" });
+    expect(await within(luot).findByRole("status")).toHaveTextContent("Trợ lý đang bận");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Câu hỏi của bạn"), "câu hai{Enter}");
+    expect(await screen.findByRole("article", { name: "Câu hỏi: câu hai" })).toBeInTheDocument();
   });
 });

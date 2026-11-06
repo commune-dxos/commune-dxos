@@ -187,7 +187,7 @@ def doan_nop(trang, ctx):
         files=[{"name": "to-khai.png", "mimeType": "image/png", "buffer": qd.anh_png()}])
     qd.dung(trang, 0.8)
     trang.get_by_role("button", name="Tiếp tục").click()
-    trang.get_by_role("alert").first.wait_for()  # Poka-yoke: thiếu giấy chứng sinh, chưa gửi gì
+    trang.get_by_text("Chưa tải giấy chứng sinh").first.wait_for()  # Poka-yoke: thiếu giấy chứng sinh, chưa gửi gì
     qd.dung(trang, 3)
     for nhan, tep in (("Giấy chứng sinh", "giay-chung-sinh.png"), ("Giấy tờ tùy thân", "giay-to-tuy-than.png")):
         with urllib.request.urlopen(f"{GW}/mau-gia/{tep}", timeout=30) as r:
