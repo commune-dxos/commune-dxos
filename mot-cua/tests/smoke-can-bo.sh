@@ -57,6 +57,8 @@ cb_auth() {
 }
 kiem "mot_cua_can_bo từ chối redirect_uri của cổng công dân ($GW/dang-nhap/xong) → 400" "400" "$(ma_http "$(cb_auth "$GW/dang-nhap/xong" x)")"
 kiem "mot_cua_can_bo từ chối redirect_uri lạ → 400" "400" "$(ma_http "$(cb_auth "http://evil.example/can-bo/dang-nhap/xong" x)")"
+kiem "trang đăng nhập Keycloak bằng tiếng Việt (realm dxos: defaultLocale vi, localizationTexts)" "có có" \
+  "$(curl -s "$(cb_auth "$CB_REDIRECT" "$(openssl rand -hex 32)")" > "$CB_TD/dn-vi.html"; grep -q 'Đăng nhập vào tài khoản' "$CB_TD/dn-vi.html" && echo có || echo không) $(grep -q 'lang="vi"' "$CB_TD/dn-vi.html" && echo có || echo không)"
 kiem "mot_cua_can_bo thiếu PKCE → lỗi invalid_request" "có" \
   "$(curl -s -o /dev/null -w '%{redirect_url}' "$(cb_auth "$CB_REDIRECT" x | sed 's/&code_challenge=x&code_challenge_method=S256//')" | grep -q 'error=invalid_request' && echo có || echo không)"
 
