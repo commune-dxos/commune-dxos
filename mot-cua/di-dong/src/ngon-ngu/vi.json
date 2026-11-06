@@ -19,6 +19,12 @@
   "taiKhoan": {
     "tieuDe": "Tài khoản",
     "mayChu": "Máy chủ",
-    "phienBan": "Phiên bản app"
+    "phienBan": "Phiên bản app",
+    "dangNhap": "Đăng nhập",
+    "dangXuat": "Đăng xuất",
+    "dangNhapVoi": "Đang đăng nhập với tên",
+    "congDan": "Công dân",
+    "chuaDangNhap": "Bạn chưa đăng nhập",
+    "loiIchDangNhap": "Đăng nhập bằng tài khoản công dân để nộp hồ sơ và theo dõi hồ sơ của mình. Tra cứu theo mã hồ sơ không cần đăng nhập."
   }
 }
