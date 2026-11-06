@@ -29,6 +29,19 @@ kiem "metadata: dashboard hieu-suat-mot-cua đã xuất bản, 5 chart, chỉ va
   "$(ss_sql "SELECT d.published || ' ' || (SELECT count(*) FROM dashboard_slices s WHERE s.dashboard_id = d.id) || ' '
                || (SELECT string_agg(r.name, ',') FROM dashboard_roles dr JOIN ab_role r ON r.id = dr.role_id WHERE dr.dashboard_id = d.id)
              FROM dashboards d WHERE d.slug = 'hieu-suat-mot-cua'")"
+# Giao diện dashboard (#144): chủ sở hữu là tài khoản hệ thống không đăng nhập được, dòng phụ Big Number nhỏ,
+# logo của cổng phục vụ dưới /bao-cao, CSP không cho ảnh theo dõi của Superset (scarf.sh) ra ngoài.
+kiem "metadata: dashboard có chủ sở hữu \"Bộ phận Một cửa\" (tài khoản hệ thống, không hoạt động)" "Bộ phận Một cửa false" \
+  "$(ss_sql "SELECT u.first_name || ' ' || u.last_name || ' ' || u.active FROM dashboards d
+             JOIN dashboard_user du ON du.dashboard_id = d.id JOIN ab_user u ON u.id = du.user_id
+             WHERE d.slug = 'hieu-suat-mot-cua'")"
+kiem "metadata: Big Number có dòng phụ nhỏ (subtitle_font_size 0.08) ở cả 2 thẻ" "2" \
+  "$(ss_sql "SELECT count(*) FROM slices WHERE viz_type = 'big_number_total'
+             AND (params::json->>'subtitle_font_size')::numeric = 0.08 AND params::json->>'subtitle' <> ''")"
+kiem "logo của cổng dưới /bao-cao/static → 200 image/png" "200 image/png" \
+  "$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$GW/bao-cao/static/assets/images/dxos-logo.png")"
+kiem "CSP của Superset không cho ảnh từ scarf.sh (ảnh theo dõi bị chặn)" "không" \
+  "$(curl -s -D - -o /dev/null "$GW/bao-cao/login/" | grep -i '^content-security-policy:' | grep -q 'scarf' && echo có || echo không)"
 kiem "metadata: kết nối báo cáo bằng role bao_cao_doc (không lưu mật khẩu dạng rõ)" "bao_cao_doc có" \
   "$(ss_sql "SELECT substring(sqlalchemy_uri from '//([^:]+):') || ' ' || CASE WHEN sqlalchemy_uri LIKE '%XXXXXXXXXX%' THEN 'có' ELSE 'không' END
              FROM dbs WHERE database_name = 'Báo cáo một cửa'")"
