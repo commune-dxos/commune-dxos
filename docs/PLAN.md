@@ -12,7 +12,7 @@ Cách dùng tệp này:
   - **V3** – OCR giấy tờ, trợ lý RAG, tìm kiếm (nhãn `vai-3`)
 - Ai phụ trách thì người đó commit bằng tài khoản của mình.
 
-**Hiện trạng (05/11/2026):** đội đi trước lịch. Đã phát hành 11 bản, mới nhất **v0.9.1** (05/11); số bản theo nhịp phát hành, không theo số dự kiến ban đầu ở tiêu đề mỗi tuần (v0.2.0, v0.3.0). Tuần 1–5 xong, trừ các dòng 🔒 chờ người hướng dẫn; lịch công tác của cán bộ xong ở #117 (v0.8.0). v0.9.0 có các commit đầu tiên của thành viên (#122–#125) và cấu hình địa chỉ công khai cho bản demo sau reverse proxy HTTPS (#126); v0.9.1 đưa bộ dùng thử cho người dùng thật (#135) lên `main`. Tuần 6: phần đội tự làm được đã xong (dữ liệu mở #102, REUSE #104, tài liệu song ngữ #106, kịch bản trình bày + video dự phòng #108, v0.7.0 #112); còn tập trình bày thật cả đội và các dòng 🔒.
+**Hiện trạng (06/11/2026):** đội đi trước lịch. Đã phát hành 12 bản, mới nhất **v0.10.0** (06/11); số bản theo nhịp phát hành, không theo số dự kiến ban đầu ở tiêu đề mỗi tuần (v0.2.0, v0.3.0). Tuần 1–5 xong, trừ các dòng 🔒 chờ người hướng dẫn; lịch công tác của cán bộ xong ở #117 (v0.8.0). v0.9.0 có các commit đầu tiên của thành viên (#122–#125) và cấu hình địa chỉ công khai cho bản demo sau reverse proxy HTTPS (#126); v0.9.1 đưa bộ dùng thử cho người dùng thật (#135) lên `main`; v0.10.0 làm mới giao diện cổng công dân và cổng cán bộ trước buổi mời người dùng thật (#140–#142), sửa dashboard Superset (#144), trang đăng nhập tiếng Việt (#145) và công cụ quay demo dạng khung hình nét (#143). Tuần 6: phần đội tự làm được đã xong (dữ liệu mở #102, REUSE #104, tài liệu song ngữ #106, kịch bản trình bày + video dự phòng #108, v0.7.0 #112); còn tập trình bày thật cả đội và các dòng 🔒.
 
 | Bản | Ngày | Nội dung chính |
 |---|---|---|
@@ -27,6 +27,7 @@ Cách dùng tệp này:
 | v0.8.0 | 29/10 | lịch công tác trong cổng cán bộ (văn thư soạn, lãnh đạo duyệt, chặn trùng địa điểm), sửa test trượt ngẫu nhiên |
 | v0.9.0 | 03/11 | địa chỉ công khai cho bản demo sau reverse proxy HTTPS, tiêu đề tab cổng công dân, Vitest trang tra cứu, hướng dẫn tra cứu cho người dân |
 | v0.9.1 | 05/11 | bộ dùng thử: hướng dẫn buổi dùng thử, mẫu issue Phản hồi dùng thử |
+| v0.10.0 | 06/11 | giao diện mới cổng công dân và cổng cán bộ, sửa lỗi điện thoại/hỏi đáp/nộp hồ sơ, dashboard Superset kiểu Việt, đăng nhập Keycloak tiếng Việt, quay demo khung hình nét |
 
 ## Tuần 1 · 15–21/10 · Nền móng → v0.0.1 ✅
 - [x] V1 · Xác minh giấy phép trên repo gốc: Garage, Meilisearch, pyHanko, step-ca, Gotenberg, PostgREST, Flowable → `NOTICE`, `DEPENDENCIES.md`
@@ -87,6 +88,7 @@ Cách dùng tệp này:
 - [x] V1 · Release v0.8.0 – lịch công tác trong cổng cán bộ (#117), sửa test sự kiện trượt ngẫu nhiên (#115) (#119)
 - [x] V1 · Release v0.9.0 – địa chỉ công khai cho bản demo (#126), tiêu đề tab (#123), Vitest tra cứu (#124), hướng dẫn tra cứu (#125), bỏ câu chưa có căn cứ trong `DEPENDENCIES.md` (#122) (#132)
 - [x] V1 · Release v0.9.1 – bộ dùng thử cho người dùng thật: `docs/thu-nghiem.md`, mẫu issue Phản hồi dùng thử (#135) (#137)
+- [x] V1 · Release v0.10.0 – sửa lỗi cổng công dân (#140), giao diện mới cổng công dân (#141) và cổng cán bộ (#142), quay demo khung hình nét (#143), dashboard Superset (#144), đăng nhập Keycloak tiếng Việt (#145) (#152)
 - [ ] V1 · Rà đủ 6 tiêu chí PoF: LICENSE + SPDX mọi tệp, release có tag + `.tar.gz`, README song ngữ, CHANGELOG, hướng dẫn build từ máy sạch, bug tracker
 - [ ] V1 · Đóng băng tính năng, release v1.0.0 (tag trên `main` + `.tar.gz` tạo bằng `git archive`)
 - [ ] V1 · **Đóng băng PoF trước 17:00 Chủ nhật 06/12/2026**: PoF chấm theo hiện trạng kho mã lúc gửi bài. Sau mốc này chỉ commit để hoàn thiện demo, không làm hỏng build hay giấy phép
