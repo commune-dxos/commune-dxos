@@ -1,0 +1,9 @@
+<!-- SPDX-FileCopyrightText: 2026 DTU_DZ_2 -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+
+    <!-- Chỉ có chế độ sáng như cổng công dân. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    </style>
+
+</resources>
