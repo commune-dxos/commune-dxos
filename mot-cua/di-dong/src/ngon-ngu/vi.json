@@ -26,5 +26,27 @@
     "congDan": "Công dân",
     "chuaDangNhap": "Bạn chưa đăng nhập",
     "loiIchDangNhap": "Đăng nhập bằng tài khoản công dân để nộp hồ sơ và theo dõi hồ sơ của mình. Tra cứu theo mã hồ sơ không cần đăng nhập."
+  },
+  "thuTuc": {
+    "dangTai": "Đang tải danh sách thủ tục…",
+    "tim": "Tìm thủ tục",
+    "timGoiY": "Tìm thủ tục, ví dụ: khai sinh",
+    "khongKhop": "Không có thủ tục khớp từ khóa",
+    "khongKhopMoTa": "Thử từ khóa ngắn hơn, có thể gõ không dấu.",
+    "chuaCo": "Chưa có thủ tục nào được công khai",
+    "khongThay": "Không tìm thấy thủ tục này",
+    "nopTrucTuyen": "Nộp trực tuyến được",
+    "nopTaiQuay": "Nộp tại bộ phận một cửa",
+    "ma": "Mã thủ tục",
+    "thoiHan": "Thời hạn giải quyết",
+    "lePhi": "Lệ phí",
+    "thanhPhan": "Thành phần hồ sơ",
+    "chuaCoThanhPhan": "Thủ tục này chưa khai thành phần hồ sơ. Vui lòng hỏi bộ phận một cửa.",
+    "batBuoc": "Bắt buộc",
+    "neuCo": "Nếu có",
+    "chuaNhanTrucTuyen": "Thủ tục này chưa nhận hồ sơ trực tuyến. Vui lòng nộp tại bộ phận một cửa của xã."
+  },
+  "man": {
+    "chiTietThuTuc": "Thủ tục"
   }
 }
