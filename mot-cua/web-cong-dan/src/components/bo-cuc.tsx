@@ -2,11 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Khung trang: đầu trang trắng một hàng (biểu tượng, tên cổng, đăng nhập/đăng xuất), dải "bản thử
 // nghiệm", nội dung, chân trang. Bố cục tham khảo shadcn-admin (satnaing, MIT); không chép mã.
-import { FolderOpen, LogIn, LogOut, MessageCircleQuestionMark, Search, UserRound } from "lucide-react";
-import { Link, NavLink, Outlet } from "react-router";
+// Điện thoại, máy tính bảng (< 1024 px, #140): chỉ biểu tượng, tên ngắn và nút "Menu"; liên kết và tài khoản nằm trong ngăn kéo
+// (Sheet của shadcn/ui) để tên cổng không bị ép thành cột hẹp.
+import { FolderOpen, LogIn, LogOut, Menu, MessageCircleQuestionMark, Search, UserRound, X } from "lucide-react";
+import { useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { tenHienThi, useXacThuc } from "@/auth/xac-thuc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 function NutTaiKhoan() {
   const { nguoiDung, dangTai, dangNhap, dangXuat } = useXacThuc();
@@ -33,31 +37,87 @@ function NutTaiKhoan() {
   );
 }
 
+const LIEN_KET = [
+  { den: "/hoi-dap", ten: "Hỏi đáp", bieuTuong: MessageCircleQuestionMark, canDangNhap: false },
+  { den: "/tra-cuu", ten: "Tra cứu hồ sơ", bieuTuong: Search, canDangNhap: false },
+  { den: "/ho-so", ten: "Hồ sơ của tôi", bieuTuong: FolderOpen, canDangNhap: true },
+];
+
 /** Liên kết đầu trang: hỏi đáp (#91) và tra cứu không cần đăng nhập; "Hồ sơ của tôi" khi đã đăng nhập (#54). */
-function LienKetHoSo() {
+function LienKetHoSo({ doc = false, onChon }: { doc?: boolean; onChon?: () => void }) {
   const { nguoiDung } = useXacThuc();
   const lop = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-11 items-center gap-2 rounded-md px-3 font-semibold no-underline ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`;
+    `flex min-h-11 items-center gap-2 rounded-md px-3 font-semibold no-underline ${doc ? "min-h-12 text-lg" : ""} ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`;
   return (
     <>
-      <NavLink to="/hoi-dap" className={lop}>
-        <MessageCircleQuestionMark aria-hidden="true" className="size-5" />
-        <span className="hidden sm:inline">Hỏi đáp</span>
-        <span className="sr-only sm:hidden">Hỏi đáp thủ tục</span>
-      </NavLink>
-      <NavLink to="/tra-cuu" className={lop}>
-        <Search aria-hidden="true" className="size-5" />
-        <span className="hidden sm:inline">Tra cứu hồ sơ</span>
-        <span className="sr-only sm:hidden">Tra cứu hồ sơ</span>
-      </NavLink>
-      {nguoiDung && (
-        <NavLink to="/ho-so" className={lop}>
-          <FolderOpen aria-hidden="true" className="size-5" />
-          <span className="hidden sm:inline">Hồ sơ của tôi</span>
-          <span className="sr-only sm:hidden">Hồ sơ của tôi</span>
+      {LIEN_KET.filter((l) => !l.canDangNhap || nguoiDung).map(({ den, ten, bieuTuong: BieuTuong }) => (
+        <NavLink key={den} to={den} className={lop} onClick={onChon}>
+          <BieuTuong aria-hidden="true" className="size-5" />
+          {ten}
         </NavLink>
-      )}
+      ))}
     </>
+  );
+}
+
+/** Ngăn kéo điều hướng trên điện thoại. */
+function MenuDienThoai() {
+  const [mo, datMo] = useState(false);
+  const { nguoiDung, dangTai, dangNhap, dangXuat } = useXacThuc();
+  const { pathname } = useLocation();
+  return (
+    <Sheet open={mo} onOpenChange={datMo}>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="sm" className="lg:hidden">
+          <Menu aria-hidden="true" />
+          Menu
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" showCloseButton={false} className="w-[85%] gap-0 p-0">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <SheetTitle className="text-lg font-bold">Cổng dịch vụ công xã</SheetTitle>
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="Đóng menu">
+              <X aria-hidden="true" className="size-6" />
+            </Button>
+          </SheetClose>
+        </div>
+        <SheetDescription className="sr-only">Liên kết chính và tài khoản</SheetDescription>
+        <nav aria-label="Liên kết chính" className="flex flex-col gap-1 p-3">
+          <NavLink
+            to="/"
+            end
+            onClick={() => datMo(false)}
+            className={({ isActive }) =>
+              `flex min-h-12 items-center rounded-md px-3 text-lg font-semibold no-underline ${isActive ? "bg-primary-soft text-primary" : "text-foreground hover:bg-muted"}`
+            }
+          >
+            Danh mục thủ tục
+          </NavLink>
+          <LienKetHoSo doc onChon={() => datMo(false)} />
+        </nav>
+        <div className="mt-auto flex flex-col gap-3 border-t p-4">
+          {!dangTai && nguoiDung && (
+            <p className="flex items-center gap-2">
+              <UserRound aria-hidden="true" className="size-5 text-muted-foreground" />
+              <strong>{tenHienThi(nguoiDung)}</strong>
+            </p>
+          )}
+          {!dangTai &&
+            (nguoiDung ? (
+              <Button variant="outline" onClick={() => dangXuat()}>
+                <LogOut aria-hidden="true" />
+                Đăng xuất
+              </Button>
+            ) : (
+              <Button onClick={() => dangNhap(pathname)}>
+                <LogIn aria-hidden="true" />
+                Đăng nhập
+              </Button>
+            ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -69,7 +129,7 @@ function DaiThuNghiem() {
         <Badge variant="secondary">Thử nghiệm</Badge>
         <span className="text-muted-foreground">Dữ liệu trên cổng là dữ liệu mẫu, không phải hồ sơ thật.</span>
         {nguoiDung && (
-          <span className="basis-full md:hidden">
+          <span className="basis-full lg:hidden">
             Đã đăng nhập: <strong>{tenHienThi(nguoiDung)}</strong>
           </span>
         )}
@@ -92,14 +152,18 @@ export function BoCuc() {
           <Link to="/" className="flex min-w-0 items-center gap-3 rounded-md text-foreground no-underline">
             <img src="/mark-64.png" alt="" width={44} height={44} className="size-11 shrink-0" />
             <span className="flex min-w-0 flex-col leading-tight">
-              <span className="text-base font-bold sm:text-lg">Cổng dịch vụ công xã</span>
-              <span className="hidden text-sm text-muted-foreground sm:block">Commune DX-OS · Chính quyền số Cấp xã</span>
+              <span className="text-lg font-bold whitespace-nowrap">
+                <span className="hidden sm:inline">Cổng dịch vụ công xã</span>
+                <span className="sm:hidden">Dịch vụ công xã</span>
+              </span>
+              <span className="hidden text-sm text-muted-foreground xl:block">Commune DX-OS · Chính quyền số Cấp xã</span>
             </span>
           </Link>
-          <nav aria-label="Tài khoản" className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <nav aria-label="Tài khoản" className="hidden shrink-0 items-center gap-2 lg:flex">
             <LienKetHoSo />
             <NutTaiKhoan />
           </nav>
+          <MenuDienThoai />
         </div>
       </header>
       <DaiThuNghiem />
