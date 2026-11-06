@@ -9,7 +9,6 @@ import { Link, useSearchParams } from "react-router";
 import { ThongBao } from "@/components/thong-bao";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,6 +16,7 @@ import { GOC_CAN_BO } from "@/auth/oidc";
 import { cn } from "@/lib/utils";
 import { TheHan } from "@/components/the-han";
 import { useDuLieuCanBo } from "../du-lieu";
+import { TEN_VAI_TRO } from "../lib/quyen";
 import {
   demTheoHan,
   docBoLoc,
@@ -40,30 +40,43 @@ function NguoiNhan({ v }: { v: Viec }) {
   return <span>Chưa ai nhận</span>;
 }
 
+/** Thẻ số liệu nền màu có gradient (#142). Chữ trắng trên mọi nền ≥ 4.5:1: slate-900, teal-700, orange-700, rose-700. */
+const MAU_O = {
+  toi: "from-slate-900 to-slate-700 shadow-slate-900/20",
+  chinh: "from-teal-800 to-teal-600 shadow-teal-900/20",
+  cam: "from-orange-800 to-orange-700 shadow-orange-900/20",
+  do: "from-rose-800 to-rose-700 shadow-rose-900/20",
+};
+
 function OSo({
   nhan,
   so,
   bieuTuong: BieuTuong,
   den,
-  nhanManh = false,
+  mau,
 }: {
   nhan: string;
   so: number;
   bieuTuong: typeof Inbox;
   den: string;
-  nhanManh?: boolean;
+  mau: keyof typeof MAU_O;
 }) {
   return (
-    <Link to={den} className="rounded-xl no-underline">
-      <Card className={cn("gap-2 py-4 transition-colors hover:bg-surface", nhanManh && so > 0 && "border-warning")}>
-        <CardContent className="flex items-center justify-between gap-3 px-4">
-          <span className="flex flex-col">
-            <span className="text-muted-foreground">{nhan}</span>
-            <span className={cn("text-3xl font-bold text-foreground", nhanManh && so > 0 && "text-destructive")}>{so}</span>
-          </span>
-          <BieuTuong aria-hidden="true" className={cn("size-7 text-muted-foreground", nhanManh && so > 0 && "text-warning")} />
-        </CardContent>
-      </Card>
+    <Link
+      to={den}
+      className={cn(
+        "group relative isolate flex flex-col gap-3 overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white no-underline shadow-xl transition-all hover:-translate-y-0.5 hover:shadow-2xl",
+        MAU_O[mau],
+      )}
+    >
+      <span aria-hidden="true" className="absolute -right-8 -bottom-10 -z-10 size-36 rounded-full bg-white/10" />
+      <span className="flex items-center justify-between gap-3">
+        <span className="text-sm font-bold tracking-[0.15em] uppercase">{nhan}</span>
+        <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-xl bg-white/15 transition-colors group-hover:bg-white/25">
+          <BieuTuong className="size-5" />
+        </span>
+      </span>
+      <span className="text-4xl leading-none font-black tracking-tight tabular-nums">{so}</span>
     </Link>
   );
 }
@@ -71,11 +84,11 @@ function OSo({
 function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) => void; thuTuc: { ma: string; ten: string }[] }) {
   const coLoc = loc.trangThai !== "tat_ca" || loc.thuTuc !== "" || loc.han !== "tat_ca";
   return (
-    <div role="group" aria-label="Lọc hộp việc" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+    <div role="group" aria-label="Lọc hộp việc" className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-the sm:flex-row sm:flex-wrap sm:items-end">
       <label className="flex flex-col gap-1">
         <span className="font-semibold">Trạng thái</span>
         <Select value={loc.trangThai} onValueChange={(v) => datLoc({ ...loc, trangThai: v as LocTrangThai })}>
-          <SelectTrigger className="h-11 w-full text-base sm:w-52" aria-label="Lọc theo trạng thái nhận">
+          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-52" aria-label="Lọc theo trạng thái nhận">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -93,7 +106,7 @@ function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) 
           value={loc.thuTuc || TAT_CA_THU_TUC}
           onValueChange={(v) => datLoc({ ...loc, thuTuc: v === TAT_CA_THU_TUC ? "" : v })}
         >
-          <SelectTrigger className="h-11 w-full text-base sm:w-64" aria-label="Lọc theo thủ tục">
+          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-64" aria-label="Lọc theo thủ tục">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -111,7 +124,7 @@ function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) 
       <label className="flex flex-col gap-1">
         <span className="font-semibold">Hạn xử lý</span>
         <Select value={loc.han} onValueChange={(v) => datLoc({ ...loc, han: v as LocHan })}>
-          <SelectTrigger className="h-11 w-full text-base sm:w-60" aria-label="Lọc theo hạn xử lý">
+          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-60" aria-label="Lọc theo hạn xử lý">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -145,7 +158,7 @@ function DuongDanHoSo({ v, children, className }: { v: Viec; children: React.Rea
 
 function BangViec({ ds }: { ds: Viec[] }) {
   return (
-    <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
+    <div className="hidden overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-the md:block">
       <Table className="text-base">
         <TableHeader className="bg-surface">
           <TableRow>
@@ -208,7 +221,7 @@ function DanhSachThe({ ds }: { ds: Viec[] }) {
           <DuongDanHoSo
             v={v}
             className={cn(
-              "flex flex-col gap-2 rounded-xl border bg-card p-4 text-foreground no-underline shadow-the",
+              "flex flex-col gap-2 rounded-2xl border border-slate-100 bg-card p-4 text-foreground no-underline shadow-the",
               v.han.muc === "qua_han" && "border-destructive",
               v.han.muc === "sap_tre" && "border-warning",
             )}
@@ -252,8 +265,12 @@ export function HopViec() {
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Hộp việc</h1>
+        <div className="flex flex-col gap-2">
+          <span className="flex items-center gap-3">
+            <span aria-hidden="true" className="block h-[3px] w-10 rounded-full bg-primary" />
+            <span className="text-sm font-bold tracking-[0.2em] text-primary-soft-foreground uppercase">{TEN_VAI_TRO[vaiTro]}</span>
+          </span>
+          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Hộp việc</h1>
           <p className="text-muted-foreground">{moTa}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void taiLai()}>
@@ -278,11 +295,11 @@ export function HopViec() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <OSo nhan="Tổng việc" so={viec.length} bieuTuong={Inbox} den={GOC_CAN_BO} />
-        <OSo nhan="Chưa ai nhận" so={chuaNhan} bieuTuong={UserRoundX} den={`${GOC_CAN_BO}?trang_thai=chua_nhan`} />
-        <OSo nhan="Sắp trễ hạn" so={dem.sap_tre} bieuTuong={Hourglass} den={`${GOC_CAN_BO}?han=sap_tre`} nhanManh />
-        <OSo nhan="Quá hạn" so={dem.qua_han} bieuTuong={AlarmClockOff} den={`${GOC_CAN_BO}?han=qua_han`} nhanManh />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <OSo nhan="Tổng việc" so={viec.length} bieuTuong={Inbox} den={GOC_CAN_BO} mau="toi" />
+        <OSo nhan="Chưa ai nhận" so={chuaNhan} bieuTuong={UserRoundX} den={`${GOC_CAN_BO}?trang_thai=chua_nhan`} mau="chinh" />
+        <OSo nhan="Sắp trễ hạn" so={dem.sap_tre} bieuTuong={Hourglass} den={`${GOC_CAN_BO}?han=sap_tre`} mau="cam" />
+        <OSo nhan="Quá hạn" so={dem.qua_han} bieuTuong={AlarmClockOff} den={`${GOC_CAN_BO}?han=qua_han`} mau="do" />
       </div>
 
       <BoLocHopViec loc={loc} datLoc={(l) => datQ(ghiBoLoc(l), { replace: true })} thuTuc={thuTucTrongHop(viec)} />

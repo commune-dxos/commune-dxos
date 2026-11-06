@@ -14,7 +14,7 @@ globalThis.ResizeObserver ??= class {
 };
 // jsdom không cuộn trang; form nộp hồ sơ cuộn lên đầu khi sang bước.
 window.scrollTo = () => {};
-// jsdom chưa có matchMedia; thanh bên của cổng cán bộ (useIsMobile) dùng nó để chọn ngăn kéo/cột.
+// jsdom chưa có matchMedia; một số thành phần Radix gọi nó.
 window.matchMedia ??= (query: string) =>
   ({
     matches: false,

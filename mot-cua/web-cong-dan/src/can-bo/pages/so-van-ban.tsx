@@ -133,7 +133,7 @@ function FormVaoSoDen({ khiXong }: { khiXong: (vb: VanBan) => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="text-xl">
           <h2>Vào sổ văn bản đến</h2>
         </CardTitle>
         <CardDescription>Tệp được quét mã độc trước khi lưu; PDF có chữ ký số được xác minh. Số đến do hệ thống cấp.</CardDescription>
@@ -203,7 +203,7 @@ function FormDuThaoDi({ khiXong }: { khiXong: (vb: VanBan) => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="text-xl">
           <h2>Soạn văn bản đi</h2>
         </CardTitle>
         <CardDescription>Dự thảo chưa có số; số và ngày văn bản do hệ thống cấp khi lãnh đạo ký ban hành.</CardDescription>
@@ -212,7 +212,7 @@ function FormDuThaoDi({ khiXong }: { khiXong: (vb: VanBan) => void }) {
         <form onSubmit={(e) => void gui(e)} className="grid gap-4">
           <div className="grid gap-1.5 sm:max-w-xs">
             <Label htmlFor="di-loai">Loại văn bản</Label>
-            <select id="di-loai" name="loai" className="h-10 rounded-md border bg-background px-3" defaultValue="Thông báo">
+            <select id="di-loai" name="loai" className="h-12 rounded-xl border-2 border-input bg-background px-3" defaultValue="Thông báo">
               {LOAI_VAN_BAN_DI.map((l) => (
                 <option key={l}>{l}</option>
               ))}
@@ -258,7 +258,7 @@ function XacMinhPdf() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="text-xl">
           <h2>Xác minh chữ ký số</h2>
         </CardTitle>
         <CardDescription>Chọn một tệp PDF (văn bản đi, biên nhận, kết quả) để kiểm chữ ký theo CA của xã.</CardDescription>
@@ -318,7 +318,7 @@ export function SoVanBan() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Sổ văn bản</h1>
+          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Sổ văn bản</h1>
           <p className="text-muted-foreground">Văn bản đến và đi của xã, đánh số theo năm.</p>
         </div>
         <div role="group" aria-label="Chiều văn bản" className="flex gap-2">
@@ -343,7 +343,7 @@ export function SoVanBan() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">
+          <CardTitle className="text-xl">
             <h2>{TEN_CHIEU[chieu]}</h2>
           </CardTitle>
         </CardHeader>

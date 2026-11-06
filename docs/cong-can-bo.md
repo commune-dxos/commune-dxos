@@ -5,7 +5,7 @@
 Cổng cán bộ (#55) là ứng dụng Tầng 2 cho **cán bộ một cửa, cán bộ chuyên môn, văn thư và lãnh đạo xã**: đăng nhập một lần bằng mật khẩu + OTP, xem hồ sơ thuộc lĩnh vực mình phụ trách, xử lý từng bước của quy trình. Cổng chạy ở **http://localhost:9080/can-bo** sau `make up`, cùng ứng dụng web với cổng công dân ([`mot-cua/web-cong-dan/`](../mot-cua/web-cong-dan/), mã ở `src/can-bo/`) và chỉ gọi lõi qua APISIX.
 
 <p>
-  <img src="images/cong-can-bo-hop-viec.webp" alt="Hộp việc của cán bộ hộ tịch trên máy tính: thanh bên có Hộp việc, Quá hạn, Sắp trễ hạn, Tôi đang xử lý; ô số liệu; bảng hồ sơ với hạn xử lý đổi màu" width="100%">
+  <img src="images/cong-can-bo-hop-viec.webp" alt="Hộp việc của cán bộ một cửa trên máy tính: thanh bên tối có Hộp việc, Quá hạn, Sắp trễ hạn, Tôi đang xử lý; 4 thẻ số liệu nền màu; bảng hồ sơ với hạn xử lý" width="100%">
 </p>
 
 ## Đăng nhập và quyền

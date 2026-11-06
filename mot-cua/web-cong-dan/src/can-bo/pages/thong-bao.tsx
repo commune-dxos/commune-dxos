@@ -22,7 +22,7 @@ export function HopThongBao() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Thông báo</h1>
+          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Thông báo</h1>
           <p className="text-muted-foreground">
             Hồ sơ thuộc lĩnh vực bạn phụ trách sắp tới hạn xử lý. Thông báo mới hiện ngay, không cần tải lại trang.
           </p>
@@ -45,7 +45,7 @@ export function HopThongBao() {
             <li
               key={t.id}
               data-da-doc={t.da_doc_luc ? "co" : "chua"}
-              className={cn("rounded-md border bg-card p-4 shadow-the", !t.da_doc_luc && "border-l-4 border-l-warning")}
+              className={cn("rounded-2xl border border-slate-100 bg-card p-5 shadow-the", !t.da_doc_luc && "border-l-4 border-l-warning")}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1">
