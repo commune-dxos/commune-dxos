@@ -4,6 +4,114 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-06
+
+### Tính năng mới
+
+- **mot-cua:** Làm mới giao diện cổng công dân ([#141](https://github.com/commune-dxos/commune-dxos/issues/141)) ([#147](https://github.com/commune-dxos/commune-dxos/issues/147))
+    - Trang chủ: phần đầu nền xanh ngọc nhạt, ảnh minh họa của đội (mot-cua-so.webp thu nhỏ), ô tìm lớn, lối tắt Tra cứu hồ sơ và Hỏi đáp.
+    - Danh mục: lưới thẻ 1/2/3 cột, tên đậm không gạch chân, tách nhóm "Nộp trực tuyến" và "Chỉ nộp tại bộ phận một cửa".
+    - /tra-cuu: biểu mẫu trong thẻ, ô nhập và nút to, khối "Mã hồ sơ nằm ở đâu?".
+    - /hoi-dap: câu hỏi gợi ý dạng thẻ, chế độ trợ lý trong khối màu, form trong thẻ.
+    - Toàn cổng: bớt chữ xám, chân trang một hàng cân đối, dải thử nghiệm ngắn trên điện thoại.
+    - Token màu theo thang slate, bo góc lớn, nút bo tròn hẳn; thêm Be Vietnam Pro 800/900 cho tiêu đề.
+    - Trang chủ: hero nền slate-950 có hoa văn chấm, tiêu đề font-black, ô tìm bo tròn, lối tắt dạng viên thuốc, số liệu thủ tục.
+    - Đầu mục có nhãn in hoa và gạch màu nhấn (TieuDeMuc); trang trong có dải tiêu đề tối (DauTrang): chi tiết thủ tục, tra cứu, hỏi đáp, hồ sơ của tôi.
+    - Đầu trang trắng dính, ô tìm nhanh bo tròn (chuyển về danh mục với ?tim=); chân trang slate-900 chia 4 cột.
+    - src/components/khung-trang/: dau-trang.tsx (dải thử nghiệm, thanh trên cùng, ô tìm nhanh, menu điện thoại), chan-trang.tsx (4 cột), khoi-dau.tsx (hero trang chủ).
+    - bo-cuc.tsx chỉ còn layout: đầu trang, Outlet, chân trang.
+    - Dải tiêu đề tối của trang trong đổi tên DaiTieuDe (tránh trùng DauTrang).
+- **mot-cua:** Làm mới giao diện cổng cán bộ và màn lãnh đạo ([#142](https://github.com/commune-dxos/commune-dxos/issues/142)) ([#148](https://github.com/commune-dxos/commune-dxos/issues/148))
+    - Thanh bên slate-900 rộng 16 rem, mục đang mở nền xanh ngọc có bóng; nhãn nhóm in hoa; trên điện thoại vẫn là ngăn kéo.
+    - Đầu trang dính nền trắng mờ (backdrop-blur), chuông, tên, vai trò và ô chữ cái đầu bo góc.
+    - Nội dung nền slate nhạt, rộng tối đa 80 rem; tiêu đề trang font-black.
+    - Hộp việc: 4 thẻ số liệu gradient (slate, xanh ngọc, cam, đỏ; chữ trắng đạt AA), bảng bo 2xl, đầu cột in hoa.
+    - Trang đăng nhập cán bộ nền tối có hoa văn chấm; thẻ, ô nhập, bảng bo lớn ở hộp việc, chi tiết hồ sơ, lịch, sổ văn bản, wiki, thông báo.
+    - src/can-bo/components/thanh-ben.tsx: aside slate-900 rộng 16 rem, nhóm mục, mục đang mở nền xanh ngọc; dùng cho cột cố định từ 1024 px và trong Sheet dưới 1024 px (nút Mở menu).
+    - bo-cuc.tsx chỉ còn layout: thanh bên, đầu trang dính nền trắng mờ, nội dung rộng tối đa 80 rem.
+    - Bỏ Sidebar, Tooltip của shadcn/ui và use-mobile.ts (không còn dùng), bỏ token --sidebar-*; cập nhật DEPENDENCIES.md, NOTICE, README.
+    - Hộp việc: thanh lọc nằm trong thẻ trắng. Thêm test ngăn kéo menu.
+- **scripts:** Quay demo dạng khung hình nét kèm meta.json cho dựng video ([#143](https://github.com/commune-dxos/commune-dxos/issues/143)) ([#149](https://github.com/commune-dxos/commune-dxos/issues/149))
+    - Đầu trang < 1024 px: biểu tượng, tên ngắn, nút Menu mở ngăn kéo (Sheet) chứa liên kết và đăng nhập.
+    - /hoi-dap kiểm trợ lý trước (GET /tro-ly/thong-tin rồi /tro-ly/tim); không dùng được thì hiện "Trợ lý AI chưa bật trên bản demo này" kèm lối sang danh mục, tra cứu; 5xx khi hỏi là thông báo trung tính, không phải lỗi đỏ.
+    - Form nộp hồ sơ bỏ hộp tóm tắt lỗi trùng nội dung: lỗi chỉ hiện dưới ô, con trỏ về ô sai đầu tiên, câu tóm tắt chỉ cho trình đọc màn hình.
+    - quay_demo, quay_video_demo chờ dòng lỗi tại ô thay cho role=alert.
+    - Trang chủ: phần đầu nền xanh ngọc nhạt, ảnh minh họa của đội (mot-cua-so.webp thu nhỏ), ô tìm lớn, lối tắt Tra cứu hồ sơ và Hỏi đáp.
+    - Danh mục: lưới thẻ 1/2/3 cột, tên đậm không gạch chân, tách nhóm "Nộp trực tuyến" và "Chỉ nộp tại bộ phận một cửa".
+    - /tra-cuu: biểu mẫu trong thẻ, ô nhập và nút to, khối "Mã hồ sơ nằm ở đâu?".
+    - /hoi-dap: câu hỏi gợi ý dạng thẻ, chế độ trợ lý trong khối màu, form trong thẻ.
+    - Toàn cổng: bớt chữ xám, chân trang một hàng cân đối, dải thử nghiệm ngắn trên điện thoại.
+    - Token màu theo thang slate, bo góc lớn, nút bo tròn hẳn; thêm Be Vietnam Pro 800/900 cho tiêu đề.
+    - Trang chủ: hero nền slate-950 có hoa văn chấm, tiêu đề font-black, ô tìm bo tròn, lối tắt dạng viên thuốc, số liệu thủ tục.
+    - Đầu mục có nhãn in hoa và gạch màu nhấn (TieuDeMuc); trang trong có dải tiêu đề tối (DauTrang): chi tiết thủ tục, tra cứu, hỏi đáp, hồ sơ của tôi.
+    - Đầu trang trắng dính, ô tìm nhanh bo tròn (chuyển về danh mục với ?tim=); chân trang slate-900 chia 4 cột.
+    - src/components/khung-trang/: dau-trang.tsx (dải thử nghiệm, thanh trên cùng, ô tìm nhanh, menu điện thoại), chan-trang.tsx (4 cột), khoi-dau.tsx (hero trang chủ).
+    - bo-cuc.tsx chỉ còn layout: đầu trang, Outlet, chân trang.
+    - Dải tiêu đề tối của trang trong đổi tên DaiTieuDe (tránh trùng DauTrang).
+    - Thanh bên slate-900 rộng 16 rem, mục đang mở nền xanh ngọc có bóng; nhãn nhóm in hoa; trên điện thoại vẫn là ngăn kéo.
+    - Đầu trang dính nền trắng mờ (backdrop-blur), chuông, tên, vai trò và ô chữ cái đầu bo góc.
+    - Nội dung nền slate nhạt, rộng tối đa 80 rem; tiêu đề trang font-black.
+    - Hộp việc: 4 thẻ số liệu gradient (slate, xanh ngọc, cam, đỏ; chữ trắng đạt AA), bảng bo 2xl, đầu cột in hoa.
+    - Trang đăng nhập cán bộ nền tối có hoa văn chấm; thẻ, ô nhập, bảng bo lớn ở hộp việc, chi tiết hồ sơ, lịch, sổ văn bản, wiki, thông báo.
+    - src/can-bo/components/thanh-ben.tsx: aside slate-900 rộng 16 rem, nhóm mục, mục đang mở nền xanh ngọc; dùng cho cột cố định từ 1024 px và trong Sheet dưới 1024 px (nút Mở menu).
+    - bo-cuc.tsx chỉ còn layout: thanh bên, đầu trang dính nền trắng mờ, nội dung rộng tối đa 80 rem.
+    - Bỏ Sidebar, Tooltip của shadcn/ui và use-mobile.ts (không còn dùng), bỏ token --sidebar-*; cập nhật DEPENDENCIES.md, NOTICE, README.
+    - Hộp việc: thanh lọc nằm trong thẻ trắng. Thêm test ngăn kéo menu.
+    - scripts/quay_khung.py: quay stop-motion 8 đoạn (trợ lý, nộp hồ sơ, cán bộ, lãnh đạo, kết quả, kiểm toán, dashboard, cắm gói), mỗi thao tác một khung, giữ N khung, ghép 30 khung/giây.
+    - meta.json: con trỏ từng khung, lần bấm, khung bao phần tử đang thao tác, mốc từng bước, kết quả lệnh thật (xác minh chữ ký, kiểm toán, nạp gói).
+    - Gõ từng ký tự; giảm chuyển động, chỉ chụp khi trang đứng yên; mã OTP sinh khi còn đủ thời gian trong khung 30 giây.
+    - make quay-demo KHUNG=<thư mục ngoài repo>.
+
+### Sửa lỗi
+
+- **bao-cao:** Dashboard Superset có logo đội, số kiểu Việt, dòng phụ Big Number nhỏ, có chủ sở hữu ([#144](https://github.com/commune-dxos/commune-dxos/issues/144)) ([#150](https://github.com/commune-dxos/commune-dxos/issues/150))
+    - Đầu trang < 1024 px: biểu tượng, tên ngắn, nút Menu mở ngăn kéo (Sheet) chứa liên kết và đăng nhập.
+    - /hoi-dap kiểm trợ lý trước (GET /tro-ly/thong-tin rồi /tro-ly/tim); không dùng được thì hiện "Trợ lý AI chưa bật trên bản demo này" kèm lối sang danh mục, tra cứu; 5xx khi hỏi là thông báo trung tính, không phải lỗi đỏ.
+    - Form nộp hồ sơ bỏ hộp tóm tắt lỗi trùng nội dung: lỗi chỉ hiện dưới ô, con trỏ về ô sai đầu tiên, câu tóm tắt chỉ cho trình đọc màn hình.
+    - quay_demo, quay_video_demo chờ dòng lỗi tại ô thay cho role=alert.
+    - Trang chủ: phần đầu nền xanh ngọc nhạt, ảnh minh họa của đội (mot-cua-so.webp thu nhỏ), ô tìm lớn, lối tắt Tra cứu hồ sơ và Hỏi đáp.
+    - Danh mục: lưới thẻ 1/2/3 cột, tên đậm không gạch chân, tách nhóm "Nộp trực tuyến" và "Chỉ nộp tại bộ phận một cửa".
+    - /tra-cuu: biểu mẫu trong thẻ, ô nhập và nút to, khối "Mã hồ sơ nằm ở đâu?".
+    - /hoi-dap: câu hỏi gợi ý dạng thẻ, chế độ trợ lý trong khối màu, form trong thẻ.
+    - Toàn cổng: bớt chữ xám, chân trang một hàng cân đối, dải thử nghiệm ngắn trên điện thoại.
+    - Token màu theo thang slate, bo góc lớn, nút bo tròn hẳn; thêm Be Vietnam Pro 800/900 cho tiêu đề.
+    - Trang chủ: hero nền slate-950 có hoa văn chấm, tiêu đề font-black, ô tìm bo tròn, lối tắt dạng viên thuốc, số liệu thủ tục.
+    - Đầu mục có nhãn in hoa và gạch màu nhấn (TieuDeMuc); trang trong có dải tiêu đề tối (DauTrang): chi tiết thủ tục, tra cứu, hỏi đáp, hồ sơ của tôi.
+    - Đầu trang trắng dính, ô tìm nhanh bo tròn (chuyển về danh mục với ?tim=); chân trang slate-900 chia 4 cột.
+    - src/components/khung-trang/: dau-trang.tsx (dải thử nghiệm, thanh trên cùng, ô tìm nhanh, menu điện thoại), chan-trang.tsx (4 cột), khoi-dau.tsx (hero trang chủ).
+    - bo-cuc.tsx chỉ còn layout: đầu trang, Outlet, chân trang.
+    - Dải tiêu đề tối của trang trong đổi tên DaiTieuDe (tránh trùng DauTrang).
+    - Thanh bên slate-900 rộng 16 rem, mục đang mở nền xanh ngọc có bóng; nhãn nhóm in hoa; trên điện thoại vẫn là ngăn kéo.
+    - Đầu trang dính nền trắng mờ (backdrop-blur), chuông, tên, vai trò và ô chữ cái đầu bo góc.
+    - Nội dung nền slate nhạt, rộng tối đa 80 rem; tiêu đề trang font-black.
+    - Hộp việc: 4 thẻ số liệu gradient (slate, xanh ngọc, cam, đỏ; chữ trắng đạt AA), bảng bo 2xl, đầu cột in hoa.
+    - Trang đăng nhập cán bộ nền tối có hoa văn chấm; thẻ, ô nhập, bảng bo lớn ở hộp việc, chi tiết hồ sơ, lịch, sổ văn bản, wiki, thông báo.
+    - src/can-bo/components/thanh-ben.tsx: aside slate-900 rộng 16 rem, nhóm mục, mục đang mở nền xanh ngọc; dùng cho cột cố định từ 1024 px và trong Sheet dưới 1024 px (nút Mở menu).
+    - bo-cuc.tsx chỉ còn layout: thanh bên, đầu trang dính nền trắng mờ, nội dung rộng tối đa 80 rem.
+    - Bỏ Sidebar, Tooltip của shadcn/ui và use-mobile.ts (không còn dùng), bỏ token --sidebar-*; cập nhật DEPENDENCIES.md, NOTICE, README.
+    - Hộp việc: thanh lọc nằm trong thẻ trắng. Thêm test ngăn kéo menu.
+    - scripts/quay_khung.py: quay stop-motion 8 đoạn (trợ lý, nộp hồ sơ, cán bộ, lãnh đạo, kết quả, kiểm toán, dashboard, cắm gói), mỗi thao tác một khung, giữ N khung, ghép 30 khung/giây.
+    - meta.json: con trỏ từng khung, lần bấm, khung bao phần tử đang thao tác, mốc từng bước, kết quả lệnh thật (xác minh chữ ký, kiểm toán, nạp gói).
+    - Gõ từng ký tự; giảm chuyển động, chỉ chụp khi trang đứng yên; mã OTP sinh khi còn đủ thời gian trong khung 30 giây.
+    - make quay-demo KHUNG=<thư mục ngoài repo>.
+    - superset_config.py: theme có logo, liên kết, màu chính lấy từ biến môi trường của Tầng 2; né lỗi Superset 6.1 thêm tiền tố /bao-cao hai lần (logo vỡ) bằng đường dẫn /./static/…; D3_FORMAT dấu phẩy thập phân, D3_TIME_FORMAT tên tháng tiếng Việt; CSP tối thiểu, chặn ảnh theo dõi scarf.sh.
+    - docker-compose.yml: mount logo ngang của cổng vào thư mục tĩnh của Superset (chỉ đọc), DXOS_SUPERSET_LOGO/LOGO_LINK/MAU_CHINH.
+    - superset_dung.py: Big Number dùng subtitle 0,08 và header 0,5; biểu đồ cột hiện nhãn số (tháng 0% không còn trống); biểu đồ tròn bỏ chú giải; tài khoản hệ thống "Bộ phận Một cửa" làm chủ dashboard và chart.
+    - smoke-superset.sh: kiểm chủ sở hữu, cỡ dòng phụ, logo, CSP.
+    - Không sửa được bằng cấu hình: nút "All/Inv" của chú giải ECharts và nhãn giao diện Superset (Home, … minutes ago) vì Superset chưa có bản tiếng Việt.
+- **mot-cua:** Đầu trang điện thoại có menu, hỏi đáp báo trung tính khi trợ lý tắt, lỗi nộp hồ sơ chỉ hiện tại ô ([#140](https://github.com/commune-dxos/commune-dxos/issues/140)) ([#146](https://github.com/commune-dxos/commune-dxos/issues/146))
+    - Đầu trang < 1024 px: biểu tượng, tên ngắn, nút Menu mở ngăn kéo (Sheet) chứa liên kết và đăng nhập.
+    - /hoi-dap kiểm trợ lý trước (GET /tro-ly/thong-tin rồi /tro-ly/tim); không dùng được thì hiện "Trợ lý AI chưa bật trên bản demo này" kèm lối sang danh mục, tra cứu; 5xx khi hỏi là thông báo trung tính, không phải lỗi đỏ.
+    - Form nộp hồ sơ bỏ hộp tóm tắt lỗi trùng nội dung: lỗi chỉ hiện dưới ô, con trỏ về ô sai đầu tiên, câu tóm tắt chỉ cho trình đọc màn hình.
+    - quay_demo, quay_video_demo chờ dòng lỗi tại ô thay cho role=alert.
+- **nen-tang:** Trang đăng nhập Keycloak bằng tiếng Việt, quay demo theo nhịp người thật ([#145](https://github.com/commune-dxos/commune-dxos/issues/145)) ([#151](https://github.com/commune-dxos/commune-dxos/issues/151))
+    - realm-dxos.json: internationalizationEnabled, supportedLocales [vi], defaultLocale vi, localizationTexts.vi cho trang đăng nhập, OTP, cài ứng dụng xác thực, thông báo lỗi. Keycloak 26 không kèm bản dịch tiếng Việt; không dùng theme riêng, không sửa mã.
+    - smoke-can-bo.sh: trang đăng nhập có "Đăng nhập vào tài khoản" và lang="vi".
+    - Realm chỉ nạp khi Keycloak khởi tạo lần đầu: hệ thống đã chạy thì áp bằng kcadm (update realms/dxos, create realms/dxos/localization/vi).
+    - Con trỏ trượt 24 khung (0,8 giây, nhanh dần rồi chậm), vị trí riêng từng khung; chỉ chụp lại trang ở khung cuối.
+    - Cuộn trang 24–40 khung, chụp thật từng khung; gõ 10 ký tự/giây (3 khung/ký tự).
+    - Sự kiện có thêm f0 (khung bắt đầu thao tác) để bản dựng canh nhịp báo trước – làm – dừng.
+
 ## [0.9.1] - 2026-11-05
 
 ### Tài liệu
@@ -450,7 +558,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.7.0...v0.8.0
