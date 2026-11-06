@@ -4,12 +4,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { FileText, UserRound, type LucideIcon } from 'lucide-react-native';
+import { FileText, Search, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { chu, mau } from '../giao-dien';
 import { ManChiTietThuTuc } from '../man-hinh/chi-tiet-thu-tuc';
 import { ManDanhSachThuTuc } from '../man-hinh/danh-sach-thu-tuc';
 import { ManTaiKhoan } from '../man-hinh/tai-khoan';
+import { ManTraCuu } from '../man-hinh/tra-cuu';
 import type { CacManGoc, CacTab } from './kieu';
 
 const Tab = createBottomTabNavigator<CacTab>();
@@ -20,6 +21,7 @@ function bieuTuongTab(BieuTuong: LucideIcon) {
 }
 const BIEU_TUONG = {
   ThuTuc: bieuTuongTab(FileText),
+  TraCuu: bieuTuongTab(Search),
   TaiKhoan: bieuTuongTab(UserRound),
 };
 const Goc = createNativeStackNavigator<CacManGoc>();
@@ -40,6 +42,11 @@ function CacTabChinh() {
         name="ThuTuc"
         component={ManDanhSachThuTuc}
         options={{ title: t('tab.thuTuc'), headerTitle: t('ungDung.ten'), tabBarIcon: BIEU_TUONG.ThuTuc }}
+      />
+      <Tab.Screen
+        name="TraCuu"
+        component={ManTraCuu}
+        options={{ title: t('tab.traCuu'), headerTitle: t('man.traCuu'), tabBarIcon: BIEU_TUONG.TraCuu }}
       />
       <Tab.Screen
         name="TaiKhoan"

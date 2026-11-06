@@ -47,6 +47,23 @@
     "chuaNhanTrucTuyen": "Thủ tục này chưa nhận hồ sơ trực tuyến. Vui lòng nộp tại bộ phận một cửa của xã."
   },
   "man": {
-    "chiTietThuTuc": "Thủ tục"
+    "chiTietThuTuc": "Thủ tục",
+    "traCuu": "Tra cứu hồ sơ"
+  },
+  "traCuu": {
+    "gioiThieu": "Không cần đăng nhập. Nhập mã hồ sơ in trên biên nhận và 4 số cuối số điện thoại đã khai khi nộp.",
+    "maHoSo": "Mã hồ sơ",
+    "goiYMa": "Ví dụ HS20261024-000123",
+    "soCuoi": "4 số cuối số điện thoại",
+    "nut": "Tra cứu",
+    "loi": "Chưa tra cứu được",
+    "khongThay": "Không tìm thấy hồ sơ",
+    "khongThayMoTa": "Mã hồ sơ hoặc 4 số cuối số điện thoại chưa khớp. Vui lòng kiểm tra lại biên nhận."
+  },
+  "hoSo": {
+    "ngayNhan": "Ngày nhận",
+    "hanXuLy": "Hạn xử lý",
+    "ngayHoanTat": "Ngày có kết quả",
+    "cacMoc": "Các mốc xử lý"
   }
 }
