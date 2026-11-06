@@ -12,7 +12,7 @@ import type { NguoiNop } from "./kieu";
 function Bang({ tieuDe, children }: { tieuDe: string; children: ReactNode }) {
   return (
     <section aria-label={tieuDe} className="flex flex-col gap-3">
-      <h2 className="text-xl font-bold">{tieuDe}</h2>
+      <h2 className="text-xl font-black tracking-tight">{tieuDe}</h2>
       <dl className="divide-y border-y">{children}</dl>
     </section>
   );
@@ -101,7 +101,7 @@ export function BuocKiemTra({
           </Bang>
         ))}
       <section aria-labelledby="cam-doan" className="flex flex-col gap-3">
-        <h2 id="cam-doan" className="text-xl font-bold">
+        <h2 id="cam-doan" className="text-xl font-black tracking-tight">
           Cam đoan
         </h2>
         <p>

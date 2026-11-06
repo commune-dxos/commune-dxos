@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Trang "Đã nộp" (mẫu confirmation page của GOV.UK): khung xanh có mã hồ sơ do CSDL cấp, rồi việc
+// Trang "Đã nộp" (mẫu confirmation page của GOV.UK, giao diện #141): khung xanh có mã hồ sơ do CSDL cấp, rồi việc
 // tiếp theo. Chỉ hiện sau khi hồ sơ đã tạo, tệp đã tải và quy trình đã khởi tạo. Biên nhận PDF có ký
 // số của xã (#77) tải ngay tại đây; nút theo dõi tiến độ mở trang Hồ sơ của tôi (#54).
 import { Check } from "lucide-react";
@@ -30,17 +30,17 @@ export function DaNop({
         <span className="flex size-16 items-center justify-center rounded-full bg-white" aria-hidden="true">
           <Check className="size-10 text-warning" strokeWidth={3} />
         </span>
-        <h1 className="text-3xl font-bold sm:text-4xl">Đã nộp hồ sơ</h1>
+        <h1 className="text-4xl font-black tracking-tighter sm:text-5xl">Đã nộp hồ sơ</h1>
         <p className="text-lg">{thuTuc.ten}</p>
         <div className="flex flex-col gap-1">
           <span className="text-lg">Mã hồ sơ của bạn</span>
-          <strong className="text-2xl font-bold tracking-wide whitespace-nowrap tabular-nums sm:text-3xl">
+          <strong className="text-2xl font-black tracking-tight tracking-wide whitespace-nowrap tabular-nums sm:text-3xl">
             {hoSo.ma_ho_so}
           </strong>
         </div>
       </div>
       <section aria-labelledby="bien-nhan" className="flex flex-col gap-3">
-        <h2 id="bien-nhan" className="text-2xl font-bold">
+        <h2 id="bien-nhan" className="text-2xl font-black tracking-tight">
           Biên nhận
         </h2>
         <p className="text-lg">
@@ -50,7 +50,7 @@ export function DaNop({
         <NutGiayTo loai="bien_nhan" layGiayTo={layBienNhan} />
       </section>
       <section aria-labelledby="tiep-theo" className="flex flex-col gap-3">
-        <h2 id="tiep-theo" className="text-2xl font-bold">
+        <h2 id="tiep-theo" className="text-2xl font-black tracking-tight">
           Việc tiếp theo
         </h2>
         <ol className="flex list-decimal flex-col gap-2 pl-6 marker:font-semibold">
