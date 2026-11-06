@@ -16,6 +16,11 @@ path = [
   "docs/media/**",
   # Biểu tượng của cổng công dân: bản sao docs/images/logo/ (#61), Vite phục vụ từ public/.
   "mot-cua/web-cong-dan/public/**",
+  # App di động (#155): biểu tượng launcher và logo sinh từ docs/images/logo/mark-512.png, khóa yarn.
+  "mot-cua/di-dong/android/app/src/main/res/mipmap-*/*.png",
+  "mot-cua/di-dong/src/tai-nguyen/**",
+  "mot-cua/di-dong/yarn.lock",
+  "mot-cua/di-dong/.watchmanconfig",
   ".gitignore",
   "NOTICE",
   "nen-tang/rabbitmq/enabled_plugins",
@@ -49,3 +54,17 @@ path = "du-lieu-mo/**"
 precedence = "override"
 SPDX-FileCopyrightText = "2026 DTU_DZ_2"
 SPDX-License-Identifier = "CC-BY-4.0"
+
+# App di động (#155): Gradle wrapper đi kèm khung React Native (@react-native-community/template 0.80.3),
+# giữ nguyên tệp gốc của Gradle (Apache-2.0); gradlew.bat có thêm phần sửa của Meta theo MIT. Không sửa.
+[[annotations]]
+path = ["mot-cua/di-dong/android/gradlew", "mot-cua/di-dong/android/gradle/wrapper/gradle-wrapper.jar"]
+precedence = "override"
+SPDX-FileCopyrightText = "2015-2021 the original authors (Gradle)"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "mot-cua/di-dong/android/gradlew.bat"
+precedence = "override"
+SPDX-FileCopyrightText = ["Meta Platforms, Inc. and affiliates", "2015 the original author or authors (Gradle)"]
+SPDX-License-Identifier = "Apache-2.0 AND MIT"

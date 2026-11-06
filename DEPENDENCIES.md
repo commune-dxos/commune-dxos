@@ -79,6 +79,42 @@ Cổng công dân (#52). Phiên bản ghim cứng trong `package.json` (`.npmrc`
 
 Rà giấy phép ngày 23/10/2026 (bản mẫu giao diện shadcn, rà lại khi thêm `@cfworker/json-schema` ở #53) trên `package-lock.json` (331 gói kể cả gói kéo theo): 293 MIT, 12 MPL-2.0 (`lightningcss` của Tailwind, công cụ), 10 ISC, 8 Apache-2.0, 2 BSD-2-Clause, 2 BSD-3-Clause, 1 MIT-0 (`@csstools/color-helpers`, công cụ test), 1 0BSD (`tslib`, kéo theo bởi Radix), 1 OFL-1.1 (phông). Gói không thuộc nhánh dev: 91 (86 MIT, 2 Apache-2.0, 1 ISC, 1 0BSD, 1 OFL-1.1), phần lớn là các gói `@radix-ui/*` mà `radix-ui` kéo theo; trình đóng gói chỉ đưa vào bản build phần được import. Một gói không phải giấy phép mã: `caniuse-lite` (CC-BY-4.0, bảng dữ liệu trình duyệt mà `browserslist` của Babel đọc lúc build, kéo theo bởi `@vitejs/plugin-react`), chỉ là công cụ build, không vào bản build và không liên kết với mã của dự án. Không có gói GPL-2.0-only, SSPL, BSL hay giấy phép không OSI trong mã chạy.
 
+### App di động (`mot-cua/di-dong/package.json`)
+
+App **Một cửa xã** cho công dân (D-015, #155), React Native bare, chỉ build Android. Phiên bản ghim cứng trong `package.json`, cây phụ thuộc khóa trong `yarn.lock`; `make check` (`scripts/check-web.py`) báo lỗi nếu có `^`/`~` hoặc `yarn.lock` thiếu mục của phiên bản đã ghim. Không dùng Firebase, Stripe, Google/Apple Sign-in, react-native-maps (D-015 mục 2).
+
+| Gói | Phiên bản | Giấy phép | Nguồn | Dùng ở | Tương thích GPL-3.0 |
+|---|---|---|---|---|---|
+| `react-native` | 0.80.3 | MIT | npmjs.com · https://github.com/facebook/react-native | `mot-cua/di-dong` – sản phẩm (khung app, New Architecture, Hermes) | ✓ MIT |
+| `react` | 19.1.0 | MIT | npmjs.com · https://github.com/facebook/react | `mot-cua/di-dong` – sản phẩm | ✓ MIT |
+| `@react-navigation/native, /native-stack, /bottom-tabs` | 7.5.1, 7.21.0, 7.21.0 | MIT | npmjs.com · https://github.com/react-navigation/react-navigation | `mot-cua/di-dong` – sản phẩm (điều hướng màn, thanh tab) | ✓ MIT |
+| `react-native-screens` | 4.15.0 | MIT | npmjs.com · https://github.com/software-mansion/react-native-screens | `mot-cua/di-dong` – sản phẩm (màn native cho native-stack) | ✓ MIT |
+| `react-native-safe-area-context` | 5.6.2 | MIT | npmjs.com · https://github.com/AppAndFlow/react-native-safe-area-context | `mot-cua/di-dong` – sản phẩm | ✓ MIT |
+| `@tanstack/react-query` | 5.90.5 | MIT | npmjs.com · https://github.com/TanStack/query | `mot-cua/di-dong` – sản phẩm (bộ nhớ tạm, tải lại khi có mạng) | ✓ MIT |
+| `zustand` | 5.0.8 | MIT | npmjs.com · https://github.com/pmndrs/zustand | `mot-cua/di-dong` – sản phẩm (kho phiên đăng nhập, trạng thái mạng) | ✓ MIT |
+| `i18next, react-i18next` | 25.5.2, 15.7.3 | MIT | npmjs.com · https://github.com/i18next/i18next | `mot-cua/di-dong` – sản phẩm (chuỗi giao diện tiếng Việt) | ✓ MIT |
+| `@react-native-community/netinfo` | 11.4.1 | MIT | npmjs.com · https://github.com/react-native-netinfo/react-native-netinfo | `mot-cua/di-dong` – sản phẩm (báo mất mạng) | ✓ MIT |
+| `@react-native-async-storage/async-storage` | 2.2.0 | MIT | npmjs.com · https://github.com/react-native-async-storage/async-storage | `mot-cua/di-dong` – sản phẩm (lưu dữ liệu không nhạy cảm) | ✓ MIT |
+| `react-native-keychain` | 10.0.0 | MIT | npmjs.com · https://github.com/oblador/react-native-keychain | `mot-cua/di-dong` – sản phẩm (lưu token trong Android Keystore) | ✓ MIT |
+| `react-native-app-auth` | 8.5.1 | MIT | npmjs.com · https://github.com/FormidableLabs/react-native-app-auth | `mot-cua/di-dong` – sản phẩm (OIDC Authorization Code + PKCE với Keycloak; Android dùng thư viện AppAuth-Android, Apache-2.0) | ✓ MIT |
+| `react-native-image-picker` | 8.2.1 | MIT | npmjs.com · https://github.com/react-native-image-picker/react-native-image-picker | `mot-cua/di-dong` – sản phẩm (chụp, chọn ảnh giấy tờ) | ✓ MIT |
+| `react-native-svg` | 15.15.0 | MIT | npmjs.com · https://github.com/software-mansion/react-native-svg | `mot-cua/di-dong` – sản phẩm (vẽ biểu tượng) | ✓ MIT |
+| `lucide-react-native` | 1.61.0 | ISC | npmjs.com · https://github.com/lucide-icons/lucide | `mot-cua/di-dong` – sản phẩm (biểu tượng, cùng bộ với cổng công dân) | ✓ ISC |
+| `@cfworker/json-schema` | 4.1.1 | MIT | npmjs.com · https://github.com/cfworker/cfworker | `mot-cua/di-dong` – sản phẩm (Poka-yoke: kiểm đủ giấy tờ theo JSON Schema của gói trước khi gửi, như cổng công dân) | ✓ MIT |
+| `@react-native-community/cli, cli-platform-android` | 19.1.2 | MIT | npmjs.com · https://github.com/react-native-community/cli | `mot-cua/di-dong` – công cụ (chạy Metro, build Android) | ✓ MIT; công cụ |
+| `@react-native/babel-preset, eslint-config, metro-config, typescript-config` | 0.80.3 | MIT | npmjs.com · https://github.com/facebook/react-native | `mot-cua/di-dong` – công cụ | ✓ MIT; công cụ |
+| `@babel/core, @babel/preset-env, @babel/runtime` | 7.29.13, 7.29.7, 7.29.13 | MIT | npmjs.com · https://github.com/babel/babel | `mot-cua/di-dong` – công cụ (biên dịch JS) | ✓ MIT; công cụ |
+| `typescript` | 5.0.4 | Apache-2.0 | npmjs.com · https://github.com/microsoft/TypeScript | `mot-cua/di-dong` – công cụ (kiểm kiểu) | ✓ Apache-2.0; công cụ |
+| `eslint, prettier` | 8.57.1, 2.8.8 | MIT | npmjs.com · https://github.com/eslint/eslint · https://github.com/prettier/prettier | `mot-cua/di-dong` – công cụ (lint) | ✓ MIT; công cụ |
+| `jest, react-test-renderer` | 29.7.0, 19.1.0 | MIT | npmjs.com · https://github.com/jestjs/jest | `mot-cua/di-dong` – công cụ (test) | ✓ MIT; công cụ |
+| `@types/jest, @types/react, @types/react-test-renderer` | 29.5.14, 19.1.17, 19.1.0 | MIT | npmjs.com · https://github.com/DefinitelyTyped/DefinitelyTyped | `mot-cua/di-dong` – công cụ (kiểu TypeScript) | ✓ MIT; công cụ |
+| Khung Android (`android/`, không phải gói npm) | `@react-native-community/template` 0.80.3 | MIT | https://github.com/react-native-community/template | Tệp Gradle, Kotlin, manifest sinh từ mẫu rồi đội sửa (tên app, package `vn.communedxos.motcua`, scheme đăng nhập, bỏ keystore mẫu); ghi nguồn ở NOTICE | ✓ MIT |
+| Gradle wrapper (`android/gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`) | Gradle 8.14.1 | Apache-2.0 (gradlew.bat có thêm phần MIT của Meta) | https://github.com/gradle/gradle | Tệp gốc đi kèm mẫu, không sửa; khai trong `REUSE.toml` | ✓ Apache-2.0 (tương thích GPLv3) |
+
+Thư viện Android do Gradle tải từ Maven Central/Google Maven lúc build (không nằm trong repo): React Native, Hermes, Fresco (MIT); AndroidX, Kotlin stdlib, OkHttp, fbjni, SoLoader, AppAuth-Android (Apache-2.0). Android SDK, build-tools, NDK là công cụ build cài trên máy, không nằm trong repo và không đi vào mã của dự án.
+
+Rà giấy phép ngày 06/11/2026 bằng `yarn licenses list` trên `yarn.lock`: 863 gói kể cả công cụ (750 MIT, 44 ISC, 25 BSD-3-Clause, 21 BSD-2-Clause, 15 Apache-2.0, 3 MIT OR CC0-1.0, 2 0BSD, 1 Python-2.0, 1 CC-BY-4.0, 1 CC0-1.0). Hai gói không phải giấy phép mã: `caniuse-lite` (CC-BY-4.0, bảng dữ liệu trình duyệt Babel đọc lúc build) và `mdn-data` (CC0-1.0, dữ liệu CSS mà `react-native-svg` kéo theo); đều là dữ liệu, không liên kết với mã của dự án. Không có gói GPL-2.0-only, SSPL, BSL hay giấy phép không OSI.
+
 ## 3. Thư viện Python
 
 Sinh bảng tự động khi có mã: `pip-licenses --format=markdown --with-urls`.
