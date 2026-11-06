@@ -138,7 +138,7 @@ def luong_cong_dan(trang, mat_khau):
         files=[{"name": "to-khai.png", "mimeType": "image/png", "buffer": anh}])
     dung(trang, 0.8)
     trang.get_by_role("button", name="Tiếp tục").click()
-    trang.get_by_role("alert").wait_for()  # Poka-yoke: thiếu giấy chứng sinh → không gửi
+    trang.get_by_text("Chưa tải giấy chứng sinh").first.wait_for()  # Poka-yoke: thiếu giấy chứng sinh → không gửi
     dung(trang, 2.2)
     trang.get_by_label(re.compile("Chọn tệp cho Giấy chứng sinh")).set_input_files(
         files=[{"name": "giay-chung-sinh.png", "mimeType": "image/png", "buffer": anh}])
