@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# App di động công dân (#155, D-015): mot-cua/di-dong/ – yarn theo lockfile, kiểm kiểu, lint, Jest.
+# Tách khỏi check.yml và lọc theo đường dẫn để không làm chậm 6 check bắt buộc; vì lọc theo đường dẫn
+# nên KHÔNG đặt làm check bắt buộc của bảo vệ nhánh (giống web.yml).
+# Job apk-debug chỉ chạy khi đẩy vào develop/main hoặc bấm tay (workflow_dispatch), không chạy trên PR:
+# build Gradle mất vài phút; APK tải về ở mục Artifacts của lượt chạy.
+name: di-dong
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "mot-cua/di-dong/**"
+      - ".github/workflows/di-dong.yml"
+  pull_request:
+    paths:
+      - "mot-cua/di-dong/**"
+      - ".github/workflows/di-dong.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kiem-tra:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mot-cua/di-dong
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-node@v5.0.0
+        with:
+          node-version: "22"
+      - name: Bật Yarn 1.22 (corepack, theo packageManager)
+        run: corepack enable
+      - name: Cài gói đúng yarn.lock
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Kiểm kiểu (TypeScript strict)
+        run: yarn typecheck
+      - name: Lint (ESLint + Prettier)
+        run: yarn lint
+      - name: Test (Jest)
+        run: yarn test --ci
+
+  apk-debug:
+    if: github.event_name != 'pull_request'
+    needs: kiem-tra
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mot-cua/di-dong
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-node@v5.0.0
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6.4.0
+      - name: Cài gói đúng yarn.lock
+        run: corepack enable && yarn install --frozen-lockfile --non-interactive
+      - name: Build APK debug (trỏ bản demo công khai)
+        run: yarn apk:debug
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: mot-cua-xa-debug-apk
+          path: mot-cua/di-dong/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
