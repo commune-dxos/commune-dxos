@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Kiểm web Tầng 2 (mot-cua/web-*/) không cần Node, chạy trong `make check` (#52).
+"""Kiểm web Tầng 2 (mot-cua/web-*/) và app di động (mot-cua/di-dong/) không cần Node, chạy trong
+`make check` (#52, #155).
 
 Mỗi thư mục có package.json phải: khai giấy phép GPL-3.0-or-later (D-010), ghim đúng phiên bản
-(không ^, ~, *, latest, dải, URL), có package-lock.json đi kèm (lockfile commit), và có
-.env.example. Giấy phép từng gói npm ghi ở DEPENDENCIES.md mục 2. Thoát mã 1 nếu sai.
+(không ^, ~, *, latest, dải, URL), có lockfile đi kèm (web: package-lock.json; di động: yarn.lock), và
+có .env.example. Giấy phép từng gói ghi ở DEPENDENCIES.md mục 2. Thoát mã 1 nếu sai.
 """
 import json
 import re
@@ -25,6 +26,16 @@ def kiem(thu_muc: Path) -> list[str]:
         for ten, pb in goi.get(nhom, {}).items():
             if not PHIEN_BAN_GHIM.match(pb):
                 loi.append(f"{nhom}.{ten} = {pb!r}: phải ghim đúng một phiên bản (vd 1.2.3)")
+    if (thu_muc / "yarn.lock").is_file():
+        # App di động dùng Yarn (#155): yarn.lock phải có mục cho đúng phiên bản đã ghim.
+        khoa_yarn = (thu_muc / "yarn.lock").read_text(encoding="utf-8")
+        for nhom in ("dependencies", "devDependencies"):
+            for ten, pb in goi.get(nhom, {}).items():
+                if f"{ten}@{pb}" not in khoa_yarn:
+                    loi.append(f"yarn.lock lệch package.json ở {nhom}.{ten}@{pb} (chạy yarn install)")
+        if not (thu_muc / ".env.example").is_file():
+            loi.append("thiếu .env.example (biến DXOS_*)")
+        return loi
     khoa = thu_muc / "package-lock.json"
     if not khoa.is_file():
         loi.append("thiếu package-lock.json (chạy npm install rồi commit lockfile)")
@@ -40,6 +51,7 @@ def kiem(thu_muc: Path) -> list[str]:
 
 def main() -> int:
     cac_web = sorted(p.parent for p in GOC.glob("mot-cua/web-*/package.json"))
+    cac_web += sorted(p.parent for p in GOC.glob("mot-cua/di-dong/package.json"))
     co_loi = False
     for w in cac_web:
         for dong in kiem(w):
@@ -47,7 +59,7 @@ def main() -> int:
             print(f"{w.relative_to(GOC)}: {dong}")
     if co_loi:
         return 1
-    print(f"OK: {len(cac_web)} web Tầng 2 ghim phiên bản, có lockfile ({', '.join(w.name for w in cac_web) or 'chưa có'}).")
+    print(f"OK: {len(cac_web)} web/app Tầng 2 ghim phiên bản, có lockfile ({', '.join(w.name for w in cac_web) or 'chưa có'}).")
     return 0
 
 
