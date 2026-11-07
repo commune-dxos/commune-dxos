@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.10.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.11.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17), app di động công dân #155–#160 (§4.18), Keycloak sau reverse proxy #167 (§4.1)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -1089,6 +1089,29 @@ stateDiagram-v2
 | Giờ lưu `timestamptz`, web gửi giờ Việt Nam kèm `+07:00` và hiện theo `Asia/Ho_Chi_Minh` | Không lệch ngày khi trình duyệt hay máy chủ ở múi giờ khác |
 
 Kiểm bằng `mot-cua/db/tests/lich_cong_tac.sql` (42 kiểm tra), Vitest `src/can-bo/lich-cong-tac.test.tsx` (7) và smoke 4s (`mot-cua/tests/smoke-lich-cong-tac.sh`). Dữ liệu mẫu: `mot-cua/db/seed/004_lich_mau.sql` (6 lịch của tuần lúc nạp seed).
+
+### 4.18 App di động công dân (#155–#160, D-015)
+
+App Android **Một cửa xã** (`mot-cua/di-dong/`, React Native 0.80 bare, TypeScript strict) là một giao diện người dùng cuối nữa của bộ máy một cửa, nên nằm ở Tầng 2. App không có backend riêng: gọi đúng các route mà cổng công dân web dùng, qua APISIX.
+
+| Việc | Route | Đăng nhập |
+|---|---|---|
+| Danh sách, chi tiết thủ tục (JSON Schema thành phần) | `GET /public/thu_tuc`, `GET /public/thanh_phan_yeu_cau` | không |
+| Tra cứu bằng mã hồ sơ + 4 số cuối điện thoại | `GET /public/rpc/tra_cuu_ho_so` (§4.12) | không |
+| Nộp hồ sơ: tạo → tải ảnh từng thành phần → khởi tạo quy trình | `POST /api/ho_so` → `POST /files/ho-so/{id}/tep` → `POST /workflow/ho-so/{id}/khoi-tao` (§4.9) | có |
+| Hồ sơ của tôi, các mốc, giấy tờ đã nộp | `GET /api/ho_so`, `GET /api/lich_su_trang_thai`, `GET /files/ho-so/{id}/tep` | có |
+
+| Quyết định | Lý do |
+|---|---|
+| Client Keycloak public riêng `mot_cua_di_dong` (`mot-cua/keycloak/realm.json`), Authorization Code + PKCE S256, redirect `vn.communedxos.motcua:/oauth` | Không có secret trong app; tách khỏi client web để thu hồi riêng. Token có `aud=dxos_api` như web nên PostgREST và `mot-cua-api` nhận mà không đổi gì |
+| Endpoint OIDC khai tường minh theo issuer, không đọc `.well-known` | Không phụ thuộc cấu hình reverse proxy của từng bản triển khai (#167) |
+| Token trong Android Keystore (react-native-keychain), làm mới một lần cho mọi lời gọi đang chờ | Không để token ở bộ nhớ thường; tải nhiều ảnh lâu vẫn không hết phiên giữa chừng |
+| Poka-yoke bằng chính JSON Schema của gói (`@cfworker/json-schema`) trước khi gửi request nào; máy chủ kiểm lại | Cùng hai lớp như cổng web (#59): app thiếu giấy tờ thì không tạo hồ sơ dở dang |
+| Lỗi giữa chừng giữ tiến độ (hồ sơ đã tạo, ảnh đã tải), "Thử lại" gửi tiếp; 409 "đã có quy trình" coi là xong | Mạng điện thoại chập chờn không tạo hồ sơ trùng |
+| Cấu hình `DXOS_*` gắn lúc đóng gói, mặc định bản demo công khai | App không đọc biến môi trường lúc chạy; APK từ Release dùng ngay được |
+| Release đính `mot-cua-xa-X.Y.Z-debug.apk` (workflow `phat-hanh`), ký bằng khóa debug của máy build CI | Chưa phát hành lên kho ứng dụng; repo không chứa keystore |
+
+Kiểm: `yarn typecheck`, `yarn lint`, Jest (`mot-cua/di-dong/__tests__/`: gọi API, phiên đăng nhập, Poka-yoke, thứ tự nộp và thử lại) trong workflow `di-dong`; build APK ở job `apk-debug`.
 
 ## 5. MFA cho cán bộ
 
