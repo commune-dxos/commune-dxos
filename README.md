@@ -26,11 +26,11 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.10.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.11.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
 
 | Trước | Sau |
 |---|---|
-| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân nộp hồ sơ: ✅ v0.4.0 · Biên nhận và thông báo kết quả PDF có ký số: ✅ v0.5.0 · Tra cứu tiến độ trên cổng web (không cần đăng nhập, bằng mã hồ sơ), nộp bổ sung trực tuyến: ✅ v0.6.0 · Trợ lý hỏi đáp thủ tục, trả lời có dẫn nguồn: ✅ v0.6.0 |
+| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân nộp hồ sơ: ✅ v0.4.0 · Biên nhận và thông báo kết quả PDF có ký số: ✅ v0.5.0 · Tra cứu tiến độ trên cổng web (không cần đăng nhập, bằng mã hồ sơ), nộp bổ sung trực tuyến: ✅ v0.6.0 · Trợ lý hỏi đáp thủ tục, trả lời có dẫn nguồn: ✅ v0.6.0 · App Android **Một cửa xã**: nộp hồ sơ kèm ảnh chụp giấy tờ, tra cứu, theo dõi hồ sơ của mình: ✅ v0.11.0 |
 | Thiếu một tờ giấy, cán bộ trả về, người dân đi thêm một chuyến. | Mỗi thủ tục khai thành phần hồ sơ bằng JSON Schema, công khai để xem trước khi nộp. ✅ v0.1.0 · Chặn nộp khi còn thiếu (Poka-yoke), kiểm cả ở web và máy chủ: ✅ v0.5.0 |
 | Hồ sơ giấy chuyển qua nhiều bàn, thất lạc, không ai biết đang nằm ở đâu. | Mỗi hồ sơ có mã, trạng thái và lịch sử từng bước của quy trình. Tệp có nhật ký chỉ ghi thêm, không sửa được. ✅ v0.1.0 · Trạng thái hồ sơ đi đúng bước quy trình Flowable: ✅ v0.5.0 |
 | Hạn giải quyết tính tay, quá hạn rồi mới biết. | Hạn tự tính theo ngày làm việc, bỏ cuối tuần và ngày lễ. Còn ≤ 1 ngày thì hệ thống phát cảnh báo sắp trễ hạn qua hàng đợi. ✅ v0.1.0 · Cổng cán bộ xếp hồ sơ quá hạn, sắp trễ lên đầu: ✅ v0.5.0 · Thông báo sắp trễ hạn tới cán bộ trên cổng cán bộ, cập nhật ngay (email/SMS giả lập): ✅ v0.6.0 · Thông báo tới người dân: ⏳ chưa xếp tuần |
@@ -111,6 +111,13 @@ Tài khoản mẫu (dữ liệu giả): `congdan01` (người dân), `canbo01` (
 Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md`](docs/cai-dat.md).
 
 **Dùng thử với người dùng thật:** 6 nhiệm vụ theo vai (công dân, cán bộ, lãnh đạo), mỗi nhiệm vụ một câu hỏi, báo lại bằng mẫu issue **Phản hồi dùng thử**: [`docs/thu-nghiem.md`](docs/thu-nghiem.md). Bản demo công khai: https://commune.dzfullstack.com (profile `core`, chưa có dashboard và trợ lý dùng mô hình ngôn ngữ).
+
+## App di động
+
+**Một cửa xã** là app Android cho người dân, nằm ở [`mot-cua/di-dong/`](mot-cua/di-dong/) (React Native, Tầng 2). App xem thủ tục, nộp hồ sơ kèm ảnh chụp giấy tờ (thiếu giấy tờ bắt buộc thì chặn trước khi gửi), tra cứu bằng mã hồ sơ không cần đăng nhập, xem hồ sơ của mình và trạng thái. App gọi cùng các API qua APISIX với cổng web, đăng nhập bằng tài khoản công dân trên Keycloak (PKCE).
+
+- **Tải APK:** mỗi [Release](https://github.com/commune-dxos/commune-dxos/releases) từ v0.11.0 có tệp `mot-cua-xa-X.Y.Z-debug.apk` (kiểm bằng `SHA256SUMS` cùng Release). Cài lên điện thoại Android 7.0 trở lên (cho phép cài từ nguồn ngoài). App trỏ bản demo https://commune.dzfullstack.com.
+- **Tự build:** Node ≥ 22, JDK 17, Android SDK; `cd mot-cua/di-dong && corepack enable && yarn install --frozen-lockfile && yarn apk:debug`. Trỏ máy local (`make up`) bằng `.env` và `adb reverse`: [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md).
 
 ## Demo
 
@@ -210,6 +217,8 @@ make demo-users           # sets a password for the sample users and prints it
 The first `make up` takes 2–10 minutes depending on the network. Stop with `make down` (data kept). Never delete or commit `.data/openbao/commune.json`: it holds the key to every secret.
 
 Citizen portal: **http://localhost:9080/** · progress lookup: **http://localhost:9080/tra-cuu** · staff portal: **http://localhost:9080/can-bo** (password + OTP). Sample accounts (fake data): `congdan01` (citizen), `canbo01` (civil-status officer), `canbo02` (certification officer), `lanhdao01` (leader).
+
+Android app for citizens (**Một cửa xã**, apply with document photos, lookup, my applications): `mot-cua-xa-X.Y.Z-debug.apk` on every [release](https://github.com/commune-dxos/commune-dxos/releases) from v0.11.0; build steps in [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md).
 
 Requirements, ports, optional profiles (dashboard, OCR, local language model) and troubleshooting: [`docs/en/quick-start.md`](docs/en/quick-start.md).
 

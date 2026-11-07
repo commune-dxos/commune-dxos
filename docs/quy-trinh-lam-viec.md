@@ -143,7 +143,7 @@ Các bước phát hành `vX.Y.Z`:
 flowchart LR
     A["PR chore(release): vX.Y.Z<br/>về develop<br/>make nhat-ky PHIEN_BAN=X.Y.Z"] --> B["PR develop → main<br/>merge commit"]
     B --> C["Tag vX.Y.Z<br/>trên merge commit"]
-    C --> D["Workflow phat-hanh<br/>ghi chú + .tar.gz + SHA256SUMS<br/>GitHub Release"]
+    C --> D["Workflow phat-hanh<br/>ghi chú + .tar.gz + APK + SHA256SUMS<br/>GitHub Release"]
 ```
 
 1. **PR phát hành về `develop`.** Nhánh `feature/release-X.Y.Z`: `make nhat-ky PHIEN_BAN=X.Y.Z`, xem lại mục mới trong CHANGELOG, cập nhật số phiên bản ở tài liệu nếu có. Tiêu đề `chore(release): vX.Y.Z (#issue)`. Merge squash như mọi PR.
@@ -152,5 +152,5 @@ flowchart LR
    ```bash
    git fetch origin && git tag -a vX.Y.Z -m "vX.Y.Z" origin/main && git push origin vX.Y.Z
    ```
-4. **Workflow [`phat-hanh`](../.github/workflows/phat-hanh.yml)** chạy khi có tag `vX.Y.Z`: sinh ghi chú bằng `make ghi-chu-phat-hanh`, đóng gói `commune-dxos-X.Y.Z.tar.gz` bằng `git archive --prefix=commune-dxos-X.Y.Z/`, tính `SHA256SUMS`, tạo GitHub Release đính kèm hai tệp. Workflow chỉ có quyền `contents: write`, không đẩy commit hay tag.
-5. **Kiểm tra.** Mở trang Release, tải `.tar.gz` và đối chiếu: `sha256sum -c SHA256SUMS`. Trang tài liệu tự deploy khi `main` thay đổi (workflow `tai-lieu`).
+4. **Workflow [`phat-hanh`](../.github/workflows/phat-hanh.yml)** chạy khi có tag `vX.Y.Z`: sinh ghi chú bằng `make ghi-chu-phat-hanh`, đóng gói `commune-dxos-X.Y.Z.tar.gz` bằng `git archive --prefix=commune-dxos-X.Y.Z/`, gọi lại workflow [`di-dong`](../.github/workflows/di-dong.yml) (typecheck, lint, Jest, build APK debug của app di động) rồi đặt tên APK `mot-cua-xa-X.Y.Z-debug.apk` (#171), tính `SHA256SUMS` cho cả hai tệp, tạo GitHub Release đính kèm `.tar.gz`, APK và `SHA256SUMS`. Workflow dừng nếu `version` trong `mot-cua/di-dong/package.json` hoặc `versionName` Android khác tag, nên PR chốt bản phải nâng cả hai (kèm `versionCode` = major·10000 + minor·100 + patch). Workflow chỉ có quyền `contents: write`, không đẩy commit hay tag.
+5. **Kiểm tra.** Mở trang Release, tải `.tar.gz`, APK và đối chiếu: `sha256sum -c SHA256SUMS`. Trang tài liệu tự deploy khi `main` thay đổi (workflow `tai-lieu`).
