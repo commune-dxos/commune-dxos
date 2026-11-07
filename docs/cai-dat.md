@@ -123,6 +123,21 @@ DXOS_GATEWAY_URL=https://xa.example.vn
 DXOS_KEYCLOAK_URL=https://xa.example.vn
 ```
 
+Reverse proxy phải gửi kèm giao thức, tên miền và cổng công khai: Keycloak tin header `X-Forwarded-*` (`KC_PROXY_HEADERS=xforwarded`, #167) để `.well-known/openid-configuration` trả `token_endpoint`, `jwks_uri`… dạng `https://`. APISIX giữ nguyên các header nhận được; thiếu `X-Forwarded-Port` thì APISIX điền cổng của chính nó (`19280`) và Keycloak sẽ ghép cổng đó vào URL. Với nginx:
+
+```
+location / {
+    proxy_pass http://127.0.0.1:19280;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  $server_port;
+}
+```
+
+Kiểm: `curl -s https://xa.example.vn/realms/dxos/.well-known/openid-configuration` phải có `"token_endpoint":"https://xa.example.vn/realms/dxos/…"` (không có `http://`, không có `:19280`).
+
 Đặt các biến này **trước** lần `make up` đầu tiên: `tang2-realm` chỉ ghi redirect URI khi tạo client, client đã có thì giữ nguyên (đổi sau thì sửa client `mot_cua_web`, `mot_cua_can_bo`, `bao_cao_superset` như mục 7). Bảng quản trị Keycloak (`/admin`) và realm `master` không đi qua gateway; quản trị bằng `kcadm.sh` trong container `keycloak`.
 
 ### Bật đọc giấy tờ bằng OCR (tùy chọn)
