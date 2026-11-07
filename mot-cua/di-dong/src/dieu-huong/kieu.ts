@@ -6,12 +6,14 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 export type CacTab = {
   ThuTuc: undefined;
   TraCuu: undefined;
+  HoSoCuaToi: undefined;
   TaiKhoan: undefined;
 };
 
 export type CacManGoc = {
   Tab: NavigatorScreenParams<CacTab> | undefined;
   ChiTietThuTuc: { ma: string };
+  ChiTietHoSo: { id: string };
 };
 
 declare global {
