@@ -10,6 +10,7 @@ import { taoBoTruyVan } from './cau-hinh/truy-van';
 import { DieuHuongGoc } from './dieu-huong';
 import { mau } from './giao-dien';
 import { theoDoiMang } from './kho/mang';
+import { usePhien } from './kho/phien-dang-nhap';
 import { khoiTaoNgonNgu } from './ngon-ngu';
 
 khoiTaoNgonNgu();
@@ -35,6 +36,9 @@ const giaoDienDieuHuong: Theme = {
 export default function UngDung() {
   const [boTruyVan] = useState(taoBoTruyVan);
   useEffect(() => theoDoiMang(), []);
+  useEffect(() => {
+    usePhien.getState().khoiPhuc();
+  }, []);
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={boTruyVan}>
