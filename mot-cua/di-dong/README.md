@@ -40,7 +40,7 @@ android/        dự án Android (package vn.communedxos.motcua)
 
 ## Chạy thử
 
-Cần Node ≥ 22, JDK 17, Android SDK (platform 35, build-tools 35.0.0, NDK 27.1.12297006, CMake),
+Cần Node ≥ 22, JDK 17, Android SDK (platform 36 để biên dịch, build-tools 35.0.0, NDK 27.1.12297006, CMake),
 một máy ảo hoặc điện thoại Android bật gỡ lỗi USB.
 
 ```bash
