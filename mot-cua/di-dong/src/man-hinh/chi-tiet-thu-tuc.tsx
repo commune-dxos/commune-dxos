@@ -14,11 +14,12 @@ import { docThanhPhan } from '../dich-vu/thanh-phan';
 import type { CacManGoc } from '../dieu-huong/kieu';
 import { KhungMan } from '../thanh-phan/khung-man';
 import { ManTrangThai } from '../thanh-phan/man-trang-thai';
+import { NutBam } from '../thanh-phan/nut-bam';
 import { The } from '../thanh-phan/the';
 
 type Props = NativeStackScreenProps<CacManGoc, 'ChiTietThuTuc'>;
 
-export function ManChiTietThuTuc({ route }: Props) {
+export function ManChiTietThuTuc({ route, navigation }: Props) {
   const { t } = useTranslation();
   const truyVan = useDanhMucThuTuc();
   const thuTuc = truyVan.data?.find(x => x.ma === route.params.ma);
@@ -87,11 +88,17 @@ export function ManChiTietThuTuc({ route }: Props) {
           </The>
         )}
 
-        {!nopTrucTuyen(thuTuc) ? (
+        {nopTrucTuyen(thuTuc) ? (
+          <NutBam
+            nhan={t('nop.nut')}
+            onPress={() => navigation.navigate('NopHoSo', { ma: thuTuc.ma })}
+            testID="nut-bat-dau-nop"
+          />
+        ) : (
           <The style={kieu.thongBao}>
             <Text style={kieu.chuThongBao}>{t('thuTuc.chuaNhanTrucTuyen')}</Text>
           </The>
-        ) : null}
+        )}
       </ScrollView>
     </KhungMan>
   );

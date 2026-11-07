@@ -9,8 +9,10 @@ import { useTranslation } from 'react-i18next';
 import { chu, mau } from '../giao-dien';
 import { ManChiTietHoSo } from '../man-hinh/chi-tiet-ho-so';
 import { ManChiTietThuTuc } from '../man-hinh/chi-tiet-thu-tuc';
+import { ManDaNop } from '../man-hinh/da-nop';
 import { ManDanhSachThuTuc } from '../man-hinh/danh-sach-thu-tuc';
 import { ManHoSoCuaToi } from '../man-hinh/ho-so-cua-toi';
+import { ManNopHoSo } from '../man-hinh/nop-ho-so';
 import { ManTaiKhoan } from '../man-hinh/tai-khoan';
 import { ManTraCuu } from '../man-hinh/tra-cuu';
 import type { CacManGoc, CacTab } from './kieu';
@@ -82,6 +84,8 @@ export function DieuHuongGoc() {
       <Goc.Screen name="Tab" component={CacTabChinh} options={{ headerShown: false }} />
       <Goc.Screen name="ChiTietThuTuc" component={ManChiTietThuTuc} options={{ title: t('man.chiTietThuTuc') }} />
       <Goc.Screen name="ChiTietHoSo" component={ManChiTietHoSo} options={{ title: t('man.chiTietHoSo') }} />
+      <Goc.Screen name="NopHoSo" component={ManNopHoSo} options={{ title: t('man.nopHoSo') }} />
+      <Goc.Screen name="DaNop" component={ManDaNop} options={{ title: t('man.daNop'), headerBackVisible: false }} />
     </Goc.Navigator>
   );
 }
