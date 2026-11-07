@@ -171,6 +171,11 @@ services:
       # gọi nội bộ qua http://keycloak:8080 nhờ backchannel động.
       KC_HOSTNAME: ${DXOS_KEYCLOAK_URL:-http://localhost:${KEYCLOAK_PORT:-8080}}
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      # Tin X-Forwarded-Proto/Host/Port (#167): sau reverse proxy HTTPS → APISIX, endpoint backchannel
+      # (token, userinfo, jwks…) trong .well-known dựng theo địa chỉ công khai thay vì http:// của APISIX.
+      # APISIX 3.13 giữ nguyên các header này nếu reverse proxy gửi; gọi thẳng http://keycloak:8080
+      # (APISIX, PostgREST, jwks-init) không có header nên vẫn ra http://keycloak:8080.
+      KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
     volumes:
