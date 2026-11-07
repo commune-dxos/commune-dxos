@@ -3,8 +3,9 @@
 # App di động công dân (#155, D-015): mot-cua/di-dong/ – yarn theo lockfile, kiểm kiểu, lint, Jest.
 # Tách khỏi check.yml và lọc theo đường dẫn để không làm chậm 6 check bắt buộc; vì lọc theo đường dẫn
 # nên KHÔNG đặt làm check bắt buộc của bảo vệ nhánh (giống web.yml).
-# Job apk-debug chỉ chạy khi đẩy vào develop/main hoặc bấm tay (workflow_dispatch), không chạy trên PR:
-# build Gradle mất vài phút; APK tải về ở mục Artifacts của lượt chạy.
+# Job apk-debug chỉ chạy khi đẩy vào develop/main, bấm tay (workflow_dispatch) hoặc được workflow phat-hanh
+# gọi lại (workflow_call, #171), không chạy trên PR: build Gradle mất vài phút; APK tải về ở mục Artifacts
+# của lượt chạy, phat-hanh đính vào Release.
 name: di-dong
 on:
   push:
@@ -17,6 +18,7 @@ on:
       - "mot-cua/di-dong/**"
       - ".github/workflows/di-dong.yml"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

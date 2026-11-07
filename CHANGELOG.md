@@ -4,6 +4,165 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-07
+
+### Tính năng mới
+
+- **di-dong:** Khung app di động công dân React Native ([#155](https://github.com/commune-dxos/commune-dxos/issues/155)) ([#161](https://github.com/commune-dxos/commune-dxos/issues/161))
+    - Lõi: cấu hình môi trường DXOS_* gắn lúc đóng gói (mặc định bản demo công khai),
+      gọi APISIX với câu lỗi tiếng Việt trung tính, TanStack Query, Zustand, i18next,
+      NetInfo (dải mất mạng, tạm dừng truy vấn khi không có mạng).
+    - Giao diện theo tông cổng công dân, màn đang tải / lỗi / trống / mất mạng dùng chung.
+    - APK debug đóng gói sẵn JS, ký bằng khóa debug của máy build (không commit keystore).
+    - Giấy phép: header SPDX, REUSE.toml (Gradle wrapper Apache-2.0), DEPENDENCIES.md, NOTICE;
+      check-web.py kiểm ghim phiên bản và yarn.lock; workflow di-dong riêng.
+- **di-dong:** Đăng nhập, đăng xuất công dân bằng Keycloak PKCE ([#156](https://github.com/commune-dxos/commune-dxos/issues/156)) ([#162](https://github.com/commune-dxos/commune-dxos/issues/162))
+    - Lõi: cấu hình môi trường DXOS_* gắn lúc đóng gói (mặc định bản demo công khai),
+      gọi APISIX với câu lỗi tiếng Việt trung tính, TanStack Query, Zustand, i18next,
+      NetInfo (dải mất mạng, tạm dừng truy vấn khi không có mạng).
+    - Giao diện theo tông cổng công dân, màn đang tải / lỗi / trống / mất mạng dùng chung.
+    - APK debug đóng gói sẵn JS, ký bằng khóa debug của máy build (không commit keystore).
+    - Giấy phép: header SPDX, REUSE.toml (Gradle wrapper Apache-2.0), DEPENDENCIES.md, NOTICE;
+      check-web.py kiểm ghim phiên bản và yarn.lock; workflow di-dong riêng.
+    - Client public mot_cua_di_dong trong mot-cua/keycloak/realm.json (Tầng 2): chỉ
+      Authorization Code + PKCE S256, redirect vn.communedxos.motcua:/oauth, không secret.
+    - react-native-app-auth với endpoint khai tường minh theo issuer (không phụ thuộc
+      token_endpoint của .well-known), ui_locales=vi.
+    - Token lưu trong Android Keystore (react-native-keychain), khôi phục phiên khi mở app,
+      làm mới token một lần cho mọi lời gọi đang chờ, hết hạn thì xóa phiên.
+    - Màn Tài khoản: đăng nhập, đăng xuất (end session Keycloak, mất mạng vẫn xóa phiên
+      trên máy). README ghi cách áp client lên máy chủ đang chạy bằng tang2-realm hoặc kcadm.
+- **di-dong:** Danh sách và chi tiết thủ tục ([#157](https://github.com/commune-dxos/commune-dxos/issues/157)) ([#163](https://github.com/commune-dxos/commune-dxos/issues/163))
+    - Lõi: cấu hình môi trường DXOS_* gắn lúc đóng gói (mặc định bản demo công khai),
+      gọi APISIX với câu lỗi tiếng Việt trung tính, TanStack Query, Zustand, i18next,
+      NetInfo (dải mất mạng, tạm dừng truy vấn khi không có mạng).
+    - Giao diện theo tông cổng công dân, màn đang tải / lỗi / trống / mất mạng dùng chung.
+    - APK debug đóng gói sẵn JS, ký bằng khóa debug của máy build (không commit keystore).
+    - Giấy phép: header SPDX, REUSE.toml (Gradle wrapper Apache-2.0), DEPENDENCIES.md, NOTICE;
+      check-web.py kiểm ghim phiên bản và yarn.lock; workflow di-dong riêng.
+    - Client public mot_cua_di_dong trong mot-cua/keycloak/realm.json (Tầng 2): chỉ
+      Authorization Code + PKCE S256, redirect vn.communedxos.motcua:/oauth, không secret.
+    - react-native-app-auth với endpoint khai tường minh theo issuer (không phụ thuộc
+      token_endpoint của .well-known), ui_locales=vi.
+    - Token lưu trong Android Keystore (react-native-keychain), khôi phục phiên khi mở app,
+      làm mới token một lần cho mọi lời gọi đang chờ, hết hạn thì xóa phiên.
+    - Màn Tài khoản: đăng nhập, đăng xuất (end session Keycloak, mất mạng vẫn xóa phiên
+      trên máy). README ghi cách áp client lên máy chủ đang chạy bằng tang2-realm hoặc kcadm.
+    - Đọc /public/thu_tuc như cổng công dân (không token), giữ trong bộ nhớ tạm 10 phút.
+    - Danh sách: tìm không dấu theo tên, mã, lĩnh vực; thời hạn, lệ phí; nhãn nộp trực
+      tuyến hay tại bộ phận một cửa; kéo xuống để tải lại; màn đang tải, lỗi, không khớp.
+    - Chi tiết: thời hạn, lệ phí, thành phần hồ sơ đọc từ JSON Schema của gói thủ tục.
+    - dich-vu/thanh-phan.ts: đọc thành phần và Poka-yoke bằng @cfworker/json-schema
+      (dùng ở bước nộp hồ sơ).
+- **di-dong:** Tra cứu hồ sơ theo mã, không cần đăng nhập ([#159](https://github.com/commune-dxos/commune-dxos/issues/159)) ([#164](https://github.com/commune-dxos/commune-dxos/issues/164))
+    - Lõi: cấu hình môi trường DXOS_* gắn lúc đóng gói (mặc định bản demo công khai),
+      gọi APISIX với câu lỗi tiếng Việt trung tính, TanStack Query, Zustand, i18next,
+      NetInfo (dải mất mạng, tạm dừng truy vấn khi không có mạng).
+    - Giao diện theo tông cổng công dân, màn đang tải / lỗi / trống / mất mạng dùng chung.
+    - APK debug đóng gói sẵn JS, ký bằng khóa debug của máy build (không commit keystore).
+    - Giấy phép: header SPDX, REUSE.toml (Gradle wrapper Apache-2.0), DEPENDENCIES.md, NOTICE;
+      check-web.py kiểm ghim phiên bản và yarn.lock; workflow di-dong riêng.
+    - Client public mot_cua_di_dong trong mot-cua/keycloak/realm.json (Tầng 2): chỉ
+      Authorization Code + PKCE S256, redirect vn.communedxos.motcua:/oauth, không secret.
+    - react-native-app-auth với endpoint khai tường minh theo issuer (không phụ thuộc
+      token_endpoint của .well-known), ui_locales=vi.
+    - Token lưu trong Android Keystore (react-native-keychain), khôi phục phiên khi mở app,
+      làm mới token một lần cho mọi lời gọi đang chờ, hết hạn thì xóa phiên.
+    - Màn Tài khoản: đăng nhập, đăng xuất (end session Keycloak, mất mạng vẫn xóa phiên
+      trên máy). README ghi cách áp client lên máy chủ đang chạy bằng tang2-realm hoặc kcadm.
+    - Đọc /public/thu_tuc như cổng công dân (không token), giữ trong bộ nhớ tạm 10 phút.
+    - Danh sách: tìm không dấu theo tên, mã, lĩnh vực; thời hạn, lệ phí; nhãn nộp trực
+      tuyến hay tại bộ phận một cửa; kéo xuống để tải lại; màn đang tải, lỗi, không khớp.
+    - Chi tiết: thời hạn, lệ phí, thành phần hồ sơ đọc từ JSON Schema của gói thủ tục.
+    - dich-vu/thanh-phan.ts: đọc thành phần và Poka-yoke bằng @cfworker/json-schema
+      (dùng ở bước nộp hồ sơ).
+    - Gọi /public/rpc/tra_cuu_ho_so bằng mã hồ sơ + 4 số cuối số điện thoại như cổng
+      công dân; kiểm nhập trước khi gửi, mã viết thường hay thừa khoảng trắng vẫn nhận.
+    - Kết quả: trạng thái, ngày nhận, hạn xử lý hoặc ngày có kết quả, các mốc xử lý
+      (thành phần MocTrangThai dùng chung). Sai mã hoặc số → câu trung tính, không lộ
+      hồ sơ có tồn tại hay không.
+- **di-dong:** Hồ sơ của tôi kèm trạng thái ([#160](https://github.com/commune-dxos/commune-dxos/issues/160)) ([#165](https://github.com/commune-dxos/commune-dxos/issues/165))
+    - Lõi: cấu hình môi trường DXOS_* gắn lúc đóng gói (mặc định bản demo công khai),
+      gọi APISIX với câu lỗi tiếng Việt trung tính, TanStack Query, Zustand, i18next,
+      NetInfo (dải mất mạng, tạm dừng truy vấn khi không có mạng).
+    - Giao diện theo tông cổng công dân, màn đang tải / lỗi / trống / mất mạng dùng chung.
+    - APK debug đóng gói sẵn JS, ký bằng khóa debug của máy build (không commit keystore).
+    - Giấy phép: header SPDX, REUSE.toml (Gradle wrapper Apache-2.0), DEPENDENCIES.md, NOTICE;
+      check-web.py kiểm ghim phiên bản và yarn.lock; workflow di-dong riêng.
+    - Client public mot_cua_di_dong trong mot-cua/keycloak/realm.json (Tầng 2): chỉ
+      Authorization Code + PKCE S256, redirect vn.communedxos.motcua:/oauth, không secret.
+    - react-native-app-auth với endpoint khai tường minh theo issuer (không phụ thuộc
+      token_endpoint của .well-known), ui_locales=vi.
+    - Token lưu trong Android Keystore (react-native-keychain), khôi phục phiên khi mở app,
+      làm mới token một lần cho mọi lời gọi đang chờ, hết hạn thì xóa phiên.
+    - Màn Tài khoản: đăng nhập, đăng xuất (end session Keycloak, mất mạng vẫn xóa phiên
+      trên máy). README ghi cách áp client lên máy chủ đang chạy bằng tang2-realm hoặc kcadm.
+    - Đọc /public/thu_tuc như cổng công dân (không token), giữ trong bộ nhớ tạm 10 phút.
+    - Danh sách: tìm không dấu theo tên, mã, lĩnh vực; thời hạn, lệ phí; nhãn nộp trực
+      tuyến hay tại bộ phận một cửa; kéo xuống để tải lại; màn đang tải, lỗi, không khớp.
+    - Chi tiết: thời hạn, lệ phí, thành phần hồ sơ đọc từ JSON Schema của gói thủ tục.
+    - dich-vu/thanh-phan.ts: đọc thành phần và Poka-yoke bằng @cfworker/json-schema
+      (dùng ở bước nộp hồ sơ).
+    - Gọi /public/rpc/tra_cuu_ho_so bằng mã hồ sơ + 4 số cuối số điện thoại như cổng
+      công dân; kiểm nhập trước khi gửi, mã viết thường hay thừa khoảng trắng vẫn nhận.
+    - Kết quả: trạng thái, ngày nhận, hạn xử lý hoặc ngày có kết quả, các mốc xử lý
+      (thành phần MocTrangThai dùng chung). Sai mã hoặc số → câu trung tính, không lộ
+      hồ sơ có tồn tại hay không.
+    - Danh sách hồ sơ đã nộp (/api/ho_so, RLS chỉ trả hồ sơ của người gọi), mới nhất trước:
+      thủ tục, mã, nhãn trạng thái, ngày nhận, hạn xử lý, báo quá hạn, lý do cần bổ sung.
+    - Chi tiết: trạng thái, hạn, lý do bổ sung hoặc từ chối, các mốc xử lý
+      (/api/lich_su_trang_thai), giấy tờ đã nộp (/files/ho-so/{id}/tep); kéo để tải lại.
+    - Chưa đăng nhập thì hiện lời mời đăng nhập ngay tại màn; token lấy qua kho phiên
+      (tự làm mới khi sắp hết hạn).
+- **di-dong:** Nộp hồ sơ kèm ảnh giấy tờ ([#158](https://github.com/commune-dxos/commune-dxos/issues/158)) ([#166](https://github.com/commune-dxos/commune-dxos/issues/166))
+    - Lõi: cấu hình môi trường DXOS_* gắn lúc đóng gói (mặc định bản demo công khai),
+      gọi APISIX với câu lỗi tiếng Việt trung tính, TanStack Query, Zustand, i18next,
+      NetInfo (dải mất mạng, tạm dừng truy vấn khi không có mạng).
+    - Giao diện theo tông cổng công dân, màn đang tải / lỗi / trống / mất mạng dùng chung.
+    - APK debug đóng gói sẵn JS, ký bằng khóa debug của máy build (không commit keystore).
+    - Giấy phép: header SPDX, REUSE.toml (Gradle wrapper Apache-2.0), DEPENDENCIES.md, NOTICE;
+      check-web.py kiểm ghim phiên bản và yarn.lock; workflow di-dong riêng.
+    - Client public mot_cua_di_dong trong mot-cua/keycloak/realm.json (Tầng 2): chỉ
+      Authorization Code + PKCE S256, redirect vn.communedxos.motcua:/oauth, không secret.
+    - react-native-app-auth với endpoint khai tường minh theo issuer (không phụ thuộc
+      token_endpoint của .well-known), ui_locales=vi.
+    - Token lưu trong Android Keystore (react-native-keychain), khôi phục phiên khi mở app,
+      làm mới token một lần cho mọi lời gọi đang chờ, hết hạn thì xóa phiên.
+    - Màn Tài khoản: đăng nhập, đăng xuất (end session Keycloak, mất mạng vẫn xóa phiên
+      trên máy). README ghi cách áp client lên máy chủ đang chạy bằng tang2-realm hoặc kcadm.
+    - Đọc /public/thu_tuc như cổng công dân (không token), giữ trong bộ nhớ tạm 10 phút.
+    - Danh sách: tìm không dấu theo tên, mã, lĩnh vực; thời hạn, lệ phí; nhãn nộp trực
+      tuyến hay tại bộ phận một cửa; kéo xuống để tải lại; màn đang tải, lỗi, không khớp.
+    - Chi tiết: thời hạn, lệ phí, thành phần hồ sơ đọc từ JSON Schema của gói thủ tục.
+    - dich-vu/thanh-phan.ts: đọc thành phần và Poka-yoke bằng @cfworker/json-schema
+      (dùng ở bước nộp hồ sơ).
+    - Gọi /public/rpc/tra_cuu_ho_so bằng mã hồ sơ + 4 số cuối số điện thoại như cổng
+      công dân; kiểm nhập trước khi gửi, mã viết thường hay thừa khoảng trắng vẫn nhận.
+    - Kết quả: trạng thái, ngày nhận, hạn xử lý hoặc ngày có kết quả, các mốc xử lý
+      (thành phần MocTrangThai dùng chung). Sai mã hoặc số → câu trung tính, không lộ
+      hồ sơ có tồn tại hay không.
+    - Danh sách hồ sơ đã nộp (/api/ho_so, RLS chỉ trả hồ sơ của người gọi), mới nhất trước:
+      thủ tục, mã, nhãn trạng thái, ngày nhận, hạn xử lý, báo quá hạn, lý do cần bổ sung.
+    - Chi tiết: trạng thái, hạn, lý do bổ sung hoặc từ chối, các mốc xử lý
+      (/api/lich_su_trang_thai), giấy tờ đã nộp (/files/ho-so/{id}/tep); kéo để tải lại.
+    - Chưa đăng nhập thì hiện lời mời đăng nhập ngay tại màn; token lấy qua kho phiên
+      (tự làm mới khi sắp hết hạn).
+    - Màn nộp: họ tên (điền sẵn từ tài khoản), số điện thoại, ảnh từng thành phần hồ sơ
+      theo JSON Schema của gói (chụp bằng camera hoặc chọn ảnh, react-native-image-picker),
+      xem lại và bỏ ảnh.
+    - Poka-yoke trước khi gửi: thiếu giấy tờ bắt buộc thì đánh dấu mục thiếu, không gửi
+      request nào. Ảnh đặt tên theo mã thành phần, chỉ JPG/PNG dưới 10 MB.
+    - Gửi đúng thứ tự như cổng công dân: POST /api/ho_so → POST /files/ho-so/{id}/tep
+      (ảnh làm thân request) → POST /workflow/ho-so/{id}/khoi-tao; lấy token trước mỗi
+      request. Lỗi giữa chừng thì Thử lại gửi tiếp, không tạo trùng hồ sơ hay ảnh;
+      409 "đã có quy trình" coi là xong.
+    - Màn đã nộp: mã hồ sơ, hạn xử lý, đi tới Hồ sơ của tôi.
+
+### Sửa lỗi
+
+- **di-dong:** Biên dịch với compileSdk 36 cho androidx.browser 1.9.0 ([#169](https://github.com/commune-dxos/commune-dxos/issues/169)) ([#170](https://github.com/commune-dxos/commune-dxos/issues/170))
+- **nen-tang:** Keycloak tin X-Forwarded-* để endpoint backchannel ra https sau reverse proxy ([#167](https://github.com/commune-dxos/commune-dxos/issues/167)) ([#168](https://github.com/commune-dxos/commune-dxos/issues/168))
+
 ## [0.10.0] - 2026-11-06
 
 ### Tính năng mới
@@ -558,7 +717,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.8.0...v0.9.0

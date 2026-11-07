@@ -3,7 +3,9 @@
 # Phát hành tự động (D-009 hướng 4, #36): khi đẩy tag vX.Y.Z (đặt trên merge commit develop → main)
 #   1. sinh ghi chú phát hành bằng git-cliff (make ghi-chu-phat-hanh, cliff.toml);
 #   2. đóng gói mã nguồn commune-dxos-X.Y.Z.tar.gz bằng git archive, kèm SHA256SUMS;
-#   3. tạo GitHub Release vX.Y.Z đính kèm hai tệp trên.
+#   3. build APK debug của app di động bằng chính workflow di-dong (workflow_call, #171), đặt tên
+#      mot-cua-xa-X.Y.Z-debug.apk, đưa vào cùng SHA256SUMS;
+#   4. tạo GitHub Release vX.Y.Z đính kèm tar.gz, APK và SHA256SUMS.
 # Quy trình đầy đủ: docs/quy-trinh-lam-viec.md mục 6. git-cliff ghim trong scripts/requirements-phat-hanh.txt,
 # action ghim phiên bản. Chỉ cần quyền ghi nội dung repo (tạo Release); không đẩy commit hay tag nào.
 name: phat-hanh
@@ -19,8 +21,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Typecheck, lint, Jest rồi build APK debug ở commit của tag (cùng các bước với CI di-dong).
+  di-dong:
+    uses: ./.github/workflows/di-dong.yml
+
   phat-hanh:
     name: phat-hanh
+    needs: di-dong
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5.0.0
@@ -40,17 +47,32 @@ jobs:
           mkdir -p dist
           make --no-print-directory ghi-chu-phat-hanh PHIEN_BAN="${TAG#v}" > dist/ghi-chu.md
           cat dist/ghi-chu.md
-      - name: Đóng gói mã nguồn và SHA256SUMS
+      - name: Kiểm số phiên bản của app di động khớp tag
+        run: |
+          app="$(jq -r .version mot-cua/di-dong/package.json)"
+          android="$(sed -n 's/.*versionName "\(.*\)".*/\1/p' mot-cua/di-dong/android/app/build.gradle)"
+          echo "tag ${PHIEN_BAN} · package.json ${app} · versionName ${android}"
+          if [ "$app" != "$PHIEN_BAN" ] || [ "$android" != "$PHIEN_BAN" ]; then
+            echo "::error::Phiên bản app di động (${app}, ${android}) khác tag v${PHIEN_BAN}"
+            exit 1
+          fi
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: mot-cua-xa-debug-apk
+          path: dist/apk
+      - name: Đóng gói mã nguồn, APK và SHA256SUMS
         run: |
           goi="commune-dxos-${PHIEN_BAN}.tar.gz"
+          apk="mot-cua-xa-${PHIEN_BAN}-debug.apk"
           git archive --format=tar.gz --prefix="commune-dxos-${PHIEN_BAN}/" -o "dist/${goi}" "v${PHIEN_BAN}"
-          (cd dist && sha256sum "${goi}" > SHA256SUMS && cat SHA256SUMS)
+          mv dist/apk/app-debug.apk "dist/${apk}"
+          (cd dist && sha256sum "${goi}" "${apk}" > SHA256SUMS && cat SHA256SUMS)
       - name: Tạo GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v${PHIEN_BAN}" \
-            "dist/commune-dxos-${PHIEN_BAN}.tar.gz" dist/SHA256SUMS \
+            "dist/commune-dxos-${PHIEN_BAN}.tar.gz" "dist/mot-cua-xa-${PHIEN_BAN}-debug.apk" dist/SHA256SUMS \
             --verify-tag \
             --title "v${PHIEN_BAN}" \
             --notes-file dist/ghi-chu.md
