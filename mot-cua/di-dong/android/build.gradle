@@ -4,7 +4,10 @@ buildscript {
     ext {
         buildToolsVersion = "35.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 35
+        // 36 (#169): react-native-app-auth 8.5.1 kéo androidx.browser 1.9.0, thư viện này đòi biên dịch với
+        // API 36 và app-auth gọi API chỉ có từ 1.9.0 (không ghim về 1.8.0 được). targetSdk giữ 35 nên
+        // hành vi app trên máy không đổi; AGP 8.9.2 của React Native 0.80 hỗ trợ API 36.
+        compileSdkVersion = 36
         targetSdkVersion = 35
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.1.20"
