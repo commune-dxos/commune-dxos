@@ -86,8 +86,9 @@ android {
         applicationId "vn.communedxos.motcua"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.10.0"
+        // versionCode = major*10000 + minor*100 + patch, tăng theo mỗi bản phát hành.
+        versionCode 1100
+        versionName "0.11.0"
         // Scheme quay về sau khi đăng nhập Keycloak (react-native-app-auth): vn.communedxos.motcua:/oauth
         manifestPlaceholders = [appAuthRedirectScheme: "vn.communedxos.motcua"]
     }
