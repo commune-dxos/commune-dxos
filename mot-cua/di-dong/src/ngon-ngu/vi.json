@@ -48,7 +48,8 @@
   },
   "man": {
     "chiTietThuTuc": "Thủ tục",
-    "traCuu": "Tra cứu hồ sơ"
+    "traCuu": "Tra cứu hồ sơ",
+    "chiTietHoSo": "Chi tiết hồ sơ"
   },
   "traCuu": {
     "gioiThieu": "Không cần đăng nhập. Nhập mã hồ sơ in trên biên nhận và 4 số cuối số điện thoại đã khai khi nộp.",
@@ -64,6 +65,22 @@
     "ngayNhan": "Ngày nhận",
     "hanXuLy": "Hạn xử lý",
     "ngayHoanTat": "Ngày có kết quả",
-    "cacMoc": "Các mốc xử lý"
+    "cacMoc": "Các mốc xử lý",
+    "dangTai": "Đang tải hồ sơ của bạn…",
+    "canDangNhap": "Đăng nhập để xem các hồ sơ bạn đã nộp và trạng thái xử lý. Tra cứu theo mã hồ sơ thì không cần đăng nhập.",
+    "chuaCo": "Bạn chưa nộp hồ sơ nào",
+    "chuaCoMoTa": "Hồ sơ nộp trực tuyến bằng tài khoản này sẽ hiện ở đây.",
+    "khongThay": "Không tìm thấy hồ sơ",
+    "thuTucKhac": "Hồ sơ",
+    "quaHan": "Đã quá hạn xử lý",
+    "canBoSung": "Cần bổ sung",
+    "lyDoTuChoi": "Lý do không giải quyết",
+    "lienHeMotCua": "Vui lòng liên hệ bộ phận một cửa của xã để biết thêm.",
+    "boSungTrenWeb": "Bạn có thể bổ sung giấy tờ trên cổng công dân web hoặc tại bộ phận một cửa.",
+    "chuaCoMoc": "Chưa có mốc xử lý nào.",
+    "giayToDaNop": "Giấy tờ đã nộp",
+    "chuaCoGiayTo": "Chưa có giấy tờ nào.",
+    "chuaTaiDuocGiayTo": "Chưa tải được danh sách giấy tờ. Kéo xuống để thử lại.",
+    "daQuet": "Đã kiểm tra an toàn"
   }
 }
