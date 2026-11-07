@@ -1,0 +1,24 @@
+{
+  "ungDung": {
+    "ten": "Một cửa xã",
+    "moTa": "Nộp và theo dõi hồ sơ hành chính cấp xã"
+  },
+  "tab": {
+    "thuTuc": "Thủ tục",
+    "traCuu": "Tra cứu",
+    "hoSo": "Hồ sơ của tôi",
+    "taiKhoan": "Tài khoản"
+  },
+  "chung": {
+    "thuLai": "Thử lại",
+    "dangTai": "Đang tải…",
+    "loiTieuDe": "Chưa tải được dữ liệu",
+    "matMang": "Đang không có kết nối mạng. Một số thông tin có thể chưa mới nhất.",
+    "quayLai": "Quay lại"
+  },
+  "taiKhoan": {
+    "tieuDe": "Tài khoản",
+    "mayChu": "Máy chủ",
+    "phienBan": "Phiên bản app"
+  }
+}
