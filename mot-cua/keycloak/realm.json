@@ -104,6 +104,25 @@
       "protocol": "openid-connect"
     },
     {
+      "clientId": "mot_cua_di_dong",
+      "name": "mot-cua: app di động công dân (React Native)",
+      "description": "Public client, Authorization Code + PKCE, redirect về scheme riêng của app Android (D-015).",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "vn.communedxos.motcua:/oauth"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "vn.communedxos.motcua:/oauth"
+      },
+      "protocol": "openid-connect"
+    },
+    {
       "clientId": "mot_cua_can_bo",
       "name": "mot-cua: cổng cán bộ (React, /can-bo)",
       "description": "Public client, Authorization Code + PKCE, chỉ cho cổng cán bộ (#55). Tài khoản can_bo, lanh_dao bị bắt OTP (required action CONFIGURE_TOTP); web từ chối người không có hai vai này, API kiểm lại bằng RLS và mot-cua-api.",

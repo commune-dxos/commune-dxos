@@ -90,6 +90,35 @@ APK debug đã đóng gói sẵn JS (`debuggableVariants = []` trong `android/ap
 (`~/.android/debug.keystore`); repo không chứa keystore nào. Workflow `di-dong` trên GitHub cũng build APK
 khi đẩy vào `develop`/`main` hoặc bấm chạy tay, tải ở mục Artifacts.
 
+## Client Keycloak cho app
+
+Client `mot_cua_di_dong` khai trong [`mot-cua/keycloak/realm.json`](../keycloak/realm.json) (Tầng 2, không sửa
+`nen-tang/`): public, chỉ Authorization Code + PKCE S256, redirect `vn.communedxos.motcua:/oauth`.
+Dịch vụ `tang2-realm` nạp client này khi `make up` trên máy mới.
+
+Máy chủ đang chạy (realm đã nạp từ trước): `tang2-realm` nạp bằng Partial Import, bỏ qua client đã có và
+thêm client mới, nên chỉ cần chạy lại dịch vụ đó ở gốc repo:
+
+```bash
+docker compose --profile core up --no-deps --force-recreate tang2-realm
+```
+
+Nếu dịch vụ báo lỗi đăng nhập OpenBao (AppRole) hoặc không muốn chạy lại, thêm tay bằng `kcadm.sh` trong container Keycloak (mật khẩu quản trị lấy từ OpenBao
+`dxos/core/keycloak/admin`, không in ra màn hình):
+
+```bash
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://localhost:8080 --realm master --user admin --password "$KC_ADMIN_PW"
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh create clients -r dxos \
+  -s clientId=mot_cua_di_dong -s 'name=mot-cua: app di động công dân' \
+  -s publicClient=true -s standardFlowEnabled=true -s directAccessGrantsEnabled=false \
+  -s implicitFlowEnabled=false \
+  -s 'redirectUris=["vn.communedxos.motcua:/oauth"]' \
+  -s 'attributes={"pkce.code.challenge.method":"S256","post.logout.redirect.uris":"vn.communedxos.motcua:/oauth"}'
+```
+
+Kiểm tra: `kcadm.sh get clients -r dxos -q clientId=mot_cua_di_dong --fields clientId,publicClient,redirectUris`.
+
 ## Giấy phép
 
 GPL-3.0-or-later như toàn repo. Mọi tệp mã có header SPDX 2 dòng; tệp ảnh, `yarn.lock` và Gradle wrapper
