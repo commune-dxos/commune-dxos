@@ -15,7 +15,7 @@ export type CacManGoc = {
   ChiTietThuTuc: { ma: string };
   ChiTietHoSo: { id: string };
   NopHoSo: { ma: string };
-  DaNop: { maHoSo: string; hanXuLy: string; tenThuTuc: string };
+  DaNop: { id: string; maHoSo: string; hanXuLy: string; tenThuTuc: string };
 };
 
 declare global {

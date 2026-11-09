@@ -3,22 +3,19 @@
 // Nộp hồ sơ: người nộp → ảnh giấy tờ theo từng thành phần (chụp hoặc chọn) → kiểm đủ (Poka-yoke) → gửi.
 // Lỗi giữa chừng thì giữ tiến độ, bấm "Thử lại" gửi tiếp từ chỗ dở dang.
 import React, { useRef, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, ImagePlus, X } from 'lucide-react-native';
-import { launchCamera, launchImageLibrary, type ImagePickerResponse } from 'react-native-image-picker';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { khoaTruyVan } from '../cau-hinh/truy-van';
-import { bo, chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { nopTrucTuyen, useDanhMucThuTuc } from '../dich-vu/danh-muc';
 import { cauLoi } from '../dich-vu/goi-api';
 import {
   LoiThieuThanhPhan,
   kiemNguoiNop,
   nopHoSo,
-  thanhAnhGiayTo,
   tienDoMoi,
   type AnhGiayTo,
   type BuocNop,
@@ -28,6 +25,7 @@ import { docThanhPhan, kiemThanhPhan, type ThanhPhan } from '../dich-vu/thanh-ph
 import type { CacManGoc } from '../dieu-huong/kieu';
 import { usePhien } from '../kho/phien-dang-nhap';
 import { KhungMan } from '../thanh-phan/khung-man';
+import { MucGiayTo, useChonAnh, type NguonAnh } from '../thanh-phan/muc-giay-to';
 import { ManTrangThai } from '../thanh-phan/man-trang-thai';
 import { NutBam } from '../thanh-phan/nut-bam';
 import { ONhap } from '../thanh-phan/o-nhap';
@@ -35,68 +33,6 @@ import { The } from '../thanh-phan/the';
 import { YeuCauDangNhap } from '../thanh-phan/yeu-cau-dang-nhap';
 
 type Props = NativeStackScreenProps<CacManGoc, 'NopHoSo'>;
-
-const TUY_CHON_ANH = { mediaType: 'photo', maxWidth: 2000, maxHeight: 2000, quality: 0.8 } as const;
-
-function MucGiayTo({
-  tp,
-  anh,
-  loi,
-  onThem,
-  onBo,
-}: {
-  tp: ThanhPhan;
-  anh: AnhGiayTo[];
-  loi?: string;
-  onThem: (nguon: 'may-anh' | 'thu-vien') => void;
-  onBo: (uri: string) => void;
-}) {
-  const { t } = useTranslation();
-  const day = tp.toiDa !== null && anh.length >= tp.toiDa;
-  return (
-    <View style={[kieu.muc, loi ? kieu.mucLoi : null]} testID={`giay-to-${tp.ma}`}>
-      <Text style={kieu.tenMuc}>
-        {tp.ten}
-        <Text style={kieu.batBuoc}>{tp.batBuoc ? ` · ${t('thuTuc.batBuoc')}` : ` · ${t('thuTuc.neuCo')}`}</Text>
-      </Text>
-      {tp.moTa ? <Text style={kieu.moTa}>{tp.moTa}</Text> : null}
-      {loi ? (
-        <Text style={kieu.loi} accessibilityLiveRegion="polite">
-          {loi}
-        </Text>
-      ) : null}
-      {anh.length ? (
-        <View style={kieu.luoiAnh}>
-          {anh.map((a, i) => (
-            <View key={a.uri} style={kieu.oAnh}>
-              <Image source={{ uri: a.uri }} style={kieu.anh} accessibilityLabel={`${tp.ten} ${i + 1}`} />
-              <Pressable
-                onPress={() => onBo(a.uri)}
-                style={kieu.nutBo}
-                accessibilityRole="button"
-                accessibilityLabel={t('nop.boAnh', { so: i + 1 })}
-                hitSlop={8}>
-                <X size={16} color={mau.chuTrenChinh} />
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      {!day ? (
-        <View style={kieu.hangNut}>
-          <Pressable style={kieu.nutAnh} onPress={() => onThem('may-anh')} accessibilityRole="button">
-            <Camera size={20} color={mau.chuTrenChinhNhat} />
-            <Text style={kieu.chuNutAnh}>{t('nop.chup')}</Text>
-          </Pressable>
-          <Pressable style={kieu.nutAnh} onPress={() => onThem('thu-vien')} accessibilityRole="button">
-            <ImagePlus size={20} color={mau.chuTrenChinhNhat} />
-            <Text style={kieu.chuNutAnh}>{t('nop.chon')}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-    </View>
-  );
-}
 
 function cauBuoc(b: BuocNop | null, t: TFunction) {
   if (!b) return t('nop.dangGui');
@@ -119,7 +55,7 @@ export function ManNopHoSo({ route, navigation }: Props) {
   const [loiGiayTo, setLoiGiayTo] = useState<Record<string, string>>({});
   const [buoc, setBuoc] = useState<BuocNop | null>(null);
   const tienDo = useRef(tienDoMoi());
-  const soAnh = useRef(0);
+  const chonAnh = useChonAnh();
 
   const nop = useMutation({
     mutationFn: () =>
@@ -129,7 +65,7 @@ export function ManNopHoSo({ route, navigation }: Props) {
       }),
     onSuccess: hoSo => {
       boTruyVan.invalidateQueries({ queryKey: khoaTruyVan.hoSoCuaToi });
-      navigation.replace('DaNop', { maHoSo: hoSo.ma_ho_so, hanXuLy: hoSo.han_xu_ly, tenThuTuc: thuTuc!.ten });
+      navigation.replace('DaNop', { id: hoSo.id, maHoSo: hoSo.ma_ho_so, hanXuLy: hoSo.han_xu_ly, tenThuTuc: thuTuc!.ten });
     },
     onError: e => {
       if (e instanceof LoiThieuThanhPhan) setLoiGiayTo(e.thanhPhan);
@@ -154,29 +90,8 @@ export function ManNopHoSo({ route, navigation }: Props) {
   const dsThanhPhan = docThanhPhan(thuTuc.json_schema);
   const daGui = tienDo.current.hoSo !== null;
 
-  async function themAnh(tp: ThanhPhan, nguon: 'may-anh' | 'thu-vien') {
-    const conLai = tp.toiDa === null ? 10 : Math.max(1, tp.toiDa - (anh[tp.ma]?.length ?? 0));
-    let kq: ImagePickerResponse;
-    try {
-      kq =
-        nguon === 'may-anh'
-          ? await launchCamera({ ...TUY_CHON_ANH, saveToPhotos: false })
-          : await launchImageLibrary({ ...TUY_CHON_ANH, selectionLimit: conLai });
-    } catch {
-      Alert.alert(t('nop.loiAnhTieuDe'), t('nop.loiAnh'));
-      return;
-    }
-    if (kq.didCancel) return;
-    if (kq.errorCode) {
-      Alert.alert(t('nop.loiAnhTieuDe'), kq.errorCode === 'camera_unavailable' ? t('nop.khongCoCamera') : t('nop.loiAnh'));
-      return;
-    }
-    const moi: AnhGiayTo[] = [];
-    for (const a of kq.assets ?? []) {
-      const x = thanhAnhGiayTo(a, tp.ma, ++soAnh.current);
-      if ('loi' in x) Alert.alert(t('nop.loiAnhTieuDe'), x.loi);
-      else moi.push(x);
-    }
+  async function themAnh(tp: ThanhPhan, nguon: NguonAnh) {
+    const moi = await chonAnh(tp, nguon, anh[tp.ma]?.length ?? 0);
     if (!moi.length) return;
     setAnh(cu => {
       const ds = { ...cu, [tp.ma]: [...(cu[tp.ma] ?? []), ...moi] };
@@ -282,39 +197,8 @@ const kieu = StyleSheet.create({
   noiDung: { padding: khoang.l, gap: khoang.m, paddingBottom: khoang.xxl },
   tenThuTuc: { fontSize: chu.tieuDe, fontWeight: '800', color: mau.chu, marginBottom: khoang.s },
   tieuDeMuc: { fontSize: chu.lon, fontWeight: '700', color: mau.chu, marginTop: khoang.s },
-  moTa: { fontSize: chu.nho, color: mau.chuMo, lineHeight: 22 },
+  moTa: { fontSize: chu.nho, color: mau.chuMo, lineHeight: dong.nho },
   form: { gap: khoang.l },
-  muc: { gap: khoang.s, paddingBottom: khoang.l, borderBottomWidth: 1, borderBottomColor: mau.vien },
-  mucLoi: { borderLeftWidth: 4, borderLeftColor: mau.loi, paddingLeft: khoang.m },
-  tenMuc: { fontSize: chu.than, fontWeight: '700', color: mau.chu },
-  batBuoc: { fontSize: chu.nho, fontWeight: '400', color: mau.chuMo },
-  loi: { fontSize: chu.nho, color: mau.loi, fontWeight: '600' },
-  luoiAnh: { flexDirection: 'row', flexWrap: 'wrap', gap: khoang.s },
-  oAnh: { width: 88, height: 88 },
-  anh: { width: 88, height: 88, borderRadius: bo.nho, backgroundColor: mau.mo },
-  nutBo: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: mau.chu,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hangNut: { flexDirection: 'row', gap: khoang.s },
-  nutAnh: {
-    flex: 1,
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: khoang.s,
-    borderRadius: bo.nho,
-    backgroundColor: mau.chinhNhat,
-  },
-  chuNutAnh: { fontSize: chu.than, fontWeight: '600', color: mau.chuTrenChinhNhat },
   thongBaoLoi: { backgroundColor: mau.loiNhat, borderColor: mau.loi, gap: khoang.xs },
   tieuDeLoi: { fontSize: chu.than, fontWeight: '700', color: mau.loi },
   chuLoi: { fontSize: chu.than, color: mau.chu },

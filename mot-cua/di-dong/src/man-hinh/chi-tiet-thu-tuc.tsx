@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CircleCheck, Circle } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { nopTrucTuyen, useDanhMucThuTuc } from '../dich-vu/danh-muc';
 import { lePhi, thoiHan } from '../dich-vu/dinh-dang';
 import { cauLoi } from '../dich-vu/goi-api';
@@ -119,7 +119,7 @@ const kieu = StyleSheet.create({
   thanhPhan: { flexDirection: 'row', gap: khoang.m },
   cot: { flex: 1, gap: 2 },
   tenThanhPhan: { fontSize: chu.than, fontWeight: '600', color: mau.chu },
-  ghiChu: { fontSize: chu.nho, color: mau.chuMo, lineHeight: 22 },
+  ghiChu: { fontSize: chu.nho, color: mau.chuMo, lineHeight: dong.nho },
   thongBao: { backgroundColor: mau.phu, borderColor: mau.phu },
   chuThongBao: { fontSize: chu.than, color: mau.chuTrenPhu },
 });

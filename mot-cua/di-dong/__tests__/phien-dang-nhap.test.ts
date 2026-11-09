@@ -4,7 +4,7 @@ import { authorize, logout, refresh } from 'react-native-app-auth';
 import * as Keychain from 'react-native-keychain';
 import { docCauHinh } from '../src/cau-hinh/moi-truong';
 import { HET_PHIEN } from '../src/dich-vu/goi-api';
-import { cauHinhOidc, conHan, docNguoiDung, type Phien } from '../src/dich-vu/xac-thuc';
+import { cauHinhOidc, conHan, docNguoiDung, laHuyDangNhap, type Phien } from '../src/dich-vu/xac-thuc';
 import { usePhien } from '../src/kho/phien-dang-nhap';
 
 jest.mock('react-native-app-auth', () => ({ authorize: jest.fn(), refresh: jest.fn(), logout: jest.fn() }));
@@ -35,6 +35,20 @@ function jwt(payload: object) {
       .replace(/\//g, '_')
       .replace(/[=]+$/, '');
   return `${b({ alg: 'none' })}.${b(payload)}.x`;
+}
+
+/** Lỗi như React Native chuyển từ react-native-app-auth iOS: code chuỗi, domain, userInfo; mã số chỉ còn trong câu. */
+function loiIos(ma: number, { coLoiGoc }: { coLoiGoc: boolean }) {
+  return Object.assign(new Error(`The operation couldn’t be completed. (org.openid.appauth.general error ${ma}.)`), {
+    code: 'authentication_failed',
+    domain: 'org.openid.appauth.general',
+    userInfo: coLoiGoc
+      ? {
+          NSUnderlyingError: { code: '1', domain: 'com.apple.AuthenticationServices.WebAuthenticationSession' },
+          nativeError: 'The operation couldn’t be completed. (com.apple.AuthenticationServices.WebAuthenticationSession error 1.)',
+        }
+      : null,
+  });
 }
 
 const sau = (giay: number) => new Date(Date.now() + giay * 1000).toISOString();
@@ -107,6 +121,30 @@ describe('mockKho phiên đăng nhập', () => {
     (authorize as jest.Mock).mockRejectedValue(new Error('User cancelled flow'));
     await expect(usePhien.getState().dangNhap()).resolves.toBe(false);
     expect(usePhien.getState().loi).toBeNull();
+  });
+
+  it('iOS: đóng trang đăng nhập (OIDGeneralErrorDomain -3) cũng là hủy, không báo lỗi', async () => {
+    (authorize as jest.Mock).mockRejectedValue(loiIos(-3, { coLoiGoc: true }));
+    await expect(usePhien.getState().dangNhap()).resolves.toBe(false);
+    expect(usePhien.getState().loi).toBeNull();
+  });
+
+  it('nhận diện hủy trên iOS theo lỗi gốc hoặc mã -3, không nhận nhầm lỗi khác', () => {
+    expect(laHuyDangNhap(new Error('User cancelled flow'))).toBe(true);
+    expect(laHuyDangNhap(loiIos(-3, { coLoiGoc: true }))).toBe(true);
+    expect(laHuyDangNhap(loiIos(-3, { coLoiGoc: false }))).toBe(true);
+    // Máy để tiếng Việt, câu mặc định đã dịch và không còn mã: nhận theo lỗi gốc ASWebAuthenticationSession.
+    expect(laHuyDangNhap(Object.assign(loiIos(-3, { coLoiGoc: true }), { message: 'Không thể hoàn tất thao tác.' }))).toBe(true);
+    // Lỗi mạng (-5) cùng miền, cùng code authentication_failed: vẫn là lỗi thật.
+    expect(laHuyDangNhap(loiIos(-5, { coLoiGoc: false }))).toBe(false);
+    expect(laHuyDangNhap(loiIos(-30, { coLoiGoc: false }))).toBe(false);
+    // authentication_failed ở miền khác (vd không có cửa sổ để mở trang đăng nhập): lỗi thật.
+    const khongCuaSo = Object.assign(new Error('No foreground window is available to present authorization.'), {
+      code: 'authentication_failed',
+      domain: 'RCTErrorDomain',
+      userInfo: null,
+    });
+    expect(laHuyDangNhap(khongCuaSo)).toBe(false);
   });
 
   it('lỗi khác thì báo câu trung tính', async () => {
