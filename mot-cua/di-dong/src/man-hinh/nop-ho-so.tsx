@@ -119,7 +119,10 @@ export function ManNopHoSo({ route, navigation }: Props) {
   return (
     <KhungMan>
       <KeyboardAvoidingView style={kieu.lap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={kieu.noiDung} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={kieu.noiDung}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag">
           <Text style={kieu.tenThuTuc} accessibilityRole="header">
             {thuTuc.ten}
           </Text>

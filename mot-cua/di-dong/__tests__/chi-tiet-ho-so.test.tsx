@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Render màn chi tiết hồ sơ với máy chủ giả: lý do bổ sung, khối nộp lại, bước đang mở, giấy tờ ký số, hết phiên.
 import React from 'react';
-import { Linking } from 'react-native';
+import { Linking, ScrollView } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ManChiTietHoSo } from '../src/man-hinh/chi-tiet-ho-so';
@@ -131,7 +131,11 @@ describe('màn chi tiết hồ sơ', () => {
     expect(cay.root.findAllByProps({ testID: 'nut-giay-to-bien_nhan' }).length).toBeGreaterThan(0);
     expect(cay.root.findAllByProps({ testID: 'nut-giay-to-ket_qua' })).toHaveLength(0);
 
+    const cuon = cay.root.findByType(ScrollView).instance as { scrollTo: jest.Mock };
+    cuon.scrollTo.mockClear();
     await bam(cay, 'nut-nop-lai');
+    // Thông báo "Đã nộp lại" ở đầu trang: màn phải cuộn lên đầu.
+    expect(cuon.scrollTo).toHaveBeenCalledWith({ y: 0, animated: true });
     const complete = cacLan.find(l => l.url.includes('/workflow/tasks/t-1/complete'));
     expect(complete?.init?.method).toBe('POST');
     expect(chuTrong(cay)).toContain('Đã nộp lại hồ sơ');

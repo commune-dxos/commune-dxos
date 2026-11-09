@@ -3,7 +3,7 @@
 // Chi tiết một hồ sơ của tôi, cùng nội dung với trang chi tiết của cổng công dân: trạng thái, hạn, lời nhắn theo
 // trạng thái, bước quy trình đang mở, bổ sung hồ sơ (khi chờ bổ sung), các mốc xử lý kèm lý do, giấy tờ đã nộp,
 // biên nhận và thông báo kết quả có ký số. Kéo xuống để làm mới.
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -45,6 +45,7 @@ export function ManChiTietHoSo({ route }: Props) {
   const coPhien = usePhien(s => !!s.phien);
   const truyVan = useChiTietHoSo(route.params.id);
   const [daNopLai, setDaNopLai] = useState(false);
+  const cuon = useRef<ScrollView>(null);
 
   if (!coPhien) {
     return (
@@ -73,14 +74,18 @@ export function ManChiTietHoSo({ route }: Props) {
 
   function sauNopLai() {
     setDaNopLai(true);
+    // Thông báo "Đã nộp lại" nằm đầu trang, nút Nộp lại ở dưới: cuộn lên để người dân thấy.
+    cuon.current?.scrollTo({ y: 0, animated: true });
     boTruyVan.invalidateQueries({ queryKey: khoaTruyVan.hoSoCuaToi });
   }
 
   return (
     <KhungMan>
       <ScrollView
+        ref={cuon}
         contentContainerStyle={kieu.noiDung}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl refreshing={truyVan.isRefetching} onRefresh={() => truyVan.refetch()} colors={[mau.chinh]} />
         }>
