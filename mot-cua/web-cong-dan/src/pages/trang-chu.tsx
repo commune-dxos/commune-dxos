@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Trang chủ cổng công dân (#141): khối mở đầu (components/khung-trang/khoi-dau.tsx), danh mục dạng lưới thẻ chia hai
 // nhóm "nộp trực tuyến" và "chỉ nộp tại bộ phận một cửa" (thẻ: components/the-thu-tuc.tsx), các bước làm thủ tục.
-import { Building2, CircleCheck, Globe, RotateCw } from "lucide-react";
+import { Building2, Globe, RotateCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
@@ -42,16 +42,16 @@ function NhomThuTuc({
 }) {
   if (!ds.length) return null;
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-4">
-      <div className="flex items-start gap-4">
-        <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-teal-300 shadow-lg shadow-slate-900/10">
-          <BieuTuong className="size-6" />
+    <section aria-labelledby={id} className="flex flex-col gap-5">
+      <div className="flex items-start gap-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+        <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-teal-600/20 bg-white text-primary shadow-2xs">
+          <BieuTuong className="size-5" />
         </span>
         <div className="flex flex-col gap-0.5">
-          <h3 id={id} className="text-2xl font-black tracking-tight">
-            {tieuDe} <span className="font-bold text-muted-foreground">({ds.length})</span>
+          <h3 id={id} className="text-xl font-black tracking-tight text-slate-950">
+            {tieuDe} <span className="font-bold text-slate-500">({ds.length})</span>
           </h3>
-          <p className="text-muted-foreground">{moTa}</p>
+          <p className="text-sm text-slate-600">{moTa}</p>
         </div>
       </div>
       <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -201,25 +201,27 @@ export function TrangChu({ taiDanhMuc = layDanhMucThuTuc }: { taiDanhMuc?: () =>
         <section
           id="huong-dan"
           aria-labelledby="tieu-de-huong-dan"
-          className="flex flex-col gap-10 rounded-[2rem] border border-slate-100 bg-slate-50 p-6 sm:p-10 md:rounded-[3rem] md:p-14"
+          className="flex flex-col gap-6"
         >
-          <TieuDeMuc id="tieu-de-huong-dan" nhan="Quy trình">
-            3 bước làm thủ tục trực tuyến
+          <TieuDeMuc id="tieu-de-huong-dan" nhan="Hướng dẫn thực hiện">
+            Quy trình nộp và nhận kết quả trực tuyến
           </TieuDeMuc>
-          <ol className="grid gap-5 md:grid-cols-3">
+          <ol className="grid divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-the md:grid-cols-3 md:divide-x md:divide-y-0">
             {CAC_BUOC.map((b) => (
-              <li key={b.so} className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-the">
-                <span aria-hidden="true" className="absolute top-2 right-4 text-7xl leading-none font-black text-slate-100 select-none">
-                  {b.so}
-                </span>
-                <span aria-hidden="true" className="relative flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                  <CircleCheck className="size-6" />
-                </span>
-                <strong className="relative text-xl font-black tracking-tight">
-                  <span className="sr-only">Bước {b.so}: </span>
-                  {b.ten}
-                </strong>
-                <span className="relative text-slate-700">{b.moTa}</span>
+              <li
+                key={b.so}
+                className="flex flex-col justify-between gap-3 p-6 transition-colors hover:bg-slate-50/60"
+              >
+                <div className="flex flex-col gap-2">
+                  <span className="w-fit rounded-md border border-teal-700/20 bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-900">
+                    Bước {b.so}
+                  </span>
+                  <strong className="text-xl font-black tracking-tight text-slate-950">
+                    <span className="sr-only">Bước {b.so}: </span>
+                    {b.ten}
+                  </strong>
+                  <p className="text-base text-slate-600">{b.moTa}</p>
+                </div>
               </li>
             ))}
           </ol>

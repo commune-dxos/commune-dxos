@@ -1,23 +1,21 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Đầu mục và dải đầu trang dùng chung của cổng công dân (#141).
-//  - TieuDeMuc: nhãn nhỏ in hoa có gạch màu nhấn phía trước, dưới là tiêu đề rất đậm.
-//  - DaiTieuDe: dải tối tràn viền (slate-950, hoa văn chấm mờ) cho tiêu đề h1 của các trang trong.
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function NhanMuc({ children, toi = false }: { children: ReactNode; toi?: boolean }) {
   return (
-    <span className="flex items-center gap-3">
-      <span aria-hidden="true" className={cn("block h-[3px] w-10 rounded-full", toi ? "bg-teal-300" : "bg-primary")} />
-      <span
-        className={cn(
-          "text-sm font-bold tracking-[0.2em] uppercase",
-          toi ? "text-teal-200" : "text-primary-soft-foreground",
-        )}
-      >
-        {children}
-      </span>
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-md px-2.5 py-0.5 text-sm font-semibold",
+        toi
+          ? "border border-teal-400/20 bg-teal-950/60 text-teal-200"
+          : "border border-teal-700/20 bg-teal-50/80 text-teal-900",
+      )}
+    >
+      <span aria-hidden="true" className={cn("size-1.5 rounded-full", toi ? "bg-teal-300" : "bg-primary")} />
+      {children}
     </span>
   );
 }
@@ -41,32 +39,27 @@ export function TieuDeMuc({
 }) {
   const TieuDe = cap;
   return (
-    <div className={cn("flex flex-col justify-between gap-4 md:flex-row md:items-end", className)}>
-      <div className="flex flex-col gap-3">
-        <NhanMuc>{nhan}</NhanMuc>
-        <TieuDe id={id} className="text-3xl font-black tracking-tighter text-foreground sm:text-4xl md:text-5xl">
+    <div className={cn("flex flex-col justify-between gap-4 border-b border-slate-200/80 pb-5 md:flex-row md:items-end", className)}>
+      <div className="flex flex-col gap-1.5 border-l-4 border-primary pl-4">
+        <TieuDe id={id} className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
           {children}
         </TieuDe>
-        {phu && <p className="max-w-2xl text-lg text-muted-foreground">{phu}</p>}
+        <p className="text-base font-medium text-slate-600">
+          {phu ?? `Chuyên mục: ${nhan}`}
+        </p>
       </div>
       {hanhDong}
     </div>
   );
 }
 
-/** Hoa văn chấm mờ trên nền tối (trang trí). */
+/** Hoa văn lưới hành chính tinh tế. */
 export function HoaVanCham() {
   return (
-    <>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-50"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-40 -right-40 size-[36rem] rounded-full bg-primary/40 blur-[120px]"
-      />
-    </>
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_40%,transparent_100%)] opacity-45"
+    />
   );
 }
 
@@ -88,13 +81,20 @@ export function DaiTieuDe({
   hep?: boolean;
 }) {
   return (
-    <section className="nen-toi relative isolate overflow-hidden bg-slate-950 text-white">
+    <section className="relative isolate overflow-hidden border-b border-slate-200/90 bg-gradient-to-b from-teal-50/45 via-slate-50/50 to-white text-foreground">
       <HoaVanCham />
-      <div className={cn("relative mx-auto flex w-full flex-col gap-4 px-4 py-10 sm:px-6 md:py-14", hep ? "max-w-5xl" : "max-w-6xl")}>
+      <div className={cn("relative mx-auto flex w-full flex-col gap-3 px-4 py-8 sm:px-6 md:py-10", hep ? "max-w-5xl" : "max-w-6xl")}>
         {truoc}
-        <NhanMuc toi>{nhan}</NhanMuc>
-        <h1 className="max-w-4xl text-4xl font-black tracking-tighter text-white sm:text-5xl md:text-6xl">{tieuDe}</h1>
-        {moTa && <p className="max-w-2xl text-lg text-slate-300">{moTa}</p>}
+        <div className="flex flex-col gap-2 border-l-4 border-primary pl-4">
+          <h1 className="max-w-4xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{tieuDe}</h1>
+          {moTa && <p className="max-w-2xl text-lg text-slate-600">{moTa}</p>}
+          <div className="flex flex-wrap items-center gap-2 pt-0.5 text-sm font-semibold text-teal-800">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-teal-700/20 bg-teal-50/90 px-2.5 py-0.5">
+              <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+              {nhan}
+            </span>
+          </div>
+        </div>
         {sau}
       </div>
     </section>

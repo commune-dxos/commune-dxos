@@ -64,7 +64,7 @@ function CauTraLoi({ luotId, traLoi }: { luotId: number; traLoi: TraLoiTroLy }) 
         </p>
       )}
       {traLoi.thong_bao && (
-        <p role="note" className="rounded-xl border-l-4 border-warning bg-surface px-4 py-3">
+        <p role="note" className="rounded-xl border border-warning/30 bg-amber-50/60 px-4 py-3 text-amber-950">
           {traLoi.thong_bao}
         </p>
       )}
@@ -213,13 +213,13 @@ export function TroLy({
     <>
     <DaiTieuDe
       hep
-      nhan="Trợ lý thủ tục"
+      nhan="Trợ lý tri thức pháp lý cấp xã"
       tieuDe="Hỏi đáp thủ tục"
       moTa="Hỏi về giấy tờ, thời hạn, lệ phí, nơi nộp. Trợ lý trả lời từ tài liệu thủ tục của xã và ghi rõ nguồn; câu hỏi không được lưu."
       sau={
         thongTin && (
-          <p className="flex w-fit items-start gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
-            <BookOpenText aria-hidden="true" className="mt-1 size-5 shrink-0 text-teal-300" />
+          <p className="flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-2xs">
+            <BookOpenText aria-hidden="true" className="size-4.5 shrink-0 text-primary" />
             {nhanCheDo(thongTin)}
           </p>
         )
@@ -250,16 +250,16 @@ export function TroLy({
         {sanSang === false && luot.length === 0 && <TroLyChuaBat />}
         {sanSang !== false && luot.length === 0 && (
           <div className="flex flex-col gap-3">
-            <p className="text-sm font-bold tracking-[0.2em] text-primary-soft-foreground uppercase">Câu hỏi gợi ý</p>
+            <p className="text-sm font-bold text-slate-700">Câu hỏi thường gặp</p>
             <ul className="grid gap-3 sm:grid-cols-2">
               {GOI_Y.map((g) => (
                 <li key={g} className="flex">
                   <Button
                     variant="outline"
-                    className="h-auto min-h-16 w-full justify-start rounded-2xl border-slate-200 bg-card px-5 py-3 text-left text-base font-bold whitespace-normal text-foreground shadow-the hover:border-primary hover:bg-primary-soft"
+                    className="h-auto min-h-15 w-full justify-start rounded-xl border-slate-200/90 bg-card px-4 py-3 text-left text-base font-semibold whitespace-normal text-slate-900 shadow-the hover:border-primary/50 hover:bg-teal-50/40"
                     onClick={() => void gui(g)}
                   >
-                    <MessageCircleQuestionMark aria-hidden="true" className="text-primary" />
+                    <MessageCircleQuestionMark aria-hidden="true" className="size-4.5 shrink-0 text-primary" />
                     {g}
                   </Button>
                 </li>
@@ -287,7 +287,7 @@ export function TroLy({
                   (sanSang === false ? (
                     <TroLyChuaBat />
                   ) : (
-                    <p role="status" className="rounded-xl border-l-4 border-primary bg-surface px-4 py-3 text-lg">
+                    <p role="status" className="rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3 text-lg text-slate-800">
                       Trợ lý đang bận, chưa trả lời được câu này. Vui lòng hỏi lại sau ít phút hoặc{" "}
                       <Link to="/#danh-muc" className="text-link underline">
                         xem danh mục thủ tục

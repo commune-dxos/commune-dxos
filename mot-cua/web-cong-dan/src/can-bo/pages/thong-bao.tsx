@@ -20,15 +20,15 @@ export function HopThongBao() {
   const { thongBao, chuaDoc, danhDauDaDoc } = useDuLieuCanBo();
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Thông báo</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200/80 pb-4">
+        <div className="border-l-4 border-primary pl-4">
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Thông báo</h1>
+          <p className="text-slate-600">
             Hồ sơ thuộc lĩnh vực bạn phụ trách sắp tới hạn xử lý. Thông báo mới hiện ngay, không cần tải lại trang.
           </p>
         </div>
         {chuaDoc > 0 && (
-          <Button variant="outline" onClick={() => void danhDauDaDoc(thongBao.filter((t) => !t.da_doc_luc).map((t) => t.id))}>
+          <Button variant="outline" size="sm" onClick={() => void danhDauDaDoc(thongBao.filter((t) => !t.da_doc_luc).map((t) => t.id))}>
             <CheckCheck aria-hidden="true" />
             Đánh dấu đã đọc tất cả ({chuaDoc})
           </Button>
@@ -45,7 +45,7 @@ export function HopThongBao() {
             <li
               key={t.id}
               data-da-doc={t.da_doc_luc ? "co" : "chua"}
-              className={cn("rounded-2xl border border-slate-100 bg-card p-5 shadow-the", !t.da_doc_luc && "border-l-4 border-l-warning")}
+              className={cn("rounded-2xl border border-slate-200/80 bg-card p-5 shadow-sm transition-all", !t.da_doc_luc && "border-amber-300 bg-amber-50/30 ring-1 ring-amber-300/40")}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1">
