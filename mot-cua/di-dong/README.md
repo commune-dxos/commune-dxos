@@ -37,6 +37,18 @@ Giao diện theo cổng công dân web: nền sáng, xanh ngọc `#0F766E` cho n
 và nhãn lĩnh vực, đỏ son `#D9480F` chỉ cho cảnh báo. Chữ thân 18, không chữ nào dưới 16 (trừ nhãn thanh tab), vùng
 bấm ≥ 48dp, nút bo tròn. Phông chữ là phông hệ thống của Android (Roboto, đủ dấu tiếng Việt); app không nhúng phông.
 
+## Demo
+
+Quay trên iOS Simulator bằng bản dựng thử, với stack chạy trên máy và dữ liệu mẫu giả (repo chỉ phát hành APK
+Android). Bên trái: nộp hồ sơ chứng thực tới biên nhận PDF ký số. Bên phải: bổ sung ảnh giấy chứng sinh theo
+yêu cầu rồi nộp lại.
+
+<p align="center">
+  <img src="../../docs/media/demo-app-nop.gif" alt="Nộp hồ sơ chứng thực trên app: điền người nộp, chọn ảnh giấy tờ mẫu, nộp, nhận mã hồ sơ, mở biên nhận PDF có ký số" width="240">
+  &nbsp;&nbsp;
+  <img src="../../docs/media/demo-app-bo-sung.gif" alt="Bổ sung hồ sơ trên app: xem yêu cầu bổ sung ảnh giấy chứng sinh, chọn ảnh mẫu mới, nộp lại, hồ sơ về bước tiếp nhận" width="240">
+</p>
+
 ## Cài APK lên điện thoại Android
 
 1. Trên điện thoại, mở trang Release mới nhất của repo:
