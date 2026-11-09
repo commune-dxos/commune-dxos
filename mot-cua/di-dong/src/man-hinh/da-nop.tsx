@@ -18,6 +18,9 @@ type Props = NativeStackScreenProps<CacManGoc, 'DaNop'>;
 export function ManDaNop({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { id, maHoSo, hanXuLy, tenThuTuc } = route.params;
+  // Quay về màn Tab có sẵn ở đáy stack. navigate('Tab') của React Navigation 7 đẩy thêm một Tab mới đè lên,
+  // làm các màn chi tiết mở từ Tab đó không hiện được.
+  const veTab = (screen: 'HoSoCuaToi' | 'ThuTuc') => navigation.popTo('Tab', { screen });
   return (
     <ScrollView contentContainerStyle={kieu.noiDung}>
       <View style={kieu.dau}>
@@ -29,7 +32,7 @@ export function ManDaNop({ route, navigation }: Props) {
       </View>
       <The style={kieu.the} testID="da-nop">
         <Text style={kieu.nhan}>{t('traCuu.maHoSo')}</Text>
-        <Text style={kieu.ma} selectable>
+        <Text style={kieu.ma} selectable numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} testID="ma-ho-so">
           {maHoSo}
         </Text>
         <Text style={kieu.nhan}>{t('hoSo.hanXuLy')}</Text>
@@ -42,10 +45,10 @@ export function ManDaNop({ route, navigation }: Props) {
       </The>
       <NutBam
         nhan={t('daNop.xemHoSo')}
-        onPress={() => navigation.navigate('Tab', { screen: 'HoSoCuaToi' })}
+        onPress={() => veTab('HoSoCuaToi')}
         testID="nut-xem-ho-so"
       />
-      <NutBam nhan={t('daNop.veThuTuc')} kieu="vien" onPress={() => navigation.navigate('Tab', { screen: 'ThuTuc' })} />
+      <NutBam nhan={t('daNop.veThuTuc')} kieu="vien" onPress={() => veTab('ThuTuc')} />
     </ScrollView>
   );
 }
