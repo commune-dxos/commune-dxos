@@ -315,8 +315,213 @@ export class ApiCanBo {
     readonly goi: typeof fetch = (...a) => fetch(...a),
   ) {}
 
-  private lay<T>(duong: string) {
-    return goiGateway<T>(this.cauHinh, this.goi, duong, { method: "GET", token: this.token });
+  private async lay<T>(duong: string): Promise<T> {
+    try {
+      return await goiGateway<T>(this.cauHinh, this.goi, duong, { method: "GET", token: this.token });
+    } catch (e) {
+      if (this.cauHinh.duLieuGia) {
+        const gia = this.layDuLieuGia<T>(duong);
+        if (gia !== undefined) return gia;
+      }
+      throw e;
+    }
+  }
+
+  private layDuLieuGia<T>(duong: string): T | undefined {
+    if (duong.startsWith("/workflow/tasks")) {
+      return [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          buoc: "tiep_nhan",
+          ten: "Tiếp nhận, kiểm tra thành phần hồ sơ",
+          nguoiNhan: "00000000-0000-0000-0000-00000000b001",
+          taoLuc: "2026-10-23T01:00:00.000Z",
+          processInstanceId: "pi-01",
+          hoSoId: "11111111-1111-4111-8111-111111111111",
+          maHoSo: "HS20261023-000001",
+          hanXuLyLuc: new Date(Date.now() + 86400000).toISOString(),
+          quaHan: false,
+        },
+        {
+          id: "44444444-4444-4444-8444-444444444444",
+          buoc: "tham_dinh",
+          ten: "Thẩm định hồ sơ khai sinh",
+          nguoiNhan: null,
+          taoLuc: "2026-10-24T02:00:00.000Z",
+          processInstanceId: "pi-02",
+          hoSoId: "22222222-2222-4222-8222-222222222222",
+          maHoSo: "HS20261023-000002",
+          hanXuLyLuc: new Date(Date.now() + 172800000).toISOString(),
+          quaHan: false,
+        },
+      ] as unknown as T;
+    }
+    if (duong.startsWith("/api/ho_so")) {
+      return [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          ma_ho_so: "HS20261023-000001",
+          trang_thai: "moi",
+          han_xu_ly: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+          ho_ten_nguoi_nop: "Nguyễn Văn Mẫu",
+          so_dien_thoai: "0900000001",
+          ngay_nhan: "2026-10-22T02:00:00Z",
+          thu_tuc: {
+            id: "tt-KS01",
+            ma: "KS01",
+            ten: "Đăng ký khai sinh",
+            so_ngay_xu_ly: 1,
+            bien_theo_buoc: {
+              tiep_nhan: {
+                hopLe: { kieu: "boolean", bat_buoc: true, ten: "Đủ thành phần hồ sơ?" },
+                ghiChu: { kieu: "string", bat_buoc: false, ten: "Ghi chú" },
+              },
+            },
+            linh_vuc: { ma: "ho_tich", ten: "Hộ tịch" },
+          },
+        },
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          ma_ho_so: "HS20261023-000002",
+          trang_thai: "dang_xu_ly",
+          han_xu_ly: new Date(Date.now() + 172800000).toISOString().split("T")[0],
+          ho_ten_nguoi_nop: "Lê Thị Thử",
+          so_dien_thoai: "0900000002",
+          ngay_nhan: "2026-10-23T03:00:00Z",
+          thu_tuc: {
+            id: "tt-KS01",
+            ma: "KS01",
+            ten: "Đăng ký khai sinh",
+            so_ngay_xu_ly: 1,
+            bien_theo_buoc: null,
+            linh_vuc: { ma: "ho_tich", ten: "Hộ tịch" },
+          },
+        },
+      ] as unknown as T;
+    }
+    if (duong.startsWith("/api/can_bo")) {
+      return [
+        {
+          ho_ten: "Trần Thị Một Cửa",
+          chuc_vu: "Cán bộ Bộ phận Một cửa",
+          linh_vuc: [
+            { ma: "ho_tich", ten: "Hộ tịch" },
+            { ma: "chung_thuc", ten: "Chứng thực" },
+          ],
+        },
+      ] as unknown as T;
+    }
+    if (duong.startsWith("/api/thong_bao")) {
+      return [
+        {
+          id: "tb-01",
+          ho_so_id: "11111111-1111-4111-8111-111111111111",
+          loai: "sap_tre",
+          moc: new Date(Date.now() + 86400000).toISOString(),
+          tieu_de: "Hồ sơ HS20261023-000001 sắp tới hạn",
+          noi_dung: "Đăng ký khai sinh của Nguyễn Văn Mẫu còn 1 ngày làm việc.",
+          tao_luc: new Date(Date.now() - 3600000).toISOString(),
+          da_doc_luc: null,
+          thong_bao_kenh: [{ kenh: "email", trang_thai: "gia_lap" }],
+        },
+      ] as unknown as T;
+    }
+    if (duong.startsWith("/api/van_ban")) {
+      return [
+        {
+          id: "vb-01",
+          chieu: "den",
+          trang_thai: "da_vao_so",
+          nam: 2026,
+          so: 108,
+          ky_hieu: "108/UBND-VP",
+          loai: "Công văn",
+          ngay_van_ban: "2026-11-01",
+          trich_yeu: "Về việc thực hiện dịch vụ công trực tuyến cấp xã",
+          noi_gui: "UBND Huyện",
+          noi_nhan: "UBND Xã",
+          nguoi_ky: "Phạm Văn Đồng",
+          ten_tep: "cv-108.pdf",
+          kich_thuoc: 412000,
+          sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          xac_minh_chu_ky: { coChuKy: true, hopLe: true, nguoiKy: "UBND Huyện", loi: null },
+          ky_luc: "2026-11-01T08:00:00Z",
+          created_at: "2026-11-01T08:30:00Z",
+        },
+        {
+          id: "vb-02",
+          chieu: "di",
+          trang_thai: "da_ky",
+          nam: 2026,
+          so: 45,
+          ky_hieu: "45/BC-UBND",
+          loai: "Báo cáo",
+          ngay_van_ban: "2026-11-05",
+          trich_yeu: "Báo cáo tình hình xử lý hồ sơ một cửa tháng 10/2026",
+          noi_gui: "UBND Xã",
+          noi_nhan: "UBND Huyện",
+          nguoi_ky: "Nguyễn Văn Lãnh Đạo",
+          ten_tep: "bc-45.pdf",
+          kich_thuoc: 285000,
+          sha256: "b2c3d4e5",
+          xac_minh_chu_ky: { coChuKy: true, hopLe: true, nguoiKy: "Chủ tịch UBND Xã", loi: null },
+          ky_luc: "2026-11-05T10:00:00Z",
+          created_at: "2026-11-05T09:30:00Z",
+        },
+      ] as unknown as T;
+    }
+    if (duong.startsWith("/api/lich_cong_tac")) {
+      const nay = new Date();
+      const sang = new Date(nay.getFullYear(), nay.getMonth(), nay.getDate(), 8, 0).toISOString();
+      const trua = new Date(nay.getFullYear(), nay.getMonth(), nay.getDate(), 11, 30).toISOString();
+      return [
+        {
+          id: "l-01",
+          tieu_de: "Giao ban công tác cải cách hành chính xã",
+          loai: "hop",
+          bat_dau: sang,
+          ket_thuc: trua,
+          dia_diem: "Hội trường UBND xã",
+          chu_tri: "Chủ tịch UBND xã",
+          thanh_phan: "Ban Chỉ đạo Chuyển đổi số xã, Cán bộ Một cửa",
+          ghi_chu: "Đánh giá tiến độ số hóa hồ sơ thủ tục",
+          trang_thai: "da_duyet",
+          ly_do_huy: null,
+          duyet_luc: sang,
+        },
+      ] as unknown as T;
+    }
+    if (duong.startsWith("/files/wiki/tim") || duong.startsWith("/api/wiki_van_ban")) {
+      return {
+        q: "",
+        tong: 1,
+        nguon: "csdl",
+        ket_qua: [
+          {
+            id: "w-01",
+            tieu_de: "Hướng dẫn nghiệp vụ tiếp nhận và giải quyết hồ sơ một cửa",
+            tieu_de_danh_dau: "Hướng dẫn nghiệp vụ tiếp nhận và giải quyết hồ sơ một cửa",
+            loai: "huong_dan",
+            so_ky_hieu: "HD-01/UBND",
+            ngay_ban_hanh: "2026-09-01",
+            tom_tat: "Quy trình kiểm tra hồ sơ, quét giấy tờ và cập nhật trạng thái trên hệ thống",
+            trich_doan: "Cán bộ một cửa thực hiện kiểm tra đầy đủ thành phần hồ sơ theo Quyết định công bố...",
+            pham_vi: "toan_xa",
+            linh_vuc_id: null,
+            trang_thai: "hieu_luc",
+            phien_ban: 1,
+            sua_luc: "2026-09-01T08:00:00Z",
+          },
+        ],
+      } as unknown as T;
+    }
+    if (duong.startsWith("/api/linh_vuc")) {
+      return [
+        { id: "lv-01", ma: "ho_tich", ten: "Hộ tịch" },
+        { id: "lv-02", ma: "chung_thuc", ten: "Chứng thực" },
+      ] as unknown as T;
+    }
+    return undefined;
   }
 
   layThongBao() {

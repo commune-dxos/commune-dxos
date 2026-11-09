@@ -27,6 +27,17 @@ export function XacThucProvider({ quanLy, children }: { quanLy: UserManager; chi
 
   useEffect(() => {
     let conGanKet = true;
+    const demoJson = typeof window !== "undefined" ? sessionStorage.getItem("dxos_demo_user") : null;
+    if (demoJson) {
+      try {
+        const u = JSON.parse(demoJson);
+        if (conGanKet) {
+          datNguoiDung(u);
+          datDangTai(false);
+          return;
+        }
+      } catch {}
+    }
     quanLy
       .getUser()
       .then((u) => conGanKet && datNguoiDung(u && !u.expired ? u : null))
@@ -50,7 +61,10 @@ export function XacThucProvider({ quanLy, children }: { quanLy: UserManager; chi
       nguoiDung,
       dangTai,
       dangNhap: (quayVe = window.location.pathname) => quanLy.signinRedirect({ state: { quayVe } }),
-      dangXuat: () => quanLy.signoutRedirect(),
+      dangXuat: async () => {
+        if (typeof window !== "undefined") sessionStorage.removeItem("dxos_demo_user");
+        return quanLy.signoutRedirect();
+      },
       hoanTatDangNhap: async () => {
         const u = await quanLy.signinRedirectCallback();
         datNguoiDung(u);
