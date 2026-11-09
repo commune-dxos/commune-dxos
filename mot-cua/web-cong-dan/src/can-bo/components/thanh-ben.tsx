@@ -29,9 +29,9 @@ import { TEN_VAI_TRO } from "../lib/quyen";
 export const DUONG_BAO_CAO = "/bao-cao/superset/dashboard/hieu-suat-mot-cua/";
 
 const LOP_MUC =
-  "flex min-h-11 items-center gap-3 rounded-xl px-4 py-2 text-base font-semibold no-underline transition-all duration-200";
-const LOP_MUC_MO = "bg-primary text-white shadow-lg shadow-primary/25 ring-1 ring-white/10";
-const LOP_MUC_THUONG = "text-slate-300 hover:bg-slate-800 hover:text-white";
+  "flex min-h-10 items-center gap-3 rounded-xl px-3.5 py-2 text-base font-semibold no-underline transition-all duration-150";
+const LOP_MUC_MO = "bg-teal-50/95 text-primary font-bold ring-1 ring-teal-600/20 shadow-2xs";
+const LOP_MUC_THUONG = "text-slate-700 hover:bg-slate-100/90 hover:text-slate-950";
 
 function MucMenu({
   den,
@@ -56,10 +56,15 @@ function MucMenu({
 }) {
   const noiDung = (
     <>
-      <BieuTuong aria-hidden="true" className={cn("size-5 shrink-0", dangMo ? "text-white" : "text-slate-400")} />
+      <BieuTuong aria-hidden="true" className={cn("size-4.5 shrink-0", dangMo ? "text-primary" : "text-slate-500")} />
       <span className="flex-1">{nhan}</span>
       {dem !== undefined && dem > 0 && (
-        <span className={cn("rounded-full px-2 text-sm font-bold", dangMo ? "bg-white/20 text-white" : "bg-slate-800 text-white")}>
+        <span
+          className={cn(
+            "rounded-md px-2 py-0.5 font-mono text-xs font-bold tabular-nums",
+            dangMo ? "bg-primary text-white" : "border border-slate-200 bg-slate-100 text-slate-700",
+          )}
+        >
           {dem}
           <span className="sr-only"> {donVi}</span>
         </span>
@@ -85,7 +90,7 @@ function MucMenu({
 function Nhom({ nhan, children }: { nhan: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <h2 className="px-4 pt-3 pb-1 text-sm font-bold tracking-[0.2em] text-slate-400 uppercase">{nhan}</h2>
+      <h2 className="px-3.5 pt-3 pb-1 text-xs font-bold tracking-[0.15em] text-slate-400 uppercase">{nhan}</h2>
       <ul className="flex flex-col gap-0.5">{children}</ul>
     </div>
   );
@@ -101,16 +106,15 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
   const loc = q.get("han") ?? q.get("trang_thai") ?? "";
   const linhVuc = canBo?.linh_vuc.map((l) => l.ten).join(", ");
   return (
-    <aside className={cn("nen-toi flex h-full w-64 flex-col overflow-y-auto border-r border-slate-800 bg-slate-900 text-slate-300", className)}>
-      <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-4">
-        <Link to={GOC_CAN_BO} onClick={onChon} className="group flex min-w-0 items-center gap-3 rounded-xl text-white no-underline">
-          {/* Quy tắc nhận diện: biểu tượng trong suốt đặt trong ô nền trắng khi nằm trên nền tối. */}
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white p-1 transition-transform group-hover:scale-105">
-            <img src="/mark-64.png" alt="" width={36} height={36} className="size-9" />
+    <aside className={cn("flex h-full w-64 flex-col overflow-y-auto border-r border-slate-200/90 bg-white text-slate-700", className)}>
+      <div className="flex h-16 items-center justify-between gap-2 border-b border-slate-200/80 px-4">
+        <Link to={GOC_CAN_BO} onClick={onChon} className="group flex min-w-0 items-center gap-3 rounded-xl text-slate-950 no-underline">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-teal-600/20 bg-teal-50/60 p-1 shadow-2xs transition-transform group-hover:scale-105">
+            <img src="/mark-64.png" alt="" width={34} height={34} className="size-8" />
           </span>
           <span className="flex min-w-0 flex-col leading-tight">
-            <span className="text-lg font-black tracking-tight whitespace-nowrap">Cổng cán bộ</span>
-            <span className="truncate font-semibold text-teal-300">Commune DX-OS</span>
+            <span className="text-base font-black tracking-tight text-slate-950 whitespace-nowrap">Cổng cán bộ</span>
+            <span className="truncate text-xs font-bold tracking-wider text-primary uppercase">Commune DX-OS</span>
           </span>
         </Link>
         {onChon && (
@@ -118,7 +122,7 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
             type="button"
             onClick={onChon}
             aria-label="Đóng menu"
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
           >
             <X aria-hidden="true" className="size-5" />
           </button>
@@ -161,11 +165,14 @@ export function ThanhBenCanBo({ className, onChon }: { className?: string; onCho
           <MucMenu den="/" nhan="Cổng công dân" bieuTuong={ExternalLink} ngoai />
         </Nhom>
       </nav>
-      <div className="mx-3 mb-3 flex flex-col gap-0.5 rounded-2xl bg-slate-800 px-4 py-3">
-        <p className="font-bold text-white">{TEN_VAI_TRO[vaiTro]}</p>
-        <p className="text-slate-400">
+      <div className="mx-3 mb-3 flex flex-col gap-1 rounded-xl border border-slate-200/90 bg-slate-50/90 px-3.5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-primary" aria-hidden="true" />
+          <p className="text-sm font-bold text-slate-900">{TEN_VAI_TRO[vaiTro]}</p>
+        </div>
+        <p className="text-xs leading-relaxed text-slate-600">
           {vaiTro === "lanh_dao"
-            ? "Phê duyệt, ký các bước của lãnh đạo"
+            ? "Phê duyệt, ký số các bước của lãnh đạo"
             : vaiTro === "van_thu"
               ? "Vào sổ văn bản đến, soạn văn bản đi"
               : linhVuc

@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { LoiApi } from "@/lib/api";
-import { hoiTroLy, tachTrichDan, type ThongTinTroLy, type TraLoiTroLy } from "@/lib/tro-ly";
+import { hoiTroLy, kiemTroLy, tachTrichDan, type ThongTinTroLy, type TraLoiTroLy } from "@/lib/tro-ly";
 import { TroLy } from "./tro-ly";
 
 const TT: ThongTinTroLy = { che_do: "ollama", co_mo_hinh_ngon_ngu: true, mo_hinh: "qwen2.5:7b" };
@@ -59,6 +59,28 @@ describe("gọi trợ lý qua APISIX", () => {
     expect(init?.method).toBe("POST");
     expect(JSON.parse(init?.body as string)).toEqual({ cau_hoi: "hỏi gì", ma_thu_tuc: "KS01" });
     expect(new Headers(init?.headers).get("Authorization")).toBeNull();
+  });
+});
+
+describe("chế độ dữ liệu giả", () => {
+  const gia = { gatewayUrl: "", keycloakUrl: "", realm: "dxos", clientId: "w", clientIdCanBo: "c", duLieuGia: true };
+
+  it("không nhận có mô hình ngôn ngữ, không gọi mạng, câu trả lời ghi rõ là ví dụ giả lập", async () => {
+    const goi = vi.fn<typeof fetch>();
+    const tt = await kiemTroLy(gia, goi);
+    expect(tt).toEqual({ che_do: "gia-lap", co_mo_hinh_ngon_ngu: false, mo_hinh: null });
+    const tl = await hoiTroLy("hỏi gì", null, gia, goi);
+    expect(tl.mo_hinh).toBeNull();
+    expect(tl.co_mo_hinh_ngon_ngu).toBe(false);
+    expect(tl.cau_tra_loi).toMatch(/^Ví dụ giả lập/);
+    expect(tl.thong_bao).toMatch(/không do mô hình ngôn ngữ sinh ra/);
+    expect(goi).not.toHaveBeenCalled();
+  });
+
+  it("trang hiện nhãn giả lập cho người xem", async () => {
+    const tt = await kiemTroLy(gia);
+    ve(() => hoiTroLy("hỏi", null, gia), "/hoi-dap", tt);
+    expect(await screen.findByText(/Chế độ giả lập/)).toBeInTheDocument();
   });
 });
 

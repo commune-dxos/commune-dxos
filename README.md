@@ -126,7 +126,7 @@ Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make qua
 **Người dân** xem danh mục, nộp hồ sơ đăng ký khai sinh: thiếu giấy chứng sinh thì cổng chặn ngay, chưa gửi gì lên máy chủ; đủ giấy tờ thì nộp được, nhận mã hồ sơ. Sau đó tra cứu tiến độ bằng mã hồ sơ và 4 số cuối số điện thoại, không cần đăng nhập.
 
 <p align="center">
-  <img src="docs/media/demo-cong-dan.gif" alt="Demo cổng công dân: trang chủ có danh mục thủ tục, mở Đăng ký khai sinh, bấm Bắt đầu nộp, đăng nhập, nhập số điện thoại; ở bước Giấy tờ chỉ tải tờ khai thì hiện lỗi Chưa tải giấy chứng sinh; tải đủ, kiểm tra lại, bấm Đồng ý và nộp hồ sơ, hiện Đã nộp hồ sơ kèm mã HS; trang Tra cứu hồ sơ nhập mã và 4 số cuối điện thoại, hiện trạng thái Mới nộp, chờ tiếp nhận" width="100%">
+  <img src="docs/media/demo-cong-dan.gif" alt="Demo cổng công dân: trang chủ có ô tìm thủ tục, mở Đăng ký khai sinh, bấm Bắt đầu nộp, đăng nhập, nhập số điện thoại; ở bước Giấy tờ chỉ tải tờ khai thì hiện lỗi Chưa tải giấy chứng sinh; tải đủ, kiểm tra lại, bấm Đồng ý và nộp hồ sơ, hiện Đã nộp hồ sơ kèm mã HS; trang Tra cứu hồ sơ nhập mã hồ sơ và 4 số cuối điện thoại rồi bấm Tra cứu" width="100%">
 </p>
 
 **Cán bộ hộ tịch** đăng nhập bằng mật khẩu và mã OTP, mở hồ sơ vừa nộp từ hộp việc, xác nhận đủ thành phần và hoàn thành bước tiếp nhận; hồ sơ chuyển sang bước thẩm định.

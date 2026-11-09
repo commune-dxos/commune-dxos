@@ -49,12 +49,12 @@ const LIEN_KET = [
 function LienKetHoSo({ doc = false, onChon }: { doc?: boolean; onChon?: () => void }) {
   const { nguoiDung } = useXacThuc();
   const lop = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-11 items-center gap-2 rounded-full px-4 font-bold no-underline ${doc ? "min-h-12 rounded-xl text-lg" : ""} ${isActive ? "bg-primary-soft text-primary-soft-foreground" : "text-slate-700 hover:bg-slate-100 hover:text-foreground"}`;
+    `flex min-h-11 items-center gap-2 rounded-xl px-3.5 font-bold no-underline transition-colors ${doc ? "min-h-12 text-lg" : "text-base"} ${isActive ? "bg-teal-50 text-primary ring-1 ring-teal-600/20" : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"}`;
   return (
     <>
       {LIEN_KET.filter((l) => !l.canDangNhap || nguoiDung).map(({ den, ten, bieuTuong: BieuTuong }) => (
         <NavLink key={den} to={den} className={lop} onClick={onChon}>
-          <BieuTuong aria-hidden="true" className="size-5" />
+          <BieuTuong aria-hidden="true" className="size-4.5 text-primary" />
           {ten}
         </NavLink>
       ))}
@@ -125,21 +125,27 @@ function MenuDienThoai() {
 
 function DaiThuNghiem() {
   return (
-    <div className="bg-slate-900 text-slate-200">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
-        <span className="rounded-full bg-teal-400/15 px-3 py-0.5 text-sm font-bold tracking-[0.15em] text-teal-200 uppercase">
-          Thử nghiệm
-        </span>
-        <span>
-          <span className="hidden sm:inline">Dữ liệu trên cổng là dữ liệu mẫu, không phải hồ sơ thật.</span>
-          <span className="sm:hidden">Dữ liệu mẫu, không phải hồ sơ thật.</span>
-        </span>
+    <div className="border-b border-teal-900/15 bg-teal-950 text-teal-50">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-1.5 text-sm sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-teal-400/30 bg-teal-900/80 px-2 py-0.5 text-xs font-bold tracking-wider text-teal-200 uppercase">
+            <span className="size-1.5 rounded-full bg-teal-400" aria-hidden="true" />
+            Thử nghiệm
+          </span>
+          <span className="text-teal-100/90">
+            <span className="hidden sm:inline">Hệ thống dịch vụ công cấp xã · Dữ liệu trên cổng là dữ liệu mẫu phục vụ kiểm thử.</span>
+            <span className="sm:hidden">Dữ liệu mẫu, không phải hồ sơ thật.</span>
+          </span>
+        </div>
+        <Link to="/can-bo" className="hidden font-semibold text-teal-200 no-underline hover:text-white hover:underline md:inline">
+          Cổng cán bộ →
+        </Link>
       </div>
     </div>
   );
 }
 
-/** Ô tìm thủ tục bo tròn ở đầu trang (trừ trang chủ, nơi đã có ô tìm lớn): chuyển về danh mục với ?tim=. */
+/** Ô tìm thủ tục ở đầu trang (trừ trang chủ, nơi đã có ô tìm lớn): chuyển về danh mục với ?tim=. */
 function OTimNhanh() {
   const [q, datQ] = useState("");
   const dieuHuong = useNavigate();
@@ -148,19 +154,19 @@ function OTimNhanh() {
     dieuHuong(`/?tim=${encodeURIComponent(q.trim())}#danh-muc`);
   };
   return (
-    <form role="search" onSubmit={gui} className="relative hidden w-full max-w-64 min-w-40 xl:block">
+    <form role="search" onSubmit={gui} className="relative hidden w-full max-w-64 min-w-44 xl:block">
       <label htmlFor="tim-nhanh" className="sr-only">
         Tìm nhanh thủ tục
       </label>
-      <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-slate-500" />
+      <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-slate-400" />
       <input
         id="tim-nhanh"
         type="search"
         value={q}
         onChange={(e) => datQ(e.target.value)}
-        placeholder="Tìm thủ tục…"
+        placeholder="Tìm nhanh thủ tục…"
         autoComplete="off"
-        className="h-11 w-full rounded-full border-2 border-slate-200 bg-slate-50 pr-4 pl-11 text-base outline-none placeholder:text-slate-500 focus-visible:border-ring focus-visible:bg-white focus-visible:ring-[3px] focus-visible:ring-ring/30"
+        className="h-10 w-full rounded-xl border border-slate-300 bg-slate-50/80 pr-3.5 pl-10 text-base outline-none transition-colors placeholder:text-slate-500 focus-visible:border-primary focus-visible:bg-white focus-visible:ring-[3px] focus-visible:ring-primary/20"
       />
     </form>
   );
@@ -171,22 +177,26 @@ export function DauTrang() {
   return (
     <>
     <DaiThuNghiem />
-    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur-md supports-[backdrop-filter]:bg-white/75">
+    <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="group flex min-w-0 shrink-0 items-center gap-3 rounded-xl text-foreground no-underline">
-          <img src="/mark-64.png" alt="" width={44} height={44} className="size-11 shrink-0 transition-transform group-hover:scale-105" />
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-teal-600/20 bg-teal-50/50 p-1 shadow-2xs transition-transform group-hover:scale-105">
+            <img src="/mark-64.png" alt="" width={38} height={38} className="size-9 shrink-0" />
+          </span>
           <span className="flex min-w-0 flex-col leading-none">
-            <span className="text-lg font-black tracking-tight whitespace-nowrap">
+            <span className="text-lg font-black tracking-tight text-slate-950 whitespace-nowrap">
               <span className="hidden sm:inline">Cổng dịch vụ công xã</span>
               <span className="sm:hidden">Dịch vụ công xã</span>
             </span>
-            <span className="mt-1 hidden text-sm font-bold tracking-[0.2em] text-primary uppercase xl:block">Commune DX-OS</span>
+            <span className="mt-1 hidden text-xs font-bold tracking-[0.14em] text-primary uppercase sm:block">
+              Commune DX-OS · Một cửa điện tử
+            </span>
           </span>
         </Link>
         {pathname !== "/" && <OTimNhanh />}
-        <nav aria-label="Tài khoản" className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label="Tài khoản" className="hidden shrink-0 items-center gap-1.5 lg:flex">
           <LienKetHoSo />
-          <span aria-hidden="true" className="mx-2 h-8 w-px bg-slate-200" />
+          <span aria-hidden="true" className="mx-2 h-7 w-px bg-slate-200" />
           <NutTaiKhoan />
         </nav>
         <MenuDienThoai />

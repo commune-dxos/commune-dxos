@@ -40,12 +40,28 @@ function NguoiNhan({ v }: { v: Viec }) {
   return <span>Chưa ai nhận</span>;
 }
 
-/** Thẻ số liệu nền màu có gradient (#142). Chữ trắng trên mọi nền ≥ 4.5:1: slate-900, teal-700, orange-700, rose-700. */
+/** Thẻ số liệu điều hành sáng sủa, có thanh chỉ báo ngữ nghĩa bên trái. */
 const MAU_O = {
-  toi: "from-slate-900 to-slate-700 shadow-slate-900/20",
-  chinh: "from-teal-800 to-teal-600 shadow-teal-900/20",
-  cam: "from-orange-800 to-orange-700 shadow-orange-900/20",
-  do: "from-rose-800 to-rose-700 shadow-rose-900/20",
+  toi: {
+    vien: "border-l-slate-800 hover:border-slate-400",
+    icon: "bg-slate-100 text-slate-700",
+    so: "text-slate-950",
+  },
+  chinh: {
+    vien: "border-l-teal-600 hover:border-teal-500",
+    icon: "bg-teal-50 text-teal-700",
+    so: "text-teal-900",
+  },
+  cam: {
+    vien: "border-l-amber-500 hover:border-amber-500",
+    icon: "bg-amber-50 text-amber-800",
+    so: "text-amber-900",
+  },
+  do: {
+    vien: "border-l-rose-600 hover:border-rose-500",
+    icon: "bg-rose-50 text-rose-700",
+    so: "text-rose-700",
+  },
 };
 
 function OSo({
@@ -61,22 +77,22 @@ function OSo({
   den: string;
   mau: keyof typeof MAU_O;
 }) {
+  const k = MAU_O[mau];
   return (
     <Link
       to={den}
       className={cn(
-        "group relative isolate flex flex-col gap-3 overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white no-underline shadow-xl transition-all hover:-translate-y-0.5 hover:shadow-2xl",
-        MAU_O[mau],
+        "group relative flex flex-col justify-between gap-2.5 rounded-xl border border-slate-200/90 border-l-4 bg-white p-4 text-slate-900 no-underline shadow-the transition-all hover:shadow-md",
+        k.vien,
       )}
     >
-      <span aria-hidden="true" className="absolute -right-8 -bottom-10 -z-10 size-36 rounded-full bg-white/10" />
-      <span className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold tracking-[0.15em] uppercase">{nhan}</span>
-        <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-xl bg-white/15 transition-colors group-hover:bg-white/25">
-          <BieuTuong className="size-5" />
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">{nhan}</span>
+        <span aria-hidden="true" className={cn("flex size-8 items-center justify-center rounded-lg transition-transform group-hover:scale-105", k.icon)}>
+          <BieuTuong className="size-4.5" />
         </span>
       </span>
-      <span className="text-4xl leading-none font-black tracking-tight tabular-nums">{so}</span>
+      <span className={cn("text-3xl leading-none font-black tracking-tight tabular-nums", k.so)}>{so}</span>
     </Link>
   );
 }
@@ -84,11 +100,11 @@ function OSo({
 function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) => void; thuTuc: { ma: string; ten: string }[] }) {
   const coLoc = loc.trangThai !== "tat_ca" || loc.thuTuc !== "" || loc.han !== "tat_ca";
   return (
-    <div role="group" aria-label="Lọc hộp việc" className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-the sm:flex-row sm:flex-wrap sm:items-end">
+    <div role="group" aria-label="Lọc hộp việc" className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white p-4 shadow-the sm:flex-row sm:flex-wrap sm:items-end">
       <label className="flex flex-col gap-1">
-        <span className="font-semibold">Trạng thái</span>
+        <span className="text-xs font-bold tracking-wider text-slate-600 uppercase">Trạng thái</span>
         <Select value={loc.trangThai} onValueChange={(v) => datLoc({ ...loc, trangThai: v as LocTrangThai })}>
-          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-52" aria-label="Lọc theo trạng thái nhận">
+          <SelectTrigger className="h-10 w-full bg-slate-50/80 text-base sm:w-52" aria-label="Lọc theo trạng thái nhận">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -101,12 +117,12 @@ function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) 
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="font-semibold">Thủ tục</span>
+        <span className="text-xs font-bold tracking-wider text-slate-600 uppercase">Thủ tục</span>
         <Select
           value={loc.thuTuc || TAT_CA_THU_TUC}
           onValueChange={(v) => datLoc({ ...loc, thuTuc: v === TAT_CA_THU_TUC ? "" : v })}
         >
-          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-64" aria-label="Lọc theo thủ tục">
+          <SelectTrigger className="h-10 w-full bg-slate-50/80 text-base sm:w-64" aria-label="Lọc theo thủ tục">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -122,9 +138,9 @@ function BoLocHopViec({ loc, datLoc, thuTuc }: { loc: BoLoc; datLoc: (l: BoLoc) 
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="font-semibold">Hạn xử lý</span>
+        <span className="text-xs font-bold tracking-wider text-slate-600 uppercase">Hạn xử lý</span>
         <Select value={loc.han} onValueChange={(v) => datLoc({ ...loc, han: v as LocHan })}>
-          <SelectTrigger className="h-11 w-full bg-slate-50 text-base sm:w-60" aria-label="Lọc theo hạn xử lý">
+          <SelectTrigger className="h-10 w-full bg-slate-50/80 text-base sm:w-60" aria-label="Lọc theo hạn xử lý">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -158,42 +174,44 @@ function DuongDanHoSo({ v, children, className }: { v: Viec; children: React.Rea
 
 function BangViec({ ds }: { ds: Viec[] }) {
   return (
-    <div className="hidden overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-the md:block">
+    <div className="hidden overflow-hidden rounded-2xl border border-slate-200/90 bg-card shadow-the md:block">
       <Table className="text-base">
-        <TableHeader className="bg-surface">
+        <TableHeader className="border-b border-slate-200 bg-slate-50/90">
           <TableRow>
-            <TableHead className="h-12 px-4 text-base font-semibold">Hồ sơ</TableHead>
-            <TableHead className="text-base font-semibold">Người nộp</TableHead>
-            <TableHead className="text-base font-semibold">Bước hiện tại</TableHead>
-            <TableHead className="text-base font-semibold">Hạn xử lý</TableHead>
-            <TableHead className="text-base font-semibold">
+            <TableHead className="h-11 px-4 text-sm font-bold text-slate-700">Hồ sơ</TableHead>
+            <TableHead className="text-sm font-bold text-slate-700">Người nộp</TableHead>
+            <TableHead className="text-sm font-bold text-slate-700">Bước hiện tại</TableHead>
+            <TableHead className="text-sm font-bold text-slate-700">Hạn xử lý</TableHead>
+            <TableHead className="text-sm font-bold text-slate-700">
               <span className="sr-only">Thao tác</span>
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {ds.map((v) => (
-            <TableRow key={v.task.id} data-muc-han={v.han.muc} className={cn(v.han.muc === "qua_han" && "bg-destructive-soft/60")}>
-              <TableCell className="px-4 py-3 align-top whitespace-normal">
-                <DuongDanHoSo v={v} className="font-semibold text-link">
+            <TableRow key={v.task.id} data-muc-han={v.han.muc} className={cn("transition-colors hover:bg-slate-50/70", v.han.muc === "qua_han" && "bg-destructive-soft/50")}>
+              <TableCell className="px-4 py-3.5 align-top whitespace-normal">
+                <DuongDanHoSo v={v} className="font-mono font-bold text-primary hover:underline">
                   {v.task.maHoSo ?? "Không rõ mã"}
                 </DuongDanHoSo>
-                <div className="text-muted-foreground">
+                <div className="mt-0.5 text-sm text-slate-600">
                   {v.hoSo?.thu_tuc ? `${v.hoSo.thu_tuc.ma} · ${v.hoSo.thu_tuc.ten}` : "Không đọc được hồ sơ"}
                 </div>
               </TableCell>
-              <TableCell className="py-3 align-top whitespace-normal">
-                <div>{v.hoSo?.ho_ten_nguoi_nop ?? "—"}</div>
-                {v.hoSo?.so_dien_thoai && <div className="text-muted-foreground">{v.hoSo.so_dien_thoai}</div>}
+              <TableCell className="py-3.5 align-top whitespace-normal">
+                <div className="font-semibold text-slate-900">{v.hoSo?.ho_ten_nguoi_nop ?? "—"}</div>
+                {v.hoSo?.so_dien_thoai && <div className="font-mono text-sm text-slate-500">{v.hoSo.so_dien_thoai}</div>}
               </TableCell>
-              <TableCell className="py-3 align-top whitespace-normal">
-                <div className="font-medium">{v.task.ten}</div>
-                <NguoiNhan v={v} />
+              <TableCell className="py-3.5 align-top whitespace-normal">
+                <div className="font-semibold text-slate-900">{v.task.ten}</div>
+                <div className="text-sm">
+                  <NguoiNhan v={v} />
+                </div>
               </TableCell>
-              <TableCell className="py-3 align-top">
+              <TableCell className="py-3.5 align-top">
                 <TheHan han={v.han} />
               </TableCell>
-              <TableCell className="py-3 pr-4 text-right align-top">
+              <TableCell className="py-3.5 pr-4 text-right align-top">
                 {v.task.hoSoId && (
                   <Link
                     to={`${GOC_CAN_BO}/ho-so/${v.task.hoSoId}`}
@@ -264,14 +282,15 @@ export function HopViec() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <span className="flex items-center gap-3">
-            <span aria-hidden="true" className="block h-[3px] w-10 rounded-full bg-primary" />
-            <span className="text-sm font-bold tracking-[0.2em] text-primary-soft-foreground uppercase">{TEN_VAI_TRO[vaiTro]}</span>
-          </span>
-          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Hộp việc</h1>
-          <p className="text-muted-foreground">{moTa}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200/80 pb-4">
+        <div className="flex flex-col gap-1 border-l-4 border-primary pl-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Hộp việc</h1>
+            <span className="rounded-md border border-teal-700/20 bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-900">
+              {TEN_VAI_TRO[vaiTro]}
+            </span>
+          </div>
+          <p className="text-slate-600">{moTa}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void taiLai()}>
           <RefreshCw aria-hidden="true" />
