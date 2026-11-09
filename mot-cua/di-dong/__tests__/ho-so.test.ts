@@ -2,7 +2,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { docCauHinh } from '../src/cau-hinh/moi-truong';
 import type { HamFetch } from '../src/dich-vu/goi-api';
-import { daKetThuc, danhSachHoSo, layHoSo, lichSuHoSo, quaHan, tepCuaHoSo } from '../src/dich-vu/ho-so';
+import { LoiApi } from '../src/dich-vu/goi-api';
+import {
+  buocDangMo,
+  daKetThuc,
+  danhSachHoSo,
+  layHoSo,
+  lichSuHoSo,
+  quaHan,
+  tepCuaHoSo,
+  tienDoHoSo,
+  voiPhien,
+} from '../src/dich-vu/ho-so';
+import { usePhien } from '../src/kho/phien-dang-nhap';
 
 const cauHinh = docCauHinh({ DXOS_GATEWAY_URL: 'http://gw.test' });
 
@@ -53,5 +65,54 @@ describe('hồ sơ của tôi', () => {
     expect(quaHan({ trang_thai: 'hoan_tat', han_xu_ly: '2026-11-01' }, homNay)).toBe(false);
     expect(quaHan({ trang_thai: 'moi', han_xu_ly: null }, homNay)).toBe(false);
     expect(daKetThuc({ trang_thai: 'tu_choi' })).toBe(true);
+  });
+
+  it('danh sách xin kèm JSON Schema của thủ tục để màn bổ sung biết các thành phần', async () => {
+    const goi = goiTra([]);
+    await danhSachHoSo('tok', cauHinh, goi);
+    expect(goi.mock.calls[0]![0]).toContain('thu_tuc:thu_tuc_id(id,ma,ten,so_ngay_xu_ly,json_schema)');
+  });
+
+  it('tiến độ quy trình: GET /workflow/ho-so/{id}/tien-do, gộp tên bước đang mở không trùng', async () => {
+    const goi = goiTra({ quyTrinh: [] });
+    await tienDoHoSo('tok', 'id1', cauHinh, goi);
+    expect(goi.mock.calls[0]![0]).toBe('http://gw.test/workflow/ho-so/id1/tien-do');
+    const p = (ten: string[]) => ({
+      processInstanceId: 'p',
+      ketThuc: null,
+      buocDangMo: ten.map((x, i) => ({ id: `${i}`, buoc: `b${i}`, ten: x })),
+      lichSu: [],
+    });
+    expect(buocDangMo({ quyTrinh: [p(['Thẩm định']), p(['Thẩm định', 'Phê duyệt'])] })).toEqual(['Thẩm định', 'Phê duyệt']);
+    expect(buocDangMo(null)).toEqual([]);
+  });
+});
+
+describe('gọi API bằng phiên', () => {
+  const phien = { accessToken: 'tok-1', refreshToken: null, idToken: null, hetHan: new Date(Date.now() + 600_000).toISOString() };
+  beforeEach(() => usePhien.setState({ phien, nguoiDung: null, dangKhoiPhuc: false, loi: null }));
+
+  it('dùng access token còn hạn của phiên', async () => {
+    await expect(voiPhien(async token => token)).resolves.toBe('tok-1');
+    expect(usePhien.getState().phien).not.toBeNull();
+  });
+
+  it('máy chủ trả 401 (token bị thu hồi): bỏ phiên, báo hết phiên ở màn đăng nhập', async () => {
+    await expect(
+      voiPhien(async () => {
+        throw new LoiApi('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+      }),
+    ).rejects.toMatchObject({ trangThai: 401 });
+    expect(usePhien.getState().phien).toBeNull();
+    expect(usePhien.getState().loi).toMatch(/hết hạn/);
+  });
+
+  it('lỗi khác (mất mạng, 5xx) giữ nguyên phiên', async () => {
+    await expect(
+      voiPhien(async () => {
+        throw new LoiApi('Chưa kết nối được tới máy chủ.', null);
+      }),
+    ).rejects.toBeInstanceOf(LoiApi);
+    expect(usePhien.getState().phien).not.toBeNull();
   });
 });

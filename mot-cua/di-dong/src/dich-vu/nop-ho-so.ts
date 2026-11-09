@@ -93,7 +93,7 @@ export interface PhuThuocNop {
   goi?: HamFetch;
 }
 
-const docAnhMacDinh = async (uri: string) => (await fetch(uri)).blob();
+export const docAnhMacDinh = async (uri: string) => (await fetch(uri)).blob();
 
 /** Thiếu hoặc sai thành phần theo JSON Schema: phát hiện trước khi gửi request nào. */
 export class LoiThieuThanhPhan extends LoiApi {
@@ -103,6 +103,39 @@ export class LoiThieuThanhPhan extends LoiApi {
     this.name = 'LoiThieuThanhPhan';
     this.thanhPhan = thanhPhan;
   }
+}
+
+/** id thành phần yêu cầu theo mã (khóa trong JSON Schema của gói), đọc công khai. */
+export async function layIdThanhPhan(thuTucId: string, cauHinh?: CauHinh, goi?: HamFetch) {
+  const ds = await goiGateway<{ id: string; ma: string }[]>(
+    `/public/thanh_phan_yeu_cau?thu_tuc_id=eq.${encodeURIComponent(thuTucId)}&select=id,ma`,
+    {},
+    cauHinh,
+    goi,
+  );
+  return Object.fromEntries(ds.map(t => [t.ma, t.id])) as Record<string, string>;
+}
+
+/** Tải một ảnh giấy tờ của hồ sơ (mot-cua-api kiểm magic bytes, quét ClamAV, lưu Garage). */
+export function taiAnh(
+  token: string,
+  hoSoId: string,
+  a: AnhGiayTo,
+  idThanhPhan: string | undefined,
+  docAnh: (uri: string) => Promise<Blob> = docAnhMacDinh,
+  cauHinh?: CauHinh,
+  goi?: HamFetch,
+) {
+  const q = [`ten=${encodeURIComponent(a.ten)}`];
+  if (idThanhPhan) q.push(`thanh_phan_yeu_cau_id=${encodeURIComponent(idThanhPhan)}`);
+  return docAnh(a.uri).then(than =>
+    goiGateway<{ id: string }>(
+      `/files/ho-so/${encodeURIComponent(hoSoId)}/tep?${q.join('&')}`,
+      { method: 'POST', token, headers: { 'Content-Type': a.loai }, body: than },
+      cauHinh,
+      goi,
+    ),
+  );
 }
 
 export async function nopHoSo(
@@ -138,14 +171,7 @@ export async function nopHoSo(
   }
   const hoSo = tienDo.hoSo;
 
-  // id thành phần yêu cầu theo mã (khóa trong JSON Schema), đọc công khai.
-  const dsThanhPhan = await goiGateway<{ id: string; ma: string }[]>(
-    `/public/thanh_phan_yeu_cau?thu_tuc_id=eq.${encodeURIComponent(thuTuc.id)}&select=id,ma`,
-    {},
-    cauHinh,
-    goi,
-  );
-  const idThanhPhan = Object.fromEntries(dsThanhPhan.map(t => [t.ma, t.id]));
+  const idThanhPhan = await layIdThanhPhan(thuTuc.id, cauHinh, goi);
 
   const canTai = docThanhPhan(thuTuc.json_schema).flatMap(tp => (anh[tp.ma] ?? []).map(a => ({ ma: tp.ma, a })));
   let thu = 0;
@@ -153,15 +179,7 @@ export async function nopHoSo(
     thu += 1;
     if (tienDo.daTai.has(a.uri)) continue;
     baoBuoc?.({ loai: 'tai', thu, tong: canTai.length });
-    const q = [`ten=${encodeURIComponent(a.ten)}`];
-    const idTp = idThanhPhan[ma];
-    if (idTp) q.push(`thanh_phan_yeu_cau_id=${encodeURIComponent(idTp)}`);
-    await goiGateway<{ id: string }>(
-      `/files/ho-so/${encodeURIComponent(hoSo.id)}/tep?${q.join('&')}`,
-      { method: 'POST', token: await layToken(), headers: { 'Content-Type': a.loai }, body: await docAnh(a.uri) },
-      cauHinh,
-      goi,
-    );
+    await taiAnh(await layToken(), hoSo.id, a, idThanhPhan[ma], docAnh, cauHinh, goi);
     tienDo.daTai.add(a.uri);
   }
 

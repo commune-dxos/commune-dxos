@@ -32,4 +32,5 @@ export const khoaTruyVan = {
   hoSoCuaToi: ['ho-so-cua-toi'] as const,
   chiTietHoSo: (id: string) => ['ho-so-cua-toi', id] as const,
   traCuu: (ma: string, soCuoi: string) => ['tra-cuu', ma, soCuoi] as const,
+  idThanhPhan: (thuTucId: string) => ['thanh-phan-id', thuTucId] as const,
 };
