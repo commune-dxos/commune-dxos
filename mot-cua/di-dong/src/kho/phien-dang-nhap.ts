@@ -31,6 +31,8 @@ interface TrangThaiPhien {
   dangNhap: () => Promise<boolean>;
   dangXuat: () => Promise<void>;
   layToken: () => Promise<string>;
+  /** Máy chủ từ chối token (401): bỏ phiên, báo hết phiên ở màn đăng nhập. */
+  hetPhien: () => Promise<void>;
 }
 
 let dangLamMoi: Promise<Phien> | null = null;
@@ -110,6 +112,12 @@ export const usePhien = create<TrangThaiPhien>((set, get) => {
       set({ dangXuLy: false, loi: null });
     },
 
+    async hetPhien() {
+      if (!get().phien) return;
+      await boPhien();
+      set({ loi: HET_PHIEN });
+    },
+
     async layToken() {
       const phien = get().phien;
       if (!phien) throw new LoiApi('Vui lòng đăng nhập để tiếp tục.', 401);
@@ -118,6 +126,7 @@ export const usePhien = create<TrangThaiPhien>((set, get) => {
         return (await lamMoi(phien)).accessToken;
       } catch {
         await boPhien();
+        set({ loi: HET_PHIEN });
         throw new LoiApi(HET_PHIEN, 401);
       }
     },

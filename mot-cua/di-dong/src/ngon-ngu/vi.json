@@ -78,12 +78,17 @@
     "canBoSung": "Cần bổ sung",
     "lyDoTuChoi": "Lý do không giải quyết",
     "lienHeMotCua": "Vui lòng liên hệ bộ phận một cửa của xã để biết thêm.",
-    "boSungTrenWeb": "Bạn có thể bổ sung giấy tờ trên cổng công dân web hoặc tại bộ phận một cửa.",
     "chuaCoMoc": "Chưa có mốc xử lý nào.",
     "giayToDaNop": "Giấy tờ đã nộp",
     "chuaCoGiayTo": "Chưa có giấy tờ nào.",
     "chuaTaiDuocGiayTo": "Chưa tải được danh sách giấy tờ. Kéo xuống để thử lại.",
-    "daQuet": "Đã kiểm tra an toàn"
+    "daQuet": "Đã kiểm tra an toàn",
+    "dangTaiMot": "Đang tải hồ sơ…",
+    "khongThayMoTa": "Hồ sơ không tồn tại hoặc không phải do tài khoản này nộp.",
+    "loiNhanBoSung": "Hồ sơ cần bổ sung giấy tờ. Xem yêu cầu và gửi bổ sung ngay bên dưới.",
+    "loiNhanHoanTat": "Hồ sơ đã có kết quả. Tải thông báo kết quả có ký số bên dưới, hoặc nhận tại bộ phận một cửa.",
+    "loiNhanTuChoi": "Hồ sơ không được giải quyết. Lý do ghi ngay bên dưới.",
+    "buocDangMo": "Đang ở bước"
   },
   "nop": {
     "nut": "Nộp hồ sơ",
@@ -113,6 +118,26 @@
     "tieuDe": "Đã nộp hồ sơ",
     "ghiChu": "Hãy giữ mã hồ sơ để tra cứu. Bộ phận một cửa sẽ kiểm tra và báo nếu cần bổ sung giấy tờ.",
     "xemHoSo": "Xem hồ sơ của tôi",
-    "veThuTuc": "Về danh sách thủ tục"
+    "veThuTuc": "Về danh sách thủ tục",
+    "bienNhan": "Biên nhận có ký số của xã ghi mã hồ sơ và hạn trả kết quả. Lưu lại để đối chiếu khi cần."
+  },
+  "giayTo": {
+    "tieuDe": "Giấy tờ có ký số của xã",
+    "moTa": "Tệp PDF có chữ ký số của xã. Bấm để mở bằng trình duyệt và lưu về máy.",
+    "taiBienNhan": "Tải biên nhận (PDF)",
+    "taiKetQua": "Tải thông báo kết quả (PDF)",
+    "dangChuanBi": "Đang chuẩn bị PDF…",
+    "daKy": "Đã ký số bởi {{ten}}. Ứng dụng đọc PDF có hỗ trợ chữ ký số sẽ hiện chữ ký trong tệp."
+  },
+  "boSung": {
+    "yeuCau": "Yêu cầu của bộ phận một cửa",
+    "macDinh": "Cần bổ sung giấy tờ. Vui lòng liên hệ bộ phận một cửa nếu chưa rõ.",
+    "goiY": "Chụp hoặc chọn thêm ảnh cho giấy tờ được yêu cầu, rồi bấm Nộp lại hồ sơ.",
+    "khongCoThanhPhan": "Thủ tục này chưa khai thành phần hồ sơ. Bạn vẫn có thể ghi chú rồi nộp lại.",
+    "daNopTep": "Đã nộp {{so}} tệp",
+    "ghiChu": "Ghi chú cho cán bộ (không bắt buộc)",
+    "ghiChuGoiY": "Ví dụ: đã chụp lại bản rõ hơn",
+    "nopLai": "Nộp lại hồ sơ",
+    "daNopLai": "Đã nộp lại hồ sơ. Bộ phận một cửa sẽ kiểm tra lại giấy tờ."
   }
 }

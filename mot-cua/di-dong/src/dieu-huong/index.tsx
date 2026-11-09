@@ -38,10 +38,10 @@ function CacTabChinh() {
       screenOptions={{
         tabBarActiveTintColor: mau.chinh,
         tabBarInactiveTintColor: mau.chuMo,
-        tabBarLabelStyle: { fontSize: 13, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 14, fontWeight: '600' },
         headerTitleStyle: { fontSize: chu.lon, fontWeight: '700', color: mau.chu },
         headerShadowVisible: false,
-        tabBarStyle: { minHeight: 64 },
+        tabBarStyle: { minHeight: 68, paddingTop: 4, borderTopColor: mau.vien },
       }}>
       <Tab.Screen
         name="ThuTuc"

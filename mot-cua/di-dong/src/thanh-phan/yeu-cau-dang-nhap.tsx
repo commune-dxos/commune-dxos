@@ -4,7 +4,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LogIn } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { usePhien } from '../kho/phien-dang-nhap';
 import { NutBam } from './nut-bam';
 
@@ -38,7 +38,7 @@ const kieu = StyleSheet.create({
     justifyContent: 'center',
   },
   tieuDe: { fontSize: chu.lon, fontWeight: '700', color: mau.chu, textAlign: 'center' },
-  moTa: { fontSize: chu.than, color: mau.chuMo, textAlign: 'center', lineHeight: 26 },
+  moTa: { fontSize: chu.than, color: mau.chuMo, textAlign: 'center', lineHeight: dong.than },
   loi: { fontSize: chu.than, color: mau.loi, textAlign: 'center' },
   nut: { alignSelf: 'stretch', marginTop: khoang.s },
 });

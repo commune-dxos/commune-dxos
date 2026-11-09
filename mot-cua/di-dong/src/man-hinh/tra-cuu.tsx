@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { ngay } from '../dich-vu/dinh-dang';
 import { cauLoi } from '../dich-vu/goi-api';
 import { kiemNhapTraCuu, traCuuCongKhai, type KetQuaTraCuu } from '../dich-vu/tra-cuu';
@@ -113,7 +113,7 @@ export function ManTraCuu() {
 const kieu = StyleSheet.create({
   lap: { flex: 1 },
   noiDung: { padding: khoang.l, gap: khoang.l, paddingBottom: khoang.xxl },
-  gioiThieu: { fontSize: chu.than, color: mau.chuMo, lineHeight: 25 },
+  gioiThieu: { fontSize: chu.than, color: mau.chuMo, lineHeight: dong.than },
   form: { gap: khoang.l },
   khoi: { gap: khoang.s },
   nhan: { fontSize: chu.nho, color: mau.chuMo },
