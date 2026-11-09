@@ -6,7 +6,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { ngay } from '../dich-vu/dinh-dang';
 import { cauLoi } from '../dich-vu/goi-api';
 import { quaHan, useHoSoCuaToi, type HoSoCuaToi } from '../dich-vu/ho-so';
@@ -89,9 +89,9 @@ const kieu = StyleSheet.create({
   danhSach: { padding: khoang.l, gap: khoang.m, flexGrow: 1 },
   dongTren: { flexDirection: 'row', alignItems: 'center', gap: khoang.s, marginBottom: khoang.s },
   cot: { flex: 1, gap: 2 },
-  ten: { fontSize: chu.lon, fontWeight: '700', color: mau.chu },
-  ma: { fontSize: chu.nho, color: mau.chuMo, letterSpacing: 0.3 },
+  ten: { fontSize: chu.lon, lineHeight: dong.lon, fontWeight: '700', color: mau.chu },
+  ma: { fontSize: chu.nho, fontWeight: '600', color: mau.chuMo, letterSpacing: 0.3 },
   ngay: { fontSize: chu.nho, color: mau.chuMo, marginTop: khoang.s },
-  tre: { fontSize: chu.nho, color: mau.canhBao, fontWeight: '700', marginTop: khoang.xs },
-  lyDo: { fontSize: chu.nho, color: mau.loi, marginTop: khoang.xs },
+  tre: { fontSize: chu.nho, color: mau.loi, fontWeight: '700', marginTop: khoang.xs },
+  lyDo: { fontSize: chu.nho, lineHeight: dong.nho, color: mau.loi, fontWeight: '600', marginTop: khoang.xs },
 });
