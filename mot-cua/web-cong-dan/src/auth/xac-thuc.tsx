@@ -4,6 +4,28 @@
 // (#54) cần access token, lấy qua `nguoiDung.access_token` để gọi /workflow, /api, /files.
 import type { User, UserManager } from "oidc-client-ts";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { cauHinh } from "@/lib/cau-hinh";
+
+/** Khóa sessionStorage giữ người dùng "vào vai" ở trang cổng cán bộ khi chạy dữ liệu giả. */
+export const KHOA_NGUOI_DUNG_DEMO = "dxos_demo_user";
+
+/** Người dùng vào vai chỉ có hiệu lực ở chế độ dữ liệu giả. Ở chế độ thật, khóa còn sót lại
+ *  bị xóa và bỏ qua để không ai tự đặt token giả qua sessionStorage. */
+export function docNguoiDungDemo(duLieuGia: boolean): User | null {
+  if (typeof window === "undefined") return null;
+  if (!duLieuGia) {
+    sessionStorage.removeItem(KHOA_NGUOI_DUNG_DEMO);
+    return null;
+  }
+  const json = sessionStorage.getItem(KHOA_NGUOI_DUNG_DEMO);
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as User;
+  } catch {
+    sessionStorage.removeItem(KHOA_NGUOI_DUNG_DEMO);
+    return null;
+  }
+}
 
 interface XacThuc {
   nguoiDung: User | null;
@@ -21,22 +43,25 @@ export function tenHienThi(nguoiDung: User) {
   return p.name || p.preferred_username || "Công dân";
 }
 
-export function XacThucProvider({ quanLy, children }: { quanLy: UserManager; children: ReactNode }) {
+export function XacThucProvider({
+  quanLy,
+  children,
+  duLieuGia = cauHinh.duLieuGia,
+}: {
+  quanLy: UserManager;
+  children: ReactNode;
+  duLieuGia?: boolean;
+}) {
   const [nguoiDung, datNguoiDung] = useState<User | null>(null);
   const [dangTai, datDangTai] = useState(true);
 
   useEffect(() => {
     let conGanKet = true;
-    const demoJson = typeof window !== "undefined" ? sessionStorage.getItem("dxos_demo_user") : null;
-    if (demoJson) {
-      try {
-        const u = JSON.parse(demoJson);
-        if (conGanKet) {
-          datNguoiDung(u);
-          datDangTai(false);
-          return;
-        }
-      } catch {}
+    const demo = docNguoiDungDemo(duLieuGia);
+    if (demo) {
+      datNguoiDung(demo);
+      datDangTai(false);
+      return;
     }
     quanLy
       .getUser()
@@ -54,7 +79,7 @@ export function XacThucProvider({ quanLy, children }: { quanLy: UserManager; chi
       quanLy.events.removeUserUnloaded(khiBo);
       quanLy.events.removeUserSignedOut(khiBo);
     };
-  }, [quanLy]);
+  }, [quanLy, duLieuGia]);
 
   const giaTri = useMemo<XacThuc>(
     () => ({
@@ -62,7 +87,7 @@ export function XacThucProvider({ quanLy, children }: { quanLy: UserManager; chi
       dangTai,
       dangNhap: (quayVe = window.location.pathname) => quanLy.signinRedirect({ state: { quayVe } }),
       dangXuat: async () => {
-        if (typeof window !== "undefined") sessionStorage.removeItem("dxos_demo_user");
+        if (typeof window !== "undefined") sessionStorage.removeItem(KHOA_NGUOI_DUNG_DEMO);
         return quanLy.signoutRedirect();
       },
       hoanTatDangNhap: async () => {

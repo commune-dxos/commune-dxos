@@ -20,8 +20,9 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { GOC_CAN_BO } from "@/auth/oidc";
-import { useXacThuc } from "@/auth/xac-thuc";
+import { KHOA_NGUOI_DUNG_DEMO, useXacThuc } from "@/auth/xac-thuc";
 import { ThongBao } from "@/components/thong-bao";
+import { cauHinh } from "@/lib/cau-hinh";
 import { HoaVanCham } from "@/components/tieu-de-muc";
 import { Button, buttonVariants } from "@/components/ui/button";
 
@@ -92,7 +93,7 @@ function vaoDemo(vaiTro: "can_bo" | "lanh_dao" | "van_thu", ten: string) {
     }),
     expired: false,
   };
-  sessionStorage.setItem("dxos_demo_user", JSON.stringify(u));
+  sessionStorage.setItem(KHOA_NGUOI_DUNG_DEMO, JSON.stringify(u));
   window.location.reload();
 }
 
@@ -131,7 +132,7 @@ const VAI_TRO_DEMO = [
 
 export function ChuaDangNhap() {
   const { dangNhap } = useXacThuc();
-  const laDuLieuGia = import.meta.env.VITE_DU_LIEU_GIA === "1";
+  const laDuLieuGia = cauHinh.duLieuGia;
   return (
     <NenGiua>
       <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-the lg:grid-cols-12">
@@ -155,8 +156,8 @@ export function ChuaDangNhap() {
                 <span className="text-xs font-bold tracking-wider text-slate-700 uppercase">
                   Đăng nhập một lần (Keycloak SSO)
                 </span>
-                <span className="rounded-md border border-teal-700/20 bg-white px-2.5 py-0.5 font-mono text-xs font-bold text-primary shadow-2xs">
-                  PKCE · 2FA OTP
+                <span className="rounded-md border border-teal-700/20 bg-white px-2.5 py-0.5 text-xs font-bold text-primary shadow-2xs">
+                  Mật khẩu + mã OTP
                 </span>
               </div>
               <Button

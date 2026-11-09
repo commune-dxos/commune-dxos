@@ -440,7 +440,7 @@ export class ApiCanBo {
           trich_yeu: "Về việc thực hiện dịch vụ công trực tuyến cấp xã",
           noi_gui: "UBND Huyện",
           noi_nhan: "UBND Xã",
-          nguoi_ky: "Phạm Văn Đồng",
+          nguoi_ky: "Nguyễn Văn Ký",
           ten_tep: "cv-108.pdf",
           kich_thuoc: 412000,
           sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

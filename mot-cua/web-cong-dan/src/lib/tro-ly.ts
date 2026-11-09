@@ -35,6 +35,11 @@ export interface TraLoiTroLy extends ThongTinTroLy {
   nguon: NguonTroLy[];
 }
 
+/** Chế độ dữ liệu giả: không có mô hình ngôn ngữ nào chạy, câu trả lời là mẫu cố định để xem giao diện. */
+const THONG_TIN_GIA_LAP = { che_do: "gia-lap", co_mo_hinh_ngon_ngu: false, mo_hinh: null } satisfies ThongTinTroLy;
+const GHI_CHU_GIA_LAP =
+  "Đây là câu trả lời mẫu của chế độ dữ liệu giả, không do mô hình ngôn ngữ sinh ra và không dùng làm căn cứ. Chạy cổng với lõi (make up) để hỏi đáp thật.";
+
 export function kiemCauHoi(cauHoi: string) {
   const q = cauHoi.trim();
   if (q.length < 2) return "Nhập câu hỏi về thủ tục, ví dụ: Đăng ký kết hôn cần giấy tờ gì?";
@@ -50,12 +55,10 @@ export async function hoiTroLy(
 ) {
   if (cauHinh.duLieuGia) {
     return {
-      che_do: "gia-lap",
-      co_mo_hinh_ngon_ngu: true,
-      mo_hinh: "qwen2.5:7b",
+      ...THONG_TIN_GIA_LAP,
       cau_tra_loi:
-        "Để thực hiện thủ tục tại Ủy ban nhân dân xã, người nộp cần chuẩn bị Tờ khai theo mẫu và giấy tờ tùy thân (CCCD/VNeID) [1]. Thủ tục đăng ký khai sinh và kết hôn đúng hạn được miễn lệ phí hoàn toàn [2].",
-      thong_bao: null,
+        "Ví dụ giả lập: để thực hiện thủ tục tại Ủy ban nhân dân xã, người nộp cần chuẩn bị Tờ khai theo mẫu và giấy tờ tùy thân (CCCD/VNeID) [1]. Thủ tục đăng ký khai sinh và kết hôn đúng hạn được miễn lệ phí hoàn toàn [2].",
+      thong_bao: GHI_CHU_GIA_LAP,
       trich_tu_dong: false,
       nguon: [
         {
@@ -88,7 +91,7 @@ export async function hoiTroLy(
 
 export async function thongTinTroLy(cauHinh: CauHinh = cauHinhMacDinh, goi: typeof fetch = (...a) => fetch(...a)) {
   if (cauHinh.duLieuGia) {
-    return { che_do: "gia-lap", co_mo_hinh_ngon_ngu: true, mo_hinh: "qwen2.5:7b" } satisfies ThongTinTroLy;
+    return THONG_TIN_GIA_LAP;
   }
   return goiGateway<ThongTinTroLy>(cauHinh, goi, "/tro-ly/thong-tin", { method: "GET" });
 }
@@ -129,7 +132,7 @@ export function tachTrichDan(cauTraLoi: string, soNguon: number): PhanTraLoi[] {
 
 /** Nhãn chế độ cho người dân: nói rõ khi chưa có mô hình ngôn ngữ. */
 export function nhanCheDo(tt: ThongTinTroLy) {
+  if (tt.che_do === "gia-lap") return "Chế độ giả lập: câu trả lời là ví dụ cố định, không có mô hình ngôn ngữ chạy.";
   if (!tt.co_mo_hinh_ngon_ngu) return "Chế độ tìm kiếm: hiện các đoạn tài liệu liên quan nhất, chưa bật mô hình ngôn ngữ.";
-  if (tt.che_do === "gia-lap") return "Chế độ thử nghiệm: câu trả lời trích nguyên văn từ tài liệu.";
   return `Câu trả lời do mô hình ngôn ngữ mã nguồn mở (${tt.mo_hinh ?? "không rõ"}) tóm tắt từ tài liệu thủ tục.`;
 }
