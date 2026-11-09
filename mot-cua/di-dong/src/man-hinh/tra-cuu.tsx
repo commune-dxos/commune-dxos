@@ -65,7 +65,10 @@ export function ManTraCuu() {
   return (
     <KhungMan>
       <KeyboardAvoidingView style={kieu.lap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={kieu.noiDung} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={kieu.noiDung}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag">
           <Text style={kieu.gioiThieu}>{t('traCuu.gioiThieu')}</Text>
           <The style={kieu.form}>
             <ONhap

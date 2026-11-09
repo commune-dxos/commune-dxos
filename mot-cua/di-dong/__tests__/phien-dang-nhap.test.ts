@@ -96,6 +96,13 @@ describe('cấu hình OIDC', () => {
     expect(docNguoiDung('khong-phai-jwt')).toBeNull();
   });
 
+  it('họ tên kiểu Việt: họ trước tên, không lấy claim name (Keycloak ghép tên trước họ)', () => {
+    const token = jwt({ name: 'Văn Mẫu Nguyễn', given_name: 'Văn Mẫu', family_name: 'Nguyễn', preferred_username: 'congdan01' });
+    expect(docNguoiDung(token)?.ten).toBe('Nguyễn Văn Mẫu');
+    expect(docNguoiDung(jwt({ given_name: 'An', preferred_username: 'u' }))?.ten).toBe('An');
+    expect(docNguoiDung(jwt({ preferred_username: 'congdan01' }))?.ten).toBe('congdan01');
+  });
+
   it('conHan có dự phòng 30 giây', () => {
     const p: Phien = { accessToken: 'a', refreshToken: null, idToken: null, hetHan: sau(20) };
     expect(conHan(p)).toBe(false);
