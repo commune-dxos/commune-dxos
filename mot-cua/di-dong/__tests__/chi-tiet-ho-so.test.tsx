@@ -56,7 +56,10 @@ function mayChu(hs: ReturnType<typeof hoSo>, { tra401 = false } = {}) {
     }
     if (url.includes('/public/thanh_phan_yeu_cau')) return tra([{ id: 'tp-cccd', ma: 'cccd' }]);
     if (url.endsWith('/workflow/tasks')) return tra([{ id: 't-1', buoc: 'bo_sung', ten: 'Bổ sung', hoSoId: 'hs-1' }]);
-    if (url.includes('/complete')) return tra({ trangThai: 'moi' });
+    if (url.includes('/complete')) {
+      hs.trang_thai = 'moi'; // nộp lại xong, hồ sơ về bước tiếp nhận
+      return tra({ trangThai: 'moi' });
+    }
     if (url.includes('/giay-to/')) {
       return tra({
         id: 'g', loai: url.endsWith('ket_qua') ? 'ket_qua' : 'bien_nhan', sha256: 'x', kich_thuoc: 1, chung_thu_ten: 'UBND xã Mẫu',
@@ -139,6 +142,18 @@ describe('màn chi tiết hồ sơ', () => {
     const complete = cacLan.find(l => l.url.includes('/workflow/tasks/t-1/complete'));
     expect(complete?.init?.method).toBe('POST');
     expect(chuTrong(cay)).toContain('Đã nộp lại hồ sơ');
+
+    // Hồ sơ tải lại: khối bổ sung biến mất, nội dung ngắn lại sau lần cuộn đầu → cuộn lại về đầu trang.
+    expect(cay.root.findAllByProps({ testID: 'khoi-bo-sung' })).toHaveLength(0);
+    cuon.scrollTo.mockClear();
+    const doiCo = () =>
+      ReactTestRenderer.act(async () => cay.root.findByType(ScrollView).props.onContentSizeChange(390, 900));
+    await doiCo();
+    expect(cuon.scrollTo).toHaveBeenCalledWith({ y: 0, animated: false });
+    // Đã về đầu với nội dung mới: lần đổi cỡ sau (ảnh tải xong…) không kéo người dùng lên nữa.
+    cuon.scrollTo.mockClear();
+    await doiCo();
+    expect(cuon.scrollTo).not.toHaveBeenCalled();
   });
 
   it('hoàn tất: tải thông báo kết quả ký số, mở link bằng trình duyệt', async () => {

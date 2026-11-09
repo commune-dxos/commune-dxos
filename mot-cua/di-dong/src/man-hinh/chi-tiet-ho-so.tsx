@@ -46,6 +46,8 @@ export function ManChiTietHoSo({ route }: Props) {
   const truyVan = useChiTietHoSo(route.params.id);
   const [daNopLai, setDaNopLai] = useState(false);
   const cuon = useRef<ScrollView>(null);
+  /** Đang chờ cuộn lên đầu sau khi nộp lại: giữ tới khi khối bổ sung đã biến mất khỏi màn. */
+  const choCuonLen = useRef(false);
 
   if (!coPhien) {
     return (
@@ -74,7 +76,9 @@ export function ManChiTietHoSo({ route }: Props) {
 
   function sauNopLai() {
     setDaNopLai(true);
-    // Thông báo "Đã nộp lại" nằm đầu trang, nút Nộp lại ở dưới: cuộn lên để người dân thấy.
+    // Thông báo "Đã nộp lại" nằm đầu trang, nút Nộp lại ở dưới: cuộn lên để người dân thấy. Hồ sơ tải lại thì
+    // khối bổ sung biến mất, nội dung ngắn lại sau lần cuộn này; onContentSizeChange cuộn lại lần nữa.
+    choCuonLen.current = true;
     cuon.current?.scrollTo({ y: 0, animated: true });
     boTruyVan.invalidateQueries({ queryKey: khoaTruyVan.hoSoCuaToi });
   }
@@ -83,6 +87,15 @@ export function ManChiTietHoSo({ route }: Props) {
     <KhungMan>
       <ScrollView
         ref={cuon}
+        onContentSizeChange={() => {
+          if (!choCuonLen.current) return;
+          cuon.current?.scrollTo({ y: 0, animated: false });
+          if (hoSo.trang_thai !== 'cho_bo_sung') choCuonLen.current = false;
+        }}
+        onScrollBeginDrag={() => {
+          // Người dân tự kéo màn: thôi tự cuộn (vd tải lại hỏng, khối bổ sung còn đó).
+          choCuonLen.current = false;
+        }}
         contentContainerStyle={kieu.noiDung}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
