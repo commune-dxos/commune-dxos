@@ -6,7 +6,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, TextInput, View } from 'rea
 import { useNavigation } from '@react-navigation/native';
 import { ChevronRight, Clock, Search, Wallet } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { bo, chu, khoang, mau } from '../giao-dien';
+import { bo, chu, dong, khoang, mau } from '../giao-dien';
 import { locThuTuc, nopTrucTuyen, useDanhMucThuTuc, type ThuTuc } from '../dich-vu/danh-muc';
 import { lePhi, thoiHan } from '../dich-vu/dinh-dang';
 import { cauLoi } from '../dich-vu/goi-api';
@@ -27,11 +27,11 @@ function DongThuTuc({ thuTuc, onPress }: { thuTuc: ThuTuc; onPress: () => void }
       </View>
       <View style={kieu.thongTin}>
         <View style={kieu.muc}>
-          <Clock size={16} color={mau.chuMo} />
+          <Clock size={18} color={mau.chuMo} />
           <Text style={kieu.chuPhu}>{thoiHan(thuTuc.so_ngay_xu_ly)}</Text>
         </View>
         <View style={kieu.muc}>
-          <Wallet size={16} color={mau.chuMo} />
+          <Wallet size={18} color={mau.chuMo} />
           <Text style={kieu.chuPhu}>{lePhi(thuTuc.le_phi)}</Text>
         </View>
       </View>
@@ -117,18 +117,29 @@ const kieu = StyleSheet.create({
     gap: khoang.s,
     margin: khoang.l,
     marginBottom: 0,
-    paddingHorizontal: khoang.m,
     borderWidth: 1.5,
     borderColor: mau.vienONhap,
-    borderRadius: bo.vua,
+    borderRadius: bo.tron,
+    paddingHorizontal: khoang.l,
     backgroundColor: mau.nen,
   },
-  oNhapTim: { flex: 1, minHeight: 50, fontSize: chu.than, color: mau.chu },
+  oNhapTim: { flex: 1, minHeight: 54, fontSize: chu.than, color: mau.chu },
   danhSach: { padding: khoang.l, gap: khoang.m, flexGrow: 1 },
   dongTren: { flexDirection: 'row', alignItems: 'center', gap: khoang.s },
   cotChu: { flex: 1, gap: 2 },
-  linhVuc: { fontSize: chu.nho, color: mau.chuTrenChinhNhat, fontWeight: '600' },
-  tenThuTuc: { fontSize: chu.lon, fontWeight: '700', color: mau.chu },
+  linhVuc: {
+    alignSelf: 'flex-start',
+    fontSize: chu.nho,
+    color: mau.chuTrenPhu,
+    fontWeight: '700',
+    backgroundColor: mau.phu,
+    borderRadius: bo.tron,
+    paddingHorizontal: khoang.m,
+    paddingVertical: 2,
+    marginBottom: khoang.xs,
+    overflow: 'hidden',
+  },
+  tenThuTuc: { fontSize: chu.lon, lineHeight: dong.lon, fontWeight: '700', color: mau.chu },
   thongTin: { flexDirection: 'row', flexWrap: 'wrap', gap: khoang.l, marginTop: khoang.s },
   muc: { flexDirection: 'row', alignItems: 'center', gap: khoang.xs },
   chuPhu: { fontSize: chu.nho, color: mau.chuMo },

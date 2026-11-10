@@ -316,14 +316,14 @@ export function SoVanBan() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Sổ văn bản</h1>
-          <p className="text-muted-foreground">Văn bản đến và đi của xã, đánh số theo năm.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200/80 pb-4">
+        <div className="border-l-4 border-primary pl-4">
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Sổ văn bản</h1>
+          <p className="text-slate-600">Văn bản đến và đi của xã, đánh số theo năm và kiểm tra chữ ký số CA xã.</p>
         </div>
-        <div role="group" aria-label="Chiều văn bản" className="flex gap-2">
+        <div role="group" aria-label="Chiều văn bản" className="flex gap-1.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1">
           {(["den", "di"] as const).map((c) => (
-            <Button key={c} variant={c === chieu ? "default" : "outline"} aria-pressed={c === chieu}
+            <Button key={c} size="sm" variant={c === chieu ? "default" : "ghost"} aria-pressed={c === chieu}
               onClick={() => datThamSo({ chieu: c })}>
               {TEN_CHIEU[c]}
             </Button>

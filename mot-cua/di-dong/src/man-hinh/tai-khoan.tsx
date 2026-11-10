@@ -6,7 +6,7 @@ import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cauHinh } from '../cau-hinh/moi-truong';
-import { chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { usePhien } from '../kho/phien-dang-nhap';
 import { KhungMan } from '../thanh-phan/khung-man';
 import { NutBam } from '../thanh-phan/nut-bam';
@@ -81,7 +81,7 @@ const kieu = StyleSheet.create({
   dauTrang: { alignItems: 'center', gap: khoang.s, paddingVertical: khoang.l },
   logo: { width: 88, height: 88 },
   ten: { fontSize: chu.tieuDeLon, fontWeight: '800', color: mau.chu },
-  moTa: { fontSize: chu.than, color: mau.chuMo, lineHeight: 25 },
+  moTa: { fontSize: chu.than, color: mau.chuMo, lineHeight: dong.than },
   khoi: { gap: khoang.s },
   tieuDeKhoi: { fontSize: chu.lon, fontWeight: '700', color: mau.chu },
   tenNguoi: { fontSize: chu.tieuDe, fontWeight: '700', color: mau.chu },

@@ -54,13 +54,15 @@ function Muc({ id, tieuDe, children }: { id: string; tieuDe: string; children: R
 
 function DanhSachGiayTo({ ds }: { ds: ThanhPhan[] }) {
   return (
-    <ul className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-card shadow-the">
+    <ul className="flex flex-col divide-y divide-slate-200/80 rounded-2xl border border-slate-200/90 bg-card shadow-the">
       {ds.map((t) => (
-        <li key={t.ma} className="flex gap-3 p-4">
-          <FileText aria-hidden="true" className="mt-1 size-5 shrink-0 text-primary" />
+        <li key={t.ma} className="flex gap-3.5 p-4 transition-colors hover:bg-slate-50/60">
+          <span aria-hidden="true" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-teal-600/20 bg-teal-50/70 text-primary">
+            <FileText className="size-4.5" />
+          </span>
           <div className="flex flex-col gap-0.5">
-            <span className="font-semibold">{t.ten}</span>
-            {t.moTa && <span className="text-muted-foreground">{t.moTa}</span>}
+            <span className="font-bold text-slate-900">{t.ten}</span>
+            {t.moTa && <span className="text-sm text-slate-600">{t.moTa}</span>}
           </div>
         </li>
       ))}
@@ -70,39 +72,45 @@ function DanhSachGiayTo({ ds }: { ds: ThanhPhan[] }) {
 
 function TomTat({ thuTuc }: { thuTuc: ThuTuc }) {
   return (
-    <Card className="gap-5 border-slate-100 py-6 shadow-xl shadow-slate-900/10">
+    <Card className="gap-5 border-slate-200/90 py-5 shadow-the">
       <CardContent className="flex flex-col gap-5">
-        <dl className="flex flex-col gap-4">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+          <span className="text-sm font-bold text-slate-700">Thông số giải quyết</span>
+          <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-800">
+            {thuTuc.ma}
+          </span>
+        </div>
+        <dl className="flex flex-col divide-y divide-slate-100">
           {[
             { bt: <Clock />, nhan: "Thời hạn giải quyết", gt: thoiHan(thuTuc.so_ngay_xu_ly) },
-            { bt: <Banknote />, nhan: "Lệ phí", gt: lePhi(thuTuc.le_phi), phu: thuTuc.ghi_chu_le_phi },
-            { bt: <Building2 />, nhan: "Nơi nộp", gt: "Trực tuyến hoặc bộ phận một cửa của xã" },
+            { bt: <Banknote />, nhan: "Lệ phí nhà nước", gt: lePhi(thuTuc.le_phi), phu: thuTuc.ghi_chu_le_phi },
+            { bt: <Building2 />, nhan: "Cơ quan tiếp nhận", gt: "Trực tuyến hoặc Bộ phận Một cửa UBND xã" },
           ].map((d) => (
-            <div key={d.nhan} className="flex gap-3">
-              <span aria-hidden="true" className="mt-1 text-primary [&_svg]:size-5">
+            <div key={d.nhan} className="flex gap-3 py-3 first:pt-0 last:pb-0">
+              <span aria-hidden="true" className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-primary [&_svg]:size-4.5">
                 {d.bt}
               </span>
-              <div>
-                <dt className="text-sm text-muted-foreground">{d.nhan}</dt>
-                <dd className="font-semibold">{d.gt}</dd>
-                {d.phu && <dd className="text-muted-foreground">{d.phu}</dd>}
+              <div className="flex flex-col">
+                <dt className="text-xs font-semibold text-slate-500">{d.nhan}</dt>
+                <dd className="font-bold text-slate-900">{d.gt}</dd>
+                {d.phu && <dd className="text-xs text-slate-600">{d.phu}</dd>}
               </div>
             </div>
           ))}
         </dl>
         {thuTuc.quy_trinh ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 pt-1">
             <Link
               to={`/nop-ho-so/${encodeURIComponent(thuTuc.ma)}`}
-              className={buttonVariants({ size: "lg", className: "w-full" })}
+              className={buttonVariants({ size: "lg", className: "w-full justify-between" })}
             >
-              Bắt đầu nộp
+              <span>Bắt đầu nộp</span>
               <ArrowRight aria-hidden="true" />
             </Link>
-            <p className="text-sm text-muted-foreground">Cần đăng nhập bằng tài khoản công dân.</p>
+            <p className="text-center text-xs text-slate-500">Yêu cầu đăng nhập bằng tài khoản công dân.</p>
           </div>
         ) : (
-          <p className="text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">
             Thủ tục này chưa nhận hồ sơ trực tuyến, vui lòng nộp tại bộ phận một cửa.
           </p>
         )}
@@ -134,14 +142,14 @@ function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
     <DaiTieuDe
       truoc={
         <nav aria-label="breadcrumb">
-          <ol className="flex flex-wrap items-center gap-2 text-slate-300">
+          <ol className="flex flex-wrap items-center gap-2 text-slate-600">
             <li>
-              <Link to="/" className="text-slate-200 underline-offset-4 hover:text-white hover:underline">
+              <Link to="/" className="text-slate-600 underline-offset-4 hover:text-primary hover:underline">
                 Trang chủ
               </Link>
             </li>
-            <li aria-hidden="true">/</li>
-            <li aria-current="page" className="font-semibold text-white">
+            <li aria-hidden="true" className="text-slate-400">/</li>
+            <li aria-current="page" className="font-semibold text-slate-900">
               {thuTuc.ten}
             </li>
           </ol>
@@ -202,7 +210,7 @@ function NoiDung({ thuTuc }: { thuTuc: ThuTuc }) {
         </div>
 
         <aside aria-label="Tóm tắt thủ tục" className="hidden lg:block">
-          <div className="sticky top-24 lg:-mt-28">
+          <div className="sticky top-24">
             <TomTat thuTuc={thuTuc} />
           </div>
         </aside>

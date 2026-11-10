@@ -18,11 +18,11 @@ export function NhanTrangThai({ ma }: { ma: string }) {
 }
 
 const kieu = StyleSheet.create({
-  goc: { alignSelf: 'flex-start', borderRadius: bo.tron, paddingHorizontal: khoang.m, paddingVertical: khoang.xs },
+  goc: { alignSelf: 'flex-start', borderRadius: bo.tron, paddingHorizontal: khoang.m, paddingVertical: khoang.xs + 2 },
   xong: { backgroundColor: mau.chinh },
-  'can-chu-y': { backgroundColor: mau.loiNhat, borderWidth: 1, borderColor: mau.loi },
+  'can-chu-y': { backgroundColor: mau.loiNhat, borderWidth: 1, borderColor: mau.canhBao },
   'dang-di': { backgroundColor: mau.phu },
-  chu: { fontSize: chu.nho, fontWeight: '600' },
+  chu: { fontSize: chu.nho, fontWeight: '700' },
   chuXong: { color: mau.chuTrenChinh },
   chuChuY: { color: mau.loi },
   chuDangDi: { color: mau.chuTrenPhu },

@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.11.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17), app di động công dân #155–#160 (§4.18), Keycloak sau reverse proxy #167 (§4.1)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.12.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17), app di động công dân #155–#160, giấy tờ ký số và nộp bổ sung trên app #176 (§4.18), Keycloak sau reverse proxy #167 (§4.1)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -1090,7 +1090,7 @@ stateDiagram-v2
 
 Kiểm bằng `mot-cua/db/tests/lich_cong_tac.sql` (42 kiểm tra), Vitest `src/can-bo/lich-cong-tac.test.tsx` (7) và smoke 4s (`mot-cua/tests/smoke-lich-cong-tac.sh`). Dữ liệu mẫu: `mot-cua/db/seed/004_lich_mau.sql` (6 lịch của tuần lúc nạp seed).
 
-### 4.18 App di động công dân (#155–#160, D-015)
+### 4.18 App di động công dân (#155–#160, #176, D-015)
 
 App Android **Một cửa xã** (`mot-cua/di-dong/`, React Native 0.80 bare, TypeScript strict) là một giao diện người dùng cuối nữa của bộ máy một cửa, nên nằm ở Tầng 2. App không có backend riêng: gọi đúng các route mà cổng công dân web dùng, qua APISIX.
 
@@ -1100,6 +1100,9 @@ App Android **Một cửa xã** (`mot-cua/di-dong/`, React Native 0.80 bare, Typ
 | Tra cứu bằng mã hồ sơ + 4 số cuối điện thoại | `GET /public/rpc/tra_cuu_ho_so` (§4.12) | không |
 | Nộp hồ sơ: tạo → tải ảnh từng thành phần → khởi tạo quy trình | `POST /api/ho_so` → `POST /files/ho-so/{id}/tep` → `POST /workflow/ho-so/{id}/khoi-tao` (§4.9) | có |
 | Hồ sơ của tôi, các mốc, giấy tờ đã nộp | `GET /api/ho_so`, `GET /api/lich_su_trang_thai`, `GET /files/ho-so/{id}/tep` | có |
+| Bước quy trình đang mở (#176) | `GET /workflow/ho-so/{id}/tien-do` | có |
+| Biên nhận, thông báo kết quả PDF ký số (#176, như §4.7) | `POST /files/ho-so/{id}/giay-to/{loai}` → mở link ký sẵn bằng trình duyệt của máy | có |
+| Nộp bổ sung khi xã yêu cầu (#176) | `POST /files/ho-so/{id}/tep` → `GET /workflow/tasks` → `POST /workflow/tasks/{id}/complete` | có |
 
 | Quyết định | Lý do |
 |---|---|
@@ -1111,7 +1114,7 @@ App Android **Một cửa xã** (`mot-cua/di-dong/`, React Native 0.80 bare, Typ
 | Cấu hình `DXOS_*` gắn lúc đóng gói, mặc định bản demo công khai | App không đọc biến môi trường lúc chạy; APK từ Release dùng ngay được |
 | Release đính `mot-cua-xa-X.Y.Z-debug.apk` (workflow `phat-hanh`), ký bằng khóa debug của máy build CI | Chưa phát hành lên kho ứng dụng; repo không chứa keystore |
 
-Kiểm: `yarn typecheck`, `yarn lint`, Jest (`mot-cua/di-dong/__tests__/`: gọi API, phiên đăng nhập, Poka-yoke, thứ tự nộp và thử lại) trong workflow `di-dong`; build APK ở job `apk-debug`.
+Kiểm: `yarn typecheck`, `yarn lint`, Jest (`mot-cua/di-dong/__tests__/`: gọi API, phiên đăng nhập, Poka-yoke, thứ tự nộp và thử lại, giấy tờ, bổ sung, tiến độ, hết phiên) trong workflow `di-dong`; build APK ở job `apk-debug`.
 
 ## 5. MFA cho cán bộ
 

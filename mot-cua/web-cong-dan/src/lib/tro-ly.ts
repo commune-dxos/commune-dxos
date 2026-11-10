@@ -35,7 +35,10 @@ export interface TraLoiTroLy extends ThongTinTroLy {
   nguon: NguonTroLy[];
 }
 
-const KHONG_CO_LOI = "Chế độ dữ liệu giả không có trợ lý. Chạy cổng với lõi (make up) để hỏi đáp.";
+/** Chế độ dữ liệu giả: không có mô hình ngôn ngữ nào chạy, câu trả lời là mẫu cố định để xem giao diện. */
+const THONG_TIN_GIA_LAP = { che_do: "gia-lap", co_mo_hinh_ngon_ngu: false, mo_hinh: null } satisfies ThongTinTroLy;
+const GHI_CHU_GIA_LAP =
+  "Đây là câu trả lời mẫu của chế độ dữ liệu giả, không do mô hình ngôn ngữ sinh ra và không dùng làm căn cứ. Chạy cổng với lõi (make up) để hỏi đáp thật.";
 
 export function kiemCauHoi(cauHoi: string) {
   const q = cauHoi.trim();
@@ -50,7 +53,35 @@ export async function hoiTroLy(
   cauHinh: CauHinh = cauHinhMacDinh,
   goi: typeof fetch = (...a) => fetch(...a),
 ) {
-  if (cauHinh.duLieuGia) throw new LoiApi(KHONG_CO_LOI, null);
+  if (cauHinh.duLieuGia) {
+    return {
+      ...THONG_TIN_GIA_LAP,
+      cau_tra_loi:
+        "Ví dụ giả lập: để thực hiện thủ tục tại Ủy ban nhân dân xã, người nộp cần chuẩn bị Tờ khai theo mẫu và giấy tờ tùy thân (CCCD/VNeID) [1]. Thủ tục đăng ký khai sinh và kết hôn đúng hạn được miễn lệ phí hoàn toàn [2].",
+      thong_bao: GHI_CHU_GIA_LAP,
+      trich_tu_dong: false,
+      nguon: [
+        {
+          so: 1,
+          id: "KS01-1",
+          ma_thu_tuc: maThuTuc ?? "KS01",
+          tieu_de: "Đăng ký khai sinh – Thành phần hồ sơ bắt buộc",
+          trich: "Tờ khai đăng ký khai sinh theo mẫu, Giấy chứng sinh và giấy tờ tùy thân của người đi đăng ký.",
+          lien_ket: "/thu-tuc/KS01",
+          duoc_trich: true,
+        },
+        {
+          so: 2,
+          id: "KH01-2",
+          ma_thu_tuc: "KH01",
+          tieu_de: "Đăng ký kết hôn – Thời hạn và lệ phí",
+          trich: "Giải quyết trong 5 ngày làm việc, miễn lệ phí nhà nước đối với công dân Việt Nam cư trú trong nước.",
+          lien_ket: "/thu-tuc/KH01",
+          duoc_trich: true,
+        },
+      ],
+    } satisfies TraLoiTroLy;
+  }
   return goiGateway<TraLoiTroLy>(cauHinh, goi, "/tro-ly/hoi", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,7 +90,9 @@ export async function hoiTroLy(
 }
 
 export async function thongTinTroLy(cauHinh: CauHinh = cauHinhMacDinh, goi: typeof fetch = (...a) => fetch(...a)) {
-  if (cauHinh.duLieuGia) throw new LoiApi(KHONG_CO_LOI, null);
+  if (cauHinh.duLieuGia) {
+    return THONG_TIN_GIA_LAP;
+  }
   return goiGateway<ThongTinTroLy>(cauHinh, goi, "/tro-ly/thong-tin", { method: "GET" });
 }
 
@@ -68,6 +101,7 @@ export async function thongTinTroLy(cauHinh: CauHinh = cauHinhMacDinh, goi: type
  *  trang hiện thông báo "chưa bật" ngay thay vì để người dân hỏi rồi gặp lỗi. */
 export async function kiemTroLy(cauHinh: CauHinh = cauHinhMacDinh, goi: typeof fetch = (...a) => fetch(...a)) {
   const tt = await thongTinTroLy(cauHinh, goi);
+  if (cauHinh.duLieuGia) return tt;
   await goiGateway<unknown>(cauHinh, goi, "/tro-ly/tim?q=" + encodeURIComponent("thủ tục"), { method: "GET" });
   return tt;
 }
@@ -98,7 +132,7 @@ export function tachTrichDan(cauTraLoi: string, soNguon: number): PhanTraLoi[] {
 
 /** Nhãn chế độ cho người dân: nói rõ khi chưa có mô hình ngôn ngữ. */
 export function nhanCheDo(tt: ThongTinTroLy) {
+  if (tt.che_do === "gia-lap") return "Chế độ giả lập: câu trả lời là ví dụ cố định, không có mô hình ngôn ngữ chạy.";
   if (!tt.co_mo_hinh_ngon_ngu) return "Chế độ tìm kiếm: hiện các đoạn tài liệu liên quan nhất, chưa bật mô hình ngôn ngữ.";
-  if (tt.che_do === "gia-lap") return "Chế độ thử nghiệm: câu trả lời trích nguyên văn từ tài liệu.";
   return `Câu trả lời do mô hình ngôn ngữ mã nguồn mở (${tt.mo_hinh ?? "không rõ"}) tóm tắt từ tài liệu thủ tục.`;
 }

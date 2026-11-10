@@ -57,10 +57,10 @@ export function BoCucCanBo() {
         Bỏ qua, tới nội dung chính
       </a>
       <ThanhBenCanBo className="fixed inset-y-0 left-0 z-50 hidden h-dvh lg:flex" />
-      {/* Cột giữ chỗ cùng màu dưới thanh bên cố định: nền tối phủ hết chiều cao trang dài (cả khi in, chụp toàn trang). */}
-      <div aria-hidden="true" className="hidden w-64 shrink-0 bg-slate-900 lg:block" />
+      {/* Cột giữ chỗ cùng màu dưới thanh bên cố định */}
+      <div aria-hidden="true" className="hidden w-64 shrink-0 border-r border-slate-200/90 bg-white lg:block" />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/80 px-3 backdrop-blur-md sm:px-6 md:px-8">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200/90 bg-white/95 px-3 backdrop-blur-md sm:px-6 md:px-8">
           <Sheet open={mo} onOpenChange={datMo}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-xl hover:bg-slate-100 lg:hidden" aria-label="Mở menu">

@@ -167,10 +167,10 @@ export function WikiVanBan() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Wiki văn bản</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200/80 pb-4">
+        <div className="border-l-4 border-primary pl-4">
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Wiki văn bản</h1>
+          <p className="text-slate-600">
             Quy chế, hướng dẫn nghiệp vụ, quy trình và biểu mẫu nội bộ của xã. Bạn chỉ thấy văn bản thuộc phạm vi của mình.
           </p>
         </div>

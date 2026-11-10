@@ -6,7 +6,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { CircleAlert, Inbox, WifiOff } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { chu, khoang, mau } from '../giao-dien';
+import { chu, dong, khoang, mau } from '../giao-dien';
 import { NutBam } from './nut-bam';
 
 interface Props {
@@ -58,6 +58,6 @@ const kieu = StyleSheet.create({
   },
   vongLoi: { backgroundColor: mau.loiNhat },
   tieuDe: { fontSize: chu.lon, fontWeight: '700', color: mau.chu, textAlign: 'center' },
-  moTa: { fontSize: chu.than, color: mau.chuMo, textAlign: 'center', lineHeight: 26 },
+  moTa: { fontSize: chu.than, color: mau.chuMo, textAlign: 'center', lineHeight: dong.than },
   nut: { marginTop: khoang.s, alignSelf: 'stretch' },
 });

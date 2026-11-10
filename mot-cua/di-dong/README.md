@@ -1,8 +1,8 @@
 # Một cửa xã – app di động cho công dân
 
 App Android cho người dân dùng bộ máy một cửa của Commune DX-OS (Tầng 2, quyết định D-015):
-xem thủ tục, nộp hồ sơ kèm ảnh giấy tờ, tra cứu theo mã hồ sơ, theo dõi hồ sơ của mình.
-App gọi đúng các API mà cổng công dân web (`mot-cua/web-cong-dan/`) đang dùng, qua APISIX:
+xem thủ tục, nộp hồ sơ kèm ảnh giấy tờ, tra cứu theo mã hồ sơ, theo dõi và bổ sung hồ sơ của mình,
+tải biên nhận và kết quả có ký số. App gọi đúng các API mà cổng công dân web (`mot-cua/web-cong-dan/`) đang dùng, qua APISIX:
 
 | Đường dẫn | Dùng cho | Cần đăng nhập |
 |---|---|---|
@@ -11,9 +11,59 @@ App gọi đúng các API mà cổng công dân web (`mot-cua/web-cong-dan/`) đ
 | `POST /api/ho_so`, `GET /api/ho_so`, `GET /api/lich_su_trang_thai` | tạo hồ sơ, hồ sơ của tôi, các mốc trạng thái (PostgREST, RLS) | có |
 | `POST /files/ho-so/{id}/tep`, `GET /files/ho-so/{id}/tep` | tải ảnh giấy tờ (ClamAV quét, Garage lưu) | có |
 | `POST /workflow/ho-so/{id}/khoi-tao` | khởi tạo quy trình Flowable của thủ tục | có |
+| `GET /workflow/ho-so/{id}/tien-do` | bước quy trình đang mở | có |
+| `GET /workflow/tasks`, `POST /workflow/tasks/{id}/complete` | nộp lại hồ sơ sau khi bổ sung | có |
+| `POST /files/ho-so/{id}/giay-to/{loai}` | biên nhận, thông báo kết quả PDF ký số (link tải ngắn hạn) | có |
 
 Đăng nhập bằng Keycloak (realm `dxos`), Authorization Code + PKCE, client public `mot_cua_di_dong`,
 không có client secret trong app. Token lưu trong Android Keystore qua `react-native-keychain`.
+
+## Tính năng
+
+| Màn | Người dân làm được gì |
+|---|---|
+| Thủ tục | Tìm thủ tục (gõ không dấu cũng được), xem thời hạn, lệ phí, thành phần hồ sơ |
+| Nộp hồ sơ | Khai người nộp, chụp hoặc chọn ảnh từng giấy tờ; thiếu giấy tờ bắt buộc thì app chặn trước khi gửi; mất mạng giữa chừng thì bấm Thử lại gửi tiếp, không tạo trùng hồ sơ |
+| Đã nộp | Mã hồ sơ, hạn xử lý, tải biên nhận có ký số |
+| Tra cứu | Mã hồ sơ + 4 số cuối điện thoại, không cần đăng nhập |
+| Hồ sơ của tôi | Danh sách hồ sơ, trạng thái, hạn, báo quá hạn, lý do cần bổ sung; kéo xuống để làm mới |
+| Chi tiết hồ sơ | Lời nhắn theo trạng thái, bước đang xử lý, các mốc kèm lý do, giấy tờ đã nộp; **bổ sung hồ sơ** ngay trên app (chụp thêm ảnh, ghi chú, nộp lại); **tải biên nhận / thông báo kết quả** PDF có chữ ký số của xã |
+| Tài khoản | Đăng nhập, đăng xuất Keycloak, máy chủ đang dùng, phiên bản |
+
+Mọi màn có trạng thái đang tải, lỗi kèm nút Thử lại, trống, dải báo mất mạng. Phiên hết hạn hoặc bị thu hồi
+(máy chủ trả 401) thì app xóa phiên và hiện lại nút đăng nhập kèm câu "Phiên đăng nhập đã hết hạn".
+
+Giao diện theo cổng công dân web: nền sáng, xanh ngọc `#0F766E` cho nút chính, chàm `#4338CA` cho bước đang xử lý
+và nhãn lĩnh vực, đỏ son `#D9480F` chỉ cho cảnh báo. Chữ thân 18, không chữ nào dưới 16 (trừ nhãn thanh tab), vùng
+bấm ≥ 48dp, nút bo tròn. Phông chữ là phông hệ thống của Android (Roboto, đủ dấu tiếng Việt); app không nhúng phông.
+
+## Demo
+
+Quay trên iOS Simulator bằng bản dựng thử, với stack chạy trên máy và dữ liệu mẫu giả (repo chỉ phát hành APK
+Android). Bên trái: nộp hồ sơ chứng thực tới biên nhận PDF ký số. Bên phải: bổ sung ảnh giấy chứng sinh theo
+yêu cầu rồi nộp lại.
+
+<p align="center">
+  <img src="../../docs/media/demo-app-nop.gif" alt="Nộp hồ sơ chứng thực trên app: điền người nộp, chọn ảnh giấy tờ mẫu, nộp, nhận mã hồ sơ, mở biên nhận PDF có ký số" width="240">
+  &nbsp;&nbsp;
+  <img src="../../docs/media/demo-app-bo-sung.gif" alt="Bổ sung hồ sơ trên app: xem yêu cầu bổ sung ảnh giấy chứng sinh, chọn ảnh mẫu mới, nộp lại, hồ sơ về bước tiếp nhận" width="240">
+</p>
+
+## Cài APK lên điện thoại Android
+
+1. Trên điện thoại, mở trang Release mới nhất của repo:
+   <https://github.com/commune-dxos/commune-dxos/releases/latest>, tải tệp `mot-cua-xa-<phiên bản>-debug.apk`.
+   (Bản dựng mới nhất của nhánh `develop` có ở mục Artifacts của workflow `di-dong` trên GitHub Actions.)
+2. Mở tệp vừa tải. Lần đầu Android hỏi quyền "Cài ứng dụng không rõ nguồn gốc": cho phép trình duyệt (hoặc
+   ứng dụng Tệp) cài, rồi bấm **Cài đặt**. Play Protect có thể cảnh báo vì APK ký bằng khóa debug: chọn
+   "Vẫn cài đặt".
+3. Mở app **Một cửa xã**. App trỏ sẵn bản demo <https://commune.dzfullstack.com>; đăng nhập bằng tài khoản
+   công dân thử nghiệm do đội cấp. Tra cứu và xem thủ tục không cần đăng nhập.
+4. Muốn kiểm tệp tải về: so `sha256sum mot-cua-xa-*.apk` với dòng tương ứng trong `SHA256SUMS` của Release.
+
+Cần Android 7.0 (API 24) trở lên. APK debug ký bằng khóa debug do máy build CI tự tạo, mỗi lần build có thể
+khác khóa: nếu Android báo "Ứng dụng chưa được cài đặt" khi cài đè bản cũ thì gỡ bản cũ trước rồi cài lại
+(phiên đăng nhập sẽ phải đăng nhập lại).
 
 ## Công nghệ
 
@@ -27,14 +77,15 @@ Chỉ build Android; chưa có bản iOS.
 ```
 src/
   cau-hinh/     cấu hình môi trường (DXOS_*), TanStack Query
-  dich-vu/      gọi APISIX: goi-api, danh-muc, ho-so, tra-cuu, nop-ho-so, thanh-phan, xac-thuc
+  dich-vu/      gọi APISIX: goi-api, danh-muc, ho-so, tra-cuu, nop-ho-so, bo-sung, giay-to, thanh-phan, xac-thuc
   kho/          kho Zustand: phiên đăng nhập, trạng thái mạng
   dieu-huong/   stack gốc + thanh tab
   man-hinh/     các màn
-  thanh-phan/   thành phần dùng chung: nút, thẻ, ô nhập, màn đang tải / lỗi / trống, dải mất mạng
+  thanh-phan/   thành phần dùng chung: nút, thẻ, ô nhập, mục ảnh giấy tờ, nút giấy tờ ký số, khối bổ sung,
+                màn đang tải / lỗi / trống, dải mất mạng
   giao-dien/    màu, cỡ chữ theo cổng công dân
   ngon-ngu/     chuỗi giao diện tiếng Việt (vi.json)
-__tests__/      Jest: dịch vụ và kho
+__tests__/      Jest: dịch vụ, kho, render màn chi tiết hồ sơ với máy chủ giả
 android/        dự án Android (package vn.communedxos.motcua)
 ```
 

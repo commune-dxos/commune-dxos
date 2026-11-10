@@ -270,16 +270,18 @@ function MucLich({ l, onDoi }: { l: LichCongTac; onDoi: () => void }) {
     );
   }
   return (
-    <li className={`rounded-lg border p-4 ${daHuy ? "bg-muted" : "bg-card"}`}>
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-mono text-base font-semibold tabular-nums">{khoangGio(l)}</span>
-        <h3 className={`text-lg font-semibold ${daHuy ? "line-through" : ""}`}>{l.tieu_de}</h3>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Badge variant="outline">{TEN_LOAI_LICH[l.loai]}</Badge>
-        <Badge variant={l.trang_thai === "da_duyet" ? "secondary" : daHuy ? "destructive" : "outline"}>
-          {TEN_TRANG_THAI[l.trang_thai]}
-        </Badge>
+    <li className={`rounded-xl border border-slate-200/90 border-l-4 p-4 shadow-2xs transition-colors ${daHuy ? "border-l-slate-400 bg-slate-100/70" : l.trang_thai === "da_duyet" ? "border-l-primary bg-card" : "border-l-amber-500 bg-amber-50/20"}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 font-mono text-sm font-bold text-slate-900 tabular-nums">{khoangGio(l)}</span>
+          <h3 className={`text-lg font-bold text-slate-950 ${daHuy ? "line-through text-slate-500" : ""}`}>{l.tieu_de}</h3>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="outline">{TEN_LOAI_LICH[l.loai]}</Badge>
+          <Badge variant={l.trang_thai === "da_duyet" ? "secondary" : daHuy ? "destructive" : "outline"}>
+            {TEN_TRANG_THAI[l.trang_thai]}
+          </Badge>
+        </div>
       </div>
       <dl className="mt-3 grid gap-1 text-base">
         {l.dia_diem && (
@@ -404,10 +406,10 @@ export function LichCongTacTrang() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">Lịch công tác</h1>
-          <p className="text-lg text-muted-foreground">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div className="border-l-4 border-primary pl-4">
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Lịch công tác</h1>
+          <p className="text-base text-slate-600">
             Tuần từ {ngayDu(tuan)} đến {ngayDu(congNgay(tuan, 6))}
             {vaiTro !== "can_bo" && choDuyet > 0 && ` · ${choDuyet} lịch chờ duyệt`}
           </p>
@@ -419,15 +421,15 @@ export function LichCongTacTrang() {
           </Button>
         )}
       </div>
-      <nav aria-label="Chọn tuần" className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => denTuan(congNgay(tuan, -7))}>
+      <nav aria-label="Chọn tuần" className="flex flex-wrap gap-2 rounded-xl border border-slate-200/90 bg-white p-2 shadow-2xs w-fit">
+        <Button size="sm" variant="ghost" onClick={() => denTuan(congNgay(tuan, -7))}>
           <ChevronLeft aria-hidden="true" />
           Tuần trước
         </Button>
-        <Button variant="outline" onClick={() => denTuan(thuHai(homNay))} aria-current={tuan === thuHai(homNay) ? "date" : undefined}>
+        <Button size="sm" variant={tuan === thuHai(homNay) ? "secondary" : "ghost"} onClick={() => denTuan(thuHai(homNay))} aria-current={tuan === thuHai(homNay) ? "date" : undefined}>
           Tuần này
         </Button>
-        <Button variant="outline" onClick={() => denTuan(congNgay(tuan, 7))}>
+        <Button size="sm" variant="ghost" onClick={() => denTuan(congNgay(tuan, 7))}>
           Tuần sau
           <ChevronRight aria-hidden="true" />
         </Button>

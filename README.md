@@ -26,11 +26,11 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.11.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.12.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
 
 | Trước | Sau |
 |---|---|
-| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân nộp hồ sơ: ✅ v0.4.0 · Biên nhận và thông báo kết quả PDF có ký số: ✅ v0.5.0 · Tra cứu tiến độ trên cổng web (không cần đăng nhập, bằng mã hồ sơ), nộp bổ sung trực tuyến: ✅ v0.6.0 · Trợ lý hỏi đáp thủ tục, trả lời có dẫn nguồn: ✅ v0.6.0 · App Android **Một cửa xã**: nộp hồ sơ kèm ảnh chụp giấy tờ, tra cứu, theo dõi hồ sơ của mình: ✅ v0.11.0 |
+| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân nộp hồ sơ: ✅ v0.4.0 · Biên nhận và thông báo kết quả PDF có ký số: ✅ v0.5.0 · Tra cứu tiến độ trên cổng web (không cần đăng nhập, bằng mã hồ sơ), nộp bổ sung trực tuyến: ✅ v0.6.0 · Trợ lý hỏi đáp thủ tục, trả lời có dẫn nguồn: ✅ v0.6.0 · App Android **Một cửa xã**: nộp hồ sơ kèm ảnh chụp giấy tờ, tra cứu, theo dõi hồ sơ của mình: ✅ v0.11.0 · Trên app: tải biên nhận và thông báo kết quả ký số, nộp bổ sung khi xã yêu cầu: ✅ v0.12.0 |
 | Thiếu một tờ giấy, cán bộ trả về, người dân đi thêm một chuyến. | Mỗi thủ tục khai thành phần hồ sơ bằng JSON Schema, công khai để xem trước khi nộp. ✅ v0.1.0 · Chặn nộp khi còn thiếu (Poka-yoke), kiểm cả ở web và máy chủ: ✅ v0.5.0 |
 | Hồ sơ giấy chuyển qua nhiều bàn, thất lạc, không ai biết đang nằm ở đâu. | Mỗi hồ sơ có mã, trạng thái và lịch sử từng bước của quy trình. Tệp có nhật ký chỉ ghi thêm, không sửa được. ✅ v0.1.0 · Trạng thái hồ sơ đi đúng bước quy trình Flowable: ✅ v0.5.0 |
 | Hạn giải quyết tính tay, quá hạn rồi mới biết. | Hạn tự tính theo ngày làm việc, bỏ cuối tuần và ngày lễ. Còn ≤ 1 ngày thì hệ thống phát cảnh báo sắp trễ hạn qua hàng đợi. ✅ v0.1.0 · Cổng cán bộ xếp hồ sơ quá hạn, sắp trễ lên đầu: ✅ v0.5.0 · Thông báo sắp trễ hạn tới cán bộ trên cổng cán bộ, cập nhật ngay (email/SMS giả lập): ✅ v0.6.0 · Thông báo tới người dân: ⏳ chưa xếp tuần |
@@ -114,7 +114,7 @@ Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md
 
 ## App di động
 
-**Một cửa xã** là app Android cho người dân, nằm ở [`mot-cua/di-dong/`](mot-cua/di-dong/) (React Native, Tầng 2). App xem thủ tục, nộp hồ sơ kèm ảnh chụp giấy tờ (thiếu giấy tờ bắt buộc thì chặn trước khi gửi), tra cứu bằng mã hồ sơ không cần đăng nhập, xem hồ sơ của mình và trạng thái. App gọi cùng các API qua APISIX với cổng web, đăng nhập bằng tài khoản công dân trên Keycloak (PKCE).
+**Một cửa xã** là app Android cho người dân, nằm ở [`mot-cua/di-dong/`](mot-cua/di-dong/) (React Native, Tầng 2). App xem thủ tục, nộp hồ sơ kèm ảnh chụp giấy tờ (thiếu giấy tờ bắt buộc thì chặn trước khi gửi), tra cứu bằng mã hồ sơ không cần đăng nhập, xem hồ sơ của mình và trạng thái, bổ sung giấy tờ khi bộ phận một cửa yêu cầu rồi nộp lại, tải biên nhận và thông báo kết quả PDF có ký số. Xem quay màn hình ở mục [Demo](#demo). App gọi cùng các API qua APISIX với cổng web, đăng nhập bằng tài khoản công dân trên Keycloak (PKCE).
 
 - **Tải APK:** mỗi [Release](https://github.com/commune-dxos/commune-dxos/releases) từ v0.11.0 có tệp `mot-cua-xa-X.Y.Z-debug.apk` (kiểm bằng `SHA256SUMS` cùng Release). Cài lên điện thoại Android 7.0 trở lên (cho phép cài từ nguồn ngoài). App trỏ bản demo https://commune.dzfullstack.com.
 - **Tự build:** Node ≥ 22, JDK 17, Android SDK; `cd mot-cua/di-dong && corepack enable && yarn install --frozen-lockfile && yarn apk:debug`. Trỏ máy local (`make up`) bằng `.env` và `adb reverse`: [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md).
@@ -126,13 +126,21 @@ Quay thật trên máy với tài khoản và giấy tờ mẫu giả (`make qua
 **Người dân** xem danh mục, nộp hồ sơ đăng ký khai sinh: thiếu giấy chứng sinh thì cổng chặn ngay, chưa gửi gì lên máy chủ; đủ giấy tờ thì nộp được, nhận mã hồ sơ. Sau đó tra cứu tiến độ bằng mã hồ sơ và 4 số cuối số điện thoại, không cần đăng nhập.
 
 <p align="center">
-  <img src="docs/media/demo-cong-dan.gif" alt="Demo cổng công dân: trang chủ có danh mục thủ tục, mở Đăng ký khai sinh, bấm Bắt đầu nộp, đăng nhập, nhập số điện thoại; ở bước Giấy tờ chỉ tải tờ khai thì hiện lỗi Chưa tải giấy chứng sinh; tải đủ, kiểm tra lại, bấm Đồng ý và nộp hồ sơ, hiện Đã nộp hồ sơ kèm mã HS; trang Tra cứu hồ sơ nhập mã và 4 số cuối điện thoại, hiện trạng thái Mới nộp, chờ tiếp nhận" width="100%">
+  <img src="docs/media/demo-cong-dan.gif" alt="Demo cổng công dân: trang chủ có ô tìm thủ tục, mở Đăng ký khai sinh, bấm Bắt đầu nộp, đăng nhập, nhập số điện thoại; ở bước Giấy tờ chỉ tải tờ khai thì hiện lỗi Chưa tải giấy chứng sinh; tải đủ, kiểm tra lại, bấm Đồng ý và nộp hồ sơ, hiện Đã nộp hồ sơ kèm mã HS; trang Tra cứu hồ sơ nhập mã hồ sơ và 4 số cuối điện thoại rồi bấm Tra cứu" width="100%">
 </p>
 
 **Cán bộ hộ tịch** đăng nhập bằng mật khẩu và mã OTP, mở hồ sơ vừa nộp từ hộp việc, xác nhận đủ thành phần và hoàn thành bước tiếp nhận; hồ sơ chuyển sang bước thẩm định.
 
 <p align="center">
   <img src="docs/media/demo-can-bo.gif" alt="Demo cổng cán bộ: trang Cổng cán bộ, đăng nhập Keycloak bằng tên canbo01, mật khẩu và mã OTP (đều hiện dấu chấm); hộp việc; chi tiết hồ sơ HS vừa nộp với người nộp, thành phần hồ sơ; ô Xử lý bước chọn Có ở câu Đủ thành phần hồ sơ?, bấm Hoàn thành bước, hiện Đã hoàn thành Tiếp nhận, bước tiếp theo Thẩm định hồ sơ" width="100%">
+</p>
+
+**App di động** (bên trái) nộp hồ sơ chứng thực bản sao: khai người nộp, chọn ảnh giấy tờ, nộp, nhận mã hồ sơ rồi mở biên nhận PDF có ký số của xã. (Bên phải) hồ sơ khai sinh bị yêu cầu bổ sung vì ảnh giấy chứng sinh mờ: xem yêu cầu, chọn ảnh mới, nộp lại; hồ sơ trở về bước tiếp nhận. Quay trên iOS Simulator bằng bản dựng thử, với stack chạy trên máy và dữ liệu mẫu giả; thư viện ảnh chỉ có hai ảnh giấy tờ mẫu giả của repo ([`mot-cua/web-cong-dan/public/mau-gia/`](mot-cua/web-cong-dan/public/mau-gia/)). Repo hiện chỉ phát hành APK Android, chưa có bản iOS.
+
+<p align="center">
+  <img src="docs/media/demo-app-nop.gif" alt="Demo app di động nộp hồ sơ: màn Chứng thực bản sao từ bản chính, bấm Nộp hồ sơ; điền họ tên Nguyễn Văn Mẫu và số điện thoại; mục Bản chính giấy tờ cần chứng thực bấm Chọn ảnh, chọn ảnh giấy tờ tùy thân mẫu; bấm Nộp hồ sơ, hiện Đã nộp hồ sơ kèm mã HS và hạn xử lý; bấm Tải biên nhận (PDF), trình duyệt mở Giấy tiếp nhận hồ sơ và hẹn trả kết quả có ký số của UBND xã Mẫu" width="240">
+  &nbsp;&nbsp;
+  <img src="docs/media/demo-app-bo-sung.gif" alt="Demo app di động bổ sung hồ sơ: Hồ sơ của tôi có hồ sơ Đăng ký khai sinh trạng thái Chờ công dân bổ sung, lý do Ảnh giấy chứng sinh bị mờ; mở chi tiết thấy Yêu cầu của bộ phận một cửa; ở mục Giấy chứng sinh bấm Chọn ảnh, chọn ảnh giấy chứng sinh mẫu; bấm Nộp lại hồ sơ; hồ sơ chuyển về bước Tiếp nhận, kiểm tra thành phần hồ sơ, các mốc xử lý ghi Chờ công dân bổ sung kèm lý do" width="240">
 </p>
 
 ## Đội và cách đóng góp
@@ -218,7 +226,7 @@ The first `make up` takes 2–10 minutes depending on the network. Stop with `ma
 
 Citizen portal: **http://localhost:9080/** · progress lookup: **http://localhost:9080/tra-cuu** · staff portal: **http://localhost:9080/can-bo** (password + OTP). Sample accounts (fake data): `congdan01` (citizen), `canbo01` (civil-status officer), `canbo02` (certification officer), `lanhdao01` (leader).
 
-Android app for citizens (**Một cửa xã**, apply with document photos, lookup, my applications): `mot-cua-xa-X.Y.Z-debug.apk` on every [release](https://github.com/commune-dxos/commune-dxos/releases) from v0.11.0; build steps in [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md).
+Android app for citizens (**Một cửa xã**, apply with document photos, lookup, my applications, add missing papers when asked, download the digitally signed receipt and result): `mot-cua-xa-X.Y.Z-debug.apk` on every [release](https://github.com/commune-dxos/commune-dxos/releases) from v0.11.0; build steps in [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md). Screen recordings of the app (iOS Simulator, test build, fake sample data; only the Android APK is released): see the Vietnamese [Demo](#demo) section.
 
 Requirements, ports, optional profiles (dashboard, OCR, local language model) and troubleshooting: [`docs/en/quick-start.md`](docs/en/quick-start.md).
 

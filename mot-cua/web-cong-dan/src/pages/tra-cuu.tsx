@@ -127,43 +127,45 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
 
   return (
     <>
-    <DaiTieuDe hep nhan="Theo dõi hồ sơ" tieuDe="Tra cứu hồ sơ" moTa="Xem hồ sơ đang ở bước nào, không cần đăng nhập." />
+    <DaiTieuDe hep nhan="Theo dõi tiến độ xử lý" tieuDe="Tra cứu hồ sơ" moTa="Xem hồ sơ đang ở bước nào và khi nào có kết quả, không cần đăng nhập." />
     <Khung className="flex max-w-5xl flex-col gap-8">
-      <div className="grid items-start gap-6 lg:-mt-20 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <form
           noValidate
           onSubmit={(e) => void gui(e)}
-          className="relative flex flex-col gap-7 rounded-3xl border border-slate-100 bg-card p-6 shadow-xl shadow-slate-900/10 sm:p-8"
+          className="relative flex flex-col gap-6 rounded-2xl border border-slate-200/90 bg-card p-6 shadow-the sm:p-8"
           aria-label="Tra cứu hồ sơ"
         >
-          <FieldGroup className="gap-7 [&_[data-invalid=true]]:border-l-4 [&_[data-invalid=true]]:border-warning [&_[data-invalid=true]]:pl-4">
+          <FieldGroup className="gap-6 [&_[data-invalid=true]]:border-l-4 [&_[data-invalid=true]]:border-warning [&_[data-invalid=true]]:pl-4">
             <Field data-invalid={!!loi.ma}>
-              <FieldLabel htmlFor="tra-cuu-ma" className="text-lg font-bold">
+              <FieldLabel htmlFor="tra-cuu-ma" className="text-lg font-bold text-slate-900">
                 Mã hồ sơ
               </FieldLabel>
-              <FieldDescription id="tra-cuu-ma-goi-y">Ví dụ: HS20261024-000123</FieldDescription>
+              <FieldDescription id="tra-cuu-ma-goi-y">In trên giấy tiếp nhận và hẹn trả kết quả (ví dụ: HS20261024-000123)</FieldDescription>
               {loi.ma && <FieldError role={undefined} id="tra-cuu-ma-loi">{loi.ma}</FieldError>}
               <Input
                 {...o("ma", "tra-cuu-ma-goi-y")}
                 autoComplete="off"
                 spellCheck={false}
-                className="h-14 text-xl uppercase tabular-nums md:text-xl"
+                placeholder="HS20261024-000123"
+                className="h-13 font-mono text-lg uppercase tabular-nums md:text-lg"
                 value={ma}
                 onChange={(e) => datMa(e.target.value)}
               />
             </Field>
             <Field data-invalid={!!loi.soCuoi}>
-              <FieldLabel htmlFor="tra-cuu-soCuoi" className="text-lg font-bold">
+              <FieldLabel htmlFor="tra-cuu-soCuoi" className="text-lg font-bold text-slate-900">
                 4 số cuối số điện thoại
               </FieldLabel>
-              <FieldDescription id="tra-cuu-so-goi-y">Số đã khai khi nộp hồ sơ, để chỉ người nộp xem được.</FieldDescription>
+              <FieldDescription id="tra-cuu-so-goi-y">Số điện thoại đã khai khi nộp hồ sơ để bảo mật thông tin người nộp.</FieldDescription>
               {loi.soCuoi && <FieldError role={undefined} id="tra-cuu-soCuoi-loi">{loi.soCuoi}</FieldError>}
               <Input
                 {...o("soCuoi", "tra-cuu-so-goi-y")}
                 inputMode="numeric"
                 autoComplete="off"
                 maxLength={4}
-                className="h-14 max-w-48 text-xl tracking-[0.3em] tabular-nums md:text-xl"
+                placeholder="••••"
+                className="h-13 max-w-44 font-mono text-lg tracking-[0.3em] tabular-nums md:text-lg"
                 value={soCuoi}
                 onChange={(e) => datSoCuoi(e.target.value.replace(/\D/g, ""))}
               />
@@ -175,29 +177,29 @@ export function TraCuu({ traCuu = traCuuCongKhai }: { traCuu?: typeof traCuuCong
           </Button>
         </form>
 
-        <aside className="relative flex flex-col gap-4 rounded-3xl border border-teal-100 bg-primary-soft p-6">
-          <h2 id="ma-o-dau" className="text-2xl font-black tracking-tight text-primary-soft-foreground">
+        <aside className="relative flex flex-col gap-4 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-6 shadow-2xs">
+          <h2 id="ma-o-dau" className="text-xl font-black tracking-tight text-slate-900">
             Mã hồ sơ nằm ở đâu?
           </h2>
-          <ul className="flex flex-col gap-4">
+          <ul className="flex flex-col gap-3.5 text-sm text-slate-700">
             {[
-              { bt: FileCheck2, ten: "Trang “Đã nộp hồ sơ”", moTa: "hiện ngay sau khi bạn nộp trực tuyến." },
-              { bt: Receipt, ten: "Biên nhận hồ sơ", moTa: "bản PDF có ký số, hoặc giấy biên nhận của bộ phận một cửa." },
-              { bt: FolderOpen, ten: "Hồ sơ của tôi", moTa: "khi đăng nhập bằng tài khoản đã nộp hồ sơ." },
+              { bt: FileCheck2, ten: "Trang “Đã nộp hồ sơ”", moTa: "hiện ngay sau khi hoàn tất gửi hồ sơ trực tuyến." },
+              { bt: Receipt, ten: "Biên nhận hồ sơ", moTa: "bản PDF có chữ ký số của xã, hoặc giấy biên nhận tại quầy Một cửa." },
+              { bt: FolderOpen, ten: "Mục Hồ sơ của tôi", moTa: "khi đăng nhập bằng tài khoản công dân đã nộp hồ sơ." },
             ].map(({ bt: BieuTuong, ten, moTa }) => (
               <li key={ten} className="flex gap-3">
-                <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 [&_svg]:size-5">
+                <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-teal-600/20 bg-white text-primary shadow-2xs [&_svg]:size-4.5">
                   <BieuTuong />
                 </span>
                 <span>
-                  <strong>{ten}</strong> {moTa}
+                  <strong className="text-slate-900">{ten}:</strong> {moTa}
                 </span>
               </li>
             ))}
           </ul>
-          <p>
-            Mã gồm chữ HS, ngày nộp và số thứ tự, ví dụ{" "}
-            <span className="rounded-md bg-background px-2 py-0.5 font-semibold whitespace-nowrap tabular-nums">HS20261024-000123</span>.
+          <p className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+            Cấu trúc mã gồm tiền tố <strong className="text-slate-900">HS</strong> + ngày nộp + số thứ tự, ví dụ{" "}
+            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono font-bold text-slate-900 whitespace-nowrap tabular-nums">HS20261024-000123</span>.
           </p>
         </aside>
       </div>

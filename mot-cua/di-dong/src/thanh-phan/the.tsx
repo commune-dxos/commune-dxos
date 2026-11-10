@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import React from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { bo, khoang, mau } from '../giao-dien';
+import { bo, bong, khoang, mau } from '../giao-dien';
 
 interface Props {
   children: React.ReactNode;
@@ -30,10 +30,11 @@ export function The({ children, onPress, style, nhanTroNang, testID }: Props) {
 const kieuThe = StyleSheet.create({
   goc: {
     backgroundColor: mau.the,
-    borderRadius: bo.vua,
+    borderRadius: bo.the,
     borderWidth: 1,
     borderColor: mau.vien,
     padding: khoang.l,
+    ...bong,
   },
   nhan: { backgroundColor: mau.mo },
 });

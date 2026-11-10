@@ -40,7 +40,7 @@ const kieu = StyleSheet.create({
     minHeight: 52,
     borderWidth: 1.5,
     borderColor: mau.vienONhap,
-    borderRadius: bo.nho,
+    borderRadius: bo.vua,
     paddingHorizontal: khoang.m,
     fontSize: chu.lon,
     color: mau.chu,

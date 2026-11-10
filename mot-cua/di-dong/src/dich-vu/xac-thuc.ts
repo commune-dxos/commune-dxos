@@ -61,10 +61,34 @@ function thanhPhien(kq: {
   };
 }
 
-/** Người dùng bấm hủy hoặc đóng trang đăng nhập: không coi là lỗi. */
+/** Miền lỗi chung của AppAuth-iOS (OIDGeneralErrorDomain); hủy đăng nhập là mã -3. */
+const MIEN_APPAUTH_IOS = 'org.openid.appauth.general';
+/** ASWebAuthenticationSession, mã 1 = canceledLogin (người dùng bấm Hủy/đóng trang). */
+const MIEN_ASWEB = 'com.apple.AuthenticationServices.WebAuthenticationSession';
+
+interface LoiNative {
+  code?: unknown;
+  domain?: unknown;
+  userInfo?: { NSUnderlyingError?: { code?: unknown; domain?: unknown } | null } | null;
+}
+
+/**
+ * Người dùng bấm hủy hoặc đóng trang đăng nhập: không coi là lỗi.
+ * - Android (AppAuth-Android): message "User cancelled flow".
+ * - iOS: react-native-app-auth reject("authentication_failed", localizedDescription, NSError) với NSError
+ *   OIDGeneralErrorDomain mã -3 (OIDErrorCodeUserCanceledAuthorizationFlow), không có mô tả, lỗi gốc là
+ *   ASWebAuthenticationSession mã 1. React Native chỉ chuyển sang JS code (chuỗi), domain, userInfo; mã số -3
+ *   chỉ còn trong câu mặc định "… (org.openid.appauth.general error -3.)". Nên dò lỗi gốc, hoặc mã -3 trong
+ *   câu, và chỉ khi domain đúng miền chung của AppAuth (lỗi mạng -5 cùng miền vẫn báo như thường).
+ */
 export function laHuyDangNhap(loi: unknown) {
   const thongDiep = loi instanceof Error ? loi.message : String(loi);
-  return /cancel/i.test(thongDiep);
+  if (/cancel/i.test(thongDiep)) return true;
+  const e = (typeof loi === 'object' && loi !== null ? loi : {}) as LoiNative;
+  if (e.code !== 'authentication_failed' || e.domain !== MIEN_APPAUTH_IOS) return false;
+  const goc = e.userInfo?.NSUnderlyingError;
+  if (goc?.domain === MIEN_ASWEB && String(goc.code) === '1') return true;
+  return /org\.openid\.appauth\.general\D{0,20}-3(?!\d)/.test(thongDiep);
 }
 
 export async function dangNhapOidc(c?: CauHinh) {
@@ -132,9 +156,17 @@ export function docNguoiDung(accessToken: string): NguoiDung | null {
         .map(ch => '%' + ch.charCodeAt(0).toString(16).padStart(2, '0'))
         .join(''),
     );
-    const c = JSON.parse(utf8) as { name?: string; preferred_username?: string; given_name?: string };
+    const c = JSON.parse(utf8) as {
+      name?: string;
+      preferred_username?: string;
+      given_name?: string;
+      family_name?: string;
+    };
     const tenDangNhap = c.preferred_username ?? null;
-    return { ten: c.name || c.given_name || tenDangNhap || 'Công dân', tenDangNhap };
+    // Họ tên kiểu Việt: họ (family_name) trước tên (given_name), như cổng web; claim name của Keycloak ghép
+    // tên trước họ nên chỉ dùng khi thiếu hai claim kia.
+    const hoTen = [c.family_name, c.given_name].map(x => x?.trim()).filter(Boolean).join(' ');
+    return { ten: hoTen || c.name || tenDangNhap || 'Công dân', tenDangNhap };
   } catch {
     return null;
   }
