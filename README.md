@@ -26,11 +26,11 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.11.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.12.0**) · 🆕 có trên nhánh **`develop`**, vào bản phát hành tới · ⏳ **chưa làm**, ghi tuần dự kiến nếu đã xếp
 
 | Trước | Sau |
 |---|---|
-| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân nộp hồ sơ: ✅ v0.4.0 · Biên nhận và thông báo kết quả PDF có ký số: ✅ v0.5.0 · Tra cứu tiến độ trên cổng web (không cần đăng nhập, bằng mã hồ sơ), nộp bổ sung trực tuyến: ✅ v0.6.0 · Trợ lý hỏi đáp thủ tục, trả lời có dẫn nguồn: ✅ v0.6.0 · App Android **Một cửa xã**: nộp hồ sơ kèm ảnh chụp giấy tờ, tra cứu, theo dõi hồ sơ của mình: ✅ v0.11.0 |
+| Người dân đến xã nộp hồ sơ, rồi quay lại vài lần chỉ để hỏi "xong chưa". | Nộp hồ sơ, tải giấy tờ, xem hồ sơ đang ở bước nào qua API. ✅ v0.1.0 · Cổng web cho người dân nộp hồ sơ: ✅ v0.4.0 · Biên nhận và thông báo kết quả PDF có ký số: ✅ v0.5.0 · Tra cứu tiến độ trên cổng web (không cần đăng nhập, bằng mã hồ sơ), nộp bổ sung trực tuyến: ✅ v0.6.0 · Trợ lý hỏi đáp thủ tục, trả lời có dẫn nguồn: ✅ v0.6.0 · App Android **Một cửa xã**: nộp hồ sơ kèm ảnh chụp giấy tờ, tra cứu, theo dõi hồ sơ của mình: ✅ v0.11.0 · Trên app: tải biên nhận và thông báo kết quả ký số, nộp bổ sung khi xã yêu cầu: ✅ v0.12.0 |
 | Thiếu một tờ giấy, cán bộ trả về, người dân đi thêm một chuyến. | Mỗi thủ tục khai thành phần hồ sơ bằng JSON Schema, công khai để xem trước khi nộp. ✅ v0.1.0 · Chặn nộp khi còn thiếu (Poka-yoke), kiểm cả ở web và máy chủ: ✅ v0.5.0 |
 | Hồ sơ giấy chuyển qua nhiều bàn, thất lạc, không ai biết đang nằm ở đâu. | Mỗi hồ sơ có mã, trạng thái và lịch sử từng bước của quy trình. Tệp có nhật ký chỉ ghi thêm, không sửa được. ✅ v0.1.0 · Trạng thái hồ sơ đi đúng bước quy trình Flowable: ✅ v0.5.0 |
 | Hạn giải quyết tính tay, quá hạn rồi mới biết. | Hạn tự tính theo ngày làm việc, bỏ cuối tuần và ngày lễ. Còn ≤ 1 ngày thì hệ thống phát cảnh báo sắp trễ hạn qua hàng đợi. ✅ v0.1.0 · Cổng cán bộ xếp hồ sơ quá hạn, sắp trễ lên đầu: ✅ v0.5.0 · Thông báo sắp trễ hạn tới cán bộ trên cổng cán bộ, cập nhật ngay (email/SMS giả lập): ✅ v0.6.0 · Thông báo tới người dân: ⏳ chưa xếp tuần |
