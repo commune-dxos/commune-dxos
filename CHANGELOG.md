@@ -4,6 +4,54 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-10
+
+### Tính năng mới
+
+- **di-dong:** Hoàn thiện app công dân: giấy tờ ký số, nộp bổ sung, giao diện mới ([#176](https://github.com/commune-dxos/commune-dxos/issues/176)) ([#178](https://github.com/commune-dxos/commune-dxos/issues/178))
+    - Thang chữ: thân 18, nhỏ nhất 16 (nhãn tab 14), chiều cao dòng ~1.5 lần cỡ chữ.
+    - Thẻ bo 16 có bóng nhẹ, nút và ô tìm bo tròn, vùng bấm ≥ 48dp, nút nhận biểu tượng.
+    - Đỏ son #D9480F chỉ làm viền/biểu tượng cảnh báo; chữ quá hạn, lỗi dùng bản đậm #B53A0B.
+    - Nhãn lĩnh vực màu chàm như cổng web.
+    - Biên nhận và thông báo kết quả PDF ký số (POST /files/ho-so/{id}/giay-to/{loai}), mở link
+      tải bằng trình duyệt của máy; có ở màn chi tiết hồ sơ và màn "Đã nộp".
+    - Hồ sơ chờ bổ sung: hiện yêu cầu của bộ phận một cửa, chụp/chọn thêm ảnh theo từng thành phần,
+      ghi chú, nộp lại (GET /workflow/tasks, POST /workflow/tasks/{id}/complete); lỗi giữa chừng
+      không tải trùng ảnh.
+    - Bước quy trình đang mở (GET /workflow/ho-so/{id}/tien-do), Flowable tạm dừng vẫn hiện màn.
+    - Lời nhắn theo trạng thái, lý do từ chối; màn chi tiết đòi đăng nhập khi mất phiên.
+    - Máy chủ trả 401 thì xóa phiên và hiện lại nút đăng nhập kèm câu hết phiên.
+    - Tách mục ảnh giấy tờ thành thành phần dùng chung cho nộp hồ sơ và bổ sung.
+    - Jest: dịch vụ giấy tờ, bổ sung, tiến độ, hết phiên; render màn chi tiết với máy chủ giả.
+- **web-cong-dan:** Làm mới giao diện cổng công dân và cán bộ ([#174](https://github.com/commune-dxos/commune-dxos/issues/174)) ([#175](https://github.com/commune-dxos/commune-dxos/issues/175))
+    - Chuyen doi phong cach sang Light Govtech sang sua, trang nha, de doc, chuan hoa theo bo nhan dien Team 2 (mau xanh ngoc #0F766E, cham #4338CA, do son #D9480F).
+    - Khoi dau trang chu: lam sang phong nen, tieu de dam net, o tim kiem thu tuc noi bat, chi so thong ke ro rang va cac loi tat tra cuu, tro ly AI.
+    - Danh muc thu tuc va quy trinh: loai bo anti-pattern kicker, thiet ke lai 3 buoc thuc hien truc tuyen voi so dem noi tiep de tiep can, the thu tuc sac net.
+    - Dai tieu de cac trang trong: chuyen sang nen sang gradient mem mai, toi uu tuong phan WCAG AA/AAA, loai bo vung toi gay chenh lech thi giac.
+    - Cong can bo: thiet ke lai trang dang nhap vien chuc/can bo chuyen nghiep; bo sung che do du lieu gia cho phep trai nghiem truc tiep cac vai tro Can bo Mot cua, Lanh dao UBND, Van thu; loai bo loi border-l-4 o thong bao va tro ly.
+    - Tat ca 177 tests Vitest vuot qua, kiem tra kieu TypeScript va ban dung build san sang production.
+    - Người dùng vào vai (sessionStorage dxos_demo_user) chỉ đọc khi đang ở chế
+      độ dữ liệu giả; chế độ thật bỏ qua và xóa khóa. Test vitest cho hai nhánh.
+    - Trợ lý ở chế độ dữ liệu giả không nhận có mô hình ngôn ngữ
+      (co_mo_hinh_ngon_ngu: false, mo_hinh: null); câu trả lời và nhãn trên trang
+      ghi rõ là ví dụ giả lập.
+    - Dữ liệu giả sổ văn bản dùng tên giả "Nguyễn Văn Ký" thay tên người thật.
+    - Chip trang đăng nhập cán bộ ghi "Mật khẩu + mã OTP" thay thuật ngữ kỹ thuật.
+
+### Sửa lỗi
+
+- **di-dong:** Sửa điều hướng sau khi nộp, họ tên, mã hồ sơ, bàn phím, cuộn khi nộp lại ([#179](https://github.com/commune-dxos/commune-dxos/issues/179)) ([#180](https://github.com/commune-dxos/commune-dxos/issues/180))
+    - Màn "Đã nộp" về Tab có sẵn bằng popTo; navigate('Tab') của React Navigation 7 đẩy thêm một Tab
+      mới nên chạm thẻ hồ sơ không mở được chi tiết.
+    - Họ tên lấy family_name + given_name (họ trước tên) như cổng web, thiếu mới dùng claim name.
+    - Mã hồ sơ ở màn "Đã nộp" một dòng, tự thu nhỏ chữ khi màn hẹp.
+    - Kéo màn để ẩn bàn phím ở form nộp, tra cứu, chi tiết hồ sơ (bàn phím số iOS không có nút ẩn).
+    - Nộp lại thành công thì cuộn lên đầu để thấy thông báo "Đã nộp lại hồ sơ".
+
+### Tài liệu
+
+- GIF demo app di động trong README ([#181](https://github.com/commune-dxos/commune-dxos/issues/181)) ([#182](https://github.com/commune-dxos/commune-dxos/issues/182))
+
 ## [0.11.0] - 2026-11-07
 
 ### Tính năng mới
@@ -717,7 +765,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.0...v0.9.1
