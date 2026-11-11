@@ -228,6 +228,9 @@ services:
 
   # Áp dụng migration + seed SQL của dịch vụ Tầng 2 (nen-tang/scripts/tang2-migrate.sh) rồi thoát.
   # Chạy lại an toàn: tệp đã áp dụng được bỏ qua. Chạy tay: make migrate.
+  # Chờ db-init xong (#186): db-init tạo role lõi dxos_kiem_toan, bao_cao_doc mà migration của Tầng 2
+  # GRANT quyền; chạy song song thì hai bên cùng "chưa có thì CREATE ROLE", bên chậm lỗi
+  # duplicate key pg_authid_rolname_index → psql thoát mã 3 (volume trống, thỉnh thoảng).
   tang2-migrate:
     image: postgres:17.6-alpine
     profiles: [core]
@@ -246,6 +249,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     restart: "no"
 
   # Nạp vai trò, nhóm, client, người dùng mẫu của Tầng 2 vào realm lõi `dxos`
