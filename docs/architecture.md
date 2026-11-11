@@ -1,6 +1,6 @@
 # Kiến trúc Commune DX-OS
 
-Phiên bản tài liệu: v0.12.0 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17), app di động công dân #155–#160, giấy tờ ký số và nộp bổ sung trên app #176 (§4.18), Keycloak sau reverse proxy #167 (§4.1)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
+Phiên bản tài liệu: v0.12.1 (tuần 2: tách nền tảng khỏi nghiệp vụ #3, gói thủ tục `nen-tang/` + `mot-cua/` + `thu-tuc/` #30 (D-009), schema #5, Flowable #8, route gateway #6, tệp #7, OpenBao #10, sự kiện RabbitMQ #9; tuần 3–4: web Tầng 2 qua APISIX #57, cổng cán bộ #55, trạng thái theo Flowable #73, nhật ký kiểm toán + pgAudit #75 (§4.6), ký số PDF #77 (§4.7), kho dữ liệu #80 (§4.8), luồng hồ sơ một cửa và Superset #82 (§4.9, §4.10), sổ văn bản #78 (§4.11); tuần 5: tra cứu tiến độ #54 (§4.12), thông báo sắp trễ hạn #56 (§4.13), trợ lý thủ tục RAG #91 (§4.14), OCR + cán bộ xác nhận #93 (§4.15), wiki văn bản #95 (§4.16), gói kết hôn và hòa giải đất đai #97; tuần 6: dữ liệu mở thủ tục cấp xã #102, route đăng nhập Superset #110 (§4.1); tuần 7: lịch công tác #117 (§4.17), app di động công dân #155–#160, giấy tờ ký số và nộp bổ sung trên app #176 (§4.18), Keycloak sau reverse proxy #167 (§4.1)). Stack theo D-003, giấy phép đã xác minh ở D-004 (17/10/2026).
 
 ## 1. Tổng quan 3 tầng
 
@@ -179,9 +179,9 @@ flowchart LR
   BAO[("openbao")] --> BI["bao-init (một lần)<br/>unseal, policy, AppRole"]
   BI -->|exit 0| AG["agent *-secrets (một lần)<br/>render tệp bí mật"]
   AG -->|exit 0| PG & KC & PGR & FL & S3
-  PG[("postgres<br/>initdb: nen-tang/postgres")] -->|healthy| MIG["tang2-migrate (một lần)<br/>mot-cua/db/*.sql"]
-  PG -->|healthy| DBI["db-init (một lần)<br/>role + CSDL dịch vụ"]
+  PG[("postgres<br/>initdb: nen-tang/postgres")] -->|healthy| DBI["db-init (một lần)<br/>role + CSDL dịch vụ"]
   DBI -->|exit 0| KC & PGR & FL
+  DBI -->|exit 0, role lõi đã có| MIG["tang2-migrate (một lần)<br/>mot-cua/db/*.sql"]
   KC["keycloak<br/>import nen-tang/keycloak/realm-dxos.json"] -->|healthy| REALM["tang2-realm (một lần)<br/>mot-cua/keycloak/realm.json"]
   KC -->|healthy| JWKS["jwks-init (một lần)"]
   MIG -->|exit 0| PGR["postgrest<br/>env_file mot-cua/postgrest.env"]
@@ -205,7 +205,7 @@ flowchart LR
   REALM -->|exit 0| WK
 ```
 
-- `tang2-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`.
+- `tang2-migrate` (image `postgres`, đã có sẵn): áp dụng `db/migrations/*.sql` theo thứ tự tên, rồi `db/seed/*.sql` nếu `DXOS_SEED=true`. Mỗi tệp chạy **trong một transaction cùng dòng ghi sổ** `dxos.app_migration (ung_dung, loai, tep, sha256)`: lỗi giữa chừng không để lại nửa schema; chạy lại thì bỏ qua tệp đã áp dụng; tệp đã áp dụng mà bị sửa nội dung thì dừng với mã lỗi (phải viết migration mới). Cuối cùng gửi `NOTIFY pgrst, 'reload schema'`. Chạy **sau** `db-init` (`depends_on … service_completed_successfully`): migration GRANT cho role lõi `dxos_kiem_toan`, `bao_cao_doc`; chạy song song thì hai bên cùng tạo role và một bên lỗi `duplicate key` (#186).
 - `tang2-realm` (image `keycloak`, đã có sẵn, dùng `kcadm.sh`): gọi **Partial Import** của Keycloak vào realm `dxos` với `ifResourceExists=SKIP`: đối tượng đã có thì giữ nguyên, nên chạy lại không lỗi và không ghi đè người dùng đã cài OTP (ghi đè sẽ đổi `sub`, làm hồ sơ cũ mất chủ).
 - `nap-thu-tuc` (image `python`): §2.4. Chạy ở mỗi `up`; `mot-cua-api` chỉ khởi động khi bộ nạp xong. Gói lỗi không làm bộ nạp thoát mã khác 0.
 - `garage-init` (image `python` đã dùng cho `mot-cua-api`): §4.3. Chạy lại an toàn (layout, khóa, bucket đã có thì giữ).
