@@ -20,6 +20,8 @@
 
 Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 · Đề tài DX-OS Open-Core.
 
+**Dùng thử ngay:** [bản demo công khai](https://commune.dzfullstack.com) · [tải APK Android](https://github.com/commune-dxos/commune-dxos/releases/latest) · [trang tài liệu](https://commune-dxos.github.io/commune-dxos/) · [hướng dẫn buổi dùng thử](docs/thu-nghiem.md)
+
 **English:** [summary and quick start below](#english) · [docs in English](docs/en/index.md)
 
 ## Trước và sau chuyển đổi số
@@ -110,7 +112,7 @@ Tài khoản mẫu (dữ liệu giả): `congdan01` (người dân), `canbo01` (
 
 Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md`](docs/cai-dat.md).
 
-**Dùng thử với người dùng thật:** 6 nhiệm vụ theo vai (công dân, cán bộ, lãnh đạo), mỗi nhiệm vụ một câu hỏi, báo lại bằng mẫu issue **Phản hồi dùng thử**: [`docs/thu-nghiem.md`](docs/thu-nghiem.md). Bản demo công khai: https://commune.dzfullstack.com (profile `core`, chưa có dashboard và trợ lý dùng mô hình ngôn ngữ).
+**Dùng thử với người dùng thật:** 6 nhiệm vụ theo vai (công dân, cán bộ, lãnh đạo), mỗi nhiệm vụ một câu hỏi, báo lại bằng mẫu issue **Phản hồi dùng thử**: [`docs/thu-nghiem.md`](docs/thu-nghiem.md). Bản demo công khai: https://commune.dzfullstack.com (profile `core` và `bi`: hai cổng, tra cứu, dashboard `/bao-cao/`; hỏi đáp chỉ tìm kiếm, chưa bật trợ lý dùng mô hình ngôn ngữ).
 
 ## App di động
 
@@ -223,6 +225,8 @@ make demo-users           # sets a password for the sample users and prints it
 ```
 
 The first `make up` takes 2–10 minutes depending on the network. Stop with `make down` (data kept). Never delete or commit `.data/openbao/commune.json`: it holds the key to every secret.
+
+Try it without installing: [public demo](https://commune.dzfullstack.com) (portals, lookup, dashboard; search-only Q&A) · [Android APK](https://github.com/commune-dxos/commune-dxos/releases/latest) · [documentation site](https://commune-dxos.github.io/commune-dxos/).
 
 Citizen portal: **http://localhost:9080/** · progress lookup: **http://localhost:9080/tra-cuu** · staff portal: **http://localhost:9080/can-bo** (password + OTP). Sample accounts (fake data): `congdan01` (citizen), `canbo01` (civil-status officer), `canbo02` (certification officer), `lanhdao01` (leader).
 
