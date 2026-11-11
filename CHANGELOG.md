@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-11
+
+### Sửa lỗi
+
+- **nen-tang:** Tang2-migrate chờ db-init xong để không tranh nhau tạo role ([#186](https://github.com/commune-dxos/commune-dxos/issues/186)) ([#187](https://github.com/commune-dxos/commune-dxos/issues/187))
+
+### Tài liệu
+
+- README và hướng dẫn dùng thử khớp bản demo công khai v0.12.0 ([#188](https://github.com/commune-dxos/commune-dxos/issues/188)) ([#189](https://github.com/commune-dxos/commune-dxos/issues/189))
+    - Dòng lối tắt gần đầu README và trang tài liệu: demo công khai, APK ở
+      Release mới nhất, trang tài liệu, hướng dẫn buổi dùng thử (cả phần English).
+    - Demo đã bật dashboard Superset (/bao-cao/); trợ lý vẫn chỉ tìm kiếm.
+      Sửa ghi chú trong README, bảng 1.1 và nhiệm vụ 6 của docs/thu-nghiem.md.
+
 ## [0.12.0] - 2026-11-10
 
 ### Tính năng mới
@@ -765,7 +779,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.9.1...v0.10.0
