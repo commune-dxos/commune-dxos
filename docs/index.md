@@ -8,6 +8,8 @@
 
 ## Xem nhanh
 
+Dùng thử không cần cài: [bản demo công khai](https://commune.dzfullstack.com) (cổng công dân, cổng cán bộ, tra cứu, dashboard `/bao-cao/`; hỏi đáp chỉ tìm kiếm), [app Android](https://github.com/commune-dxos/commune-dxos/releases/latest) (tệp `.apk` trong Release mới nhất), [hướng dẫn buổi dùng thử](thu-nghiem.md).
+
 Người dân nộp hồ sơ đăng ký khai sinh (thiếu giấy tờ bị chặn, đủ thì nộp được), rồi tra cứu tiến độ bằng mã hồ sơ:
 
 ![Demo cổng công dân: danh mục thủ tục, nộp hồ sơ đăng ký khai sinh, lỗi thiếu giấy chứng sinh, nộp thành công có mã hồ sơ, tra cứu tiến độ bằng mã và 4 số cuối điện thoại](media/demo-cong-dan.gif)

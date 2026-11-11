@@ -20,9 +20,9 @@ Mọi tài khoản, hồ sơ, mã hồ sơ, số điện thoại trong bản th�
 | Bản | Địa chỉ | Có gì |
 |---|---|---|
 | Chạy trên máy (mặc định trong trang này) | `http://localhost:9080` | đủ mọi phần nếu bật thêm `make up-bi`, `make up-ai` |
-| Demo công khai | `https://commune.dzfullstack.com` | profile `core`: cổng công dân, cổng cán bộ, tra cứu, hỏi đáp chỉ tìm kiếm. **Chưa bật** `up-bi` (dashboard) và `up-ai` (trợ lý có mô hình ngôn ngữ) vì máy chủ thiếu RAM |
+| Demo công khai | `https://commune.dzfullstack.com` | profile `core` và `bi`: cổng công dân, cổng cán bộ, tra cứu, dashboard `/bao-cao/`, hỏi đáp chỉ tìm kiếm. **Chưa bật** `up-ai` (trợ lý có mô hình ngôn ngữ) vì máy chủ thiếu RAM |
 
-Khi thử trên demo công khai, thay `http://localhost:9080` trong trang này bằng `https://commune.dzfullstack.com`. Nhiệm vụ 6 bỏ qua; nhiệm vụ 5 chỉ trả đoạn tài liệu liên quan, không soạn câu trả lời.
+Khi thử trên demo công khai, thay `http://localhost:9080` trong trang này bằng `https://commune.dzfullstack.com`. Nhiệm vụ 5 chỉ trả đoạn tài liệu liên quan, không soạn câu trả lời.
 
 ### 1.2 Dựng bản trên máy
 
@@ -121,7 +121,7 @@ Trên demo công khai và khi `LLM_PROVIDER=tat`, trang chỉ trả các đoạn
 
 ### Nhiệm vụ 6. Dashboard báo cáo – lãnh đạo, sinh viên
 
-Chỉ có khi chạy `make up-bi` trên máy; **chưa có trên demo công khai**.
+Trên máy cần chạy `make up-bi` (rồi `make kho-du-lieu`); demo công khai đã bật sẵn.
 
 1. Mở `http://localhost:9080/bao-cao/`, đăng nhập bằng `lanhdao01`, mở dashboard **Hiệu suất một cửa**.
 2. Tìm tỷ lệ trễ hạn theo tháng và thủ tục, số hồ sơ theo lĩnh vực.
