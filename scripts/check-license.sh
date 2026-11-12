@@ -4,8 +4,8 @@
 # REUSE-IgnoreStart
 # Kiểm tra mọi tệp mã và cấu hình đều có header SPDX đúng giấy phép dự án (PoF tiêu chí 2, D-010):
 # `SPDX-FileCopyrightText` + `SPDX-License-Identifier: GPL-3.0-or-later` trong 5 dòng đầu.
-# Quét: Dockerfile, Makefile, .env.example, *.env, .sh, .py, .yml/.yaml, .toml, .hcl, .conf, .ini,
-# .properties, .sql, .ts/.tsx/.js, .css, .xml/.bpmn/.html/.svg. Tệp không có chú thích (.json, .md,
+# Quét: Dockerfile, Makefile, Podfile, .env.example, *.env, .sh, .py, .yml/.yaml, .toml, .hcl, .conf, .ini,
+# .properties, .sql, .ts/.tsx/.js, .swift/.m/.mm/.h, .css, .xml/.bpmn/.html/.svg. Tệp không có chú thích (.json, .md,
 # ảnh) không bắt buộc header (khai trong REUSE.toml), nhưng nếu có header thì cũng phải đúng.
 # Bỏ qua thư mục bên thứ ba. Dùng trong CI. Thoát mã 1 nếu thiếu hoặc sai.
 set -euo pipefail
