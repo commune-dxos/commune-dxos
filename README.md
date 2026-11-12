@@ -246,6 +246,7 @@ Cổng, tài khoản, gọi API bằng `curl`, xử lý lỗi: [`docs/cai-dat.md
 
 **Một cửa xã** là app Android cho người dân, nằm ở [`mot-cua/di-dong/`](mot-cua/di-dong/) (React Native, Tầng 2). App xem thủ tục, nộp hồ sơ kèm ảnh chụp giấy tờ (thiếu giấy tờ bắt buộc thì chặn trước khi gửi), tra cứu bằng mã hồ sơ không cần đăng nhập, xem hồ sơ của mình và trạng thái, bổ sung giấy tờ khi bộ phận một cửa yêu cầu rồi nộp lại, tải biên nhận và thông báo kết quả PDF có ký số. Xem quay màn hình ở mục [Demo](#demo). App gọi cùng các API qua APISIX với cổng web, đăng nhập bằng tài khoản công dân trên Keycloak (PKCE).
 
+- **Người dân cài app:** hướng dẫn từng bước, lỗi hay gặp, cách báo lỗi: [`docs/cai-app.md`](docs/cai-app.md).
 - **Tải APK:** mỗi [Release](https://github.com/commune-dxos/commune-dxos/releases) từ v0.11.0 có tệp `mot-cua-xa-X.Y.Z-debug.apk` (kiểm bằng `SHA256SUMS` cùng Release). Cài lên điện thoại Android 7.0 trở lên (cho phép cài từ nguồn ngoài). App trỏ bản demo https://commune.dzfullstack.com.
 - **Tự build:** Node ≥ 22, JDK 17, Android SDK; `cd mot-cua/di-dong && corepack enable && yarn install --frozen-lockfile && yarn apk:debug`. Trỏ máy local (`make up`) bằng `.env` và `adb reverse`: [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md).
 
@@ -284,6 +285,7 @@ Trang tài liệu dựng bằng MkDocs từ thư mục [`docs/`](docs/), xem tr�
 | Thêm một thủ tục mới, ví dụ từ A đến Z | người phát triển gói | [`docs/thu-tuc.md`](docs/thu-tuc.md) | [mở](https://commune-dxos.github.io/commune-dxos/thu-tuc/) |
 | Danh mục thủ tục (tự sinh từ gói) | người dân, cán bộ | `thu-tuc/*/thu-tuc.yaml` | [mở](https://commune-dxos.github.io/commune-dxos/danh-muc-thu-tuc/) |
 | Cổng cán bộ: luồng xử lý hồ sơ, sổ văn bản, wiki, lịch | cán bộ | [`docs/cong-can-bo.md`](docs/cong-can-bo.md) | [mở](https://commune-dxos.github.io/commune-dxos/cong-can-bo/) |
+| Cài app Android Một cửa xã | người dân | [`docs/cai-app.md`](docs/cai-app.md) | [mở](https://commune-dxos.github.io/commune-dxos/cai-app/) |
 | Tra cứu hồ sơ đã nộp | người dân | [`docs/tra-cuu-ho-so.md`](docs/tra-cuu-ho-so.md) | [mở](https://commune-dxos.github.io/commune-dxos/tra-cuu-ho-so/) |
 | Hướng dẫn buổi dùng thử, 6 nhiệm vụ theo vai | người dùng thử | [`docs/thu-nghiem.md`](docs/thu-nghiem.md) | [mở](https://commune-dxos.github.io/commune-dxos/thu-nghiem/) |
 | Đối chiếu yêu cầu đề thi | giám khảo | [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md) | [mở](https://commune-dxos.github.io/commune-dxos/de-thi-mapping/) |
