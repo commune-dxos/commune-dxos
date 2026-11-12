@@ -285,6 +285,7 @@ Trang tài liệu dựng bằng MkDocs từ thư mục [`docs/`](docs/), xem tr�
 | Thêm một thủ tục mới, ví dụ từ A đến Z | người phát triển gói | [`docs/thu-tuc.md`](docs/thu-tuc.md) | [mở](https://commune-dxos.github.io/commune-dxos/thu-tuc/) |
 | Danh mục thủ tục (tự sinh từ gói) | người dân, cán bộ | `thu-tuc/*/thu-tuc.yaml` | [mở](https://commune-dxos.github.io/commune-dxos/danh-muc-thu-tuc/) |
 | Cổng cán bộ: luồng xử lý hồ sơ, sổ văn bản, wiki, lịch | cán bộ | [`docs/cong-can-bo.md`](docs/cong-can-bo.md) | [mở](https://commune-dxos.github.io/commune-dxos/cong-can-bo/) |
+| Dashboard báo cáo Superset | lãnh đạo xã | [`docs/bao-cao.md`](docs/bao-cao.md) | [mở](https://commune-dxos.github.io/commune-dxos/bao-cao/) |
 | Cài app Android Một cửa xã | người dân | [`docs/cai-app.md`](docs/cai-app.md) | [mở](https://commune-dxos.github.io/commune-dxos/cai-app/) |
 | Tra cứu hồ sơ đã nộp | người dân | [`docs/tra-cuu-ho-so.md`](docs/tra-cuu-ho-so.md) | [mở](https://commune-dxos.github.io/commune-dxos/tra-cuu-ho-so/) |
 | Hướng dẫn buổi dùng thử, 6 nhiệm vụ theo vai | người dùng thử | [`docs/thu-nghiem.md`](docs/thu-nghiem.md) | [mở](https://commune-dxos.github.io/commune-dxos/thu-nghiem/) |

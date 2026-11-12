@@ -37,8 +37,9 @@ nav:
   - Người dân / cán bộ:
       - Danh mục thủ tục: danh-muc-thu-tuc.md
       - Tra cứu hồ sơ đã nộp: tra-cuu-ho-so.md
-      - Cài app Android Một cửa xã: cai-app.md
+      - Cài app Android (Một cửa xã): cai-app.md
       - Cổng cán bộ – luồng xử lý hồ sơ: cong-can-bo.md
+      - Dashboard báo cáo cho lãnh đạo xã: bao-cao.md
       - Hướng dẫn buổi dùng thử: thu-nghiem.md
   - Lập trình viên thêm thủ tục:
       - Thêm một thủ tục mới: thu-tuc.md
