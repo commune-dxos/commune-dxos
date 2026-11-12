@@ -47,7 +47,7 @@ Nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 
 
 Tám việc hằng ngày ở bộ phận một cửa của xã, trước và sau khi có Commune DX-OS.
 
-✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.12.1**) · ⏳ **chưa làm**
+✅ đã phát hành, ghi bản đầu tiên có (mới nhất **v0.12.2**) · ⏳ **chưa làm**
 
 | Trước | Sau |
 |---|---|
@@ -64,7 +64,7 @@ Kế hoạch từng tuần: [`docs/PLAN.md`](docs/PLAN.md). Đối chiếu yêu 
 
 ## Người dùng và tính năng theo vai
 
-Chỉ ghi những gì đã có trong bản **v0.12.1**.
+Chỉ ghi những gì đã có trong bản **v0.12.2**.
 
 **Người dân** (cổng web và app Android, tài khoản mẫu `congdan01`)
 - Xem danh mục thủ tục, thành phần hồ sơ, thời hạn, lệ phí mà không cần đăng nhập.

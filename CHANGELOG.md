@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-11-12
+
+### Tài liệu
+
+- **readme:** Bổ sung mục lục, tính năng theo vai, công nghệ, cấu trúc thư mục, thông tin đội ([#196](https://github.com/commune-dxos/commune-dxos/issues/196))
+    - Mục lục có link neo; người dùng và tính năng theo vai (chỉ tính năng của v0.12.1)
+    - Bảng công nghệ lấy từ DEPENDENCIES.md và docker-compose.yml, kèm giấy phép và profile
+    - Cây thư mục 1–2 cấp, yêu cầu hệ thống gộp một bảng, hệ điều hành đã chạy thật
+    - Bảng tài liệu, bảng thành viên theo tài khoản GitHub, mục liên hệ (Issues, Discussions)
+    - Bỏ chú giải 🆕 không còn dùng, sửa alt ảnh kiến trúc còn ghi tuần 3
+    - Phần English: mục lục ngắn, cấu trúc thư mục, đội
+
 ## [0.12.1] - 2026-11-11
 
 ### Sửa lỗi
@@ -779,7 +791,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.10.0...v0.11.0
