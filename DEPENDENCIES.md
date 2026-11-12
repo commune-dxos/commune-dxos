@@ -81,7 +81,7 @@ Rà giấy phép ngày 23/10/2026 (bản mẫu giao diện shadcn, rà lại khi
 
 ### App di động (`mot-cua/di-dong/package.json`)
 
-App **Một cửa xã** cho công dân (D-015, #155), React Native bare, chỉ build Android. Phiên bản ghim cứng trong `package.json`, cây phụ thuộc khóa trong `yarn.lock`; `make check` (`scripts/check-web.py`) báo lỗi nếu có `^`/`~` hoặc `yarn.lock` thiếu mục của phiên bản đã ghim. Không dùng Firebase, Stripe, Google/Apple Sign-in, react-native-maps (D-015 mục 2).
+App **Một cửa xã** cho công dân (D-015, #155), React Native bare, build Android (APK) và iOS (dự án Xcode trong `ios/`). Phiên bản ghim cứng trong `package.json`, cây phụ thuộc khóa trong `yarn.lock`; `make check` (`scripts/check-web.py`) báo lỗi nếu có `^`/`~` hoặc `yarn.lock` thiếu mục của phiên bản đã ghim. Không dùng Firebase, Stripe, Google/Apple Sign-in, react-native-maps (D-015 mục 2).
 
 | Gói | Phiên bản | Giấy phép | Nguồn | Dùng ở | Tương thích GPL-3.0 |
 |---|---|---|---|---|---|
@@ -95,8 +95,8 @@ App **Một cửa xã** cho công dân (D-015, #155), React Native bare, chỉ b
 | `i18next, react-i18next` | 25.5.2, 15.7.3 | MIT | npmjs.com · https://github.com/i18next/i18next | `mot-cua/di-dong` – sản phẩm (chuỗi giao diện tiếng Việt) | ✓ MIT |
 | `@react-native-community/netinfo` | 11.4.1 | MIT | npmjs.com · https://github.com/react-native-netinfo/react-native-netinfo | `mot-cua/di-dong` – sản phẩm (báo mất mạng) | ✓ MIT |
 | `@react-native-async-storage/async-storage` | 2.2.0 | MIT | npmjs.com · https://github.com/react-native-async-storage/async-storage | `mot-cua/di-dong` – sản phẩm (lưu dữ liệu không nhạy cảm) | ✓ MIT |
-| `react-native-keychain` | 10.0.0 | MIT | npmjs.com · https://github.com/oblador/react-native-keychain | `mot-cua/di-dong` – sản phẩm (lưu token trong Android Keystore) | ✓ MIT |
-| `react-native-app-auth` | 8.5.1 | MIT | npmjs.com · https://github.com/FormidableLabs/react-native-app-auth | `mot-cua/di-dong` – sản phẩm (OIDC Authorization Code + PKCE với Keycloak; Android dùng thư viện AppAuth-Android, Apache-2.0) | ✓ MIT |
+| `react-native-keychain` | 10.0.0 | MIT | npmjs.com · https://github.com/oblador/react-native-keychain | `mot-cua/di-dong` – sản phẩm (lưu token trong Android Keystore, iOS Keychain) | ✓ MIT |
+| `react-native-app-auth` | 8.5.1 | MIT | npmjs.com · https://github.com/FormidableLabs/react-native-app-auth | `mot-cua/di-dong` – sản phẩm (OIDC Authorization Code + PKCE với Keycloak; Android dùng thư viện AppAuth-Android, iOS dùng AppAuth-iOS, cùng Apache-2.0) | ✓ MIT |
 | `react-native-image-picker` | 8.2.1 | MIT | npmjs.com · https://github.com/react-native-image-picker/react-native-image-picker | `mot-cua/di-dong` – sản phẩm (chụp, chọn ảnh giấy tờ) | ✓ MIT |
 | `react-native-svg` | 15.15.0 | MIT | npmjs.com · https://github.com/software-mansion/react-native-svg | `mot-cua/di-dong` – sản phẩm (vẽ biểu tượng) | ✓ MIT |
 | `lucide-react-native` | 1.61.0 | ISC | npmjs.com · https://github.com/lucide-icons/lucide | `mot-cua/di-dong` – sản phẩm (biểu tượng, cùng bộ với cổng công dân) | ✓ ISC |
@@ -109,9 +109,13 @@ App **Một cửa xã** cho công dân (D-015, #155), React Native bare, chỉ b
 | `jest, react-test-renderer` | 29.7.0, 19.1.0 | MIT | npmjs.com · https://github.com/jestjs/jest | `mot-cua/di-dong` – công cụ (test) | ✓ MIT; công cụ |
 | `@types/jest, @types/react, @types/react-test-renderer` | 29.5.14, 19.1.17, 19.1.0 | MIT | npmjs.com · https://github.com/DefinitelyTyped/DefinitelyTyped | `mot-cua/di-dong` – công cụ (kiểu TypeScript) | ✓ MIT; công cụ |
 | Khung Android (`android/`, không phải gói npm) | `@react-native-community/template` 0.80.3 | MIT | https://github.com/react-native-community/template | Tệp Gradle, Kotlin, manifest sinh từ mẫu rồi đội sửa (tên app, package `vn.communedxos.motcua`, scheme đăng nhập, bỏ keystore mẫu); ghi nguồn ở NOTICE | ✓ MIT |
+| Khung iOS (`ios/`, không phải gói npm) | `@react-native-community/template` 0.80.3 | MIT | https://github.com/react-native-community/template | Dự án Xcode `MotCuaXa`, `AppDelegate.swift`, `Podfile`, `Info.plist` sinh từ mẫu rồi đội sửa (bundle ID `vn.communedxos.motcua`, tên hiển thị, scheme đăng nhập, quyền máy ảnh/thư viện ảnh, biểu tượng); ghi nguồn ở NOTICE | ✓ MIT |
+| CocoaPods | 1.17.0 | MIT | rubygems.org · https://github.com/CocoaPods/CocoaPods | `mot-cua/di-dong/ios` – công cụ (`pod install` tải thư viện native iOS theo `Podfile.lock`); cài trên máy, không nằm trong repo | ✓ MIT; công cụ |
 | Gradle wrapper (`android/gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`) | Gradle 8.14.1 | Apache-2.0 (gradlew.bat có thêm phần MIT của Meta) | https://github.com/gradle/gradle | Tệp gốc đi kèm mẫu, không sửa; khai trong `REUSE.toml` | ✓ Apache-2.0 (tương thích GPLv3) |
 
 Thư viện Android do Gradle tải từ Maven Central/Google Maven lúc build (không nằm trong repo): React Native, Hermes, Fresco (MIT); AndroidX, Kotlin stdlib, OkHttp, fbjni, SoLoader, AppAuth-Android (Apache-2.0). Android SDK, build-tools, NDK là công cụ build cài trên máy, không nằm trong repo và không đi vào mã của dự án.
+
+Thư viện iOS do CocoaPods tải lúc `pod install` (thư mục `ios/Pods/`, không nằm trong repo; phiên bản khóa trong `ios/Podfile.lock`): React Native, Hermes, Yoga, fmt 11.0.2 (MIT); AppAuth-iOS 3.0.0, RCT-Folly (Apache-2.0); fast_float 8.0.0 (Apache-2.0 / MIT / BSL-1.0); SocketRocket 0.7.1, glog 0.3.5, double-conversion 1.1.6 (BSD-3-Clause); Boost 1.84.0 (BSL-1.0). Xcode và iOS SDK là công cụ build cài trên máy, không nằm trong repo.
 
 Rà giấy phép ngày 06/11/2026 bằng `yarn licenses list` trên `yarn.lock`: 863 gói kể cả công cụ (750 MIT, 44 ISC, 25 BSD-3-Clause, 21 BSD-2-Clause, 15 Apache-2.0, 3 MIT OR CC0-1.0, 2 0BSD, 1 Python-2.0, 1 CC-BY-4.0, 1 CC0-1.0). Hai gói không phải giấy phép mã: `caniuse-lite` (CC-BY-4.0, bảng dữ liệu trình duyệt Babel đọc lúc build) và `mdn-data` (CC0-1.0, dữ liệu CSS mà `react-native-svg` kéo theo); đều là dữ liệu, không liên kết với mã của dự án. Không có gói GPL-2.0-only, SSPL, BSL hay giấy phép không OSI.
 
