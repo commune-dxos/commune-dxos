@@ -297,7 +297,7 @@ export function ChuaDangNhap() {
               <Building2 aria-hidden="true" className="size-4 text-primary" />
               UBND cấp xã · Bộ phận Một cửa
             </span>
-            <span className="font-mono font-bold text-primary">v0.12.1</span>
+            <span className="font-mono font-bold text-primary">v0.12.2</span>
           </div>
         </aside>
       </div>
