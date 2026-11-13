@@ -21,7 +21,7 @@ Ra (thư mục ghi NGOÀI repo):
     moc         = khung bắt đầu/kết thúc của từng bước (vd. "go_cau_hoi", "da_nop")
     lenh        = kết quả thật của lệnh ở đoạn ket-qua (xác minh chữ ký), kiem-toan, cam-goi, để bản dựng vẽ khung terminal
 
-Tám đoạn theo docs/trinh-bay/kich-ban-demo.md: tro-ly, nop, can-bo, lanh-dao, ket-qua, kiem-toan, superset, cam-goi.
+Tám đoạn theo các luồng của docs/demo/huong-dan-demo.md: tro-ly, nop, can-bo, lanh-dao, ket-qua, kiem-toan, superset, cam-goi.
 Tài khoản mẫu và OTP như quay_video_demo.py: mật khẩu, secret OTP ngẫu nhiên chỉ trong bộ nhớ, ô mật khẩu hiện dấu chấm,
 ô OTP bị che bằng CSS; xong (kể cả lỗi) trả congdan01, canbo01, lanhdao01 về đúng realm.json và rút gói ví dụ.
 

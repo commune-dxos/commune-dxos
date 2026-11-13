@@ -85,7 +85,7 @@ Cách dùng tệp này:
 - [ ] V3 · Tài liệu song ngữ (README, trang tài liệu có mục English, Quick start tiếng Anh từ máy sạch); ví dụ gói thủ tục từ A đến Z cho **lập trình viên** trong `docs/thu-tuc.md`, song ngữ (#106)
 - [x] V1 · **Thêm gói thủ tục** (ngoài khai sinh, chứng thực bản sao), mỗi gói một thư mục, không sửa mã bộ máy, để chứng minh cắm–rút theo gói (D-009 thay cho "module mẫu thứ hai" kiểu `apps/<tên>/`): kết hôn KH01, hòa giải tranh chấp đất đai DD01 (#97, PR #98)
 - [x] V2 · **Công bố bộ JSON Schema thủ tục hành chính cấp xã dạng dữ liệu mở** (thư mục riêng, có README và giấy phép dữ liệu ghi rõ): `du-lieu-mo/thu-tuc-cap-xa/`, CC-BY-4.0, sinh từ gói (#102, PR #103); `reuse lint` đạt REUSE 3.3, chạy trong CI (#104, PR #105)
-- [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp). Đã có: kịch bản theo phút `docs/trinh-bay/kich-ban-demo.md`, `make du-lieu-demo`, dàn ý slide (#108); còn: tập thật cả đội
+- [ ] V1 · V2 · V3 · **Tập trình bày lần 1** (15 phút, có demo trực tiếp). Đã có: hướng dẫn chạy lại demo `docs/demo/huong-dan-demo.md`, `make du-lieu-demo` (#108); còn: tập thật cả đội
 - [x] V1 · Release v0.7.0 – bản tuần 6: dữ liệu mở, REUSE 3.3, tài liệu song ngữ, kịch bản trình bày, sửa đăng nhập Superset (#112; thay dòng "Release v0.3.0" cũ: v0.3.0 đã phát hành 22/10)
 
 ## Tuần 7 · 26/11–06/12 · Đóng băng PoF, nộp bài → v1.0.0

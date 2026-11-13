@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Video demo dự phòng cho buổi trình bày 15 phút (#108): đủ luồng H-P-D-I trên hệ thống chạy thật, một tệp MP4.
+"""Video demo (#108): đủ luồng H-P-D-I trên hệ thống chạy thật, một tệp MP4.
 
-Bảy đoạn theo đúng thứ tự của docs/trinh-bay/kich-ban-demo.md, mỗi đoạn mở bằng một khung tiêu đề:
+Bảy đoạn theo đúng thứ tự các luồng của docs/demo/huong-dan-demo.md, mỗi đoạn mở bằng một khung tiêu đề:
   1 [I] công dân hỏi trợ lý thủ tục (RAG, Qwen2.5 7B nếu LLM_PROVIDER=ollama), câu trả lời dẫn nguồn
   2 [P] công dân nộp đăng ký khai sinh: Poka-yoke chặn thiếu giấy, OCR đọc ảnh mẫu giả và tự điền, tải biên nhận ký số
   3 [P] cán bộ hộ tịch (mật khẩu + OTP): chuông thông báo sắp trễ hạn, xác nhận thông tin máy đọc (HITL),

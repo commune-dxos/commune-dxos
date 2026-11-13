@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 DTU_DZ_2
 # SPDX-License-Identifier: GPL-3.0-or-later
-# make du-lieu-demo (#108): dựng dữ liệu GIẢ cho buổi trình bày 15 phút (docs/trinh-bay/kich-ban-demo.md) trên
+# make du-lieu-demo (#108): dựng dữ liệu GIẢ cho demo (docs/demo/huong-dan-demo.md) trên
 # hệ thống đang chạy, chạy sau make up (tốt nhất make up-ai + make up-bi) và trước make demo-users:
 #   1. ~96 hồ sơ ĐÃ ĐÓNG rải trong 4 tháng qua (4 thủ tục, ~1/6 trễ hạn, vài hồ sơ từ chối), mã HSDEMO-0001…,
 #      để dashboard Superset có số liệu theo tháng. Ghi thẳng bằng SQL như seed (không có quy trình Flowable).
