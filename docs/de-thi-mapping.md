@@ -47,4 +47,4 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 | Dữ liệu mở cho cộng đồng | ✔ (#102: `du-lieu-mo/thu-tuc-cap-xa/` – danh mục JSON + CSV + JSON Schema thành phần hồ sơ từng thủ tục, giấy phép **CC-BY-4.0**, README song ngữ; sinh từ gói bằng `make du-lieu-mo`, `make check` báo lệch, smoke đối chiếu với API công khai đang chạy; tải trên trang tài liệu) |
 | Demo công khai trên Internet, người dùng thật thử | ☐ |
 | Kênh trao đổi (Discussions/Telegram), bài giới thiệu | ☐ |
-| Trình bày 15 phút (tiêu chí 8, 11): kịch bản theo phút qua H-P-D-I, lời thoại, câu hỏi giám khảo, phương án khi demo hỏng, dàn ý slide | ◐ (#108: `docs/trinh-bay/kich-ban-demo.md`, `make du-lieu-demo`, video dự phòng `make quay-demo VIDEO=…` lưu ngoài repo; còn tập thật) |
+| Demo qua H-P-D-I (tiêu chí 8, 11): hướng dẫn chạy lại từng luồng, thao tác và kết quả mong đợi | ◐ (#108: `docs/demo/huong-dan-demo.md`, `make du-lieu-demo`, video dự phòng `make quay-demo VIDEO=…` lưu ngoài repo; còn tập thật) |

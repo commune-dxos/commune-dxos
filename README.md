@@ -363,7 +363,7 @@ Trang tài liệu dựng bằng MkDocs từ thư mục [`docs/`](docs/), xem tr�
 | Tra cứu hồ sơ đã nộp | người dân | [`docs/tra-cuu-ho-so.md`](docs/tra-cuu-ho-so.md) | [mở](https://commune-dxos.github.io/commune-dxos/tra-cuu-ho-so/) |
 | Hướng dẫn buổi dùng thử, 6 nhiệm vụ theo vai | người dùng thử | [`docs/thu-nghiem.md`](docs/thu-nghiem.md) | [mở](https://commune-dxos.github.io/commune-dxos/thu-nghiem/) |
 | Đối chiếu yêu cầu đề thi | giám khảo | [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md) | [mở](https://commune-dxos.github.io/commune-dxos/de-thi-mapping/) |
-| Kịch bản trình bày 15 phút | giám khảo | [`docs/trinh-bay/kich-ban-demo.md`](docs/trinh-bay/kich-ban-demo.md) | [mở](https://commune-dxos.github.io/commune-dxos/trinh-bay/kich-ban-demo/) |
+| Hướng dẫn chạy lại demo theo H-P-D-I | người muốn chạy demo | [`docs/demo/huong-dan-demo.md`](docs/demo/huong-dan-demo.md) | [mở](https://commune-dxos.github.io/commune-dxos/demo/huong-dan-demo/) |
 | Bộ máy một cửa, lõi headless, app di động | người phát triển | [`mot-cua/README.md`](mot-cua/README.md), [`nen-tang/README.md`](nen-tang/README.md), [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md) | |
 | Thay đổi qua từng bản | mọi người | [`CHANGELOG.md`](CHANGELOG.md) (sinh bằng git-cliff), [Releases](https://github.com/commune-dxos/commune-dxos/releases) | |
 | Cách đóng góp, quy tắc ứng xử | người đóng góp | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | |

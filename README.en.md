@@ -366,7 +366,7 @@ The documentation site is built with MkDocs from [`docs/`](docs/) and published 
 | Looking up an application | citizens | [`docs/tra-cuu-ho-so.md`](docs/tra-cuu-ho-so.md) | [open](https://commune-dxos.github.io/commune-dxos/tra-cuu-ho-so/) |
 | Trial session guide, 6 role-based tasks | trial users | [`docs/thu-nghiem.md`](docs/thu-nghiem.md) | [open](https://commune-dxos.github.io/commune-dxos/thu-nghiem/) |
 | Mapping to the contest requirements | reviewers | [`docs/de-thi-mapping.md`](docs/de-thi-mapping.md) | [open](https://commune-dxos.github.io/commune-dxos/de-thi-mapping/) |
-| 15-minute presentation script | reviewers | [`docs/trinh-bay/kich-ban-demo.md`](docs/trinh-bay/kich-ban-demo.md) | [open](https://commune-dxos.github.io/commune-dxos/trinh-bay/kich-ban-demo/) |
+| Guide to re-running the demo through H-P-D-I (Vietnamese) | anyone running the demo | [`docs/demo/huong-dan-demo.md`](docs/demo/huong-dan-demo.md) | [open](https://commune-dxos.github.io/commune-dxos/demo/huong-dan-demo/) |
 | One-stop-shop engine, headless core, mobile app | developers | [`mot-cua/README.md`](mot-cua/README.md), [`nen-tang/README.md`](nen-tang/README.md), [`mot-cua/di-dong/README.md`](mot-cua/di-dong/README.md) | |
 | Changes per release | everyone | [`CHANGELOG.md`](CHANGELOG.md) (generated with git-cliff), [Releases](https://github.com/commune-dxos/commune-dxos/releases) | |
 | Contributing, code of conduct | contributors | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/en/contributing.md`](docs/en/contributing.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | |
