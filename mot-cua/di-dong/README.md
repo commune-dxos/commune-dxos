@@ -1,6 +1,6 @@
 # Một cửa xã – app di động cho công dân
 
-App Android cho người dân dùng bộ máy một cửa của Commune DX-OS (Tầng 2, quyết định D-015):
+App Android và iOS cho người dân dùng bộ máy một cửa của Commune DX-OS (Tầng 2, quyết định D-015):
 xem thủ tục, nộp hồ sơ kèm ảnh giấy tờ, tra cứu theo mã hồ sơ, theo dõi và bổ sung hồ sơ của mình,
 tải biên nhận và kết quả có ký số. App gọi đúng các API mà cổng công dân web (`mot-cua/web-cong-dan/`) đang dùng, qua APISIX:
 
@@ -16,7 +16,7 @@ tải biên nhận và kết quả có ký số. App gọi đúng các API mà c
 | `POST /files/ho-so/{id}/giay-to/{loai}` | biên nhận, thông báo kết quả PDF ký số (link tải ngắn hạn) | có |
 
 Đăng nhập bằng Keycloak (realm `dxos`), Authorization Code + PKCE, client public `mot_cua_di_dong`,
-không có client secret trong app. Token lưu trong Android Keystore qua `react-native-keychain`.
+không có client secret trong app. Token lưu trong Android Keystore (iOS: Keychain) qua `react-native-keychain`.
 
 ## Tính năng
 
@@ -35,7 +35,7 @@ Mọi màn có trạng thái đang tải, lỗi kèm nút Thử lại, trống, 
 
 Giao diện theo cổng công dân web: nền sáng, xanh ngọc `#0F766E` cho nút chính, chàm `#4338CA` cho bước đang xử lý
 và nhãn lĩnh vực, đỏ son `#D9480F` chỉ cho cảnh báo. Chữ thân 18, không chữ nào dưới 16 (trừ nhãn thanh tab), vùng
-bấm ≥ 48dp, nút bo tròn. Phông chữ là phông hệ thống của Android (Roboto, đủ dấu tiếng Việt); app không nhúng phông.
+bấm ≥ 48dp, nút bo tròn. Phông chữ là phông hệ thống (Roboto trên Android, San Francisco trên iOS, đủ dấu tiếng Việt); app không nhúng phông.
 
 ## Demo
 
@@ -70,7 +70,7 @@ khác khóa: nếu Android báo "Ứng dụng chưa được cài đặt" khi c�
 React Native 0.80 (bare, New Architecture, Hermes) · TypeScript strict · React Navigation 7 ·
 TanStack Query 5 · Zustand 5 · i18next (tiếng Việt) · NetInfo · AsyncStorage · react-native-keychain ·
 react-native-app-auth · react-native-image-picker. Giấy phép từng gói: [`DEPENDENCIES.md`](../../DEPENDENCIES.md).
-Chỉ build Android; chưa có bản iOS.
+Build Android (APK, phát hành trong Release) và iOS (dự án Xcode trong `ios/`, xem [Build iOS](#build-ios)).
 
 ## Cấu trúc
 
@@ -87,6 +87,7 @@ src/
   ngon-ngu/     chuỗi giao diện tiếng Việt (vi.json)
 __tests__/      Jest: dịch vụ, kho, render màn chi tiết hồ sơ với máy chủ giả
 android/        dự án Android (package vn.communedxos.motcua)
+ios/            dự án iOS MotCuaXa (bundle ID vn.communedxos.motcua), Podfile, Podfile.lock
 ```
 
 ## Chạy thử
@@ -128,6 +129,9 @@ DXOS_KEYCLOAK_URL=http://localhost:8080
 Biến môi trường được gắn vào mã lúc đóng gói (`babel.config.js`), nên sau khi đổi `.env` phải chạy
 `yarn start --reset-cache` (hoặc build lại APK). Bản debug cho phép HTTP thường để gọi máy local.
 
+Trên iOS Simulator không cần `adb reverse`: máy ảo gọi thẳng `localhost` của máy Mac. App iOS chỉ cho HTTP
+thường tới địa chỉ cục bộ (`NSAllowsLocalNetworking`), mọi địa chỉ khác phải là HTTPS.
+
 ## Build APK debug
 
 ```bash
@@ -140,6 +144,49 @@ APK debug đã đóng gói sẵn JS (`debuggableVariants = []` trong `android/ap
 điện thoại là chạy, không cần Metro. APK được ký bằng khóa debug mặc định của máy build
 (`~/.android/debug.keystore`); repo không chứa keystore nào. Workflow `di-dong` trên GitHub cũng build APK
 khi đẩy vào `develop`/`main` hoặc bấm chạy tay, tải ở mục Artifacts.
+
+## Build iOS
+
+Cần máy Mac có Xcode (đã thử với Xcode 27.2), CocoaPods ≥ 1.15 (`brew install cocoapods` hoặc
+`gem install cocoapods`), Node ≥ 22. Dự án `ios/MotCuaXa.xcodeproj` sinh từ mẫu React Native 0.80.3:
+bundle ID `vn.communedxos.motcua`, tên hiển thị "Một cửa xã", chỉ iPhone, iOS 15.1 trở lên.
+
+```bash
+cd mot-cua/di-dong
+yarn install --frozen-lockfile
+cd ios && pod install && cd ..      # tải thư viện native theo Podfile.lock vào ios/Pods/ (không có trong repo)
+yarn start                           # Metro, cho bản Debug
+open ios/MotCuaXa.xcworkspace        # mở workspace (không mở .xcodeproj), chọn máy ảo rồi Run
+```
+
+Build Release cho máy ảo từ dòng lệnh (JS đóng gói sẵn, không cần Metro):
+
+```bash
+cd mot-cua/di-dong/ios
+xcodebuild -workspace MotCuaXa.xcworkspace -scheme MotCuaXa -configuration Release \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build build
+xcrun simctl install booted build/Build/Products/Release-iphonesimulator/MotCuaXa.app
+xcrun simctl launch booted vn.communedxos.motcua
+```
+
+Build cho máy thật cần tài khoản Apple Developer. Repo để trống `DEVELOPMENT_TEAM` và dùng ký tự động
+(Automatic), nên truyền mã đội lúc build, không ghi vào repo:
+
+```bash
+xcodebuild -workspace MotCuaXa.xcworkspace -scheme MotCuaXa -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath build/MotCuaXa.xcarchive \
+  DEVELOPMENT_TEAM=<mã đội Apple> -allowProvisioningUpdates archive
+```
+
+Kiểm tra build cho máy thật mà không ký: thêm `CODE_SIGNING_ALLOWED=NO` và thay `archive` bằng `build`.
+Phiên bản ghi trong dự án: `MARKETING_VERSION` (giống `versionName` Android) và `CURRENT_PROJECT_VERSION`
+(giống `versionCode`), đổi cùng lúc với `android/app/build.gradle` mỗi bản phát hành.
+
+Phần khác so với mẫu: `AppDelegate.swift` dùng vòng đời UIScene (có `SceneDelegate`; app build bằng SDK iOS 27
+mà không có scene thì dừng ngay khi mở) và trả URL `vn.communedxos.motcua:/oauth` cho `react-native-app-auth`
+sau khi đăng nhập Keycloak; `Info.plist` khai URL scheme đó, lời xin quyền máy ảnh và thư viện ảnh (chụp giấy
+tờ), `ITSAppUsesNonExemptEncryption = false`; `Podfile` nâng deployment target của các pod cũ lên 15.1 và build
+pod `fmt` bằng C++17 để Xcode mới biên dịch được.
 
 ## Client Keycloak cho app
 
@@ -172,5 +219,5 @@ Kiểm tra: `kcadm.sh get clients -r dxos -q clientId=mot_cua_di_dong --fields c
 
 ## Giấy phép
 
-GPL-3.0-or-later như toàn repo. Mọi tệp mã có header SPDX 2 dòng; tệp ảnh, `yarn.lock` và Gradle wrapper
-(Apache-2.0, tệp gốc của Gradle) khai trong [`REUSE.toml`](../../REUSE.toml).
+GPL-3.0-or-later như toàn repo. Mọi tệp mã có header SPDX 2 dòng; tệp ảnh, `yarn.lock`, tệp dự án Xcode
+(`project.pbxproj`, `Info.plist`, storyboard, `Podfile.lock`) và Gradle wrapper (Apache-2.0, tệp gốc của Gradle) khai trong [`REUSE.toml`](../../REUSE.toml).

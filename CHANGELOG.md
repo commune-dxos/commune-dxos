@@ -4,6 +4,71 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-14
+
+### Tính năng mới
+
+- **di-dong:** Dự án iOS cho app Một cửa xã ([#207](https://github.com/commune-dxos/commune-dxos/issues/207))
+    - Sinh mot-cua/di-dong/ios/ từ mẫu React Native 0.80.3, dự án MotCuaXa, tên hiển thị "Một cửa xã",
+      bundle ID vn.communedxos.motcua (khớp applicationId Android), MARKETING_VERSION 0.12.2,
+      CURRENT_PROJECT_VERSION 1202, chỉ iPhone, iOS 15.1+.
+    - Ký tự động, DEVELOPMENT_TEAM để trống (truyền lúc archive).
+    - AppDelegate dùng vòng đời UIScene (SDK iOS 27 bắt buộc) và trả URL vn.communedxos.motcua:/oauth
+      cho react-native-app-auth.
+    - Info.plist: URL scheme đăng nhập, lời xin quyền máy ảnh/thư viện ảnh tiếng Việt, ATS chỉ HTTPS
+      (HTTP cho địa chỉ cục bộ), ITSAppUsesNonExemptEncryption = false.
+    - Biểu tượng AppIcon đủ cỡ, sinh từ docs/images/logo/mark.png trên nền trắng, không kênh alpha.
+    - Podfile: nâng deployment target pod cũ lên 15.1, build pod fmt bằng C++17 cho Xcode mới.
+    - SPDX: check-license quét thêm .swift/.m/.mm/.h và Podfile; tệp Xcode không chú thích được khai
+      trong REUSE.toml. Khai khung iOS, CocoaPods, thư viện pod trong DEPENDENCIES.md và NOTICE.
+    - README app: mục Build iOS.
+
+### Tài liệu
+
+- **demo:** Hướng dẫn chạy lại demo thay cho kịch bản trình bày ([#213](https://github.com/commune-dxos/commune-dxos/issues/213))
+    - Thêm docs/demo/huong-dan-demo.md: chuẩn bị môi trường và dữ liệu mẫu (make up-ai, up-bi, smoke,
+      du-lieu-demo, demo-users), thời gian trả lời của trợ lý trên CPU, cài OTP, tài khoản mẫu (không ghi
+      mật khẩu), bảy luồng H-P-D-I với thao tác và kết quả mong đợi, rút gói ví dụ, quay lại thành video.
+    - Xóa docs/trinh-bay/kich-ban-demo.md.
+    - Sửa liên kết ở README.md, README.en.md, mkdocs.yml (mục Vận hành), docs/PLAN.md,
+      docs/de-thi-mapping.md và chú thích trong Makefile, scripts/du-lieu-demo.sh, scripts/quay_*.py.
+- **readme:** Viết lại README theo cấu trúc bài toán – giải pháp, tách bản tiếng Anh ([#211](https://github.com/commune-dxos/commune-dxos/issues/211))
+    - README.md chỉ tiếng Việt, sắp lại các mục: ý tưởng bài toán (vấn đề, bảng đối tượng – nhu cầu),
+      giải pháp (hai tầng, H-P-D-I, điểm nổi bật), giao diện, kiến trúc và luồng xử lý, tính năng
+      theo đối tượng, thủ tục, dữ liệu mở, cấu trúc, công nghệ theo lớp, cài đặt (bảng yêu cầu, kiểm
+      tra, app di động, xóa dữ liệu), demo, tài liệu, đóng góp, giấy phép, liên hệ, tác giả.
+    - Thêm README.en.md cùng cấu trúc; bỏ mục English cuối README; liên kết chuyển ngôn ngữ ở dòng đầu.
+    - Ghi dự án iOS trên develop, chưa phát hành bản iOS.
+    - de-thi-mapping: README có bản tiếng Anh riêng.
+- Quy tắc ứng xử có cách báo vi phạm làm được trên GitHub ([#190](https://github.com/commune-dxos/commune-dxos/issues/190)) ([#202](https://github.com/commune-dxos/commune-dxos/issues/202))
+    - Viết lại CODE_OF_CONDUCT.md theo tinh thần Contributor Covenant 2.1, lời của đội
+    - Hành vi mong muốn, không chấp nhận, phạm vi áp dụng (repo, buổi dùng thử, nhóm trao đổi)
+    - Báo vi phạm: nhắc tên người duy trì trong issue; nội dung nhạy cảm dùng Report content
+      hoặc xin kênh riêng; bỏ câu "mở issue riêng tư" (GitHub không có)
+    - Cách xử lý: nhắc nhở, ẩn hoặc xóa, tạm chặn; thêm header SPDX
+- Hướng dẫn dashboard báo cáo cho lãnh đạo xã ([#200](https://github.com/commune-dxos/commune-dxos/issues/200)) ([#204](https://github.com/commune-dxos/commune-dxos/issues/204))
+    - docs/bao-cao.md: ai dùng, mở ở đâu (demo công khai, máy local với make up-bi, make kho-du-lieu),
+      đăng nhập lanhdao01 qua Keycloak + OTP (không ghi mật khẩu)
+    - Từng biểu đồ của dashboard Hiệu suất một cửa: đọc thế nào, metric và cột lấy từ
+      bao_cao.fct_ho_so, bao_cao.hieu_suat_thang; luồng hồ sơ đã đóng → Parquet → dbt → bao_cao → Superset
+    - Cập nhật số liệu, bảng lỗi hay gặp
+    - Chưa có ảnh chụp: dashboard cần đăng nhập tài khoản lãnh đạo có OTP; ghi chú chỗ cần ảnh
+    - Thêm trang vào mkdocs.yml và bảng Tài liệu trong README
+- Hướng dẫn người dân cài app Android Một cửa xã ([#201](https://github.com/commune-dxos/commune-dxos/issues/201)) ([#205](https://github.com/commune-dxos/commune-dxos/issues/205))
+    - docs/cai-app.md cho người không rành kỹ thuật: tải APK từ Release mới nhất, kiểm SHA256SUMS
+      (tùy chọn), cho phép cài từ nguồn ngoài trên Android 7.0+, đăng nhập congdan01, nộp thử,
+      tra cứu, bổ sung, tải PDF ký số; bảng lỗi hay gặp; báo lỗi bằng mẫu Phản hồi dùng thử
+    - Chưa có ảnh chụp Android (máy làm không có Android emulator): dùng lại hai GIF sẵn có,
+      ghi rõ quay trên iOS Simulator; ghi chú chỗ cần ảnh Android
+    - Thêm trang vào mkdocs.yml, link từ mục App di động và bảng Tài liệu trong README
+
+### Hạ tầng và CI
+
+- Lối tắt tới demo, tài liệu, hướng dẫn dùng thử trong trang chọn mẫu issue ([#191](https://github.com/commune-dxos/commune-dxos/issues/191)) ([#203](https://github.com/commune-dxos/commune-dxos/issues/203))
+    - Thêm .github/ISSUE_TEMPLATE/config.yml, giữ blank_issues_enabled: true
+    - contact_links: bản demo công khai, trang tài liệu, docs/thu-nghiem.md trên nhánh main
+- Gỡ mục cấu hình riêng máy khỏi .gitignore ([#209](https://github.com/commune-dxos/commune-dxos/issues/209))
+
 ## [0.12.2] - 2026-11-12
 
 ### Tài liệu
@@ -791,7 +856,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.11.0...v0.12.0

@@ -130,8 +130,8 @@ xuat-kien-truc: ## Xuất sơ đồ kiến trúc động ra docs/images/kien-tru
 
 # GIF demo cho README (#58): cùng venv, ffmpeg như trên; cần hệ thống đang chạy (make up). Tài khoản mẫu
 # congdan01, canbo01 được đặt mật khẩu + OTP ngẫu nhiên (không in ra), quay xong trả lại như realm.json.
-# VIDEO=<thư mục ngoài repo> (#108): video dự phòng MP4 3–5 phút đủ luồng H-P-D-I cho buổi trình bày
-# (docs/trinh-bay/kich-ban-demo.md); cần thêm make up-ai, make up-bi, make du-lieu-demo. Trả congdan01, canbo01,
+# VIDEO=<thư mục ngoài repo> (#108): video MP4 3–5 phút đủ luồng H-P-D-I của demo
+# (docs/demo/huong-dan-demo.md); cần thêm make up-ai, make up-bi, make du-lieu-demo. Trả congdan01, canbo01,
 # lanhdao01 về như realm.json: sau đó chạy lại make demo-users.
 quay-demo:     ## Quay GIF demo cổng công dân và cổng cán bộ ra docs/media/demo-{cong-dan,can-bo}.gif; VIDEO=<thư mục>: video dự phòng đủ luồng; KHUNG=<thư mục>: khung hình nét + meta.json cho dựng video (#143). Cần make up
 	PYTHONDONTWRITEBYTECODE=1 $(XUAT_PY) scripts/quay_demo.py $(if $(VIDEO),--video $(VIDEO)) $(if $(KHUNG),--khung $(KHUNG))

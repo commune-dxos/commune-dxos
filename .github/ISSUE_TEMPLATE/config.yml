@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 DTU_DZ_2
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Trang chọn mẫu issue (#191): giữ issue trống, thêm lối tắt tới demo, tài liệu, hướng dẫn dùng thử.
+blank_issues_enabled: true
+contact_links:
+  - name: Bản demo công khai
+    url: https://commune.dzfullstack.com
+    about: Dùng thử cổng công dân, cổng cán bộ, tra cứu hồ sơ và dashboard trên dữ liệu giả, không cần cài đặt.
+  - name: Trang tài liệu
+    url: https://commune-dxos.github.io/commune-dxos/
+    about: Cài đặt, kiến trúc, thêm thủ tục mới, hướng dẫn cổng cán bộ. Xem trước khi hỏi.
+  - name: Hướng dẫn buổi dùng thử
+    url: https://github.com/commune-dxos/commune-dxos/blob/main/docs/thu-nghiem.md
+    about: Sáu nhiệm vụ theo vai và cách gửi góp ý bằng mẫu Phản hồi dùng thử.

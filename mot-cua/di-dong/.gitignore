@@ -76,5 +76,11 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 
+# iOS: pod install và xcodebuild sinh ra, không đưa vào repo (Podfile.lock thì giữ)
+ios/Pods/
+ios/build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
 # Cấu hình máy (xem .env.example)
 .env
