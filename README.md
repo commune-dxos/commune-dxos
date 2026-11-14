@@ -30,7 +30,7 @@ Tiếng Việt | [English](README.en.md)
   <img src="docs/images/banner.webp" alt="Ảnh đầu trang có tiêu đề DTU_DZ_2 · OLP PMNM 2026 · COMMUNE DX-OS, Hệ điều hành Chính quyền số Cấp xã: bộ phận một cửa của xã, người dân nộp hồ sơ từ điện thoại, hồ sơ điện tử chuyển giữa các bàn cán bộ" width="100%">
 </p>
 
-Phần mềm nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 · Đề tài DX-OS Open-Core. Bản mới nhất: **v0.12.2**.
+Phần mềm nguồn mở, chạy trên một máy ở xã. Đội DTU_DZ_2 · OLP PMNM 2026 · Đề tài DX-OS Open-Core. Bản mới nhất: **v0.13.0**.
 
 ## Mục lục
 
@@ -158,7 +158,7 @@ Mọi thành phần chạy bằng image gốc. Sơ đồ chi tiết, route gatew
 
 ## Tính năng chính theo đối tượng
 
-Chỉ ghi những gì đã có trong bản **v0.12.2**.
+Chỉ ghi những gì đã có trong bản **v0.13.0**.
 
 **Người dân** (cổng web và app Android, tài khoản mẫu `congdan01`)
 - Xem danh mục thủ tục, thành phần hồ sơ, thời hạn, lệ phí mà không cần đăng nhập.

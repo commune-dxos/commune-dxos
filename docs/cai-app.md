@@ -23,7 +23,7 @@ App đang trỏ tới **bản demo công khai** https://commune.dzfullstack.com.
 ## Bước 1. Tải tệp cài đặt
 
 1. Trên điện thoại, mở trình duyệt, vào trang Release mới nhất: <https://github.com/commune-dxos/commune-dxos/releases/latest>.
-2. Kéo xuống mục **Assets**, bấm tệp có tên dạng `mot-cua-xa-X.Y.Z-debug.apk` (X.Y.Z là số phiên bản, ví dụ `mot-cua-xa-0.12.2-debug.apk`).
+2. Kéo xuống mục **Assets**, bấm tệp có tên dạng `mot-cua-xa-X.Y.Z-debug.apk` (X.Y.Z là số phiên bản, ví dụ `mot-cua-xa-0.13.0-debug.apk`).
 3. Trình duyệt có thể hỏi "Tệp này có thể gây hại"; bấm **Vẫn tải xuống**.
 
 ??? note "Tùy chọn: kiểm tệp có đúng của đội không"
