@@ -215,6 +215,21 @@ def tu(chu):
     return re.findall(r"[a-z0-9]+", bo_dau(chu))
 
 
+def truy_van_tu_khoa(cau_hoi):
+    """Đổi cách hỏi thời gian đời thường sang thuật ngữ trong kho, chỉ cho tìm từ khóa.
+
+    Ví dụ "bao lâu ..." → "thoi han ...". Không đổi câu hỏi đưa vào mô hình/hiển thị,
+    không đặt thời hạn hay câu trả lời sẵn cho bất kỳ thủ tục nào.
+    """
+    chu = bo_dau(cau_hoi)
+    chu, so_lan = re.subn(r"\b(?:bao lau|bao nhieu ngay|may ngay)\b", " ", chu)
+    if not so_lan:
+        return cau_hoi
+    # Từ nối trong câu hỏi không giúp nhận diện thủ tục; vẫn giữ tên nghiệp vụ và số.
+    ds = [t for t in tu(chu) if t not in {"sau", "khi", "phai", "cho", "thi"}]
+    return "thoi han " + " ".join(ds)
+
+
 def nhung_gia_lap(chu, so_chieu=SO_CHIEU):
     """Vector túi từ + cặp từ đã băm (feature hashing), chuẩn hóa độ dài 1. Tất định, không cần mô hình:
     câu hỏi và đoạn chung nhiều từ thì cosin cao. Chỉ để chạy thử đường pgvector (CI, smoke)."""
