@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-16
+
+### Sửa lỗi
+
+- **mot-cua:** Sửa tên công dân và tìm thời hạn thủ tục ([#217](https://github.com/commune-dxos/commune-dxos/issues/217)) ([#218](https://github.com/commune-dxos/commune-dxos/issues/218))
+
 ## [0.13.0] - 2026-11-14
 
 ### Tính năng mới
@@ -856,7 +862,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.0...v0.12.1
