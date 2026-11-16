@@ -9,7 +9,7 @@
 import { ArrowLeft, ArrowRight, CircleAlert, LogIn } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
-import { tenHienThi, useXacThuc } from "@/auth/xac-thuc";
+import { hoTenNguoiDung, tenHienThi, useXacThuc } from "@/auth/xac-thuc";
 import { Khung } from "@/components/khung";
 import { TaiThuTuc } from "@/components/tai-thu-tuc";
 import { ThongBao } from "@/components/thong-bao";
@@ -53,7 +53,7 @@ function Form({ thuTuc }: { thuTuc: ThuTuc }) {
   const goc = `/nop-ho-so/${encodeURIComponent(thuTuc.ma)}`;
   const thanhPhan = useMemo(() => docThanhPhan(thuTuc.json_schema), [thuTuc]);
 
-  const [nguoiNop, datNguoiNop] = useState<NguoiNop>({ hoTen: nguoiDung?.profile.name ?? "", soDienThoai: "" });
+  const [nguoiNop, datNguoiNop] = useState<NguoiNop>({ hoTen: nguoiDung ? hoTenNguoiDung(nguoiDung) : "", soDienThoai: "" });
   const [tep, datTep] = useState<Record<string, File[]>>({});
   const [loi, datLoi] = useState<Loi>([]);
   const [lanKiem, datLanKiem] = useState(0);

@@ -38,9 +38,15 @@ interface XacThuc {
 
 const NguCanh = createContext<XacThuc | null>(null);
 
-export function tenHienThi(nguoiDung: User) {
+/** Họ tên để điền hồ sơ; thiếu thông tin thì để công dân tự nhập. */
+export function hoTenNguoiDung(nguoiDung: User) {
   const p = nguoiDung.profile;
-  return p.name || p.preferred_username || "Công dân";
+  const hoTen = [p.family_name?.trim(), p.given_name?.trim()].filter(Boolean).join(" ");
+  return hoTen || p.name?.trim() || "";
+}
+
+export function tenHienThi(nguoiDung: User) {
+  return hoTenNguoiDung(nguoiDung) || nguoiDung.profile.preferred_username || "Công dân";
 }
 
 export function XacThucProvider({

@@ -48,3 +48,9 @@ Trạng thái: ☐ chưa làm · ◐ đang làm · ☑ xong (ghi đường dẫn
 | Demo công khai trên Internet, người dùng thật thử | ☐ |
 | Kênh trao đổi (Discussions/Telegram), bài giới thiệu | ☐ |
 | Demo qua H-P-D-I (tiêu chí 8, 11): hướng dẫn chạy lại từng luồng, thao tác và kết quả mong đợi | ◐ (#108: `docs/demo/huong-dan-demo.md`, `make du-lieu-demo`, video dự phòng `make quay-demo VIDEO=…` lưu ngoài repo; còn tập thật) |
+
+## Kiểm thử hồi quy từ vòng dùng thử 16/11/2026 (#217)
+
+- Cổng công dân: tên từ Keycloak ưu tiên `family_name` trước `given_name`, dự phòng `name`; header dùng chung quy tắc với form. Thiếu tên thì ô họ tên để trống, không lấy username làm thông tin hồ sơ. Bằng chứng: `mot-cua/web-cong-dan/src/auth/xac-thuc.tsx`, `src/pages/nop-ho-so/nop-ho-so.test.tsx`.
+- Trợ lý: câu hỏi thời gian đời thường được chuẩn hóa khi tìm từ khóa trong index tri thức; giữ nguyên câu hỏi gốc và bộ lọc thủ tục, không áp dụng cho wiki. Bằng chứng: `mot-cua/backend/rag.py`, `tri_thuc.py`, `tests/test_tro_ly.py`. Đối chiếu Meilisearch đang chạy: đoạn thời hạn lên đầu với khai sinh có/không lọc KS01, câu không dấu và chứng thực bản sao.
+- Vòng thử do agent thực hiện; chưa thay thế dùng thử với người thật. Backend 269 test, web 189 test, build/check/lint/REUSE đạt. Chưa triển khai bản sửa lên demo.

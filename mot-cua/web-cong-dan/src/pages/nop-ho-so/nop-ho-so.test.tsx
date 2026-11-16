@@ -287,3 +287,26 @@ describe("Poka-yoke phía trình duyệt: thiếu thành phần thì không gử
     expect(goi.mock.calls.at(-1)?.[0]).toMatch(/\/workflow\/ho-so\/.+\/khoi-tao$/);
   });
 });
+
+
+it("tự điền họ trước tên, vẫn cho công dân sửa tên trên hồ sơ", async () => {
+  const u = userEvent.setup();
+  ve("/nop-ho-so/KS01", {
+    profile: { sub: "1", family_name: "Nguyễn", given_name: "Văn Mẫu", name: "Văn Mẫu Nguyễn" } as User["profile"],
+    access_token: "token-gia", expired: false,
+  });
+  const ten = await screen.findByLabelText("Họ và tên");
+  expect(ten).toHaveValue("Nguyễn Văn Mẫu");
+  await u.clear(ten);
+  await u.type(ten, "Người Kiểm Thử Mẫu");
+  expect(ten).toHaveValue("Người Kiểm Thử Mẫu");
+});
+
+
+it("không điền tên đăng nhập vào họ tên khi tài khoản chưa có tên", async () => {
+  ve("/nop-ho-so/KS01", {
+    profile: { sub: "1", preferred_username: "congdan01" } as User["profile"],
+    access_token: "token-gia", expired: false,
+  });
+  expect(await screen.findByLabelText("Họ và tên")).toHaveValue("");
+});
