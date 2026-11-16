@@ -20,6 +20,7 @@ import urllib.parse
 import urllib.request
 
 import bimat
+import rag
 
 TANG2 = os.environ.get("DXOS_TANG2", "mot-cua")
 POSTGREST_URL = os.environ.get("DXOS_POSTGREST_URL", "http://postgrest:3000")
@@ -137,7 +138,8 @@ class Meili:
         return status, data
 
     def tim(self, q, so_luong=8, ma_thu_tuc=None):
-        body = {"q": q, "limit": so_luong, "attributesToRetrieve": COT_DOAN.split(","),
+        truy_van = rag.truy_van_tu_khoa(q) if self.ten_index == TEN_INDEX else q
+        body = {"q": truy_van, "limit": so_luong, "attributesToRetrieve": COT_DOAN.split(","),
                 "showRankingScore": True}
         if ma_thu_tuc:
             body["filter"] = f"ma_thu_tuc = {json.dumps(ma_thu_tuc)}"

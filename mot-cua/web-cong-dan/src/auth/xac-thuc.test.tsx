@@ -3,9 +3,9 @@
 // Người dùng "vào vai" (sessionStorage dxos_demo_user) chỉ có hiệu lực ở chế độ dữ liệu giả;
 // ở chế độ thật khóa bị xóa và trạng thái đăng nhập lấy từ oidc-client-ts.
 import { render, screen } from "@testing-library/react";
-import type { UserManager } from "oidc-client-ts";
+import type { User, UserManager } from "oidc-client-ts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { KHOA_NGUOI_DUNG_DEMO, XacThucProvider, useXacThuc } from "./xac-thuc";
+import { KHOA_NGUOI_DUNG_DEMO, XacThucProvider, tenHienThi, useXacThuc } from "./xac-thuc";
 
 function quanLyGia() {
   const suKien = {
@@ -56,5 +56,19 @@ describe("người dùng vào vai", () => {
     expect(await screen.findByText("Chưa đăng nhập")).toBeInTheDocument();
     expect(quanLy.getUser).toHaveBeenCalled();
     expect(sessionStorage.getItem(KHOA_NGUOI_DUNG_DEMO)).toBeNull();
+  });
+});
+
+
+describe("tên công dân", () => {
+  it.each([
+    [{ family_name: " Nguyễn ", given_name: " Văn Mẫu ", name: "Văn Mẫu Nguyễn" }, "Nguyễn Văn Mẫu"],
+    [{ name: "Nguyễn Văn Mẫu" }, "Nguyễn Văn Mẫu"],
+    [{ family_name: "Nguyễn" }, "Nguyễn"],
+    [{ given_name: "Văn Mẫu" }, "Văn Mẫu"],
+    [{ name: " ", preferred_username: "congdan01" }, "congdan01"],
+    [{}, "Công dân"],
+  ])("ưu tiên họ trước tên và dự phòng claim thiếu", (profile, ten) => {
+    expect(tenHienThi({ profile } as User)).toBe(ten);
   });
 });

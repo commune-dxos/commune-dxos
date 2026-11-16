@@ -416,3 +416,27 @@ class NapVector(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TruyVanTuKhoa(unittest.TestCase):
+    def test_cach_hoi_thoi_gian_co_va_khong_dau(self):
+        for q in ["Bao lâu sau khi sinh phải đăng ký khai sinh cho con?",
+                  "Bao lau sau khi sinh phai dang ky khai sinh cho con?"]:
+            self.assertEqual(rag.truy_van_tu_khoa(q), "thoi han sinh dang ky khai sinh con")
+        self.assertEqual(rag.truy_van_tu_khoa("Chứng thực bản sao mất mấy ngày?"),
+                         "thoi han chung thuc ban sao mat")
+
+    def test_khong_doi_cau_hoi_khong_ve_thoi_gian(self):
+        for q in ["Lệ phí chứng thực bao nhiêu tiền?", "Đăng ký khai sinh cần giấy tờ gì?",
+                  "thủ tục cho con nuôi", "Thời hạn giải quyết là bao nhiêu?"]:
+            self.assertEqual(rag.truy_van_tu_khoa(q), q)
+
+    def test_meili_chi_chuan_hoa_tri_thuc_va_giu_bo_loc(self):
+        q = "Bao lâu sau khi sinh phải đăng ký khai sinh cho con?"
+        for index in [tri_thuc.TEN_INDEX, "wiki-van-ban"]:
+            meili = tri_thuc.Meili(index)
+            with mock.patch.object(meili, "goi", return_value=(200, {"hits": []})) as goi:
+                self.assertEqual(meili.tim(q, 8, "KS01"), [])
+                body = goi.call_args.args[2]
+                self.assertEqual(body["q"], rag.truy_van_tu_khoa(q) if index == tri_thuc.TEN_INDEX else q)
+                self.assertEqual(body["filter"], 'ma_thu_tuc = "KS01"')
