@@ -104,6 +104,9 @@ describe("trang hỏi đáp", () => {
     const hoi = vi.fn().mockResolvedValue(traLoi());
     ve(hoi, "/hoi-dap?ma=KS01");
     expect(screen.getByText("KS01")).toBeInTheDocument();
+    expect(screen.getByText("Câu hỏi thường gặp về thủ tục KS01")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đăng ký khai sinh cần những giấy tờ gì?" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Đăng ký kết hôn cần những giấy tờ gì?" })).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Câu hỏi của bạn"), "Lệ phí bao nhiêu?{Enter}");
     expect(hoi).toHaveBeenCalledWith("Lệ phí bao nhiêu?", "KS01");
     expect(await screen.findByRole("article", { name: "Câu hỏi: Lệ phí bao nhiêu?" })).toBeInTheDocument();

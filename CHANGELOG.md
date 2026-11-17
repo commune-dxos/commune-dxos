@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-11-17
+
+### Sửa lỗi
+
+- **web-cong-dan:** Lọc câu hỏi gợi ý theo thủ tục khi hỏi riêng ([#222](https://github.com/commune-dxos/commune-dxos/issues/222)) ([#223](https://github.com/commune-dxos/commune-dxos/issues/223))
+
 ## [0.13.1] - 2026-11-16
 
 ### Sửa lỗi
@@ -862,7 +868,8 @@
 ### Removed
 - `.github/workflows/ci.yml` (thay bằng `check.yml`; job `docker compose build` cũ không có gì để build).
 
-[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/commune-dxos/commune-dxos/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/commune-dxos/commune-dxos/compare/v0.12.1...v0.12.2

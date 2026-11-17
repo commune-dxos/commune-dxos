@@ -30,7 +30,7 @@
   <img src="docs/images/banner.webp" alt="Header image titled DTU_DZ_2 · OLP PMNM 2026 · COMMUNE DX-OS, Hệ điều hành Chính quyền số Cấp xã: a commune one-stop-shop desk, a citizen applying from a phone, electronic files moving between officers' desks" width="100%">
 </p>
 
-Open-source software that runs on a single machine at the commune office. Team DTU_DZ_2 · OLP PMNM 2026 (Vietnam Open Source Olympiad) · topic DX-OS Open-Core. Latest release: **v0.13.1**.
+Open-source software that runs on a single machine at the commune office. Team DTU_DZ_2 · OLP PMNM 2026 (Vietnam Open Source Olympiad) · topic DX-OS Open-Core. Latest release: **v0.13.2**.
 
 The user interface, the procedure packages and most documentation are in Vietnamese; English pages live in [`docs/en/`](docs/en/index.md).
 
@@ -160,7 +160,7 @@ All components run from upstream images. Overview: [`docs/en/architecture.md`](d
 
 ## Features by user
 
-Only what ships in **v0.13.1**.
+Only what ships in **v0.13.2**.
 
 **Citizen** (web portal and Android app, sample account `congdan01`)
 - Browse procedures, required documents, deadlines and fees without logging in.
