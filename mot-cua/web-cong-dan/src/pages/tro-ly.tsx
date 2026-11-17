@@ -35,6 +35,33 @@ const GOI_Y = [
   "Giấy xác nhận tình trạng hôn nhân có giá trị bao lâu?",
 ];
 
+const GOI_Y_THEO_MA: Record<string, string[]> = {
+  KS01: [
+    "Bao lâu sau khi sinh phải đăng ký khai sinh cho con?",
+    "Đăng ký khai sinh cần những giấy tờ gì?",
+    "Lệ phí đăng ký khai sinh bao nhiêu tiền?",
+    "Ai có quyền đi đăng ký khai sinh cho trẻ?",
+  ],
+  CT01: [
+    "Lệ phí chứng thực bản sao bao nhiêu tiền?",
+    "Chứng thực bản sao từ bản chính cần mang giấy tờ gì?",
+    "Thời hạn giải quyết chứng thực bản sao là bao lâu?",
+    "Giấy tờ nào không được chứng thực bản sao?",
+  ],
+  KH01: [
+    "Đăng ký kết hôn cần những giấy tờ gì?",
+    "Giấy xác nhận tình trạng hôn nhân có giá trị bao lâu?",
+    "Thời hạn giải quyết đăng ký kết hôn là bao lâu?",
+    "Lệ phí đăng ký kết hôn tại UBND cấp xã là bao nhiêu?",
+  ],
+  DD01: [
+    "Đăng ký biến động đất đai cần những giấy tờ gì?",
+    "Thời hạn giải quyết hồ sơ đất đai là bao lâu?",
+    "Nộp hồ sơ đất đai ở bộ phận nào?",
+    "Trường hợp nào phải đăng ký biến động đất đai?",
+  ],
+};
+
 type Luot =
   | { id: number; cauHoi: string; loai: "dang-hoi" }
   | { id: number; cauHoi: string; loai: "loi"; thongDiep: string }
@@ -250,9 +277,11 @@ export function TroLy({
         {sanSang === false && luot.length === 0 && <TroLyChuaBat />}
         {sanSang !== false && luot.length === 0 && (
           <div className="flex flex-col gap-3">
-            <p className="text-sm font-bold text-slate-700">Câu hỏi thường gặp</p>
+            <p className="text-sm font-bold text-slate-700">
+              {ma ? `Câu hỏi thường gặp về thủ tục ${ma}` : "Câu hỏi thường gặp"}
+            </p>
             <ul className="grid gap-3 sm:grid-cols-2">
-              {GOI_Y.map((g) => (
+              {((ma && GOI_Y_THEO_MA[ma.toUpperCase()]) || GOI_Y).map((g) => (
                 <li key={g} className="flex">
                   <Button
                     variant="outline"
