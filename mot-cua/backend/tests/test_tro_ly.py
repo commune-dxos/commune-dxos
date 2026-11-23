@@ -418,7 +418,7 @@ class NapVector(unittest.TestCase):
         self.assertTrue(os.path.exists(tep_bien_dong))
         with open(tep_bien_dong, encoding="utf-8") as f:
             doan = rag.doan_markdown(f.read(), "dang-ky-bien-dong-dat-dai.md", "kho-tri-thuc/dang-ky-bien-dong-dat-dai")
-        self.assertEqual(len(doan), 4)
+        self.assertEqual(len(doan), 5)
         self.assertTrue(doan[0].id.startswith("BD01-"))
         self.assertIn("biến động đất đai", doan[0].tieu_de)
         self.assertEqual(doan[0].lien_ket, "/hoi-dap?ma=BD01")
