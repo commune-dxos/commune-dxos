@@ -25,3 +25,7 @@ Trong thời hạn không quá 10 ngày làm việc kể từ ngày nhận đủ
 - Thuế thu nhập cá nhân: 2% giá trị chuyển nhượng (miễn thuế đối với trường hợp tặng cho, thừa kế giữa vợ chồng, cha mẹ với con, anh chị em ruột).
 - Lệ phí trước bạ: 0,5% giá trị quyền sử dụng đất theo bảng giá đất của tỉnh.
 - Phí thẩm định hồ sơ và lệ phí cấp đổi, xác nhận biến động theo quy định của HĐND cấp tỉnh.
+
+## Lưu ý khi tải tệp đính kèm trên cổng trực tuyến
+
+Khi chụp hoặc quét hợp đồng chuyển nhượng, tặng cho có công chứng/chứng thực để đính kèm hồ sơ trực tuyến, người dân nên chụp rõ trang có số công chứng, ngày chứng thực và chữ ký của các bên để hệ thống OCR và công chức địa chính đối chiếu nhanh chóng.
