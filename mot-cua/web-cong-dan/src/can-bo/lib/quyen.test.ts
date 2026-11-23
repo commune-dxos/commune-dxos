@@ -11,9 +11,11 @@ describe("quyền vào cổng cán bộ", () => {
     expect(vaiTroCanBo(docVaiTro(tk))).toBe("can_bo");
   });
 
-  it("lãnh đạo vào được; có cả hai vai thì là lãnh đạo", () => {
+  it("lãnh đạo vào được; có cả hai vai thì là lãnh đạo; văn thư xếp sau cán bộ", () => {
     expect(vaiTroCanBo(["lanh_dao"])).toBe("lanh_dao");
     expect(vaiTroCanBo(["can_bo", "lanh_dao"])).toBe("lanh_dao");
+    expect(vaiTroCanBo(["van_thu"])).toBe("van_thu");
+    expect(vaiTroCanBo(["van_thu", "can_bo"])).toBe("can_bo");
   });
 
   it("công dân, tài khoản dịch vụ, role của client khác, token hỏng → không có quyền", () => {
