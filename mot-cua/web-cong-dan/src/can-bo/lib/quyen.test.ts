@@ -27,5 +27,7 @@ describe("quyền vào cổng cán bộ", () => {
     expect(docVaiTro("header.!!!not_base64_json!!!.sig")).toEqual([]);
     expect(docVaiTro(null)).toEqual([]);
     expect(docVaiTro(undefined)).toEqual([]);
+    const tkHonHop = jwtGia({ resource_access: { dxos_api: { roles: ["van_thu", 123, null, "can_bo"] } } });
+    expect(docVaiTro(tkHonHop)).toEqual(["van_thu", "can_bo"]);
   });
 });
