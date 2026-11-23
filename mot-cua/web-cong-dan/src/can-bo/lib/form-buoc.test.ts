@@ -120,5 +120,7 @@ describe("form xử lý bước sinh từ formProperty", () => {
       ghiChu: "Đã lập biên bản",
     });
     expect(tomTat(tn, { hopLe: false, ghiChu: "thiếu tờ khai" })).toBe("Đủ thành phần hồ sơ: Không · Ghi chú: thiếu tờ khai");
+    const hg = truongCuaBuoc(DD01, "hoa_giai")!;
+    expect(tomTat(hg, { hoaGiaiThanh: true, soLanHop: 2 })).toBe("Hòa giải thành: Có · Số cuộc họp đã tổ chức: 2");
   });
 });
