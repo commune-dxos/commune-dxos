@@ -23,6 +23,13 @@ describe('định dạng cho người dân', () => {
     expect(ngay('06/11/2026')).toBe('06/11/2026');
   });
 
+  it('thời điểm timestamptz → hh:mm dd/mm/yyyy hoặc giữ nguyên nếu chuỗi lỗi', () => {
+    expect(ngayGio(null)).toBe('');
+    expect(ngayGio(undefined)).toBe('');
+    expect(ngayGio('khong-phai-ngay')).toBe('khong-phai-ngay');
+    expect(ngayGio('2026-11-06T08:05:00Z')).toMatch(/^\d{2}:\d{2} \d{2}\/\d{2}\/2026$/);
+  });
+
   it('tìm không dấu', () => {
     expect(chuanHoa('Đăng ký khai sinh')).toBe('dang ky khai sinh');
   });
