@@ -32,6 +32,7 @@ describe('định dạng cho người dân', () => {
 
   it('tìm không dấu', () => {
     expect(chuanHoa('Đăng ký khai sinh')).toBe('dang ky khai sinh');
+    expect(chuanHoa('  Đất đai và đo đạc  ')).toBe('dat dai va do dac');
   });
 
   it('trạng thái hồ sơ: tên hiển thị và sắc nhãn', () => {
