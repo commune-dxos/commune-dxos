@@ -36,7 +36,12 @@ describe('định dạng cho người dân', () => {
   });
 
   it('trạng thái hồ sơ: tên hiển thị và sắc nhãn', () => {
+    expect(tenTrangThai('moi')).toBe('Mới nộp, chờ tiếp nhận');
+    expect(tenTrangThai('dang_xu_ly')).toBe('Đang xử lý');
     expect(tenTrangThai('cho_bo_sung')).toBe('Chờ công dân bổ sung');
+    expect(tenTrangThai('cho_phe_duyet')).toBe('Chờ lãnh đạo phê duyệt');
+    expect(tenTrangThai('hoan_tat')).toBe('Hoàn tất');
+    expect(tenTrangThai('tu_choi')).toBe('Từ chối');
     expect(tenTrangThai('trang_thai_moi')).toBe('trang_thai_moi');
     expect(sacTrangThai('hoan_tat')).toBe('xong');
     expect(sacTrangThai('tu_choi')).toBe('can-chu-y');
