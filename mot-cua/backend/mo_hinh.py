@@ -133,13 +133,20 @@ class OpenAITuongThich(MoHinh):
     def __init__(self, url, mo_hinh, mo_hinh_nhung, timeout, lay_khoa):
         self.url, self.timeout, self.lay_khoa = url.rstrip("/"), timeout, lay_khoa
         self.ten_sinh, self.ten_nhung = kiem_ten_mo_hinh(mo_hinh), kiem_ten_mo_hinh(mo_hinh_nhung)
-        self.nhan_nhung = None if mo_hinh_nhung == "tat" else f"openai-compatible/{mo_hinh_nhung}"
+        if mo_hinh_nhung == "tat":
+            self.nhan_nhung = None
+        elif mo_hinh_nhung == "gia-lap":
+            self.nhan_nhung = "gia-lap/bam-tu"
+        else:
+            self.nhan_nhung = f"openai-compatible/{mo_hinh_nhung}"
 
     def _tieu_de(self):
         khoa = self.lay_khoa()
         return {"Authorization": f"Bearer {khoa}"} if khoa else {}
 
     def nhung(self, ds_chu):
+        if self.ten_nhung == "gia-lap":
+            return [rag.nhung_gia_lap(c) for c in ds_chu]
         kq = []
         for i in range(0, len(ds_chu), LO_NHUNG):
             data = _post(f"{self.url}/embeddings", {"model": self.ten_nhung, "input": ds_chu[i:i + LO_NHUNG]},

@@ -167,6 +167,10 @@ class NhaCungCap(unittest.TestCase):
         a_tat = mo_hinh.tu_moi_truong({"LLM_PROVIDER": "openai-compatible", "LLM_BASE_URL": "http://x/v1/",
                                        "LLM_MODEL": "qwen/qwen3.8-27b", "LLM_EMBED_MODEL": "tat"})
         self.assertIsNone(a_tat.nhan_nhung)
+        a_gl = mo_hinh.tu_moi_truong({"LLM_PROVIDER": "openai-compatible", "LLM_BASE_URL": "http://x/v1/",
+                                      "LLM_MODEL": "qwen/qwen3.8-27b", "LLM_EMBED_MODEL": "gia-lap"})
+        self.assertEqual(a_gl.nhan_nhung, "gia-lap/bam-tu")
+        self.assertEqual(len(a_gl.nhung(["đất đai"])[0]), rag.SO_CHIEU)
 
     def test_gia_tri_sai(self):
         for env in ({"LLM_PROVIDER": "openai"}, {"LLM_PROVIDER": "openai-compatible"}):
