@@ -154,7 +154,16 @@ Lãnh đạo xã theo dõi toàn diện chất lượng phục vụ của bộ p
 
 ---
 
-## 5. Xử lý các tình huống thường gặp
+## 5. Tra cứu Wiki văn bản nội bộ và Lịch công tác tuần
+
+Bên cạnh xử lý hồ sơ và văn bản, cổng cán bộ cung cấp hai tiện ích điều hành nội bộ dùng chung cho mọi vai trò:
+
+- **Wiki văn bản nội bộ (`/can-bo/wiki`):** Hỗ trợ tìm kiếm tiếng Việt có dấu hoặc không dấu theo loại văn bản (quy trình, hướng dẫn, thông báo nội bộ). Văn thư và lãnh đạo xã có quyền đăng mới, cập nhật phiên bản hoặc đánh dấu hết hiệu lực; cán bộ chuyên môn tra cứu các văn bản thuộc lĩnh vực mình phụ trách và văn bản chung toàn xã.
+- **Lịch công tác tuần (`/can-bo/lich`):** Hiển thị lịch họp, lịch tiếp công dân, lịch trực và đi công tác từ thứ Hai đến Chủ nhật theo múi giờ Việt Nam. Văn thư lập lịch dự kiến, lãnh đạo xã phê duyệt lịch chính thức; cơ sở dữ liệu tự động kiểm tra và cảnh báo nếu hai cuộc họp bị trùng địa điểm và khung giờ.
+
+---
+
+## 6. Xử lý các tình huống thường gặp
 
 | Tình huống / Thông báo trên màn hình | Nguyên nhân | Cách khắc phục |
 |---|---|---|
