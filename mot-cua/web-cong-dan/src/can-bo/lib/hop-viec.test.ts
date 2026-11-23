@@ -60,7 +60,9 @@ describe("hộp việc", () => {
 
   it("bộ lọc trên URL: giá trị lạ về mặc định, ghi lại chỉ phần khác mặc định", () => {
     expect(docBoLoc(new URLSearchParams("trang_thai=x&han=y&thu_tuc=<script>"))).toEqual({ trangThai: "tat_ca", thuTuc: "", han: "tat_ca" });
+    expect(docBoLoc(new URLSearchParams("thu_tuc=DD_01-A")).thuTuc).toBe("DD_01-A");
     expect(ghiBoLoc({ trangThai: "cua_toi", thuTuc: "", han: "sap_tre" }).toString()).toBe("trang_thai=cua_toi&han=sap_tre");
+    expect(ghiBoLoc({ trangThai: "tat_ca", thuTuc: "", han: "tat_ca" }).toString()).toBe("");
     expect(thuTucTrongHop(ds)).toEqual([
       { ma: "CT01", ten: "Chứng thực bản sao" },
       { ma: "KS01", ten: "Đăng ký khai sinh" },
