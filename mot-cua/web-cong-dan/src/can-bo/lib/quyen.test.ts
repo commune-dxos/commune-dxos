@@ -24,6 +24,8 @@ describe("quyền vào cổng cán bộ", () => {
     expect(vaiTroCanBo(docVaiTro(jwtGia({ resource_access: { khac: { roles: ["can_bo"] } } })))).toBeNull();
     expect(vaiTroCanBo(docVaiTro(jwtGia({ realm_access: { roles: ["can_bo"] } })))).toBeNull();
     expect(docVaiTro("khong-phai-jwt")).toEqual([]);
+    expect(docVaiTro("header.!!!not_base64_json!!!.sig")).toEqual([]);
+    expect(docVaiTro(null)).toEqual([]);
     expect(docVaiTro(undefined)).toEqual([]);
   });
 });
