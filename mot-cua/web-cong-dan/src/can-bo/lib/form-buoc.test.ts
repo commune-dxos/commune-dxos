@@ -77,6 +77,15 @@ describe("form xử lý bước sinh từ formProperty", () => {
     ]);
   });
 
+  it("khởi tạo giá trị ban đầu rỗng cho mọi trường của bước", () => {
+    const truong = truongCuaBuoc(DD01, "hoa_giai")!;
+    expect(giaTriBanDau(truong)).toEqual({
+      hoaGiaiThanh: "",
+      soLanHop: "",
+      ghiChu: "",
+    });
+  });
+
   it("bước không khai trong gói → null (không xử lý qua cổng); gói cũ thiếu nhãn → dùng mã biến", () => {
     expect(truongCuaBuoc(KS01, "khong_co")).toBeNull();
     expect(truongCuaBuoc(null, "tiep_nhan")).toBeNull();
