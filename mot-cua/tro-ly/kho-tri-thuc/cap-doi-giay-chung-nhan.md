@@ -20,3 +20,7 @@ Thời hạn thực hiện thủ tục cấp đổi Giấy chứng nhận không
 ## Lệ phí và chi phí cấp đổi
 - Lệ phí cấp mới, cấp đổi Giấy chứng nhận quyền sử dụng đất và tài sản gắn liền với đất nộp theo mức quy định của Hội đồng nhân dân tỉnh (thường từ 20.000 đến 100.000 đồng/giấy).
 - Miễn lệ phí đối với hộ nghèo, người có công với cách mạng hoặc đồng bào dân tộc thiểu số tại các xã vùng sâu, vùng xa theo chính sách địa phương.
+
+## Nộp hồ sơ qua ứng dụng di động và theo dõi tiến độ
+
+Người dân có thể chụp ảnh Đơn đăng ký biến động đất đai (Mẫu số 11/ĐK) và Giấy chứng nhận hiện có để nộp trực tiếp qua ứng dụng di động **Một cửa xã** để cán bộ địa chính kiểm tra sơ bộ thành phần hồ sơ trước khi nộp bản gốc tại Bộ phận Một cửa UBND cấp xã.
