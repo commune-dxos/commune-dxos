@@ -113,7 +113,12 @@ describe("form xử lý bước sinh từ formProperty", () => {
     const tn = truongCuaBuoc(KS01, "tiep_nhan")!;
     expect(taoBien(tn, { hopLe: "khong", ghiChu: " thiếu tờ khai " })).toEqual({ hopLe: false, ghiChu: "thiếu tờ khai" });
     expect(taoBien(tn, { hopLe: "co", ghiChu: "" })).toEqual({ hopLe: true });
-    expect(taoBien(truongCuaBuoc(CT01, "tra_ket_qua")!, { soBan: "3", ghiChu: "" })).toEqual({ soBan: 3 });
+    expect(taoBien(truongCuaBuoc(CT01, "tra_ket_qua")!, { soBan: " 3 ", ghiChu: "   " })).toEqual({ soBan: 3 });
+    expect(taoBien(truongCuaBuoc(DD01, "hoa_giai")!, { hoaGiaiThanh: " co ", soLanHop: " 2 ", ghiChu: " Đã lập biên bản " })).toEqual({
+      hoaGiaiThanh: true,
+      soLanHop: 2,
+      ghiChu: "Đã lập biên bản",
+    });
     expect(tomTat(tn, { hopLe: false, ghiChu: "thiếu tờ khai" })).toBe("Đủ thành phần hồ sơ: Không · Ghi chú: thiếu tờ khai");
   });
 });
