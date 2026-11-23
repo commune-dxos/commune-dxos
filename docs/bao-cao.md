@@ -93,4 +93,6 @@ Trên máy chủ của xã có thể đặt lịch (cron) chạy lệnh này m�
 | Số liệu cũ | Chạy lại `make kho-du-lieu`; Superset không lưu tạm kết quả nên tải lại trang là thấy số mới. |
 | Giao diện Superset còn vài chữ tiếng Anh (Dashboards, Sign in with Keycloak…) | Superset chưa có bản dịch tiếng Việt cho các nhãn này. |
 
+Xem thêm quy trình thao tác hàng ngày dành cho cán bộ và lãnh đạo xã tại [Sổ tay vận hành cho cán bộ xã](huong-dan-can-bo.md).
+
 Góp ý về con số còn thiếu: mẫu issue **Phản hồi dùng thử**, nhiệm vụ 6 trong [Hướng dẫn buổi dùng thử](thu-nghiem.md#nhiệm-vụ-6-dashboard-báo-cáo--lãnh-đạo-sinh-viên).
