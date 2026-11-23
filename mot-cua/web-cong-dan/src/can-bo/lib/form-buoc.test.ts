@@ -104,6 +104,9 @@ describe("form xử lý bước sinh từ formProperty", () => {
     expect(kiemForm(t, { khopBanChinh: "co", soTrang: "2.5" }).soTrang).toBeDefined();
     expect(kiemForm(truongCuaBuoc(CT01, "tra_ket_qua")!, { soBan: "  " })).toEqual({ soBan: "Nhập “Số bản đã chứng thực”" });
     expect(kiemForm(t, { khopBanChinh: "khong", soTrang: "", ghiChu: "x".repeat(2001) }).ghiChu).toMatch(/tối đa 2000/);
+    expect(kiemForm(t, { khopBanChinh: "co", soTrang: "0", ghiChu: "" })).toEqual({});
+    expect(kiemForm(t, { khopBanChinh: "co", soTrang: "999999999", ghiChu: "" })).toEqual({});
+    expect(kiemForm(t, { khopBanChinh: "co", soTrang: "1000000000", ghiChu: "" }).soTrang).toBeDefined();
   });
 
   it("biến gửi đúng kiểu JSON mà /workflow/tasks/{id}/complete nhận; bỏ trường trống", () => {
