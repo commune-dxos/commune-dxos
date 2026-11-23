@@ -45,6 +45,9 @@ describe('định dạng cho người dân', () => {
     expect(tenTrangThai('trang_thai_moi')).toBe('trang_thai_moi');
     expect(sacTrangThai('hoan_tat')).toBe('xong');
     expect(sacTrangThai('tu_choi')).toBe('can-chu-y');
+    expect(sacTrangThai('cho_bo_sung')).toBe('can-chu-y');
+    expect(sacTrangThai('moi')).toBe('dang-di');
     expect(sacTrangThai('dang_xu_ly')).toBe('dang-di');
+    expect(sacTrangThai('cho_phe_duyet')).toBe('dang-di');
   });
 });
