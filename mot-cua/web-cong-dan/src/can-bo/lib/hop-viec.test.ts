@@ -54,6 +54,8 @@ describe("hộp việc", () => {
     expect(loc("han=qua_han")).toEqual(["c"]);
     expect(loc("han=sap_tre")).toEqual(["b"]);
     expect(loc("han=can_chu_y&thu_tuc=KS01")).toEqual(["c"]);
+    expect(loc("trang_thai=cua_toi&thu_tuc=CT01&han=sap_tre")).toEqual(["b"]);
+    expect(loc("trang_thai=cua_toi&thu_tuc=KS01&han=sap_tre")).toEqual([]);
   });
 
   it("bộ lọc trên URL: giá trị lạ về mặc định, ghi lại chỉ phần khác mặc định", () => {
