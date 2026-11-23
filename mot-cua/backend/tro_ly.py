@@ -63,7 +63,9 @@ class TroLy:
         self.cho = threading.BoundedSemaphore(dong_thoi)
         # Ngưỡng tương đồng cosin để nhận một đoạn chỉ khớp ngữ nghĩa (không khớp từ khóa): vector băm từ của
         # chế độ gia-lap có cosin thấp hơn nhiều so với bge-m3.
-        self.nguong = float(os.environ.get("TRO_LY_NGUONG") or (0.05 if mh.che_do == "gia-lap" else 0.45))
+        self.nguong = float(os.environ.get("TRO_LY_NGUONG") or (
+            0.05 if (mh.che_do == "gia-lap" or mh.nhan_nhung == "gia-lap/bam-tu") else 0.45
+        ))
 
     def thong_tin(self):
         return {"che_do": self.mh.che_do, "co_mo_hinh_ngon_ngu": self.mh.co_sinh,
