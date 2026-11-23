@@ -65,6 +65,14 @@ App có 4 thẻ ở dưới cùng: **Thủ tục**, **Tra cứu**, **Hồ sơ c�
 
 Mất mạng giữa chừng thì app báo "Hồ sơ chưa gửi xong": bấm **Thử lại**, phần đã gửi được giữ lại, không tạo trùng hồ sơ.
 
+### Mẹo chụp ảnh giấy tờ rõ nét để trích xuất tự động (OCR)
+
+Khi nộp hồ sơ trên Cổng công dân hoặc Ứng dụng di động, dịch vụ nhận dạng chữ tiếng Việt nội bộ (**PP-OCRv5** phát hiện vùng chữ kết hợp **VietOCR `vgg_transformer`** chạy trên ONNX Runtime) hỗ trợ đọc nhanh thông tin từ ảnh giấy tờ:
+
+- Đặt giấy tờ phẳng trên nền tối hoặc tương phản, đủ ánh sáng tự nhiên, tránh bóng tay hoặc ánh đèn lóa trực tiếp lên mặt chữ.
+- Căn khung hình vuông góc với mặt giấy, đảm bảo 4 góc tờ khai hoặc bản chính không bị cắt khuất.
+- Nếu ảnh chụp quá mờ hoặc bị nghiêng mạnh, cán bộ một cửa ở bước Tiếp nhận sẽ gửi yêu cầu bổ sung kèm ghi chú cụ thể để bạn chụp và nộp lại ngay trên ứng dụng.
+
 ## Bước 5. Tra cứu và theo dõi
 
 - **Không cần đăng nhập:** thẻ **Tra cứu**, nhập **Mã hồ sơ** và **4 số cuối số điện thoại** đã khai, bấm **Tra cứu**.
