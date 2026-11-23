@@ -24,6 +24,7 @@ function docBpmn(goi: string): BienTheoBuoc {
 const KS01 = docBpmn("khai-sinh");
 const CT01 = docBpmn("chung-thuc-ban-sao");
 const KH01 = docBpmn("ket-hon");
+const DD01 = docBpmn("hoa-giai-dat-dai");
 
 describe("form xử lý bước sinh từ formProperty", () => {
   it("KS01 tiếp nhận: câu hỏi có/không bắt buộc trước, ghi chú sau, nhãn tiếng Việt", () => {
@@ -48,6 +49,22 @@ describe("form xử lý bước sinh từ formProperty", () => {
       ["haiBenCoMat", "boolean", true],
       ["ghiChu", "string", false],
       ["soDangKy", "string", false],
+    ]);
+  });
+
+  it("DD01 hòa giải đất đai: bước họp hòa giải xếp trường boolean bắt buộc trước số cuộc họp và ghi chú", () => {
+    expect(truongCuaBuoc(DD01, "xac_minh")?.map((t) => [t.ma, t.batBuoc])).toEqual([
+      ["thuocDienHoaGiai", true],
+      ["ghiChu", false],
+    ]);
+    expect(truongCuaBuoc(DD01, "hoa_giai")?.map((t) => [t.ma, t.kieu, t.batBuoc])).toEqual([
+      ["hoaGiaiThanh", "boolean", true],
+      ["soLanHop", "long", false],
+      ["ghiChu", "string", false],
+    ]);
+    expect(truongCuaBuoc(DD01, "ky_bien_ban")?.map((t) => [t.ma, t.batBuoc])).toEqual([
+      ["daKy", true],
+      ["ghiChu", false],
     ]);
   });
 
