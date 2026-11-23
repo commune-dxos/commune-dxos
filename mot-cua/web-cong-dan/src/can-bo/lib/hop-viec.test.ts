@@ -28,6 +28,19 @@ describe("hộp việc", () => {
     expect(chiCot.han.muc).toBe("sap_tre");
   });
 
+  it("hai task cùng mức hạn không rõ thì sắp xếp theo thời điểm tạo task tăng dần", () => {
+    const cungHan = ghepViec(
+      [
+        taskGia({ id: "muon", hoSoId: "9", taoLuc: "2026-10-23T08:30:00+07:00" }),
+        taskGia({ id: "som", hoSoId: "9", taoLuc: "2026-10-23T07:15:00+07:00" }),
+      ],
+      HO_SO,
+      "toi",
+      BAY_GIO,
+    );
+    expect(cungHan.map((v) => v.task.id)).toEqual(["som", "muon"]);
+  });
+
   it("đếm theo hạn cho ô số liệu và chuông", () => {
     expect(demTheoHan(ds)).toEqual({ qua_han: 1, sap_tre: 1, con_han: 1, khong_ro: 1 });
   });
