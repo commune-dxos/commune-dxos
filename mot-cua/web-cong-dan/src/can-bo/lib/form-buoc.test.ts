@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { kiemForm, taoBien, tomTat, truongCuaBuoc, type BienTheoBuoc } from "./form-buoc";
+import { giaTriBanDau, kiemForm, taoBien, tomTat, truongCuaBuoc, type BienTheoBuoc } from "./form-buoc";
 
 /** Giống kiem_bpmn.buoc_nguoi_xu_ly (Python): {userTask: {biến: {kieu, bat_buoc, ten}}}. */
 function docBpmn(goi: string): BienTheoBuoc {
@@ -23,6 +23,7 @@ function docBpmn(goi: string): BienTheoBuoc {
 
 const KS01 = docBpmn("khai-sinh");
 const CT01 = docBpmn("chung-thuc-ban-sao");
+const KH01 = docBpmn("ket-hon");
 
 describe("form xử lý bước sinh từ formProperty", () => {
   it("KS01 tiếp nhận: câu hỏi có/không bắt buộc trước, ghi chú sau, nhãn tiếng Việt", () => {
@@ -32,6 +33,22 @@ describe("form xử lý bước sinh từ formProperty", () => {
     ]);
     expect(truongCuaBuoc(KS01, "tham_dinh")?.map((t) => t.ma)).toEqual(["datYeuCau", "ghiChu"]);
     expect(truongCuaBuoc(KS01, "phe_duyet")?.map((t) => t.ma)).toEqual(["pheDuyet", "ghiChu"]);
+  });
+
+  it("KH01 đăng ký kết hôn: đầy đủ các bước xác minh, ký và trao giấy chứng nhận", () => {
+    expect(truongCuaBuoc(KH01, "xac_minh")?.map((t) => [t.ma, t.batBuoc])).toEqual([
+      ["duDieuKien", true],
+      ["ghiChu", false],
+    ]);
+    expect(truongCuaBuoc(KH01, "ky_giay_chung_nhan")?.map((t) => [t.ma, t.batBuoc])).toEqual([
+      ["daKy", true],
+      ["ghiChu", false],
+    ]);
+    expect(truongCuaBuoc(KH01, "trao_giay_chung_nhan")?.map((t) => [t.ma, t.kieu, t.batBuoc])).toEqual([
+      ["haiBenCoMat", "boolean", true],
+      ["ghiChu", "string", false],
+      ["soDangKy", "string", false],
+    ]);
   });
 
   it("CT01: số bắt buộc ở bước trả kết quả; số không bắt buộc ở bước kiểm tra", () => {
