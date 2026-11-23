@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: 2026 DTU_DZ_2
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { chuanHoa, lePhi, ngay, thoiHan } from '../src/dich-vu/dinh-dang';
+import { chuanHoa, lePhi, ngay, ngayGio, thoiHan } from '../src/dich-vu/dinh-dang';
 import { sacTrangThai, tenTrangThai } from '../src/dich-vu/trang-thai';
 
 describe('định dạng cho người dân', () => {
   it('thời hạn và lệ phí', () => {
     expect(thoiHan(0)).toBe('Trong ngày');
+    expect(thoiHan(1)).toBe('1 ngày làm việc');
     expect(thoiHan(5)).toBe('5 ngày làm việc');
+    expect(thoiHan(15)).toBe('15 ngày làm việc');
     expect(lePhi(0)).toBe('Miễn phí');
     expect(lePhi(1500000)).toBe('1.500.000 đồng');
   });
