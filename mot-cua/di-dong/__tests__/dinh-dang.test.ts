@@ -10,7 +10,9 @@ describe('định dạng cho người dân', () => {
     expect(thoiHan(5)).toBe('5 ngày làm việc');
     expect(thoiHan(15)).toBe('15 ngày làm việc');
     expect(lePhi(0)).toBe('Miễn phí');
+    expect(lePhi(2000)).toBe('2.000 đồng');
     expect(lePhi(1500000)).toBe('1.500.000 đồng');
+    expect(lePhi(12500.6)).toBe('12.501 đồng');
   });
 
   it('ngày YYYY-MM-DD → dd/mm/yyyy, không đổi múi giờ', () => {
