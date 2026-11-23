@@ -18,6 +18,9 @@ describe('định dạng cho người dân', () => {
   it('ngày YYYY-MM-DD → dd/mm/yyyy, không đổi múi giờ', () => {
     expect(ngay('2026-11-06')).toBe('06/11/2026');
     expect(ngay(null)).toBe('');
+    expect(ngay(undefined)).toBe('');
+    expect(ngay('')).toBe('');
+    expect(ngay('06/11/2026')).toBe('06/11/2026');
   });
 
   it('tìm không dấu', () => {
