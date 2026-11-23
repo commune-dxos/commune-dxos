@@ -11,9 +11,11 @@ describe("quyền vào cổng cán bộ", () => {
     expect(vaiTroCanBo(docVaiTro(tk))).toBe("can_bo");
   });
 
-  it("lãnh đạo vào được; có cả hai vai thì là lãnh đạo", () => {
+  it("lãnh đạo vào được; có cả hai vai thì là lãnh đạo; văn thư xếp sau cán bộ", () => {
     expect(vaiTroCanBo(["lanh_dao"])).toBe("lanh_dao");
     expect(vaiTroCanBo(["can_bo", "lanh_dao"])).toBe("lanh_dao");
+    expect(vaiTroCanBo(["van_thu"])).toBe("van_thu");
+    expect(vaiTroCanBo(["van_thu", "can_bo"])).toBe("can_bo");
   });
 
   it("công dân, tài khoản dịch vụ, role của client khác, token hỏng → không có quyền", () => {
@@ -22,6 +24,10 @@ describe("quyền vào cổng cán bộ", () => {
     expect(vaiTroCanBo(docVaiTro(jwtGia({ resource_access: { khac: { roles: ["can_bo"] } } })))).toBeNull();
     expect(vaiTroCanBo(docVaiTro(jwtGia({ realm_access: { roles: ["can_bo"] } })))).toBeNull();
     expect(docVaiTro("khong-phai-jwt")).toEqual([]);
+    expect(docVaiTro("header.!!!not_base64_json!!!.sig")).toEqual([]);
+    expect(docVaiTro(null)).toEqual([]);
     expect(docVaiTro(undefined)).toEqual([]);
+    const tkHonHop = jwtGia({ resource_access: { dxos_api: { roles: ["van_thu", 123, null, "can_bo"] } } });
+    expect(docVaiTro(tkHonHop)).toEqual(["van_thu", "can_bo"]);
   });
 });

@@ -28,6 +28,19 @@ describe("hộp việc", () => {
     expect(chiCot.han.muc).toBe("sap_tre");
   });
 
+  it("hai task cùng mức hạn không rõ thì sắp xếp theo thời điểm tạo task tăng dần", () => {
+    const cungHan = ghepViec(
+      [
+        taskGia({ id: "muon", hoSoId: "9", taoLuc: "2026-10-23T08:30:00+07:00" }),
+        taskGia({ id: "som", hoSoId: "9", taoLuc: "2026-10-23T07:15:00+07:00" }),
+      ],
+      HO_SO,
+      "toi",
+      BAY_GIO,
+    );
+    expect(cungHan.map((v) => v.task.id)).toEqual(["som", "muon"]);
+  });
+
   it("đếm theo hạn cho ô số liệu và chuông", () => {
     expect(demTheoHan(ds)).toEqual({ qua_han: 1, sap_tre: 1, con_han: 1, khong_ro: 1 });
   });
@@ -41,11 +54,15 @@ describe("hộp việc", () => {
     expect(loc("han=qua_han")).toEqual(["c"]);
     expect(loc("han=sap_tre")).toEqual(["b"]);
     expect(loc("han=can_chu_y&thu_tuc=KS01")).toEqual(["c"]);
+    expect(loc("trang_thai=cua_toi&thu_tuc=CT01&han=sap_tre")).toEqual(["b"]);
+    expect(loc("trang_thai=cua_toi&thu_tuc=KS01&han=sap_tre")).toEqual([]);
   });
 
   it("bộ lọc trên URL: giá trị lạ về mặc định, ghi lại chỉ phần khác mặc định", () => {
     expect(docBoLoc(new URLSearchParams("trang_thai=x&han=y&thu_tuc=<script>"))).toEqual({ trangThai: "tat_ca", thuTuc: "", han: "tat_ca" });
+    expect(docBoLoc(new URLSearchParams("thu_tuc=DD_01-A")).thuTuc).toBe("DD_01-A");
     expect(ghiBoLoc({ trangThai: "cua_toi", thuTuc: "", han: "sap_tre" }).toString()).toBe("trang_thai=cua_toi&han=sap_tre");
+    expect(ghiBoLoc({ trangThai: "tat_ca", thuTuc: "", han: "tat_ca" }).toString()).toBe("");
     expect(thuTucTrongHop(ds)).toEqual([
       { ma: "CT01", ten: "Chứng thực bản sao" },
       { ma: "KS01", ten: "Đăng ký khai sinh" },

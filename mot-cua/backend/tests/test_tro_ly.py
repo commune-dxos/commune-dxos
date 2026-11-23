@@ -413,9 +413,26 @@ class NapVector(unittest.TestCase):
         with mock.patch("sys.stdout"):
             self.assertEqual(nap_tri_thuc.main(["x", KHO, THU_TUC, "--chi-kiem"]), 0)
 
+    def test_tri_thuc_dat_dai(self):
+        tep_bien_dong = os.path.join(KHO, "dang-ky-bien-dong-dat-dai.md")
+        self.assertTrue(os.path.exists(tep_bien_dong))
+        with open(tep_bien_dong, encoding="utf-8") as f:
+            doan = rag.doan_markdown(f.read(), "dang-ky-bien-dong-dat-dai.md", "kho-tri-thuc/dang-ky-bien-dong-dat-dai")
+        self.assertEqual(len(doan), 5)
+        self.assertTrue(doan[0].id.startswith("BD01-"))
+        self.assertIn("biến động đất đai", doan[0].tieu_de)
+        self.assertEqual(doan[0].lien_ket, "/hoi-dap?ma=BD01")
 
-if __name__ == "__main__":
-    unittest.main()
+        tep_cap_doi = os.path.join(KHO, "cap-doi-giay-chung-nhan.md")
+        self.assertTrue(os.path.exists(tep_cap_doi))
+        with open(tep_cap_doi, encoding="utf-8") as f:
+            doan = rag.doan_markdown(f.read(), "cap-doi-giay-chung-nhan.md", "kho-tri-thuc/cap-doi-giay-chung-nhan")
+        self.assertEqual(len(doan), 5)
+        self.assertTrue(doan[0].id.startswith("CD01-"))
+        self.assertIn("ứng dụng di động", doan[-1].tieu_de)
+        self.assertTrue(all(d.lien_ket == "/hoi-dap?ma=CD01" for d in doan))
+        self.assertIn("Cấp đổi, cấp lại Giấy chứng nhận", doan[0].tieu_de)
+        self.assertEqual(doan[0].lien_ket, "/hoi-dap?ma=CD01")
 
 
 class TruyVanTuKhoa(unittest.TestCase):
@@ -440,3 +457,7 @@ class TruyVanTuKhoa(unittest.TestCase):
                 body = goi.call_args.args[2]
                 self.assertEqual(body["q"], rag.truy_van_tu_khoa(q) if index == tri_thuc.TEN_INDEX else q)
                 self.assertEqual(body["filter"], 'ma_thu_tuc = "KS01"')
+
+
+if __name__ == "__main__":
+    unittest.main()
