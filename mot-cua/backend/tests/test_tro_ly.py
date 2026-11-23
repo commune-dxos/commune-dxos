@@ -163,7 +163,10 @@ class NhaCungCap(unittest.TestCase):
         self.assertEqual((o.url, o.ten_sinh, o.nhan_nhung), ("http://ollama:11434", "qwen2.5:7b", "ollama/bge-m3"))
         a = mo_hinh.tu_moi_truong({"LLM_PROVIDER": "openai-compatible", "LLM_BASE_URL": "http://x/v1/",
                                    "LLM_MODEL": "qwen2.5:14b"})
-        self.assertEqual((a.url, a.ten_sinh), ("http://x/v1", "qwen2.5:14b"))
+        self.assertEqual((a.url, a.ten_sinh, a.nhan_nhung), ("http://x/v1", "qwen2.5:14b", "openai-compatible/bge-m3"))
+        a_tat = mo_hinh.tu_moi_truong({"LLM_PROVIDER": "openai-compatible", "LLM_BASE_URL": "http://x/v1/",
+                                       "LLM_MODEL": "qwen/qwen3.8-27b", "LLM_EMBED_MODEL": "tat"})
+        self.assertIsNone(a_tat.nhan_nhung)
 
     def test_gia_tri_sai(self):
         for env in ({"LLM_PROVIDER": "openai"}, {"LLM_PROVIDER": "openai-compatible"}):

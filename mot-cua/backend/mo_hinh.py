@@ -42,7 +42,8 @@ def kiem_ten_mo_hinh(ten):
 
 def _post(url, body, headers=None, timeout=120):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
-                                 headers={"Content-Type": "application/json", **(headers or {})})
+                                 headers={"Content-Type": "application/json", "User-Agent": "commune-dxos/1.0",
+                                          **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read())
@@ -132,7 +133,7 @@ class OpenAITuongThich(MoHinh):
     def __init__(self, url, mo_hinh, mo_hinh_nhung, timeout, lay_khoa):
         self.url, self.timeout, self.lay_khoa = url.rstrip("/"), timeout, lay_khoa
         self.ten_sinh, self.ten_nhung = kiem_ten_mo_hinh(mo_hinh), kiem_ten_mo_hinh(mo_hinh_nhung)
-        self.nhan_nhung = f"openai-compatible/{mo_hinh_nhung}"
+        self.nhan_nhung = None if mo_hinh_nhung == "tat" else f"openai-compatible/{mo_hinh_nhung}"
 
     def _tieu_de(self):
         khoa = self.lay_khoa()
